@@ -2,10 +2,71 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 const TODAY_STR = new Date().toISOString().slice(0, 10); // dynamic — always today
 
 // ─── PERSISTENT STORAGE ──────────────────────────────────────────────────────
-const store = {
-  async get(k) { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; } catch { return null; } },
-  async set(k, v) { try { await window.storage.set(k, JSON.stringify(v)); } catch {} }
-};
+// ── Supabase storage (falls back to localStorage if env vars not set) ─────────
+const SUPA_URL  = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_URL;
+const SUPA_ANON = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_ANON;
+
+const store = (() => {
+  // ── Supabase backend (multi-user, real-time) ──────────────────────────────
+  if (SUPA_URL && SUPA_ANON) {
+    const headers = {
+      "Content-Type": "application/json",
+      "apikey": SUPA_ANON,
+      "Authorization": `Bearer ${SUPA_ANON}`,
+      "Prefer": "resolution=merge-duplicates"
+    };
+    const base = `${SUPA_URL}/rest/v1/ops_store`;
+
+    // Subscribe to real-time changes and reload window.storage keys
+    const ws = new WebSocket(
+      `${SUPA_URL.replace("https","wss")}/realtime/v1/websocket?apikey=${SUPA_ANON}&vsn=1.0.0`
+    );
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ topic:"realtime:public:ops_store", event:"phx_join", payload:{}, ref:"1" }));
+    };
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.event === "INSERT" || msg.event === "UPDATE") {
+          const { key, value } = msg.payload?.record || {};
+          if (key && value) window.__ztCache = window.__ztCache || {};
+          if (key) { window.__ztCache[key] = JSON.parse(value); }
+        }
+      } catch {}
+    };
+
+    return {
+      async get(k) {
+        try {
+          if (window.__ztCache?.[k] !== undefined) return window.__ztCache[k];
+          const r = await fetch(`${base}?key=eq.${encodeURIComponent(k)}&select=value`, { headers });
+          const rows = await r.json();
+          const val = rows?.[0] ? JSON.parse(rows[0].value) : null;
+          window.__ztCache = window.__ztCache || {};
+          window.__ztCache[k] = val;
+          return val;
+        } catch { return null; }
+      },
+      async set(k, v) {
+        try {
+          window.__ztCache = window.__ztCache || {};
+          window.__ztCache[k] = v;
+          await fetch(base, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ key: k, value: JSON.stringify(v), updated_at: new Date().toISOString() })
+          });
+        } catch {}
+      }
+    };
+  }
+
+  // ── localStorage fallback (single-user / preview mode) ───────────────────
+  return {
+    async get(k) { try { const v = localStorage.getItem("zt-" + k); return v ? JSON.parse(v) : null; } catch { return null; } },
+    async set(k, v) { try { localStorage.setItem("zt-" + k, JSON.stringify(v)); } catch {} }
+  };
+})();
 
 // ─── ZIKSATECH SEED DATA (from Ops Center spreadsheet) ───────────────────────
 const BURDEN = { fica: 0.0765, futa: 0.006, futaCap: 7000, suta: 0.027, sutaCap: 9000, wc: 0.005, health: 7200, retire: 0.03, other: 0.015, hoursPerYear: 1920 };
