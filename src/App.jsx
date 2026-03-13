@@ -17,6 +17,11 @@ const store = (() => {
     };
     const base = `${SUPA_URL}/rest/v1/ops_store`;
 
+    // Wake up the Supabase free-tier database on first load
+    fetch(`${base}?key=eq.__ping&select=key`, { headers })
+      .then(() => { console.log("[ZT] Supabase connected"); })
+      .catch(() => {});
+
     // Subscribe to real-time changes and reload window.storage keys
     const ws = new WebSocket(
       `${SUPA_URL.replace("https","wss")}/realtime/v1/websocket?apikey=${SUPA_ANON}&vsn=1.0.0`
@@ -51,11 +56,15 @@ const store = (() => {
         try {
           window.__ztCache = window.__ztCache || {};
           window.__ztCache[k] = v;
-          await fetch(base, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ key: k, value: JSON.stringify(v), updated_at: new Date().toISOString() })
-          });
+          const body = JSON.stringify({ key: k, value: JSON.stringify(v), updated_at: new Date().toISOString() });
+          // Retry up to 3 times — handles Supabase free-tier cold start (503)
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const res = await fetch(base, { method: "POST", headers, body });
+            if (res.ok) break;
+            if (res.status === 503 || res.status === 504) {
+              await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+            } else break;
+          }
         } catch {}
       }
     };
