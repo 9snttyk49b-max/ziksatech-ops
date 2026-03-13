@@ -6,6 +6,64 @@ const TODAY_STR = new Date().toISOString().slice(0, 10); // dynamic — always t
 const SUPA_URL  = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_URL;
 const SUPA_ANON = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_ANON;
 
+// ── Supabase Auth helpers ──────────────────────────────────────────────────────
+const supaAuth = (() => {
+  if (!SUPA_URL || !SUPA_ANON) return null;
+  const base = SUPA_URL;
+  const h = { "Content-Type":"application/json", "apikey":SUPA_ANON };
+
+  return {
+    async signUp(email, password, fullName, role="consultant") {
+      const r = await fetch(`${base}/auth/v1/signup`, {
+        method:"POST", headers:h,
+        body: JSON.stringify({ email, password, data:{ full_name:fullName, role } })
+      });
+      return r.json();
+    },
+    async signIn(email, password) {
+      const r = await fetch(`${base}/auth/v1/token?grant_type=password`, {
+        method:"POST", headers:h,
+        body: JSON.stringify({ email, password })
+      });
+      return r.json();
+    },
+    async signOut(token) {
+      await fetch(`${base}/auth/v1/logout`, {
+        method:"POST", headers:{ ...h, "Authorization":`Bearer ${token}` }
+      });
+    },
+    async getUser(token) {
+      const r = await fetch(`${base}/auth/v1/user`, {
+        headers:{ ...h, "Authorization":`Bearer ${token}` }
+      });
+      return r.json();
+    },
+    async getProfile(userId, token) {
+      const r = await fetch(`${base}/rest/v1/user_profiles?id=eq.${userId}&select=*`, {
+        headers:{ ...h, "Authorization":`Bearer ${token}`, "Prefer":"return=representation" }
+      });
+      const rows = await r.json();
+      return Array.isArray(rows) ? rows[0] : null;
+    },
+    async getAllProfiles(token) {
+      const r = await fetch(`${base}/rest/v1/user_profiles?select=*&order=created_at.desc`, {
+        headers:{ ...h, "Authorization":`Bearer ${token}` }
+      });
+      return r.json();
+    },
+    async updateProfile(userId, updates, token) {
+      const r = await fetch(`${base}/rest/v1/user_profiles?id=eq.${userId}`, {
+        method:"PATCH", headers:{ ...h, "Authorization":`Bearer ${token}`, "Prefer":"return=representation" },
+        body: JSON.stringify(updates)
+      });
+      return r.json();
+    },
+    saveSession(session) { try { localStorage.setItem("zt-session", JSON.stringify(session)); } catch{} },
+    loadSession()       { try { const s=localStorage.getItem("zt-session"); return s?JSON.parse(s):null; } catch{ return null; } },
+    clearSession()      { try { localStorage.removeItem("zt-session"); } catch{} }
+  };
+})();
+
 const store = (() => {
   // ── Supabase backend (multi-user, real-time) ──────────────────────────────
   if (SUPA_URL && SUPA_ANON) {
@@ -1064,6 +1122,162 @@ const ICONS = {
 };
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTH SCREENS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function AuthCard({ children }) {
+  return (
+    <div style={{minHeight:"100vh",background:"#070b14",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <div style={{width:420,background:"#0f1623",border:"1px solid #1e2a3a",borderRadius:16,padding:"40px 44px",boxShadow:"0 24px 60px rgba(0,0,0,0.5)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
+          <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
+          <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen({ onLogin, onGoRegister }) {
+  const [email, setEmail] = useState("");
+  const [pw, setPw]       = useState("");
+  const [err, setErr]     = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setErr(""); setLoading(true);
+    try {
+      const res = await supaAuth.signIn(email.trim(), pw);
+      if (res.error || !res.access_token) { setErr(res.error?.message || res.msg || "Invalid email or password"); setLoading(false); return; }
+      const profile = await supaAuth.getProfile(res.user.id, res.access_token);
+      if (!profile) { setErr("Account not found. Contact admin."); setLoading(false); return; }
+      if (profile.status === "pending")  { setErr("Your account is pending approval. Please wait for admin to approve."); setLoading(false); return; }
+      if (profile.status === "rejected") { setErr("Your access request was declined. Contact manju@ziksatech.com."); setLoading(false); return; }
+      supaAuth.saveSession(res);
+      onLogin(res, profile);
+    } catch(e) { setErr("Connection error. Try again."); setLoading(false); }
+  }
+
+  const inp = {width:"100%",background:"#0a0f1a",border:"1px solid #1e2a3a",borderRadius:8,padding:"10px 14px",color:"#e2e8f0",fontSize:14,outline:"none",boxSizing:"border-box"};
+  const lbl = {display:"block",fontSize:12,color:"#94a3b8",marginBottom:6,fontWeight:600,letterSpacing:.5};
+
+  return (
+    <AuthCard>
+      <h2 style={{color:"#e2e8f0",fontSize:22,fontWeight:700,margin:"0 0 6px"}}>Sign In</h2>
+      <p style={{color:"#64748b",fontSize:13,margin:"0 0 28px"}}>Access your Ziksatech Ops dashboard</p>
+      <form onSubmit={handleLogin}>
+        <div style={{marginBottom:18}}>
+          <label style={lbl}>Email</label>
+          <input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@ziksatech.com" required autoFocus />
+        </div>
+        <div style={{marginBottom:24}}>
+          <label style={lbl}>Password</label>
+          <input style={inp} type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" required />
+        </div>
+        {err && <div style={{background:"#3d1515",border:"1px solid #7f1d1d",borderRadius:8,padding:"10px 14px",color:"#fca5a5",fontSize:13,marginBottom:18}}>{err}</div>}
+        <button type="submit" disabled={loading} style={{width:"100%",background:loading?"#1e3a5f":"#0ea5e9",border:"none",borderRadius:8,padding:"12px",color:"#fff",fontWeight:700,fontSize:15,cursor:loading?"not-allowed":"pointer"}}>
+          {loading ? "Signing in…" : "Sign In"}
+        </button>
+      </form>
+      <p style={{textAlign:"center",marginTop:20,fontSize:13,color:"#64748b"}}>
+        Don't have access? <span style={{color:"#38bdf8",cursor:"pointer",fontWeight:600}} onClick={onGoRegister}>Request Access</span>
+      </p>
+    </AuthCard>
+  );
+}
+
+function RegisterScreen({ onGoLogin, onRegistered }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pw, setPw]       = useState("");
+  const [pw2, setPw2]     = useState("");
+  const [role, setRole]   = useState("consultant");
+  const [err, setErr]     = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleRegister(e) {
+    e.preventDefault();
+    setErr("");
+    if (pw !== pw2) { setErr("Passwords don't match."); return; }
+    if (pw.length < 6) { setErr("Password must be at least 6 characters."); return; }
+    setLoading(true);
+    try {
+      const res = await supaAuth.signUp(email.trim(), pw, name.trim(), role);
+      if (res.error) { setErr(res.error.message || "Registration failed. Try again."); setLoading(false); return; }
+      onRegistered(email);
+    } catch(e) { setErr("Connection error. Try again."); setLoading(false); }
+  }
+
+  const inp = {width:"100%",background:"#0a0f1a",border:"1px solid #1e2a3a",borderRadius:8,padding:"10px 14px",color:"#e2e8f0",fontSize:14,outline:"none",boxSizing:"border-box"};
+  const lbl = {display:"block",fontSize:12,color:"#94a3b8",marginBottom:6,fontWeight:600,letterSpacing:.5};
+  const sel = {...inp,cursor:"pointer"};
+
+  return (
+    <AuthCard>
+      <h2 style={{color:"#e2e8f0",fontSize:22,fontWeight:700,margin:"0 0 6px"}}>Request Access</h2>
+      <p style={{color:"#64748b",fontSize:13,margin:"0 0 28px"}}>Submit your details — Manju will approve your account</p>
+      <form onSubmit={handleRegister}>
+        <div style={{marginBottom:16}}>
+          <label style={lbl}>Full Name</label>
+          <input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="Suresh Menon" required autoFocus />
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={lbl}>Work Email</label>
+          <input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" required />
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={lbl}>Role</label>
+          <select style={sel} value={role} onChange={e=>setRole(e.target.value)}>
+            <option value="consultant">Consultant</option>
+            <option value="manager">Manager</option>
+            <option value="finance">Finance</option>
+            <option value="hr">HR</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={lbl}>Password</label>
+          <input style={inp} type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Min 6 characters" required />
+        </div>
+        <div style={{marginBottom:24}}>
+          <label style={lbl}>Confirm Password</label>
+          <input style={inp} type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="Repeat password" required />
+        </div>
+        {err && <div style={{background:"#3d1515",border:"1px solid #7f1d1d",borderRadius:8,padding:"10px 14px",color:"#fca5a5",fontSize:13,marginBottom:18}}>{err}</div>}
+        <button type="submit" disabled={loading} style={{width:"100%",background:loading?"#1e3a5f":"#0ea5e9",border:"none",borderRadius:8,padding:"12px",color:"#fff",fontWeight:700,fontSize:15,cursor:loading?"not-allowed":"pointer"}}>
+          {loading ? "Submitting…" : "Request Access"}
+        </button>
+      </form>
+      <p style={{textAlign:"center",marginTop:20,fontSize:13,color:"#64748b"}}>
+        Already have access? <span style={{color:"#38bdf8",cursor:"pointer",fontWeight:600}} onClick={onGoLogin}>Sign In</span>
+      </p>
+    </AuthCard>
+  );
+}
+
+function PendingScreen({ email, onGoLogin }) {
+  return (
+    <AuthCard>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:16}}>⏳</div>
+        <h2 style={{color:"#e2e8f0",fontSize:22,fontWeight:700,margin:"0 0 10px"}}>Request Submitted!</h2>
+        <p style={{color:"#94a3b8",fontSize:14,lineHeight:1.6,marginBottom:8}}>
+          Your access request for <strong style={{color:"#38bdf8"}}>{email}</strong> has been submitted.
+        </p>
+        <p style={{color:"#64748b",fontSize:13,lineHeight:1.6,marginBottom:28}}>
+          Manju will review and approve your account. You'll be able to sign in once approved.
+        </p>
+        <button onClick={onGoLogin} style={{background:"#0f1e30",border:"1px solid #1e3a5f",borderRadius:8,padding:"10px 24px",color:"#38bdf8",fontWeight:600,fontSize:14,cursor:"pointer"}}>
+          Back to Sign In
+        </button>
+      </div>
+    </AuthCard>
+  );
+}
+
 export default function ZiksatechOps() {
   const [tab, setTab] = useState("dashboard");
   const [roster, setRoster] = useState(ROSTER_SEED);
@@ -1149,12 +1363,34 @@ export default function ZiksatechOps() {
   // ── Mobile responsive ─────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(() => typeof window!=="undefined" && window.innerWidth < 768);
   const [sideOpen, setSideOpen] = useState(false);
+
+  // ── Auth state ─────────────────────────────────────────────────────────────
+  const [authView, setAuthView] = useState("login"); // login | register | pending
+  const [authSession, setAuthSession] = useState(() => supaAuth ? supaAuth.loadSession() : null);
+  const [authProfile, setAuthProfile] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
   useEffect(()=>{
     const handler = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
   useEffect(()=>{ if(isMobile) setSideOpen(false); }, [tab]);
+
+  // ── Auth bootstrap — restore session on load ───────────────────────────────
+  useEffect(()=>{
+    if (!supaAuth) { setAuthLoading(false); return; }
+    const sess = supaAuth.loadSession();
+    if (!sess?.access_token) { setAuthLoading(false); return; }
+    supaAuth.getUser(sess.access_token).then(async user => {
+      if (user?.id) {
+        const profile = await supaAuth.getProfile(user.id, sess.access_token);
+        if (profile) { setAuthSession(sess); setAuthProfile(profile); }
+        else supaAuth.clearSession();
+      } else { supaAuth.clearSession(); }
+      setAuthLoading(false);
+    }).catch(() => { supaAuth.clearSession(); setAuthLoading(false); });
+  }, []);
 
   // ── Color mode ──────────────────────────────────────────────
   useEffect(()=>{
@@ -1346,6 +1582,21 @@ export default function ZiksatechOps() {
     addAudit: makeAddAudit(setAuditLog, appSettings.ownerName),
     setTab };
 
+  // ── Auth gate — show login/register/pending if not authenticated ─────────
+  if (supaAuth) {
+    if (authLoading) return (
+      <div style={{minHeight:"100vh",background:"#070b14",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{color:"#38bdf8",fontSize:18,fontWeight:600}}>◎ Loading…</div>
+      </div>
+    );
+    if (!authSession || !authProfile) {
+      if (authView === "register") return <RegisterScreen onGoLogin={()=>setAuthView("login")} onRegistered={(email)=>{ setAuthView("pending_"+email); }} />;
+      if (authView.startsWith("pending_")) return <PendingScreen email={authView.replace("pending_","")} onGoLogin={()=>setAuthView("login")} />;
+      return <LoginScreen onGoLogin={()=>setAuthView("login")} onGoRegister={()=>setAuthView("register")}
+        onLogin={(sess,profile)=>{ setAuthSession(sess); setAuthProfile(profile); }} />;
+    }
+  }
+
   return (
     <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",background:"#070b14",minHeight:"100vh",color:"#e2e8f0",display:"flex"}}>
       <style>{`
@@ -1459,6 +1710,20 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         <div style={{padding:"8px 14px 18px",borderBottom:"1px solid #0f1e30",marginBottom:6}}>
           <div style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em"}}>⬡ ZIKSATECH</div>
           <div style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ops Center</div>
+          {supaAuth && authProfile && (
+            <div style={{marginTop:10,padding:"8px 10px",background:"#0a1120",borderRadius:8,border:"1px solid #0f1e30"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{overflow:"hidden"}}>
+                  <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{authProfile.full_name}</div>
+                  <div style={{fontSize:10,color:"#475569",marginTop:1,textTransform:"capitalize"}}>{authProfile.role} · {authProfile.status==="approved"?"✓ Active":"Pending"}</div>
+                </div>
+                <button onClick={async()=>{ await supaAuth.signOut(authSession?.access_token); supaAuth.clearSession(); setAuthSession(null); setAuthProfile(null); }}
+                  style={{background:"none",border:"1px solid #1e2a3a",borderRadius:6,color:"#94a3b8",fontSize:10,padding:"3px 8px",cursor:"pointer",flexShrink:0,marginLeft:6}}>
+                  Sign out
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         {/* Global Search */}
         <div style={{padding:"0 10px 10px"}}>
@@ -7770,6 +8035,140 @@ const PERM_COLOR   = { full:"#34d399", view:"#7dd3fc", none:"#1e3a5f" };
 const PERM_BG      = { full:"#021f14", view:"#0c2340", none:"#070b14" };
 const PERM_LABEL   = { full:"Full",    view:"View",    none:"—"       };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER APPROVALS PANEL — Admin approves / rejects access requests
+// ═══════════════════════════════════════════════════════════════════════════════
+function UserApprovalsPanel() {
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState("");
+  const [actionMsg, setActionMsg] = useState("");
+
+  // Load all profiles from Supabase using stored session
+  useEffect(() => {
+    if (!supaAuth) { setError("Auth not configured"); setLoading(false); return; }
+    const sess = supaAuth.loadSession();
+    if (!sess?.access_token) { setError("Not authenticated"); setLoading(false); return; }
+    supaAuth.getAllProfiles(sess.access_token)
+      .then(data => {
+        if (Array.isArray(data)) setProfiles(data);
+        else setError("Could not load profiles: " + JSON.stringify(data).substring(0, 80));
+        setLoading(false);
+      })
+      .catch(e => { setError("Error: " + e.message); setLoading(false); });
+  }, []);
+
+  async function handleAction(userId, action) {
+    const sess = supaAuth.loadSession();
+    if (!sess?.access_token) return;
+    const updates = action === "approve"
+      ? { status: "approved", approved_at: new Date().toISOString(), approved_by: "manju@ziksatech.com" }
+      : { status: "rejected" };
+    await supaAuth.updateProfile(userId, updates, sess.access_token);
+    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, ...updates } : p));
+    setActionMsg(action === "approve" ? "✅ User approved — they can now sign in." : "❌ User rejected.");
+    setTimeout(() => setActionMsg(""), 4000);
+  }
+
+  const statusColor = { pending: "#f59e0b", approved: "#34d399", rejected: "#f87171" };
+  const statusBg    = { pending: "#2d1f00", approved: "#002d1a", rejected: "#2d0a0a" };
+
+  const pending  = profiles.filter(p => p.status === "pending");
+  const approved = profiles.filter(p => p.status === "approved");
+  const rejected = profiles.filter(p => p.status === "rejected");
+
+  function ProfileRow({ p, showActions }) {
+    return (
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 100px 90px 120px",gap:8,alignItems:"center",
+        padding:"12px 16px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,marginBottom:6}}>
+        <div>
+          <div style={{fontWeight:600,color:"#e2e8f0",fontSize:13}}>{p.full_name}</div>
+          <div style={{color:"#475569",fontSize:11,marginTop:2}}>{p.email}</div>
+        </div>
+        <div style={{color:"#64748b",fontSize:12,textTransform:"capitalize"}}>{p.role}</div>
+        <div>
+          <span style={{background:statusBg[p.status],color:statusColor[p.status],borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:600}}>
+            {p.status}
+          </span>
+        </div>
+        <div style={{color:"#475569",fontSize:11}}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : "—"}</div>
+        <div style={{display:"flex",gap:6}}>
+          {showActions && p.status !== "approved" && (
+            <button onClick={()=>handleAction(p.id,"approve")}
+              style={{background:"#064e3b",border:"1px solid #065f46",borderRadius:6,color:"#34d399",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600}}>
+              Approve
+            </button>
+          )}
+          {showActions && p.status !== "rejected" && (
+            <button onClick={()=>handleAction(p.id,"reject")}
+              style={{background:"#450a0a",border:"1px solid #7f1d1d",borderRadius:6,color:"#f87171",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600}}>
+              Reject
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) return <div style={{padding:40,textAlign:"center",color:"#64748b"}}>Loading user profiles…</div>;
+  if (error)   return <div style={{padding:24,background:"#2d0a0a",border:"1px solid #7f1d1d",borderRadius:8,color:"#fca5a5",margin:16}}>{error}</div>;
+
+  return (
+    <div>
+      {actionMsg && (
+        <div style={{background:"#042f1c",border:"1px solid #065f46",borderRadius:8,padding:"12px 16px",color:"#34d399",marginBottom:20,fontWeight:600}}>
+          {actionMsg}
+        </div>
+      )}
+
+      {/* Pending requests */}
+      <div style={{marginBottom:28}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+          <h3 style={{margin:0,color:"#f59e0b",fontSize:14,fontWeight:700}}>⏳ Pending Approval</h3>
+          <span style={{background:"#2d1f00",color:"#f59e0b",borderRadius:20,padding:"1px 10px",fontSize:11,fontWeight:600}}>
+            {pending.length}
+          </span>
+        </div>
+        {pending.length === 0
+          ? <div style={{color:"#334155",fontSize:13,padding:"12px 16px",background:"#0a1120",borderRadius:8}}>No pending requests</div>
+          : pending.map(p => <ProfileRow key={p.id} p={p} showActions={true}/>)
+        }
+      </div>
+
+      {/* Header row */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 100px 90px 120px",gap:8,padding:"6px 16px",marginBottom:6}}>
+        {["Name / Email","Role","Status","Joined","Actions"].map(h=>(
+          <div key={h} style={{fontSize:10,color:"#334155",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>{h}</div>
+        ))}
+      </div>
+
+      {/* Approved */}
+      {approved.length > 0 && (
+        <div style={{marginBottom:28}}>
+          <h3 style={{color:"#34d399",fontSize:13,fontWeight:700,margin:"0 0 10px"}}>✅ Approved ({approved.length})</h3>
+          {approved.map(p => <ProfileRow key={p.id} p={p} showActions={true}/>)}
+        </div>
+      )}
+
+      {/* Rejected */}
+      {rejected.length > 0 && (
+        <div>
+          <h3 style={{color:"#f87171",fontSize:13,fontWeight:700,margin:"0 0 10px"}}>❌ Rejected ({rejected.length})</h3>
+          {rejected.map(p => <ProfileRow key={p.id} p={p} showActions={true}/>)}
+        </div>
+      )}
+
+      {profiles.length === 0 && (
+        <div style={{textAlign:"center",padding:48,color:"#334155"}}>
+          <div style={{fontSize:32,marginBottom:12}}>👤</div>
+          <div style={{fontWeight:600,color:"#475569",marginBottom:6}}>No users yet</div>
+          <div style={{fontSize:13}}>Share the app URL and users will appear here once they request access</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
   const [sub, setSub] = useState("chart");
   const tabs = [
@@ -7777,6 +8176,7 @@ function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
     { id:"members", label:"Team Members"     },
     { id:"access",  label:"Access Matrix"    },
     { id:"roles",   label:"Role Templates"   },
+    { id:"approvals", label:"👤 User Approvals" },
   ];
   const props = { orgMembers, setOrgMembers, roster };
   return (
@@ -7796,6 +8196,7 @@ function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
       {sub==="members" && <OrgMembers {...props}/>}
       {sub==="access"  && <AccessMatrix {...props}/>}
       {sub==="roles"   && <RoleTemplates/>}
+      {sub==="approvals" && <UserApprovalsPanel />}
     </div>
   );
 }
