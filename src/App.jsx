@@ -57,13 +57,16 @@ const store = (() => {
           window.__ztCache = window.__ztCache || {};
           window.__ztCache[k] = v;
           const body = JSON.stringify({ key: k, value: JSON.stringify(v), updated_at: new Date().toISOString() });
-          // Retry up to 3 times — handles Supabase free-tier cold start (503)
-          for (let attempt = 0; attempt < 3; attempt++) {
-            const res = await fetch(base, { method: "POST", headers, body });
-            if (res.ok) break;
-            if (res.status === 503 || res.status === 504) {
-              await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
-            } else break;
+          // Use ?on_conflict=key for upsert (required for Supabase PostgREST v12+)
+          const upsertHeaders = { ...headers, "Prefer": "return=minimal,resolution=merge-duplicates" };
+          const res = await fetch(`${base}?on_conflict=key`, { method: "POST", headers: upsertHeaders, body });
+          if (!res.ok) {
+            // Fallback: try PATCH to update existing key
+            await fetch(`${base}?key=eq.${encodeURIComponent(k)}`, {
+              method: "PATCH",
+              headers: { ...headers, "Prefer": "return=minimal" },
+              body: JSON.stringify({ value: JSON.stringify(v), updated_at: new Date().toISOString() })
+            });
           }
         } catch {}
       }
