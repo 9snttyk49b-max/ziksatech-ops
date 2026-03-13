@@ -1154,8 +1154,8 @@ function LoginScreen({ onLogin, onGoRegister }) {
       if (res.error || !res.access_token) { setErr(res.error?.message || res.msg || "Invalid email or password"); setLoading(false); return; }
       const profile = await supaAuth.getProfile(res.user.id, res.access_token);
       if (!profile) { setErr("Account not found. Contact admin."); setLoading(false); return; }
-      if (profile.status === "pending")  { setErr("Your account is pending approval. Please wait for admin to approve."); setLoading(false); return; }
-      if (profile.status === "rejected") { setErr("Your access request was declined. Contact manju@ziksatech.com."); setLoading(false); return; }
+      if (profile.status === "pending")  { setErr("Your account is pending approval. Please wait for Manju to approve."); setLoading(false); return; }
+      if (profile.status === "rejected") { setErr("Your access request was declined. Contact mmurthy@ziksatech.com."); setLoading(false); return; }
       supaAuth.saveSession(res);
       onLogin(res, profile);
     } catch(e) { setErr("Connection error. Try again."); setLoading(false); }
@@ -1715,7 +1715,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div style={{overflow:"hidden"}}>
                   <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{authProfile.full_name}</div>
-                  <div style={{fontSize:10,color:"#475569",marginTop:1,textTransform:"capitalize"}}>{authProfile.role} · {authProfile.status==="approved"?"✓ Active":"Pending"}</div>
+                  <div style={{fontSize:10,color:authProfile.role==="super_admin"?"#f59e0b":"#475569",marginTop:1,textTransform:"capitalize"}}>
+                    {authProfile.role==="super_admin"?"⭐ Super Admin":authProfile.role} · {authProfile.status==="approved"?"✓ Active":"Pending"}
+                  </div>
                 </div>
                 <button onClick={async()=>{ await supaAuth.signOut(authSession?.access_token); supaAuth.clearSession(); setAuthSession(null); setAuthProfile(null); }}
                   style={{background:"none",border:"1px solid #1e2a3a",borderRadius:6,color:"#94a3b8",fontSize:10,padding:"3px 8px",cursor:"pointer",flexShrink:0,marginLeft:6}}>
