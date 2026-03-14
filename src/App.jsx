@@ -20513,6 +20513,85 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
         </div>
       </div>
 
+      {/* ── WIDGET BAR ──────────────────────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12, marginBottom:14 }}>
+
+        {/* Weather Widget */}
+        <div style={{ background:"linear-gradient(135deg,#0c1e3d,#0a1829)", border:"1px solid #1e3a5f", borderRadius:12, padding:"14px 16px", minHeight:90 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>🌤 Weather — Plano TX</div>
+          {!weather
+            ? <div style={{ color:"#334155", fontSize:12 }}>Loading…</div>
+            : <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div>
+                  <div style={{ fontSize:32, fontWeight:800, color:"#e2e8f0", lineHeight:1 }}>{weather.temp}°</div>
+                  <div style={{ fontSize:12, color:"#7dd3fc", marginTop:4 }}>{weather.condition}</div>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:4, fontSize:11, color:"#475569", textAlign:"right" }}>
+                  <span>💧 {weather.humidity}%</span>
+                  <span>💨 {weather.wind} mph</span>
+                </div>
+              </div>
+          }
+        </div>
+
+        {/* To-Do Widget */}
+        <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>
+            ✅ My Tasks
+            {todos.filter(t=>!t.done).length > 0 && <span style={{ marginLeft:6, background:"#0369a1", color:"#fff", borderRadius:10, padding:"1px 6px", fontSize:9 }}>{todos.filter(t=>!t.done).length}</span>}
+          </div>
+          <div style={{ display:"flex", gap:6, marginBottom:6 }}>
+            <input className="inp" value={newTodo} onChange={e=>setNewTodo(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTodo()} placeholder="Add task…" style={{ flex:1, fontSize:11, padding:"5px 8px" }}/>
+            <button onClick={addTodo} style={{ background:"#0369a1", border:"none", borderRadius:6, color:"#fff", padding:"5px 10px", fontSize:11, cursor:"pointer", flexShrink:0 }}>+</button>
+          </div>
+          <div style={{ maxHeight:48, overflowY:"auto", display:"flex", flexDirection:"column", gap:3 }}>
+            {todos.length===0 && <div style={{ color:"#334155", fontSize:11, textAlign:"center" }}>No tasks yet</div>}
+            {todos.slice(0,3).map(t=>(
+              <div key={t.id} style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <input type="checkbox" checked={t.done} onChange={()=>toggleTodo(t.id)} style={{ accentColor:"#0369a1", cursor:"pointer" }}/>
+                <span style={{ flex:1, fontSize:11, color:t.done?"#334155":"#94a3b8", textDecoration:t.done?"line-through":"none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.text}</span>
+                <button onClick={()=>deleteTodo(t.id)} style={{ background:"none", border:"none", color:"#334155", cursor:"pointer", fontSize:11, padding:0 }}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Upcoming PTO Widget */}
+        <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>📅 Upcoming PTO</div>
+          {(ptoRequests||[]).filter(p=>p.status==="approved"&&new Date(p.startDate)>=new Date()).sort((a,b)=>new Date(a.startDate)-new Date(b.startDate)).slice(0,3).length===0
+            ? <div style={{ color:"#334155", fontSize:11, textAlign:"center", paddingTop:12 }}>No upcoming PTO</div>
+            : (ptoRequests||[]).filter(p=>p.status==="approved"&&new Date(p.startDate)>=new Date()).sort((a,b)=>new Date(a.startDate)-new Date(b.startDate)).slice(0,3).map(p=>{
+                const member = (roster||[]).find(r=>r.id===p.memberId);
+                const days = Math.ceil((new Date(p.endDate)-new Date(p.startDate))/(1000*60*60*24))+1;
+                return (
+                  <div key={p.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5, fontSize:11 }}>
+                    <span style={{ color:"#94a3b8" }}>{member?.name?.split(" ")[0]||"TBD"}</span>
+                    <span style={{ color:"#7dd3fc" }}>{fmtDate(p.startDate)}</span>
+                    <span style={{ color:"#475569" }}>{days}d</span>
+                  </div>
+                );
+              })
+          }
+        </div>
+
+        {/* Quick Actions Widget */}
+        <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>⚡ Quick Actions</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5 }}>
+            {[{i:"🧾",l:"Invoices",t:"finance"},{i:"📊",l:"Reports",t:"reportbuilder"},{i:"👥",l:"Roster",t:"roster"},{i:"🤝",l:"Deals",t:"crm"},{i:"⏱",l:"Timesheets",t:"timesheet"},{i:"📋",l:"SOW",t:"sowgen"}].map(q=>(
+              <button key={q.t} onClick={()=>setTab(q.t)}
+                style={{ background:"#0a1120", border:"1px solid #1a2d45", borderRadius:7, color:"#64748b", fontSize:11, padding:"6px 8px", cursor:"pointer", textAlign:"left" }}
+                onMouseEnter={e=>{e.currentTarget.style.background="#0f1e30";e.currentTarget.style.color="#38bdf8";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="#0a1120";e.currentTarget.style.color="#64748b";}}>
+                {q.i} {q.l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* ── END WIDGET BAR ──────────────────────────────────────────── */}
+
       <div style={{ display:"grid", gridTemplateColumns:"1fr 310px", gap:18, alignItems:"start" }}>
         {/* LEFT */}
         <div>
