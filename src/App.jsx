@@ -1551,42 +1551,38 @@ export default function ZiksatechOps() {
   };
 
   const nav = [
-    { id:"dashboard",   label:"Executive Dashboard", icon:ICONS.dash,     group:"Overview" },
-    { id:"notifications",label:"Notifications",          icon:ICONS.dash,     group:"Overview" },
-    { id:"auditlog",     label:"Audit Log",            icon:ICONS.dash,     group:"Overview" },
-    { id:"pdfexport",    label:"PDF Export",           icon:ICONS.pl,       group:"Overview" },
-    { id:"settings",     label:"Settings",             icon:ICONS.org,      group:"Overview" },
-    { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Sales" },
-    { id:"emailtpl",     label:"Email Templates",       icon:ICONS.dash,     group:"Sales" },
-    { id:"taxcal",       label:"Tax Calendar",          icon:ICONS.pl,       group:"Finance" },
-    { id:"benefits",     label:"Benefits Tracker",      icon:ICONS.pl,       group:"Finance" },
-    { id:"reports",      label:"Report Builder",        icon:ICONS.pl,       group:"Overview" },
-    { id:"portal",       label:"Client Portal",         icon:ICONS.dash,     group:"Overview" },
-    { id:"glexport",     label:"QB GL Export",          icon:ICONS.pl,       group:"Finance" },
-    { id:"esign",        label:"E-Signature",           icon:ICONS.pl,       group:"Overview" },
-    { id:"capacity",     label:"Capacity Planner",      icon:ICONS.dash,     group:"Delivery" },
-    { id:"budget",       label:"Budget vs. Actual",     icon:ICONS.pl,       group:"Finance"  },
-    { id:"onboarding",   label:"Onboarding",            icon:ICONS.dash,     group:"Hiring"   },
-    { id:"org",          label:"Org & Access",         icon:ICONS.roster,   group:"Overview" },
-    { id:"roster",      label:"Team Roster",          icon:ICONS.roster,   group:"Delivery" },
-    { id:"timesheet",   label:"Timesheet",            icon:ICONS.ts,       group:"Delivery" },
-    { id:"clients",     label:"Client Portfolio",     icon:ICONS.clients,  group:"Delivery" },
-    { id:"ebitda",      label:"EBITDA Optimizer",     icon:ICONS.ebitda,   group:"Delivery" },
-    { id:"contracts",   label:"Contracts & SOW",      icon:ICONS.clients,  group:"Sales" },
-    { id:"projects",    label:"Project Tracker",       icon:ICONS.ts,       group:"Delivery" },
-    { id:"profitability",label:"Project P&L",            icon:ICONS.pl,       group:"Delivery" },
-    { id:"changeorders", label:"Change Orders",         icon:ICONS.edit,     group:"Delivery" },
-    { id:"crm",         label:"Sales CRM",            icon:ICONS.clients,  group:"Sales" },
-    { id:"recruiting",  label:"Recruiting",           icon:ICONS.pipeline, group:"Hiring" },
-    { id:"pipeline",    label:"Hiring Pipeline",      icon:ICONS.pipeline, group:"Hiring" },
-    { id:"finance",     label:"Finance",              icon:ICONS.pl,       group:"Finance" },
-    { id:"pl",          label:"P&L / Income",         icon:ICONS.pl,       group:"Finance" },
-    { id:"vendors",     label:"Vendors & AP",         icon:ICONS.pl,       group:"Finance" },
-    { id:"adp",         label:"ADP Payroll",          icon:ICONS.adp,      group:"Finance" },
-    { id:"cashflow",    label:"Cash Flow Forecast",  icon:ICONS.pl,       group:"Finance" },
-    { id:"freshbooks",  label:"FreshBooks",           icon:ICONS.fb,       group:"Finance" },
-    { id:"pto",         label:"PTO & Leave",          icon:ICONS.dash,     group:"Compliance" },
-    { id:"compliance",  label:"Compliance",           icon:ICONS.dash,     group:"Compliance" },
+    { id:"dashboard",    label:"Executive Dashboard", icon:ICONS.dash,     group:"Overview"    },
+    { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Overview"    },
+    { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Overview"    },
+    { id:"clients",      label:"Client Portfolio",     icon:ICONS.clients,  group:"Clients"     },
+    { id:"crm",          label:"Sales CRM",            icon:ICONS.clients,  group:"Clients"     },
+    { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Clients"     },
+    { id:"contracts",    label:"Contracts & SOW",      icon:ICONS.clients,  group:"Clients"     },
+    { id:"emailtpl",     label:"Email Templates",      icon:ICONS.dash,     group:"Clients"     },
+    { id:"esign",        label:"E-Signature",          icon:ICONS.pl,       group:"Clients"     },
+    { id:"roster",       label:"Team Roster",          icon:ICONS.roster,   group:"Team"        },
+    { id:"timesheet",    label:"Timesheet",            icon:ICONS.ts,       group:"Team"        },
+    { id:"pto",          label:"PTO & Leave",          icon:ICONS.dash,     group:"Team"        },
+    { id:"onboarding",   label:"Onboarding",           icon:ICONS.dash,     group:"Team"        },
+    { id:"org",          label:"Org & Access",         icon:ICONS.roster,   group:"Team"        },
+    { id:"projects",     label:"Project Tracker",      icon:ICONS.ts,       group:"Delivery"    },
+    { id:"profitability",label:"Project P&L",          icon:ICONS.pl,       group:"Delivery"    },
+    { id:"changeorders", label:"Change Orders",        icon:ICONS.edit,     group:"Delivery"    },
+    { id:"capacity",     label:"Capacity Planner",     icon:ICONS.dash,     group:"Delivery"    },
+    { id:"ebitda",       label:"EBITDA Optimizer",     icon:ICONS.ebitda,   group:"Delivery"    },
+    { id:"finance",      label:"Finance",              icon:ICONS.pl,       group:"Finance"     },
+    { id:"pl",           label:"P&L / Income",         icon:ICONS.pl,       group:"Finance"     },
+    { id:"cashflow",     label:"Cash Flow Forecast",   icon:ICONS.pl,       group:"Finance"     },
+    { id:"adp",          label:"ADP Payroll",          icon:ICONS.adp,      group:"Finance"     },
+    { id:"freshbooks",   label:"FreshBooks",           icon:ICONS.fb,       group:"Finance"     },
+    { id:"vendors",      label:"Vendors & AP",         icon:ICONS.pl,       group:"Finance"     },
+    { id:"glexport",     label:"QB GL Export",         icon:ICONS.pl,       group:"Finance"     },
+    { id:"budget",       label:"Budget vs. Actual",    icon:ICONS.pl,       group:"Finance"     },
+    { id:"taxcal",       label:"Tax Calendar",         icon:ICONS.pl,       group:"Finance"     },
+    { id:"benefits",     label:"Benefits Tracker",     icon:ICONS.pl,       group:"Finance"     },
+    { id:"recruiting",   label:"Recruiting",           icon:ICONS.pipeline, group:"Hiring"      },
+    { id:"pipeline",     label:"Hiring Pipeline",      icon:ICONS.pipeline, group:"Hiring"      },
+    { id:"compliance",   label:"Compliance",           icon:ICONS.dash,     group:"Compliance"  },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings,
@@ -1702,9 +1698,12 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             opacity:sideOpen&&i===1?0:1}}/>)}
         </button>
         <div onClick={()=>setTab("home")} style={{fontSize:15,fontWeight:800,color:"#38bdf8",cursor:"pointer"}} title="Home">⬡ ZIKSATECH</div>
-        <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
-          <div style={{width:7,height:7,borderRadius:"50%",background:saveStatus==="saved"?"#34d399":saveStatus==="saving"?"#f59e0b":"#1e3a5f"}}/>
-          <span style={{fontSize:10,color:"#3d5a7a"}}>{saveStatus==="saved"?"Saved":saveStatus==="saving"?"Saving…":"Auto-save"}</span>
+        <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:saveStatus==="saved"?"#34d399":saveStatus==="saving"?"#f59e0b":"#1e3a5f"}}/>
+            <span style={{fontSize:9,color:"#3d5a7a"}}>{saveStatus==="saved"?"Saved":saveStatus==="saving"?"Saving…":""}</span>
+          </div>
+          {supaAuth && authProfile && <ProfileMenu authProfile={authProfile} authSession={authSession} setAuthSession={setAuthSession} setAuthProfile={setAuthProfile} setTab={setTab}/>}
         </div>
       </div>
 
@@ -1721,24 +1720,13 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         boxShadow: isMobile && sideOpen ? "4px 0 24px rgba(0,0,0,0.5)" : "none",
       }}>
         <div style={{padding:"8px 14px 18px",borderBottom:"1px solid #0f1e30",marginBottom:6}}>
-          <div onClick={()=>setTab("home")} title="Home" style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer"}}>⬡ ZIKSATECH</div>
-          <div style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ops Center</div>
-          {supaAuth && authProfile && (
-            <div style={{marginTop:10,padding:"8px 10px",background:"#0a1120",borderRadius:8,border:"1px solid #0f1e30"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{overflow:"hidden"}}>
-                  <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{authProfile.full_name}</div>
-                  <div style={{fontSize:10,color:authProfile.role==="super_admin"?"#f59e0b":"#475569",marginTop:1,textTransform:"capitalize"}}>
-                    {authProfile.role==="super_admin"?"⭐ Super Admin":authProfile.role} · {authProfile.status==="approved"?"✓ Active":"Pending"}
-                  </div>
-                </div>
-                <button onClick={async()=>{ await supaAuth.signOut(authSession?.access_token); supaAuth.clearSession(); setAuthSession(null); setAuthProfile(null); }}
-                  style={{background:"none",border:"1px solid #1e2a3a",borderRadius:6,color:"#94a3b8",fontSize:10,padding:"3px 8px",cursor:"pointer",flexShrink:0,marginLeft:6}}>
-                  Sign out
-                </button>
-              </div>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
+            <div>
+              <div onClick={()=>setTab("home")} title="Home" style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer"}}>⬡ ZIKSATECH</div>
+              <div style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ops Center</div>
             </div>
-          )}
+            {supaAuth && authProfile && <ProfileMenu authProfile={authProfile} authSession={authSession} setAuthSession={setAuthSession} setAuthProfile={setAuthProfile} setTab={setTab}/>}
+          </div>
         </div>
         {/* Global Search */}
         <div style={{padding:"0 10px 10px"}}>
@@ -1763,7 +1751,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
           {searchOpen&&globalSearch.length>1&&<GlobalSearchResults q={globalSearch} roster={shared.roster} finInvoices={shared.finInvoices} apInvoices={shared.apInvoices} projects={shared.projects} crmDeals={shared.crmDeals} clients={shared.clients} tsSubmissions={shared.tsSubmissions} workAuth={shared.workAuth} setTab={setTab} onClose={()=>setSearchOpen(false)}/>}
         </div>
 
-        {["Overview","Sales","Delivery","Hiring","Finance","Compliance"].map(group => {
+        {["Overview","Clients","Team","Delivery","Finance","Hiring","Compliance"].map(group => {
           const items = nav.filter(n=>n.group===group);
           return (
             <div key={group}>
@@ -19737,6 +19725,103 @@ function OnboardingModule({ onboardings, setOnboardings, roster, workAuth, addAu
   );
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// PROFILE MENU — top-right dropdown for profile, settings, sign out
+// ═══════════════════════════════════════════════════════════════════════
+function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile, setTab }) {
+  const [open, setOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    setOpen(false);
+    if (supaAuth) { await supaAuth.signOut(authSession?.access_token); supaAuth.clearSession(); }
+    setAuthSession(null);
+    setAuthProfile(null);
+  };
+
+  const go = (tab) => { setOpen(false); setTab(tab); };
+
+  const initials = (authProfile?.full_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+  const isAdmin  = ["admin","super_admin"].includes(authProfile?.role);
+
+  const menuItems = [
+    { icon:"👤", label:"My Profile",    tab:"myprofile" },
+    { icon:"⚙️", label:"Settings",      tab:"settings" },
+    { icon:"🔔", label:"Notifications", tab:"notifications" },
+    { icon:"📋", label:"Audit Log",      tab:"auditlog" },
+    { icon:"📄", label:"PDF Export",     tab:"pdfexport" },
+    isAdmin && { icon:"👥", label:"User Approvals", tab:"org" },
+  ].filter(Boolean);
+
+  return (
+    <div style={{position:"relative"}}>
+      {/* Avatar button */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{display:"flex",alignItems:"center",gap:7,background:"#0a1120",border:"1px solid #1e2a3a",borderRadius:20,padding:"4px 10px 4px 4px",cursor:"pointer",transition:"border-color 0.15s"}}
+        onMouseEnter={e=>e.currentTarget.style.borderColor="#2a4d75"}
+        onMouseLeave={e=>e.currentTarget.style.borderColor="#1e2a3a"}>
+        <div style={{width:26,height:26,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}}>
+          {initials}
+        </div>
+        <div style={{textAlign:"left"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#cbd5e1",lineHeight:1.2,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+            {authProfile?.full_name?.split(" ")[0] || "User"}
+          </div>
+          <div style={{fontSize:9,color:authProfile?.role==="super_admin"?"#f59e0b":"#475569",textTransform:"capitalize"}}>
+            {authProfile?.role === "super_admin" ? "⭐ Super Admin" : authProfile?.role}
+          </div>
+        </div>
+        <span style={{fontSize:9,color:"#3d5a7a",marginLeft:2}}>{open?"▲":"▼"}</span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div onClick={() => setOpen(false)} style={{position:"fixed",inset:0,zIndex:998}}/>
+          <div style={{
+            position:"absolute",top:"calc(100% + 8px)",right:0,
+            background:"#0d1829",border:"1px solid #1e2a3a",
+            borderRadius:12,padding:"6px",minWidth:200,
+            boxShadow:"0 16px 40px rgba(0,0,0,0.6)",zIndex:999
+          }}>
+            {/* User info header */}
+            <div style={{padding:"10px 12px 10px",borderBottom:"1px solid #0f1e30",marginBottom:4}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{authProfile?.full_name}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:2}}>{authProfile?.email}</div>
+              <div style={{marginTop:6,display:"inline-block",background:authProfile?.status==="approved"?"#021f14":"#2d1f00",border:`1px solid ${authProfile?.status==="approved"?"#065f46":"#92400e"}`,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:600,color:authProfile?.status==="approved"?"#34d399":"#fcd34d"}}>
+                {authProfile?.status==="approved"?"✓ Active":"Pending"}
+              </div>
+            </div>
+
+            {/* Menu items */}
+            {menuItems.map(item => (
+              <button key={item.tab} onClick={() => go(item.tab)}
+                style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",borderRadius:8,padding:"9px 12px",cursor:"pointer",textAlign:"left",color:"#94a3b8",fontSize:12,fontWeight:500,transition:"all 0.12s"}}
+                onMouseEnter={e=>{e.currentTarget.style.background="#0f1e30";e.currentTarget.style.color="#e2e8f0";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.color="#94a3b8";}}>
+                <span style={{fontSize:14,width:18}}>{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+
+            {/* Divider + Sign out */}
+            <div style={{borderTop:"1px solid #0f1e30",marginTop:4,paddingTop:4}}>
+              <button onClick={handleSignOut}
+                style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",borderRadius:8,padding:"9px 12px",cursor:"pointer",textAlign:"left",color:"#f87171",fontSize:12,fontWeight:600,transition:"all 0.12s"}}
+                onMouseEnter={e=>{e.currentTarget.style.background="#2d0a0a";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="none";}}>
+                <span style={{fontSize:14,width:18}}>🚪</span>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // HOME PAGE — appended at file end, uses only already-imported hooks
