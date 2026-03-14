@@ -2256,7 +2256,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
         <div className="card">
           <div className="section-hdr" style={{cursor:"pointer"}} onClick={()=>setTab("roster")}>Consultant Snapshot — Utilization & Margin <span style={{fontSize:9,color:"#1e3a5f"}}>↗</span></div>
           <div className="tr" style={{gridTemplateColumns:"1fr 70px 60px 90px 80px 90px",padding:"8px 18px"}}>
-            {["Name","Type","Util %","Bill Rev","Margin","Bar"].map(h=><span key={h} className="th" onClick={col?()=>clientSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:clientSort.col===col?"#38bdf8":"inherit"}}>{h}{clientSort.col===col?(clientSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
+            {["Name","Type","Util %","Bill Rev","Margin","Bar"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
           {rData.map(r=>(
             <div key={r.id} className="tr" style={{gridTemplateColumns:"1fr 70px 60px 90px 80px 90px"}}>
