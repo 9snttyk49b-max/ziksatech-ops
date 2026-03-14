@@ -15091,6 +15091,7 @@ function ProposalBuilder({ proposals, setProposals, crmDeals, crmAccounts, crmCo
 // ── Proposal List ─────────────────────────────────────────────────────────────
 function ProposalList({ proposals, setProposals, roster, winRate, totalValue, acceptedVal, selId, setSelId, setSub, setEditId, onNew }) {
   const [filter, setFilter] = useState("all");
+  const { dragProps: _dp } = useDragSort(proposals, setProposals);
   const sel = proposals.find(p=>p.id===selId);
 
   const filtered = proposals.filter(p=>filter==="all"||p.status===filter)
