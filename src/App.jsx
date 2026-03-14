@@ -20858,17 +20858,24 @@ function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
   const [form, setForm] = useState({
     client: topClient,
     project: topClient ? topClient + " SAP Implementation" : "",
-    scope:"", deliverables:"", timeline:"6 months",
-    budget:"450000", consultants:"2 FTE SAP consultants", paymentTerms:"Net 30", assumptions:""
+    scope: topClient ? "Implement SAP BRIM billing engine, configure rate plans, and integrate with existing systems." : "",
+    deliverables: "BRIM configuration, testing documentation, go-live support, and knowledge transfer.",
+    timeline:"6 months",
+    budget:"450000", consultants:"2 FTE SAP consultants", paymentTerms:"Net 30",
+    assumptions:"Client will provide system access, sandbox environment, and dedicated SMEs."
   });
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validErr, setValidErr] = useState("");
 
   const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
   const generate = async () => {
-    if (!form.client || !form.project || !form.scope) return;
-    setLoading(true); setOutput("");
+    if (!form.client || !form.project || !form.scope) {
+      setValidErr("Please fill in Client Name, Project Name, and Scope of Work.");
+      return;
+    }
+    setValidErr(""); setLoading(true); setOutput("");
     const system = `You are a professional IT consulting contract writer for Ziksatech, a SAP consulting firm. 
 Write formal, detailed Statements of Work. Use professional language. Include all standard SOW sections.
 Format with clear headers using ## for sections. Be specific and detailed.`;
@@ -20913,7 +20920,8 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
             </select>
           </FF>
           <FF label="Assumptions / Dependencies"><textarea className="inp" rows={2} value={form.assumptions} onChange={f("assumptions")} placeholder="Client will provide system access, sandbox environment..."/></FF>
-          <button onClick={generate} disabled={loading||!form.client||!form.project}
+          {validErr && <div style={{color:"#ef4444",fontSize:12,padding:"8px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #7f1d1d"}}>{validErr}</div>}
+          <button onClick={generate} disabled={loading||!form.client||!form.project||!form.scope}
             style={{width:"100%",padding:"11px",marginTop:8,background:loading?"#0a1826":"linear-gradient(135deg,#0369a1,#0284c7)",
               border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:loading?"wait":"pointer"}}>
             {loading ? "✍️ Generating SOW..." : "✨ Generate SOW with AI"}
