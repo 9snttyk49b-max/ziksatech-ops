@@ -1,6 +1,87 @@
 import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════
+// RBAC — Role-based access control
+// ═══════════════════════════════════════════════════════════════════════
+const RBAC = {
+  // tab id → roles that can access it. Empty array = super_admin/admin only
+  dashboard:    ["super_admin","admin","accounts"],
+  reports:      ["super_admin","admin","accounts"],
+  portal:       ["super_admin","admin","sales","accounts"],
+  clients:      ["super_admin","admin","sales","accounts"],
+  crm:          ["super_admin","admin","sales"],
+  proposals:    ["super_admin","admin","sales"],
+  rfpgen:       ["super_admin","admin","sales"],
+  sowgen:       ["super_admin","admin","sales"],
+  linkedin:     ["super_admin","admin","sales"],
+  contracts:    ["super_admin","admin","sales"],
+  emailtpl:     ["super_admin","admin","sales"],
+  esign:        ["super_admin","admin","sales"],
+  roster:       ["super_admin","admin","hr_admin"],
+  timesheet:    ["super_admin","admin","hr_admin","consultant"],
+  pto:          ["super_admin","admin","hr_admin","consultant"],
+  onboarding:   ["super_admin","admin","hr_admin","recruiter"],
+  org:          ["super_admin","admin"],
+  projects:     ["super_admin","admin","hr_admin"],
+  profitability:["super_admin","admin","accounts"],
+  changeorders: ["super_admin","admin"],
+  capacity:     ["super_admin","admin","hr_admin"],
+  ebitda:       ["super_admin","admin","accounts"],
+  finance:      ["super_admin","admin","accounts"],
+  pl:           ["super_admin","admin","accounts"],
+  cashflow:     ["super_admin","admin","accounts"],
+  adp:          ["super_admin","admin","accounts","hr_admin"],
+  freshbooks:   ["super_admin","admin","accounts"],
+  vendors:      ["super_admin","admin","accounts"],
+  glexport:     ["super_admin","admin","accounts"],
+  budget:       ["super_admin","admin","accounts"],
+  taxcal:       ["super_admin","admin","accounts"],
+  benefits:     ["super_admin","admin","hr_admin"],
+  adpstubs:     ["super_admin","admin","accounts","hr_admin"],
+  reconcile:    ["super_admin","admin","accounts"],
+  recruiting:   ["super_admin","admin","recruiter","hr_admin"],
+  pipeline:     ["super_admin","admin","recruiter","hr_admin"],
+  resourceplan: ["super_admin","admin","hr_admin"],
+  compliance:   ["super_admin","admin","hr_admin","recruiter"],
+  paffiles:     ["super_admin","admin","hr_admin","recruiter"],
+  minicalc:     ["super_admin","admin","sales","accounts"],
+  myprofile:    ["super_admin","admin","sales","accounts","hr_admin","recruiter","consultant"],
+  home:         ["super_admin","admin","sales","accounts","hr_admin","recruiter","consultant"],
+  auditlog:     ["super_admin","admin"],
+  settings:     ["super_admin","admin"],
+  notifications:["super_admin","admin","sales","accounts","hr_admin","recruiter","consultant"],
+  pdfexport:    ["super_admin","admin","accounts"],
+};
+
+// Default landing tab per role
+const ROLE_HOME = {
+  super_admin: "dashboard", admin: "dashboard",
+  sales:       "crm",       accounts:  "finance",
+  hr_admin:    "roster",    recruiter: "recruiting",
+  consultant:  "timesheet",
+};
+
+// Hub tile visibility per role
+const ROLE_HUB_TILES = {
+  super_admin: ["crm","ops"], admin: ["crm","ops"],
+  sales:       ["crm"],
+  accounts:    ["ops"],
+  hr_admin:    ["ops"],
+  recruiter:   ["ops"],
+  consultant:  ["ops"],
+};
+
+function canAccess(tab, role) {
+  if (!role) return false;
+  if (role === "super_admin" || role === "admin") return true;
+  const allowed = RBAC[tab];
+  if (!allowed) return false; // unknown tab — deny
+  return allowed.includes(role);
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════════
 // DRAG-AND-DROP SORT — reusable hook for all list pages
 // ═══════════════════════════════════════════════════════════════════════
 function useDragSort(items, setItems) {
@@ -477,9 +558,33 @@ const ALL_MODULES = [
 
 // Role templates — define default permissions
 const ROLE_TEMPLATES = {
+  super_admin: {
+    label:"Super Admin", color:"#f59e0b", bg:"#1a1005",
+    perms: Object.fromEntries(ALL_MODULES.map(m=>[m.id,"full"])),
+  },
   owner: {
     label:"Owner / CEO", color:"#a78bfa", bg:"#1a1a2e",
     perms: Object.fromEntries(ALL_MODULES.map(m=>[m.id,"full"])),
+  },
+  admin: {
+    label:"Admin", color:"#a78bfa", bg:"#1a1a2e",
+    perms: Object.fromEntries(ALL_MODULES.map(m=>[m.id,"full"])),
+  },
+  sales: {
+    label:"Sales", color:"#38bdf8", bg:"#0c2340",
+    perms: { crm:"full", clients:"view", proposals:"full", contracts:"full", emailtpl:"full", esign:"full", rfpgen:"full", sowgen:"full", linkedin:"full", minicalc:"view", dashboard:"none", finance:"none", adp:"none", roster:"none", compliance:"none", recruiting:"none", pipeline:"none" },
+  },
+  recruiter: {
+    label:"Recruiter", color:"#f59e0b", bg:"#1a1005",
+    perms: { recruiting:"full", pipeline:"full", onboarding:"full", compliance:"view", paffiles:"view", roster:"view", dashboard:"none", crm:"none", finance:"none", adp:"none", freshbooks:"none" },
+  },
+  hr_admin: {
+    label:"HR & Admin", color:"#34d399", bg:"#021f14",
+    perms: { roster:"full", timesheet:"view", pto:"full", onboarding:"full", benefits:"view", adp:"view", adpstubs:"view", compliance:"full", paffiles:"full", recruiting:"view", pipeline:"view", capacity:"view", dashboard:"none", crm:"none", finance:"none", pl:"none" },
+  },
+  accounts: {
+    label:"Accounts", color:"#34d399", bg:"#021f14",
+    perms: { finance:"full", pl:"full", cashflow:"full", adp:"full", freshbooks:"full", vendors:"full", glexport:"full", budget:"full", taxcal:"full", adpstubs:"full", reconcile:"full", ebitda:"view", profitability:"view", clients:"view", dashboard:"view", minicalc:"full", crm:"none", roster:"none" },
   },
   finance_mgr: {
     label:"Finance Manager", color:"#34d399", bg:"#021f14",
@@ -489,13 +594,9 @@ const ROLE_TEMPLATES = {
     label:"Delivery Lead", color:"#38bdf8", bg:"#0c2340",
     perms: { dashboard:"view", crm:"view", contracts:"view", projects:"full", roster:"full", timesheet:"full", clients:"full", ebitda:"view", pl:"none", finance:"none", adp:"none", freshbooks:"none", pipeline:"view", recruiting:"view", compliance:"full" },
   },
-  recruiter: {
-    label:"Recruiter / HR", color:"#f59e0b", bg:"#1a1005",
-    perms: { dashboard:"view", crm:"none", contracts:"none", projects:"view", roster:"view", timesheet:"none", clients:"none", ebitda:"none", pl:"none", finance:"none", adp:"none", freshbooks:"none", pipeline:"full", recruiting:"full", compliance:"view" },
-  },
   consultant: {
     label:"Consultant (FTE)", color:"#94a3b8", bg:"#0a1626",
-    perms: { dashboard:"view", crm:"none", contracts:"none", projects:"view", roster:"none", timesheet:"view", clients:"none", ebitda:"none", pl:"none", finance:"none", adp:"none", freshbooks:"none", pipeline:"none", recruiting:"none", compliance:"none" },
+    perms: { dashboard:"none", crm:"none", contracts:"none", projects:"view", roster:"none", timesheet:"view", clients:"none", ebitda:"none", pl:"none", finance:"none", adp:"none", freshbooks:"none", pipeline:"none", recruiting:"none", compliance:"none" },
   },
   contractor: {
     label:"Contractor", color:"#64748b", bg:"#070b14",
@@ -1293,9 +1394,10 @@ function RegisterScreen({ onGoLogin, onRegistered }) {
           <label style={lbl}>Role</label>
           <select style={sel} value={role} onChange={e=>setRole(e.target.value)}>
             <option value="consultant">Consultant</option>
-            <option value="manager">Manager</option>
-            <option value="finance">Finance</option>
-            <option value="hr">HR</option>
+            <option value="sales">Sales</option>
+            <option value="recruiter">Recruiter</option>
+            <option value="hr_admin">HR & Admin</option>
+            <option value="accounts">Accounts</option>
             <option value="admin">Admin</option>
           </select>
         </div>
@@ -1340,7 +1442,25 @@ function PendingScreen({ email, onGoLogin }) {
 }
 
 export default function ZiksatechOps() {
-  const [tab, setTab] = useState("dashboard");
+  const [tab, setTab] = useState(() => {
+    // Stored tab from last session
+    try { const s = localStorage.getItem("zt-last-tab"); if(s) return s; } catch {}
+    return "dashboard";
+  });
+  // On auth profile load, redirect to role-appropriate home if on a tab they can't access
+  useEffect(() => {
+    if (authProfile?.role && !canAccess(tab, authProfile.role)) {
+      const home = ROLE_HOME[authProfile.role] || "dashboard";
+      setTab(home);
+    }
+  }, [authProfile?.role]);
+  // Persist last tab
+  const setTabSafe = (t) => {
+    if (canAccess(t, authProfile?.role)) {
+      localStorage.setItem("zt-last-tab", t);
+      setTab(t);
+    }
+  };
   const [portalView, setPortalView] = useState(() => {
     // Support URL hash navigation: /#hub, /#ops, /#crm
     const hash = window.location.hash.replace("#","");
@@ -1872,7 +1992,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         </div>
 
         {["Overview","Clients","Team","Delivery","Finance","Hiring","Compliance"].map(group => {
-          const items = nav.filter(n=>n.group===group);
+          const items = nav.filter(n=>n.group===group && canAccess(n.id, authProfile?.role));
           if (!items.length) return null;
           const isCollapsed = collapsedGroups.includes(group);
           const hasActive = items.some(n => n.id === tab);
@@ -1893,7 +2013,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                 <span style={{fontSize:8,color:"#1e3a5f",transition:"transform 0.2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>
               </button>
               {!isCollapsed && items.map(n => (
-                <button key={n.id} className={`navi${tab===n.id?" on":""}`} onClick={()=>setTab(n.id)}>
+                <button key={n.id} className={`navi${tab===n.id?" on":""}`} onClick={()=>setTabSafe(n.id)}>
                   <I d={n.icon} s={14}/>{n.label}
                 </button>
               ))}
@@ -2069,6 +2189,17 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       </nav>
 
       <main className="main-content" style={{flex:1,overflowY:"auto",padding:isMobile?"68px 14px 72px":"28px 32px",minWidth:0}}>
+        {/* Access guard — show access denied if role doesn't have permission */}
+        {!canAccess(tab, authProfile?.role) && tab !== "home" && (
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",textAlign:"center"}}>
+            <div style={{fontSize:48,marginBottom:16}}>🔒</div>
+            <div style={{fontSize:20,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>Access Restricted</div>
+            <div style={{fontSize:13,color:"#475569",maxWidth:340}}>
+              Your role <span style={{color:"#f59e0b",fontWeight:600}}>({authProfile?.role?.replace("_"," ")})</span> doesn't have permission to view this page.
+              Contact your administrator to request access.
+            </div>
+          </div>
+        )}
         {tab==="home"       && <HomePage      {...shared} authProfile={authProfile} />}
         {tab==="rfpgen"     && <RFPGenerator   {...shared} />}
         {tab==="sowgen"     && <SOWGenerator   {...shared} />}
@@ -21549,7 +21680,10 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
 
         {/* Tiles */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,maxWidth:900,width:"100%"}}>
-          {[TILE_CRM, TILE_OPS].map(tile => (
+          {[TILE_CRM, TILE_OPS].filter(tile => {
+            const allowedTiles = ROLE_HUB_TILES[authProfile?.role] || ["ops"];
+            return allowedTiles.includes(tile.id);
+          }).map(tile => (
             <div key={tile.id}
               onClick={()=>tileClick(tile)}
               style={{
