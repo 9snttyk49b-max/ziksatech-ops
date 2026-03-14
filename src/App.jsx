@@ -2791,10 +2791,10 @@ function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
       <div className="card">
         <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto",padding:"8px 18px"}}>
           {[
-              {l:"Client",col:"name"},{l:"Vertical",col:null},{l:"Engagement",col:null},
-              {l:"Revenue",col:"annualRev"},{l:"Cslt.",col:null},{l:"Margin",col:null},
-              {l:"Health",col:"health"},{l:"Renewal",col:null},{l:"",col:null}
-            ].map(({l:h,col})=><span key={h} className="th">{h}</span>)}
+              {l:"Client",sk:"name"},{l:"Vertical",sk:null},{l:"Engagement",sk:null},
+              {l:"Revenue",sk:"annualRev"},{l:"Cslt.",sk:null},{l:"Margin",sk:null},
+              {l:"Health",sk:"health"},{l:"Renewal",sk:null},{l:"",sk:null}
+            ].map(({l:h,sk:col})=><span key={h} className="th" onClick={col?()=>clientSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:clientSort.col===col?"#38bdf8":"inherit"}}>{h}{clientSort.col===col?(clientSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
         </div>
         {sortedClients.map((c, _di_)=>(
           <div key={c.id} className="tr" {...dragP_c(_di_)} style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto"}}>
@@ -4400,7 +4400,7 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
         <div className="card" style={{overflowX:"auto"}}>
           <div className="tr" style={{gridTemplateColumns:"28px 110px 1fr 120px 110px 90px 90px 100px 100px",padding:"8px 18px",minWidth:900}}>
             <input type="checkbox" checked={selAR.size===filtered.length&&filtered.length>0} onChange={()=>setSelAR(s=>s.size===filtered.length?new Set():new Set(filtered.map(i=>i.id)))} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
-            {[{l:"Invoice",c:null},{l:"Client / Project",c:"clientId"},{l:"Period",c:"period"},{l:"Issue Date",c:"issueDate"},{l:"Total",c:"total"},{l:"Balance",c:"balance"},{l:"Status",c:"status"},{l:"Actions",c:null}].map(({l:h,c:col})=><span key={h} className="th" onClick={col?()=>invSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:invColSort.col===col?"#38bdf8":"inherit"}}>{h}{invColSort.col===col?(invColSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
+            {[{l:"Invoice",sk:null},{l:"Client / Project",sk:"clientId"},{l:"Period",sk:"period"},{l:"Issue Date",sk:"issueDate"},{l:"Total",sk:"total"},{l:"Balance",sk:"balance"},{l:"Status",sk:"status"},{l:"Actions",sk:null}].map(({l:h,sk:col})=><span key={h} className="th" onClick={col?()=>invSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:invColSort.col===col?"#38bdf8":"inherit"}}>{h}{invColSort.col===col?(invColSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
           </div>
           {filtered.map((inv, _i_)=>{
             const cl   = clients.find(c=>c.id===inv.clientId);
@@ -6478,7 +6478,7 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
 
         <div className="card">
           <div className="tr" style={{gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",padding:"8px 18px"}}>
-            {[{l:"Deal / Account",c:"name"},{l:"Stage",c:"stage"},{l:"Type",c:null},{l:"Value",c:"value"},{l:"Prob",c:null},{l:"Close Date",c:"closeDate"},{l:"Actions",c:null}].map(({l:h,c:col})=><span key={h} className="th" onClick={col?()=>dealSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:dealSort.col===col?"#38bdf8":"inherit"}}>{h}{dealSort.col===col?(dealSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
+            {[{l:"Deal / Account",sk:"name"},{l:"Stage",sk:"stage"},{l:"Type",sk:null},{l:"Value",sk:"value"},{l:"Prob",sk:null},{l:"Close Date",sk:"closeDate"},{l:"Actions",sk:null}].map(({l:h,sk:col})=><span key={h} className="th" onClick={col?()=>dealSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:dealSort.col===col?"#38bdf8":"inherit"}}>{h}{dealSort.col===col?(dealSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
           </div>
           {sortedDeals.map((d, _i_)=>{
             const acc = crmAccounts.find(a=>a.id===d.accountId);
