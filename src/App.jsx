@@ -1624,6 +1624,14 @@ export default function ZiksatechOps() {
     { id:"clients",      label:"Client Portfolio",     icon:ICONS.clients,  group:"Clients"     },
     { id:"crm",          label:"Sales CRM",            icon:ICONS.clients,  group:"Clients"     },
     { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Clients"     },
+    { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
+    { id:"sowgen",      label:"SOW Generator",         icon:ICONS.pl,       group:"Clients"     },
+    { id:"linkedin",    label:"LinkedIn Posts",        icon:ICONS.pl,       group:"Clients"     },
+    { id:"resourceplan",label:"Resource Planner AI",  icon:ICONS.roster,   group:"Delivery"    },
+    { id:"minicalc",    label:"Mini Calculator",       icon:ICONS.pl,       group:"Overview"    },
+    { id:"paffiles",    label:"PAF Files",             icon:ICONS.dash,     group:"Compliance"  },
+    { id:"adpstubs",    label:"ADP Pay Stubs",         icon:ICONS.adp,      group:"Finance"     },
+    { id:"reconcile",   label:"Reconciliation",        icon:ICONS.pl,       group:"Finance"     },
     { id:"contracts",    label:"Contracts & SOW",      icon:ICONS.clients,  group:"Clients"     },
     { id:"emailtpl",     label:"Email Templates",      icon:ICONS.dash,     group:"Clients"     },
     { id:"esign",        label:"E-Signature",          icon:ICONS.pl,       group:"Clients"     },
@@ -2016,7 +2024,15 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       </nav>
 
       <main className="main-content" style={{flex:1,overflowY:"auto",padding:isMobile?"68px 14px 72px":"28px 32px",minWidth:0}}>
-        {tab==="home"       && <HomePage   {...shared} authProfile={authProfile} />}
+        {tab==="home"       && <HomePage      {...shared} authProfile={authProfile} />}
+        {tab==="rfpgen"     && <RFPGenerator   {...shared} />}
+        {tab==="sowgen"     && <SOWGenerator   {...shared} />}
+        {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
+        {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
+        {tab==="minicalc"   && <MiniCalculator />}
+        {tab==="paffiles"   && <PAFFiles       {...shared} />}
+        {tab==="adpstubs"   && <ADPPayStubs    {...shared} />}
+        {tab==="reconcile"  && <ReconcileReport {...shared} />}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
         {tab==="auditlog"      && <AuditLog {...shared}/>}
@@ -20232,6 +20248,987 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MINI CALCULATOR — Quick billing & rate calculator
+// ═══════════════════════════════════════════════════════════════════════
+function MiniCalculator() {
+  const [expr, setExpr] = useState("");
+  const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [mode, setMode] = useState("basic"); // basic | billing | margin
+
+  // Billing calculator state
+  const [rate, setRate] = useState("");
+  const [hrs, setHrs] = useState("");
+  const [salary, setSalary] = useState("");
+  const [utilPct, setUtilPct] = useState("100");
+
+  const calc = () => {
+    try {
+      // eslint-disable-next-line no-eval
+      const r = Function('"use strict"; return (' + expr + ')')();
+      setResult(r);
+      setHistory(h => [{expr, result: r, ts: new Date().toLocaleTimeString()}, ...h.slice(0,9)]);
+    } catch { setResult("Error"); }
+  };
+
+  const btn = (v, fn) => (
+    <button onClick={fn || (() => setExpr(e => e + v))}
+      style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#e2e8f0",
+        fontSize:15,fontWeight:600,padding:"12px 0",cursor:"pointer",transition:"background 0.12s"}}
+      onMouseEnter={e=>e.currentTarget.style.background="#0f1e30"}
+      onMouseLeave={e=>e.currentTarget.style.background="#0a1120"}>
+      {v}
+    </button>
+  );
+
+  const billingRev = (+rate||0) * (+hrs||0) * (+utilPct||100)/100;
+  const burdenCost = (+salary||0) * 1.2265 + 7200; // rough total burden
+  const billingMargin = billingRev > 0 ? ((billingRev - burdenCost) / billingRev * 100).toFixed(1) : 0;
+
+  return (
+    <div style={{maxWidth:680}}>
+      <PH title="Mini Calculator" sub="Quick billing, margin & general calculations"/>
+      <div style={{display:"flex",gap:8,marginBottom:18}}>
+        {["basic","billing","margin"].map(m=>(
+          <button key={m} onClick={()=>setMode(m)}
+            style={{padding:"7px 18px",borderRadius:8,border:`1px solid ${mode===m?"#0369a1":"#1a2d45"}`,
+              background:mode===m?"#0c2340":"#0a1120",color:mode===m?"#38bdf8":"#64748b",
+              cursor:"pointer",fontSize:12,fontWeight:600,textTransform:"capitalize"}}>
+            {m==="basic"?"🔢 Basic":m==="billing"?"💰 Billing":"📊 Margin"}
+          </button>
+        ))}
+      </div>
+
+      {mode==="basic" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:16}}>
+          <div className="card" style={{padding:"20px"}}>
+            <div style={{background:"#050e1c",borderRadius:10,padding:"14px 16px",marginBottom:14,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:12,color:"#475569",marginBottom:4,fontFamily:"monospace"}}>{expr||"0"}</div>
+              <div style={{fontSize:28,fontWeight:800,color:"#38bdf8",fontFamily:"'DM Mono',monospace",textAlign:"right"}}>
+                {result !== null ? (typeof result === "number" ? result.toLocaleString(undefined,{maximumFractionDigits:4}) : result) : "—"}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+              {btn("C", ()=>{setExpr(""); setResult(null);})}
+              {btn("←", ()=>setExpr(e=>e.slice(0,-1)))}
+              {btn("%", ()=>setExpr(e=>e+"/100"))}
+              {btn("÷", ()=>setExpr(e=>e+"/"))}
+              {btn("7")} {btn("8")} {btn("9")} {btn("×", ()=>setExpr(e=>e+"*"))}
+              {btn("4")} {btn("5")} {btn("6")} {btn("−", ()=>setExpr(e=>e+"-"))}
+              {btn("1")} {btn("2")} {btn("3")} {btn("+")}
+              {btn("0")} {btn(".")} {btn("()",(()=>setExpr(e=>e+"()")))} 
+              <button onClick={calc}
+                style={{background:"linear-gradient(135deg,#0369a1,#0284c7)",border:"none",borderRadius:8,
+                  color:"#fff",fontSize:18,fontWeight:700,cursor:"pointer",gridColumn:"span 1"}}>
+                =
+              </button>
+            </div>
+          </div>
+          <div className="card" style={{padding:"16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>History</div>
+            {history.length===0 && <div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"20px 0"}}>No calculations yet</div>}
+            {history.map((h,i)=>(
+              <div key={i} onClick={()=>{setExpr(h.expr); setResult(h.result);}}
+                style={{padding:"7px 10px",borderBottom:"1px solid #0a1420",cursor:"pointer",borderRadius:6}}
+                onMouseEnter={e=>e.currentTarget.style.background="#0a1120"}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div style={{fontSize:11,color:"#475569",fontFamily:"monospace"}}>{h.expr}</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>= {typeof h.result==="number"?h.result.toLocaleString():h.result}</div>
+                <div style={{fontSize:9,color:"#1e3a5f"}}>{h.ts}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mode==="billing" && (
+        <div className="card" style={{padding:"24px",maxWidth:520}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:18}}>💰 Billing Rate Calculator</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+            <FF label="Bill Rate/hr ($)"><input className="inp" type="number" value={rate} onChange={e=>setRate(e.target.value)} placeholder="150"/></FF>
+            <FF label="Hours/Year"><input className="inp" type="number" value={hrs} onChange={e=>setHrs(e.target.value)} placeholder="1920"/></FF>
+            <FF label="Base Salary ($)"><input className="inp" type="number" value={salary} onChange={e=>setSalary(e.target.value)} placeholder="120000"/></FF>
+            <FF label="Utilization %"><input className="inp" type="number" value={utilPct} onChange={e=>setUtilPct(e.target.value)} placeholder="100"/></FF>
+          </div>
+          {[
+            {l:"Annual Revenue", v:"$"+(billingRev).toLocaleString(), c:"#38bdf8"},
+            {l:"Monthly Revenue", v:"$"+(billingRev/12).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,","), c:"#7dd3fc"},
+            {l:"Est. Employer Cost (burden)", v:"$"+(burdenCost).toLocaleString(), c:"#f87171"},
+            {l:"Co. Keeps (Rev − Cost)", v:"$"+((billingRev-burdenCost)>0?(billingRev-burdenCost).toLocaleString():"0"), c:"#34d399"},
+            {l:"Gross Margin", v:billingMargin+"%", c:+billingMargin>30?"#34d399":+billingMargin>15?"#f59e0b":"#f87171"},
+          ].map(r=>(
+            <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #0a1420"}}>
+              <span style={{fontSize:13,color:"#64748b"}}>{r.l}</span>
+              <span style={{fontSize:14,fontWeight:700,color:r.c,fontFamily:"'DM Mono',monospace"}}>{r.v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {mode==="margin" && (
+        <div className="card" style={{padding:"24px",maxWidth:520}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:18}}>📊 Margin / Break-even Calculator</div>
+          {["Revenue","Cost"].map(f=>(
+            <FF key={f} label={f+" ($)"}><input className="inp" type="number" placeholder="0"
+              id={"mc-"+f.toLowerCase()}
+              onChange={()=>{
+                const rev = +(document.getElementById("mc-revenue")?.value||0);
+                const cst = +(document.getElementById("mc-cost")?.value||0);
+                document.getElementById("mc-result-margin").textContent = rev>0?((rev-cst)/rev*100).toFixed(1)+"%":"—";
+                document.getElementById("mc-result-keeps").textContent = "$"+(rev-cst).toLocaleString();
+              }}/></FF>
+          ))}
+          <div style={{marginTop:16,padding:"14px 18px",background:"#050e1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{color:"#64748b",fontSize:13}}>Gross Margin</span>
+              <span id="mc-result-margin" style={{color:"#34d399",fontWeight:700,fontSize:16,fontFamily:"'DM Mono',monospace"}}>—</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={{color:"#64748b",fontSize:13}}>Net (Rev − Cost)</span>
+              <span id="mc-result-keeps" style={{color:"#38bdf8",fontWeight:700,fontSize:16,fontFamily:"'DM Mono',monospace"}}>$0</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// AI GENERATORS — shared Claude API helper
+// ═══════════════════════════════════════════════════════════════════════
+async function callClaude(systemPrompt, userPrompt, onChunk) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
+      stream: true,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    }),
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value);
+    for (const line of chunk.split("\n")) {
+      if (line.startsWith("data: ")) {
+        try {
+          const d = JSON.parse(line.slice(6));
+          if (d.type === "content_block_delta" && d.delta?.text) {
+            full += d.delta.text;
+            onChunk && onChunk(full);
+          }
+        } catch {}
+      }
+    }
+  }
+  return full;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SOW GENERATOR — AI-powered Statement of Work
+// ═══════════════════════════════════════════════════════════════════════
+function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
+  const [form, setForm] = useState({
+    client:"", project:"", scope:"", deliverables:"", timeline:"",
+    budget:"", consultants:"", paymentTerms:"Net 30", assumptions:""
+  });
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  const generate = async () => {
+    if (!form.client || !form.project || !form.scope) return;
+    setLoading(true); setOutput("");
+    const system = `You are a professional IT consulting contract writer for Ziksatech, a SAP consulting firm. 
+Write formal, detailed Statements of Work. Use professional language. Include all standard SOW sections.
+Format with clear headers using ## for sections. Be specific and detailed.`;
+    const prompt = `Write a complete Statement of Work for:
+Client: ${form.client}
+Project: ${form.project}
+Scope: ${form.scope}
+Key Deliverables: ${form.deliverables}
+Timeline: ${form.timeline}
+Budget: ${form.budget ? "$"+form.budget : "TBD"}
+Consultants: ${form.consultants}
+Payment Terms: ${form.paymentTerms}
+Assumptions: ${form.assumptions}
+
+Include: Executive Summary, Project Scope, Deliverables, Timeline & Milestones, 
+Resource Requirements, Pricing & Payment, Assumptions & Dependencies, 
+Change Management Process, Acceptance Criteria, Signatures section.`;
+    await callClaude(system, prompt, txt => setOutput(txt));
+    setLoading(false);
+  };
+
+  const copyOutput = () => { navigator.clipboard.writeText(output); };
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:20,alignItems:"start"}}>
+      <div>
+        <PH title="SOW Generator" sub="AI-powered Statement of Work"/>
+        <div className="card" style={{padding:"20px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>Project Details</div>
+          <FF label="Client Name *"><input className="inp" value={form.client} onChange={f("client")} placeholder="HOPE-IDI / AT&T..."/></FF>
+          <FF label="Project Name *"><input className="inp" value={form.project} onChange={f("project")} placeholder="SAP BRIM Phase 3 Implementation"/></FF>
+          <FF label="Scope of Work *"><textarea className="inp" rows={3} value={form.scope} onChange={f("scope")} placeholder="Implement SAP BRIM billing engine, configure rate plans..."/></FF>
+          <FF label="Key Deliverables"><textarea className="inp" rows={2} value={form.deliverables} onChange={f("deliverables")} placeholder="BRIM configuration, testing docs, go-live support..."/></FF>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <FF label="Timeline"><input className="inp" value={form.timeline} onChange={f("timeline")} placeholder="6 months (Q2-Q3 2026)"/></FF>
+            <FF label="Budget ($)"><input className="inp" type="number" value={form.budget} onChange={f("budget")} placeholder="450000"/></FF>
+          </div>
+          <FF label="Consultants"><input className="inp" value={form.consultants} onChange={f("consultants")} placeholder="2 FTE BRIM consultants"/></FF>
+          <FF label="Payment Terms">
+            <select className="inp" value={form.paymentTerms} onChange={f("paymentTerms")}>
+              {["Net 30","Net 45","Net 60","Monthly milestone","50% upfront / 50% delivery"].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </FF>
+          <FF label="Assumptions / Dependencies"><textarea className="inp" rows={2} value={form.assumptions} onChange={f("assumptions")} placeholder="Client will provide system access, sandbox environment..."/></FF>
+          <button onClick={generate} disabled={loading||!form.client||!form.project}
+            style={{width:"100%",padding:"11px",marginTop:8,background:loading?"#0a1826":"linear-gradient(135deg,#0369a1,#0284c7)",
+              border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:loading?"wait":"pointer"}}>
+            {loading ? "✍️ Generating SOW..." : "✨ Generate SOW with AI"}
+          </button>
+        </div>
+      </div>
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:16,fontWeight:700,color:"#e2e8f0"}}>Generated SOW</div>
+          {output && <button onClick={copyOutput} style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:7,color:"#94a3b8",fontSize:11,padding:"5px 14px",cursor:"pointer"}}>📋 Copy</button>}
+        </div>
+        <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"20px",minHeight:500,fontFamily:"Georgia,serif",fontSize:13,lineHeight:1.8,color:"#cbd5e1",whiteSpace:"pre-wrap",overflowY:"auto",maxHeight:"75vh"}}>
+          {!output && !loading && <div style={{color:"#334155",textAlign:"center",padding:"80px 0"}}>Fill in the form and click Generate to create your SOW</div>}
+          {loading && !output && <div style={{color:"#475569",textAlign:"center",padding:"80px 0"}}>✍️ AI is writing your Statement of Work...</div>}
+          {output && output.split('\n').map((line,i)=>{
+            if(line.startsWith('## ')) return <div key={i} style={{fontSize:15,fontWeight:700,color:"#38bdf8",marginTop:20,marginBottom:6,borderBottom:"1px solid #1a2d45",paddingBottom:4}}>{line.slice(3)}</div>;
+            if(line.startsWith('# ')) return <div key={i} style={{fontSize:18,fontWeight:800,color:"#e2e8f0",marginBottom:10}}>{line.slice(2)}</div>;
+            if(line.startsWith('**') && line.endsWith('**')) return <div key={i} style={{fontWeight:700,color:"#cbd5e1",marginTop:6}}>{line.slice(2,-2)}</div>;
+            if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:16,color:"#94a3b8"}}>• {line.slice(2)}</div>;
+            return <div key={i} style={{marginBottom:line===''?8:0,color:line===''?"transparent":"#94a3b8"}}>{line||"\u200b"}</div>;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RFP GENERATOR — AI-powered Request for Proposal
+// ═══════════════════════════════════════════════════════════════════════
+function RFPGenerator({ clients, roster }) {
+  const [form, setForm] = useState({
+    company:"Ziksatech", clientName:"", projectType:"SAP Implementation",
+    requirements:"", budget:"", deadline:"", evaluation:"", contact:""
+  });
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  const generate = async () => {
+    setLoading(true); setOutput("");
+    const system = `You are a professional RFP writer for Ziksatech, an SAP consulting firm. 
+Create comprehensive, professional RFP documents that attract quality vendor responses.
+Use ## for section headers. Be specific about evaluation criteria and requirements.`;
+    const prompt = `Create a professional RFP for:
+Issuing Company: ${form.company}
+Client/Project: ${form.clientName}
+Project Type: ${form.projectType}
+Requirements: ${form.requirements}
+Budget Range: ${form.budget || "To be determined"}
+Submission Deadline: ${form.deadline || "TBD"}
+Evaluation Criteria: ${form.evaluation}
+Contact: ${form.contact}
+
+Include: Introduction, Project Overview, Scope, Technical Requirements, 
+Vendor Qualifications, Proposal Requirements, Evaluation Criteria, 
+Timeline, Budget Guidelines, Terms & Conditions, Submission Instructions.`;
+    await callClaude(system, prompt, txt => setOutput(txt));
+    setLoading(false);
+  };
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
+      <div>
+        <PH title="RFP Generator" sub="AI-powered Request for Proposal"/>
+        <div className="card" style={{padding:"20px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>RFP Details</div>
+          <FF label="Issuing Company"><input className="inp" value={form.company} onChange={f("company")} placeholder="Ziksatech"/></FF>
+          <FF label="Client / Project Name"><input className="inp" value={form.clientName} onChange={f("clientName")} placeholder="HOPE-IDI SAP BRIM RFP"/></FF>
+          <FF label="Project Type">
+            <select className="inp" value={form.projectType} onChange={f("projectType")}>
+              {["SAP Implementation","SAP Support","System Integration","Cloud Migration","Staff Augmentation","Managed Services","Custom Development"].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </FF>
+          <FF label="Requirements"><textarea className="inp" rows={4} value={form.requirements} onChange={f("requirements")} placeholder="SAP BRIM expertise, 5+ years experience, ABAP, integration with billing systems..."/></FF>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <FF label="Budget Range"><input className="inp" value={form.budget} onChange={f("budget")} placeholder="$200k-$500k"/></FF>
+            <FF label="Submission Deadline"><input className="inp" type="date" value={form.deadline} onChange={f("deadline")}/></FF>
+          </div>
+          <FF label="Evaluation Criteria"><textarea className="inp" rows={2} value={form.evaluation} onChange={f("evaluation")} placeholder="Technical expertise 40%, Cost 30%, Timeline 20%, References 10%"/></FF>
+          <FF label="Contact Person"><input className="inp" value={form.contact} onChange={f("contact")} placeholder="Manju Murthy - mmurthy@ziksatech.com"/></FF>
+          <button onClick={generate} disabled={loading}
+            style={{width:"100%",padding:"11px",marginTop:8,background:loading?"#0a1826":"linear-gradient(135deg,#7c3aed,#6d28d9)",
+              border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+            {loading ? "✍️ Generating RFP..." : "✨ Generate RFP with AI"}
+          </button>
+        </div>
+      </div>
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:16,fontWeight:700,color:"#e2e8f0"}}>Generated RFP</div>
+          {output && <button onClick={()=>navigator.clipboard.writeText(output)} style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:7,color:"#94a3b8",fontSize:11,padding:"5px 14px",cursor:"pointer"}}>📋 Copy</button>}
+        </div>
+        <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"20px",minHeight:500,fontSize:13,lineHeight:1.8,color:"#cbd5e1",whiteSpace:"pre-wrap",overflowY:"auto",maxHeight:"75vh"}}>
+          {!output && !loading && <div style={{color:"#334155",textAlign:"center",padding:"80px 0"}}>Fill in the form and click Generate to create your RFP</div>}
+          {loading && !output && <div style={{color:"#475569",textAlign:"center",padding:"80px 0"}}>✍️ AI is writing your RFP...</div>}
+          {output && output.split('\n').map((line,i)=>{
+            if(line.startsWith('## ')) return <div key={i} style={{fontSize:15,fontWeight:700,color:"#a78bfa",marginTop:20,marginBottom:6,borderBottom:"1px solid #1a2d45",paddingBottom:4}}>{line.slice(3)}</div>;
+            if(line.startsWith('# ')) return <div key={i} style={{fontSize:18,fontWeight:800,color:"#e2e8f0",marginBottom:10}}>{line.slice(2)}</div>;
+            if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:16,color:"#94a3b8"}}>• {line.slice(2)}</div>;
+            return <div key={i} style={{marginBottom:line===''?8:0,color:"#94a3b8"}}>{line||"\u200b"}</div>;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESOURCE PLANNER AI — Intelligent resource allocation
+// ═══════════════════════════════════════════════════════════════════════
+function ResourcePlanAI({ roster, clients, projects, crmDeals }) {
+  const [form, setForm] = useState({
+    project:"", duration:"", skills:"", headcount:"", budget:"",
+    startDate:"", priority:"high", notes:""
+  });
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  // Build current team snapshot for AI context
+  const teamSnapshot = (roster||[]).map(r=>`${r.name} (${r.type}, ${r.role}, util:${Math.round((r.util||0)*100)}%, client:${r.client||"available"})`).join('\n');
+  const openDeals = (crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage)).map(d=>`${d.name} ($${(d.value||0).toLocaleString()})`).join(', ');
+
+  const generate = async () => {
+    setLoading(true); setOutput("");
+    const system = `You are a resource planning expert for Ziksatech, an SAP consulting firm.
+Analyze the team roster and requirements to create detailed resource allocation plans.
+Be specific about consultant recommendations, capacity analysis, and risk factors.
+Format with ## headers. Include timeline, staffing plan, and recommendations.`;
+    const prompt = `Create a resource plan for:
+Project: ${form.project}
+Duration: ${form.duration}
+Required Skills: ${form.skills}
+Headcount Needed: ${form.headcount}
+Budget: ${form.budget ? "$"+form.budget : "TBD"}
+Start Date: ${form.startDate || "ASAP"}
+Priority: ${form.priority}
+Notes: ${form.notes}
+
+CURRENT TEAM (${(roster||[]).length} consultants):
+${teamSnapshot}
+
+OPEN PIPELINE: ${openDeals || "None"}
+
+Provide: Resource Allocation Plan, Recommended Consultants (from team), 
+Capacity Analysis, Skill Gap Assessment, Hiring Needs (if any), 
+Timeline & Ramp-up Plan, Risk Factors, Cost Estimate, Recommendations.`;
+    await callClaude(system, prompt, txt => setOutput(txt));
+    setLoading(false);
+  };
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
+      <div>
+        <PH title="Resource Planner AI" sub="Intelligent resource allocation from your team"/>
+        <div className="card" style={{padding:"20px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>Project Requirements</div>
+          <FF label="Project Name"><input className="inp" value={form.project} onChange={f("project")} placeholder="New BRIM Implementation - Client X"/></FF>
+          <FF label="Skills Required"><textarea className="inp" rows={2} value={form.skills} onChange={f("skills")} placeholder="SAP BRIM, ABAP, S/4HANA, integration..."/></FF>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <FF label="Duration"><input className="inp" value={form.duration} onChange={f("duration")} placeholder="6 months"/></FF>
+            <FF label="Headcount"><input className="inp" value={form.headcount} onChange={f("headcount")} placeholder="2-3 consultants"/></FF>
+            <FF label="Budget ($)"><input className="inp" type="number" value={form.budget} onChange={f("budget")} placeholder="500000"/></FF>
+            <FF label="Start Date"><input className="inp" type="date" value={form.startDate} onChange={f("startDate")}/></FF>
+          </div>
+          <FF label="Priority">
+            <select className="inp" value={form.priority} onChange={f("priority")}>
+              {["critical","high","medium","low"].map(p=><option key={p} value={p} style={{textTransform:"capitalize"}}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
+            </select>
+          </FF>
+          <FF label="Additional Notes"><textarea className="inp" rows={2} value={form.notes} onChange={f("notes")} placeholder="Client prefers onsite, needs BRIM billing config experience..."/></FF>
+          <div style={{padding:"8px 12px",background:"#050e1c",borderRadius:8,fontSize:11,color:"#334155",marginBottom:10}}>
+            📊 {(roster||[]).length} consultants · {(roster||[]).filter(r=>r.util<0.8).length} with capacity
+          </div>
+          <button onClick={generate} disabled={loading||!form.project}
+            style={{width:"100%",padding:"11px",background:loading?"#0a1826":"linear-gradient(135deg,#065f46,#047857)",
+              border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+            {loading ? "🤖 Planning Resources..." : "✨ Generate Resource Plan"}
+          </button>
+        </div>
+      </div>
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:16,fontWeight:700,color:"#e2e8f0"}}>Resource Plan</div>
+          {output && <button onClick={()=>navigator.clipboard.writeText(output)} style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:7,color:"#94a3b8",fontSize:11,padding:"5px 14px",cursor:"pointer"}}>📋 Copy</button>}
+        </div>
+        <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"20px",minHeight:500,fontSize:13,lineHeight:1.8,color:"#cbd5e1",whiteSpace:"pre-wrap",overflowY:"auto",maxHeight:"75vh"}}>
+          {!output && !loading && <div style={{color:"#334155",textAlign:"center",padding:"80px 0"}}>Enter project requirements to generate a resource allocation plan from your team</div>}
+          {loading && !output && <div style={{color:"#475569",textAlign:"center",padding:"80px 0"}}>🤖 AI is analyzing your team and planning resources...</div>}
+          {output && output.split('\n').map((line,i)=>{
+            if(line.startsWith('## ')) return <div key={i} style={{fontSize:15,fontWeight:700,color:"#34d399",marginTop:20,marginBottom:6,borderBottom:"1px solid #1a2d45",paddingBottom:4}}>{line.slice(3)}</div>;
+            if(line.startsWith('# ')) return <div key={i} style={{fontSize:18,fontWeight:800,color:"#e2e8f0",marginBottom:10}}>{line.slice(2)}</div>;
+            if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:16,color:"#94a3b8"}}>• {line.slice(2)}</div>;
+            return <div key={i} style={{marginBottom:line===''?8:0,color:"#94a3b8"}}>{line||"\u200b"}</div>;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// LINKEDIN POST GENERATOR — AI-powered LinkedIn content
+// ═══════════════════════════════════════════════════════════════════════
+function LinkedInGen({ clients, roster, crmDeals, authProfile }) {
+  const [form, setForm] = useState({
+    postType:"win", topic:"", highlights:"", tone:"professional",
+    includeStats:true, callToAction:""
+  });
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState([]);
+
+  const f = k => e => setForm(p=>({...p,[k]:typeof e.target.value==="string"?e.target.value:e.target.checked}));
+
+  const postTypes = [
+    {id:"win",label:"🏆 Project Win",desc:"Announce a new client or project"},
+    {id:"milestone",label:"🎯 Milestone",desc:"Project go-live or milestone achieved"},
+    {id:"hiring",label:"👥 We're Hiring",desc:"Recruit SAP consultants"},
+    {id:"insight",label:"💡 Industry Insight",desc:"Thought leadership on SAP/consulting"},
+    {id:"team",label:"🌟 Team Spotlight",desc:"Highlight a team member"},
+    {id:"service",label:"📢 Service Promo",desc:"Promote a Ziksatech service"},
+  ];
+
+  const wonDeals = (crmDeals||[]).filter(d=>d.stage==="closed_won").map(d=>d.name).slice(0,5).join(", ");
+  const activeClients = (clients||[]).map(c=>c.name).slice(0,5).join(", ");
+
+  const generate = async () => {
+    setLoading(true); setOutput("");
+    const system = `You are a LinkedIn content writer for Ziksatech, an SAP consulting firm specializing in SAP BRIM, S/4HANA, and enterprise solutions. 
+Write engaging, professional LinkedIn posts that get high engagement. 
+Use emojis appropriately. Include line breaks for readability. 
+Write in first person from the company's perspective.
+Keep posts 150-300 words unless the topic requires more.`;
+    const typeDesc = postTypes.find(p=>p.id===form.postType)?.desc || "";
+    const prompt = `Write a LinkedIn post for Ziksatech.
+Post Type: ${typeDesc}
+Topic/Context: ${form.topic}
+Key Highlights: ${form.highlights}
+Tone: ${form.tone}
+${form.includeStats && (wonDeals||activeClients) ? `Company Context: Active clients include ${activeClients}. Recent wins: ${wonDeals}` : ""}
+Call to Action: ${form.callToAction || "Follow Ziksatech for more SAP insights"}
+
+Write an engaging LinkedIn post. Include relevant hashtags at the end (5-8 hashtags).`;
+    await callClaude(system, prompt, txt => setOutput(txt));
+    setLoading(false);
+  };
+
+  const savePost = () => { setSaved(s=>[{...form,output,ts:new Date().toLocaleDateString()},...s.slice(0,9)]); };
+
+  return (
+    <div>
+      <PH title="LinkedIn Post Generator" sub="AI-powered LinkedIn content for Ziksatech"/>
+      <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
+        <div>
+          <div className="card" style={{padding:"20px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>Post Type</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+              {postTypes.map(pt=>(
+                <button key={pt.id} onClick={()=>setForm(p=>({...p,postType:pt.id}))}
+                  style={{textAlign:"left",padding:"8px 12px",borderRadius:8,cursor:"pointer",
+                    background:form.postType===pt.id?"#0c2340":"#0a1120",
+                    border:`1px solid ${form.postType===pt.id?"#0369a1":"#1a2d45"}`,
+                    color:form.postType===pt.id?"#38bdf8":"#64748b",fontSize:12}}>
+                  <div style={{fontWeight:600}}>{pt.label}</div>
+                  <div style={{fontSize:10,color:"#334155",marginTop:2}}>{pt.desc}</div>
+                </button>
+              ))}
+            </div>
+            <FF label="Topic / Context"><textarea className="inp" rows={2} value={form.topic} onChange={f("topic")} placeholder="Just completed BRIM Phase 3 go-live for major utility client..."/></FF>
+            <FF label="Key Highlights"><textarea className="inp" rows={2} value={form.highlights} onChange={f("highlights")} placeholder="Reduced billing cycle by 40%, implemented real-time rating..."/></FF>
+            <FF label="Tone">
+              <select className="inp" value={form.tone} onChange={f("tone")}>
+                {["professional","enthusiastic","thought-leader","humble","conversational"].map(t=><option key={t} value={t} style={{textTransform:"capitalize"}}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+              </select>
+            </FF>
+            <FF label="Call to Action"><input className="inp" value={form.callToAction} onChange={f("callToAction")} placeholder="DM us to learn more..."/></FF>
+            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:14}}>
+              <input type="checkbox" checked={form.includeStats} onChange={f("includeStats")} style={{accentColor:"#0369a1"}}/>
+              <span style={{fontSize:12,color:"#64748b"}}>Include company context (clients/wins)</span>
+            </label>
+            <button onClick={generate} disabled={loading||!form.topic}
+              style={{width:"100%",padding:"11px",background:loading?"#0a1826":"linear-gradient(135deg,#0284c7,#0369a1)",
+                border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              {loading ? "✍️ Writing post..." : "✨ Generate LinkedIn Post"}
+            </button>
+          </div>
+        </div>
+        <div>
+          {output && (
+            <div style={{background:"#fff",borderRadius:12,padding:"20px",marginBottom:16,border:"1px solid #e2e8f0",boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+                <div style={{width:42,height:42,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#fff"}}>Z</div>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>Ziksatech</div>
+                  <div style={{fontSize:11,color:"#666"}}>SAP Consulting · Just now</div>
+                </div>
+              </div>
+              <div style={{fontSize:14,color:"#1a1a1a",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{output}</div>
+            </div>
+          )}
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            {output && <>
+              <button onClick={()=>navigator.clipboard.writeText(output)} style={{flex:1,padding:"9px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:12,cursor:"pointer"}}>📋 Copy Post</button>
+              <button onClick={savePost} style={{flex:1,padding:"9px",background:"#022c22",border:"1px solid #065f46",borderRadius:8,color:"#34d399",fontSize:12,cursor:"pointer"}}>💾 Save Post</button>
+            </>}
+          </div>
+          {!output && !loading && <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"60px 20px",textAlign:"center",color:"#334155"}}>Your LinkedIn post preview will appear here</div>}
+          {loading && !output && <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"60px 20px",textAlign:"center",color:"#475569"}}>✍️ Writing your LinkedIn post...</div>}
+          {saved.length>0 && (
+            <div style={{marginTop:16}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Saved Posts ({saved.length})</div>
+              {saved.map((s,i)=>(
+                <div key={i} style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:8,padding:"10px 14px",marginBottom:6,cursor:"pointer"}} onClick={()=>setOutput(s.output)}>
+                  <div style={{fontSize:11,fontWeight:600,color:"#7dd3fc"}}>{postTypes.find(p=>p.id===s.postType)?.label} · {s.ts}</div>
+                  <div style={{fontSize:11,color:"#475569",marginTop:2}}>{s.topic?.slice(0,60)}...</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PAF FILES — Immigration document physical storage tracker
+// ═══════════════════════════════════════════════════════════════════════
+function PAFFiles({ roster }) {
+  const [pafRecords, setPafRecords] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-paf-files") || "[]"); } catch { return []; }
+  });
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({ consultantId:"", docType:"I-797", docNumber:"", issueDate:"", expiryDate:"", physicalLocation:"", cabinet:"", folder:"", notes:"", status:"current" });
+  const [search, setSearch] = useState("");
+
+  const save = r => { const next = r ? pafRecords.map(p=>p.id===r.id?{...form,id:r.id}:p) : [...pafRecords,{...form,id:"paf"+Date.now()}]; setPafRecords(next); localStorage.setItem("zt-paf-files",JSON.stringify(next)); setModal(false); };
+  const del = id => { const next = pafRecords.filter(p=>p.id!==id); setPafRecords(next); localStorage.setItem("zt-paf-files",JSON.stringify(next)); };
+  const [editing, setEditing] = useState(null);
+  const openEdit = (rec=null) => { setEditing(rec); setForm(rec?{...rec}:{consultantId:"",docType:"I-797",docNumber:"",issueDate:"",expiryDate:"",physicalLocation:"",cabinet:"",folder:"",notes:"",status:"current"}); setModal(true); };
+
+  const filtered = pafRecords.filter(p => {
+    const name = (roster||[]).find(r=>r.id===p.consultantId)?.name||"";
+    return !search || name.toLowerCase().includes(search.toLowerCase()) || p.docType?.toLowerCase().includes(search.toLowerCase()) || p.physicalLocation?.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const docTypes = ["I-797","I-94","I-20","OPT EAD","H-1B Petition","Green Card","Passport","Visa Stamp","I-539","I-485","I-140","EAD Card","Driver License","SSN","Other"];
+  const statusColor = {current:"#34d399",expiring:"#f59e0b",expired:"#f87171",pending:"#38bdf8"};
+
+  return (
+    <div>
+      <PH title="PAF Files — Immigration Documents" sub="Physical storage mapping for immigration & compliance documents"/>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+        <input className="inp" placeholder="Search by name, doc type, location..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,maxWidth:340}}/>
+        <button onClick={()=>openEdit()} style={{padding:"8px 18px",background:"linear-gradient(135deg,#0369a1,#0284c7)",border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Add Document</button>
+      </div>
+
+      {/* Summary tiles */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:18}}>
+        {[
+          {l:"Total Documents",v:pafRecords.length,c:"#38bdf8"},
+          {l:"Expiring ≤60 days",v:pafRecords.filter(p=>{if(!p.expiryDate)return false;const d=(new Date(p.expiryDate)-new Date())/86400000;return d>=0&&d<=60;}).length,c:"#f59e0b"},
+          {l:"Expired",v:pafRecords.filter(p=>p.status==="expired").length,c:"#f87171"},
+          {l:"Consultants Covered",v:new Set(pafRecords.map(p=>p.consultantId)).size,c:"#34d399"},
+        ].map(t=>(
+          <div key={t.l} className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:22,fontWeight:800,color:t.c,fontFamily:"'DM Mono',monospace"}}>{t.v}</div>
+            <div style={{fontSize:11,color:"#64748b",marginTop:4}}>{t.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card" style={{overflowX:"auto"}}>
+        <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 100px 140px 80px 60px",padding:"8px 18px"}}>
+          {["Consultant","Doc Type","Doc Number","Issued","Expires","Physical Location","Status",""].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {filtered.length===0 && <div style={{textAlign:"center",padding:"40px",color:"#334155",fontSize:13}}>No documents yet. Add your first document record above.</div>}
+        {filtered.map(p=>{
+          const consultant = (roster||[]).find(r=>r.id===p.consultantId);
+          const daysLeft = p.expiryDate ? Math.ceil((new Date(p.expiryDate)-new Date())/86400000) : null;
+          const statusTag = daysLeft!==null && daysLeft<0 ? "expired" : daysLeft!==null && daysLeft<=60 ? "expiring" : p.status;
+          return (
+            <div key={p.id} className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 100px 140px 80px 60px",cursor:"pointer",alignItems:"center"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{consultant?.name||"Unassigned"}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{consultant?.role}</div>
+              </div>
+              <span style={{background:"#0c2340",color:"#7dd3fc",fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>{p.docType}</span>
+              <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8"}}>{p.docNumber||"—"}</span>
+              <span style={{fontSize:11,color:"#64748b"}}>{p.issueDate||"—"}</span>
+              <div>
+                <div style={{fontSize:11,color:statusColor[statusTag]||"#64748b"}}>{p.expiryDate||"—"}</div>
+                {daysLeft!==null&&<div style={{fontSize:9,color:daysLeft<0?"#f87171":daysLeft<=60?"#f59e0b":"#334155"}}>{daysLeft<0?"Expired":daysLeft+" days"}</div>}
+              </div>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:"#94a3b8"}}>{p.physicalLocation||"—"}</div>
+                {(p.cabinet||p.folder)&&<div style={{fontSize:10,color:"#334155"}}>Cabinet {p.cabinet||"?"} / Folder {p.folder||"?"}</div>}
+              </div>
+              <span style={{fontSize:10,fontWeight:700,color:statusColor[statusTag]||"#64748b",textTransform:"capitalize"}}>{statusTag}</span>
+              <div style={{display:"flex",gap:4}}>
+                <button onClick={()=>openEdit(p)} style={{background:"none",border:"1px solid #1a2d45",borderRadius:5,color:"#64748b",cursor:"pointer",padding:"3px 8px",fontSize:11}}>✏️</button>
+                <button onClick={()=>del(p.id)} style={{background:"none",border:"1px solid #2d0a0a",borderRadius:5,color:"#f87171",cursor:"pointer",padding:"3px 8px",fontSize:11}}>🗑</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {modal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:580}}>
+            <MH title={editing?"Edit Document Record":"Add Document Record"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Consultant *">
+                <select className="inp" value={form.consultantId} onChange={e=>setForm(p=>({...p,consultantId:e.target.value}))}>
+                  <option value="">Select consultant...</option>
+                  {(roster||[]).map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </FF>
+              <FF label="Document Type *">
+                <select className="inp" value={form.docType} onChange={e=>setForm(p=>({...p,docType:e.target.value}))}>
+                  {docTypes.map(d=><option key={d}>{d}</option>)}
+                </select>
+              </FF>
+              <FF label="Document Number"><input className="inp" value={form.docNumber} onChange={e=>setForm(p=>({...p,docNumber:e.target.value}))} placeholder="WAC2024..."/></FF>
+              <FF label="Status">
+                <select className="inp" value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))}>
+                  {["current","expiring","expired","pending"].map(s=><option key={s} value={s} style={{textTransform:"capitalize"}}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
+                </select>
+              </FF>
+              <FF label="Issue Date"><input className="inp" type="date" value={form.issueDate} onChange={e=>setForm(p=>({...p,issueDate:e.target.value}))}/></FF>
+              <FF label="Expiry Date"><input className="inp" type="date" value={form.expiryDate} onChange={e=>setForm(p=>({...p,expiryDate:e.target.value}))}/></FF>
+              <FF label="Physical Location"><input className="inp" value={form.physicalLocation} onChange={e=>setForm(p=>({...p,physicalLocation:e.target.value}))} placeholder="Office A, Filing Room 2"/></FF>
+              <FF label="Cabinet #"><input className="inp" value={form.cabinet} onChange={e=>setForm(p=>({...p,cabinet:e.target.value}))} placeholder="Cabinet 3"/></FF>
+              <FF label="Folder / Tab"><input className="inp" value={form.folder} onChange={e=>setForm(p=>({...p,folder:e.target.value}))} placeholder="Tab H-1B 2024"/></FF>
+            </div>
+            <FF label="Notes"><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Renewal in progress, attorney contact..."/></FF>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={()=>save(editing)}><I d={ICONS.check} s={13}/>Save Record</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADP PAY STUBS — Map ADP pay stubs to consultants
+// ═══════════════════════════════════════════════════════════════════════
+function ADPPayStubs({ roster, adpRuns }) {
+  const [stubs, setStubs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-adp-stubs") || "[]"); } catch { return []; }
+  });
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({ consultantId:"", payPeriod:"", checkDate:"", grossPay:"", netPay:"", fedTax:"", stateTax:"", ficaEe:"", medicareEe:"", stubRef:"", notes:"" });
+  const [editing, setEditing] = useState(null);
+  const [filter, setFilter] = useState("all");
+
+  const saveStub = () => {
+    const next = editing ? stubs.map(s=>s.id===editing.id?{...form,id:editing.id}:s) : [...stubs,{...form,id:"stub"+Date.now()}];
+    setStubs(next); localStorage.setItem("zt-adp-stubs",JSON.stringify(next)); setModal(false);
+  };
+  const openEdit = (rec=null) => { setEditing(rec); setForm(rec?{...rec}:{consultantId:"",payPeriod:"",checkDate:"",grossPay:"",netPay:"",fedTax:"",stateTax:"",ficaEe:"",medicareEe:"",stubRef:"",notes:""}); setModal(true); };
+
+  const ftes = (roster||[]).filter(r=>r.type==="FTE");
+  const displayed = filter==="all" ? stubs : stubs.filter(s=>s.consultantId===filter);
+  const totalGross = displayed.reduce((s,r)=>s+(+r.grossPay||0),0);
+  const totalNet = displayed.reduce((s,r)=>s+(+r.netPay||0),0);
+
+  return (
+    <div>
+      <PH title="ADP Pay Stubs" sub="Map and track ADP pay stubs by consultant and pay period"/>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+        <select className="inp" value={filter} onChange={e=>setFilter(e.target.value)} style={{width:200}}>
+          <option value="all">All Consultants</option>
+          {ftes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+        </select>
+        <div style={{marginLeft:"auto",display:"flex",gap:10}}>
+          <div style={{padding:"6px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",fontSize:12}}>
+            <span style={{color:"#64748b"}}>Total Gross: </span><span style={{color:"#38bdf8",fontWeight:700,fontFamily:"monospace"}}>${totalGross.toLocaleString()}</span>
+          </div>
+          <div style={{padding:"6px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",fontSize:12}}>
+            <span style={{color:"#64748b"}}>Total Net: </span><span style={{color:"#34d399",fontWeight:700,fontFamily:"monospace"}}>${totalNet.toLocaleString()}</span>
+          </div>
+          <button onClick={()=>openEdit()} style={{padding:"7px 16px",background:"linear-gradient(135deg,#0369a1,#0284c7)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}}>+ Add Pay Stub</button>
+        </div>
+      </div>
+      <div className="card" style={{overflowX:"auto"}}>
+        <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 100px 90px 90px 80px 80px 100px 50px",padding:"8px 18px"}}>
+          {["Consultant","Pay Period","Check Date","Gross","Net","Fed Tax","FICA","Stub Ref",""].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {displayed.length===0 && <div style={{textAlign:"center",padding:"40px",color:"#334155",fontSize:13}}>No pay stubs yet. Add stubs to track payroll records.</div>}
+        {displayed.map(s=>{
+          const consultant = (roster||[]).find(r=>r.id===s.consultantId);
+          return (
+            <div key={s.id} className="tr" style={{gridTemplateColumns:"1.2fr 100px 100px 90px 90px 80px 80px 100px 50px",alignItems:"center"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{consultant?.name||"Unknown"}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{consultant?.role}</div>
+              </div>
+              <span style={{fontSize:12,color:"#94a3b8"}}>{s.payPeriod||"—"}</span>
+              <span style={{fontSize:12,color:"#64748b"}}>{s.checkDate||"—"}</span>
+              <span style={{fontSize:12,fontWeight:600,color:"#38bdf8",fontFamily:"monospace"}}>{s.grossPay?("$"+(+s.grossPay).toLocaleString()):"—"}</span>
+              <span style={{fontSize:12,fontWeight:600,color:"#34d399",fontFamily:"monospace"}}>{s.netPay?("$"+(+s.netPay).toLocaleString()):"—"}</span>
+              <span style={{fontSize:12,color:"#f87171",fontFamily:"monospace"}}>{s.fedTax?("$"+(+s.fedTax).toLocaleString()):"—"}</span>
+              <span style={{fontSize:12,color:"#f59e0b",fontFamily:"monospace"}}>{s.ficaEe?("$"+(+s.ficaEe).toLocaleString()):"—"}</span>
+              <span style={{fontSize:11,color:"#475569",fontFamily:"monospace"}}>{s.stubRef||"—"}</span>
+              <div style={{display:"flex",gap:4}}>
+                <button onClick={()=>openEdit(s)} style={{background:"none",border:"1px solid #1a2d45",borderRadius:5,color:"#64748b",cursor:"pointer",padding:"3px 7px",fontSize:10}}>✏️</button>
+                <button onClick={()=>{const n=stubs.filter(x=>x.id!==s.id);setStubs(n);localStorage.setItem("zt-adp-stubs",JSON.stringify(n));}} style={{background:"none",border:"1px solid #2d0a0a",borderRadius:5,color:"#f87171",cursor:"pointer",padding:"3px 7px",fontSize:10}}>🗑</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {modal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:560}}>
+            <MH title="ADP Pay Stub Record" onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Consultant *">
+                <select className="inp" value={form.consultantId} onChange={e=>setForm(p=>({...p,consultantId:e.target.value}))}>
+                  <option value="">Select...</option>
+                  {ftes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </FF>
+              <FF label="Pay Period"><input className="inp" value={form.payPeriod} onChange={e=>setForm(p=>({...p,payPeriod:e.target.value}))} placeholder="Mar 1-15, 2026"/></FF>
+              <FF label="Check Date"><input className="inp" type="date" value={form.checkDate} onChange={e=>setForm(p=>({...p,checkDate:e.target.value}))}/></FF>
+              <FF label="ADP Stub Reference"><input className="inp" value={form.stubRef} onChange={e=>setForm(p=>({...p,stubRef:e.target.value}))} placeholder="ADP-2026-03-001"/></FF>
+              <FF label="Gross Pay ($)"><input className="inp" type="number" value={form.grossPay} onChange={e=>setForm(p=>({...p,grossPay:e.target.value}))}/></FF>
+              <FF label="Net Pay ($)"><input className="inp" type="number" value={form.netPay} onChange={e=>setForm(p=>({...p,netPay:e.target.value}))}/></FF>
+              <FF label="Federal Tax ($)"><input className="inp" type="number" value={form.fedTax} onChange={e=>setForm(p=>({...p,fedTax:e.target.value}))}/></FF>
+              <FF label="State Tax ($)"><input className="inp" type="number" value={form.stateTax} onChange={e=>setForm(p=>({...p,stateTax:e.target.value}))}/></FF>
+              <FF label="EE FICA ($)"><input className="inp" type="number" value={form.ficaEe} onChange={e=>setForm(p=>({...p,ficaEe:e.target.value}))}/></FF>
+              <FF label="EE Medicare ($)"><input className="inp" type="number" value={form.medicareEe} onChange={e=>setForm(p=>({...p,medicareEe:e.target.value}))}/></FF>
+            </div>
+            <FF label="Notes"><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></FF>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={saveStub}><I d={ICONS.check} s={13}/>Save Stub</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RECONCILIATION REPORT — Finance reconciliation across sources
+// ═══════════════════════════════════════════════════════════════════════
+function ReconcileReport({ roster, finInvoices, finPayments, adpRuns, fbInvoices, clients }) {
+  const [period, setPeriod] = useState("2026-03");
+  const [view, setView] = useState("payroll"); // payroll | billing | ar
+
+  const ftes = (roster||[]).filter(r=>r.type==="FTE");
+  const month = period; // YYYY-MM
+
+  // ADP payroll for period
+  const adpForPeriod = (adpRuns||[]).filter(r=>r.payPeriod?.startsWith(month));
+  const adpTotal = adpForPeriod.reduce((s,r)=>(r.rows||[]).reduce((ss,row)=>ss+(+row.gross||0),ss),0);
+
+  // Finance invoices for period
+  const invForPeriod = (finInvoices||[]).filter(i=>i.issueDate?.startsWith(month));
+  const invTotal = invForPeriod.reduce((s,i)=>(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),ss),0);
+
+  // Payments received for period
+  const pymtForPeriod = (finPayments||[]).filter(p=>p.date?.startsWith(month));
+  const pymtTotal = pymtForPeriod.reduce((s,p)=>s+(+p.amount||0),0);
+
+  // FreshBooks for period
+  const fbForPeriod = (fbInvoices||[]).filter(i=>i.date?.startsWith(month));
+  const fbTotal = fbForPeriod.reduce((s,i)=>s+(+i.amount||0),0);
+
+  // Expected payroll from roster
+  const expectedPayroll = ftes.reduce((s,r)=>s+(+r.baseSalary||0)/12,0);
+
+  // Roster expected revenue
+  const expectedRev = (roster||[]).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0); // ~160 hrs/mo
+
+  return (
+    <div>
+      <PH title="Reconciliation Report" sub="Cross-source financial reconciliation — ADP vs Finance vs FreshBooks"/>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:12,color:"#64748b"}}>Period:</span>
+          <input className="inp" type="month" value={period} onChange={e=>setPeriod(e.target.value)} style={{width:160}}/>
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          {[{id:"payroll",l:"💰 Payroll"},{ id:"billing",l:"🧾 Billing"},{id:"ar",l:"📊 Summary"}].map(v=>(
+            <button key={v.id} onClick={()=>setView(v.id)}
+              style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${view===v.id?"#0369a1":"#1a2d45"}`,
+                background:view===v.id?"#0c2340":"#0a1120",color:view===v.id?"#38bdf8":"#64748b",
+                cursor:"pointer",fontSize:11,fontWeight:600}}>{v.l}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary tiles */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        {[
+          {l:"ADP Payroll (actual)",  v:"$"+adpTotal.toLocaleString(),   exp:"$"+Math.round(expectedPayroll).toLocaleString(), c:"#38bdf8"},
+          {l:"Invoiced (Finance)",   v:"$"+invTotal.toLocaleString(),    exp:"$"+Math.round(expectedRev).toLocaleString(),     c:"#a78bfa"},
+          {l:"Collected",            v:"$"+pymtTotal.toLocaleString(),   exp:"",                                                c:"#34d399"},
+          {l:"FreshBooks Invoices",  v:"$"+fbTotal.toLocaleString(),     exp:"",                                                c:"#f59e0b"},
+        ].map(t=>(
+          <div key={t.l} className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:20,fontWeight:800,color:t.c,fontFamily:"'DM Mono',monospace"}}>{t.v}</div>
+            {t.exp&&<div style={{fontSize:10,color:"#334155",marginTop:2}}>Expected: {t.exp}</div>}
+            <div style={{fontSize:11,color:"#64748b",marginTop:4}}>{t.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {view==="payroll" && (
+        <div className="card">
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",padding:"14px 18px",borderBottom:"1px solid #0f1e30"}}>Payroll Reconciliation — {period}</div>
+          <div className="tr" style={{gridTemplateColumns:"1.4fr 100px 100px 100px 100px 80px",padding:"8px 18px"}}>
+            {["Consultant","Expected/mo","ADP Actual","Variance","FTE Burden","Status"].map(h=><span key={h} className="th">{h}</span>)}
+          </div>
+          {ftes.map(r=>{
+            const expected = Math.round((+r.baseSalary||0)/12);
+            const adpRow = adpForPeriod.flatMap(run=>(run.rows||[]).filter(row=>row.employeeName?.toLowerCase().includes(r.name.toLowerCase()) || row.employeeId===r.id));
+            const actual = adpRow.reduce((s,row)=>s+(+row.gross||0),0);
+            const variance = actual - expected;
+            const status = actual===0?"missing":Math.abs(variance)<100?"match":variance>0?"over":"under";
+            const statusColor2 = {match:"#34d399",over:"#f59e0b",under:"#f87171",missing:"#475569"};
+            return (
+              <div key={r.id} className="tr" style={{gridTemplateColumns:"1.4fr 100px 100px 100px 100px 80px",alignItems:"center"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role}</div>
+                </div>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8"}}>${expected.toLocaleString()}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:actual>0?"#38bdf8":"#334155"}}>{actual>0?("$"+actual.toLocaleString()):"—"}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:variance===0?"#34d399":variance>0?"#f59e0b":"#f87171"}}>{actual>0?(variance>=0?"+":"")+variance.toLocaleString():"—"}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#64748b"}}>${Math.round(expected*0.2265).toLocaleString()}</span>
+                <span style={{fontSize:10,fontWeight:700,color:statusColor2[status],textTransform:"uppercase"}}>{status}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {view==="billing" && (
+        <div className="card">
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",padding:"14px 18px",borderBottom:"1px solid #0f1e30"}}>Billing Reconciliation — {period}</div>
+          <div className="tr" style={{gridTemplateColumns:"1.4fr 100px 100px 100px 100px 80px",padding:"8px 18px"}}>
+            {["Consultant","Expected Rev","Invoiced","Collected","Outstanding","Util"].map(h=><span key={h} className="th">{h}</span>)}
+          </div>
+          {(roster||[]).map(r=>{
+            const expRev = Math.round((r.billRate||0)*(r.util||0)*160);
+            const invoiced = invForPeriod.filter(i=>i.clientId===r.client||i.projectName?.includes(r.name)).reduce((s,i)=>(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),ss),0);
+            const collected = pymtForPeriod.filter(p=>invForPeriod.some(i=>i.id===p.invoiceId && ((i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0)>0))).reduce((s,p)=>s+(+p.amount||0),0);
+            return (
+              <div key={r.id} className="tr" style={{gridTemplateColumns:"1.4fr 100px 100px 100px 100px 80px",alignItems:"center"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{r.type} · {r.client}</div>
+                </div>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8"}}>${expRev.toLocaleString()}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8"}}>{invoiced>0?("$"+invoiced.toLocaleString()):"—"}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#34d399"}}>{collected>0?("$"+collected.toLocaleString()):"—"}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#f59e0b"}}>{invoiced-collected>0?("$"+(invoiced-collected).toLocaleString()):"—"}</span>
+                <span style={{fontSize:12,color:r.util>=0.8?"#34d399":"#f59e0b"}}>{Math.round((r.util||0)*100)}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {view==="ar" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div className="card" style={{padding:"18px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>📊 Period Summary — {period}</div>
+            {[
+              {l:"Total Billed (Finance)",  v:"$"+invTotal.toLocaleString(),                    c:"#38bdf8"},
+              {l:"Total Collected",         v:"$"+pymtTotal.toLocaleString(),                   c:"#34d399"},
+              {l:"Outstanding A/R",         v:"$"+(invTotal-pymtTotal).toLocaleString(),         c:"#f59e0b"},
+              {l:"Collection Rate",         v:invTotal>0?Math.round(pymtTotal/invTotal*100)+"%":"—", c:"#a78bfa"},
+              {l:"ADP Payroll",             v:"$"+adpTotal.toLocaleString(),                    c:"#f87171"},
+              {l:"FreshBooks Invoices",     v:"$"+fbTotal.toLocaleString(),                     c:"#f59e0b"},
+              {l:"Finance vs FreshBooks Δ", v:"$"+Math.abs(invTotal-fbTotal).toLocaleString(),  c:Math.abs(invTotal-fbTotal)<1000?"#34d399":"#f87171"},
+              {l:"Gross Profit (est.)",     v:"$"+(pymtTotal-adpTotal).toLocaleString(),        c:pymtTotal-adpTotal>0?"#34d399":"#f87171"},
+            ].map(row=>(
+              <div key={row.l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0a1420"}}>
+                <span style={{fontSize:12,color:"#64748b"}}>{row.l}</span>
+                <span style={{fontSize:13,fontWeight:700,color:row.c,fontFamily:"'DM Mono',monospace"}}>{row.v}</span>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{padding:"18px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>⚠️ Discrepancies & Alerts</div>
+            {Math.abs(invTotal-fbTotal)>1000 && (
+              <div style={{background:"#2d1f00",border:"1px solid #92400e",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#fcd34d"}}>⚠️ Finance vs FreshBooks Gap</div>
+                <div style={{fontSize:11,color:"#92400e",marginTop:4}}>Finance: ${invTotal.toLocaleString()} vs FreshBooks: ${fbTotal.toLocaleString()} — Δ ${Math.abs(invTotal-fbTotal).toLocaleString()}</div>
+              </div>
+            )}
+            {adpTotal===0 && (
+              <div style={{background:"#0c1a2e",border:"1px solid #1e3a5f",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#7dd3fc"}}>ℹ️ No ADP Runs for {period}</div>
+                <div style={{fontSize:11,color:"#334155",marginTop:4}}>Upload ADP payroll export in ADP Payroll module to see payroll reconciliation.</div>
+              </div>
+            )}
+            {pymtTotal < invTotal * 0.5 && invTotal > 0 && (
+              <div style={{background:"#2d0a0a",border:"1px solid #7f1d1d",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#fca5a5"}}>⚠️ Low Collection Rate</div>
+                <div style={{fontSize:11,color:"#7f1d1d",marginTop:4}}>Only {Math.round(pymtTotal/invTotal*100)}% collected — ${(invTotal-pymtTotal).toLocaleString()} outstanding</div>
+              </div>
+            )}
+            {Math.abs(invTotal-fbTotal)<500 && invTotal>0 && (
+              <div style={{background:"#022c22",border:"1px solid #065f46",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#34d399"}}>✅ Finance & FreshBooks aligned</div>
+                <div style={{fontSize:11,color:"#065f46",marginTop:4}}>Both systems show consistent billing data for {period}.</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
