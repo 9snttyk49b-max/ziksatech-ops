@@ -2293,6 +2293,51 @@ function Roster({ roster, setRoster, addAudit }) {
   const [inlineEdit, setInlineEdit] = useState(null);
   const [inlineVal, setInlineVal] = useState("");
   const [selRows, setSelRows] = useState(new Set());
+  const [sortBy,  setSortBy]  = useState("custom");   // custom | name | revenue | cost | margin | rate
+  const [sortDir, setSortDir] = useState("asc");
+  const [dragId,  setDragId]  = useState(null);
+  const [dragOver,setDragOver]= useState(null);
+
+  // Sort + drag logic
+  const displayRoster = (() => {
+    if (sortBy === "custom") return roster;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...roster].sort((a, b) => {
+      if (sortBy === "name")    return dir * a.name.localeCompare(b.name);
+      if (sortBy === "rate")    return dir * ((a.billRate||0) - (b.billRate||0));
+      if (sortBy === "revenue") { const da=calcRoster(a),db=calcRoster(b); return dir*(da.rev-db.rev); }
+      if (sortBy === "cost")    { const da=calcRoster(a),db=calcRoster(b); return dir*(da.totalCost-db.totalCost); }
+      if (sortBy === "margin")  { const da=calcRoster(a),db=calcRoster(b); return dir*(da.netMargin-db.netMargin); }
+      return 0;
+    });
+  })();
+
+  const handleDragStart = (e, id) => { setDragId(id); e.dataTransfer.effectAllowed = "move"; };
+  const handleDragOver  = (e, id) => { e.preventDefault(); setDragOver(id); };
+  const handleDrop      = (e, targetId) => {
+    e.preventDefault();
+    if (!dragId || dragId === targetId) { setDragId(null); setDragOver(null); return; }
+    const from = roster.findIndex(r => r.id === dragId);
+    const to   = roster.findIndex(r => r.id === targetId);
+    const next = [...roster];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    setRoster(next);
+    setSortBy("custom");
+    setDragId(null); setDragOver(null);
+  };
+  const handleDragEnd = () => { setDragId(null); setDragOver(null); };
+
+  const cycleSort = (field) => {
+    if (sortBy === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortDir("asc"); }
+  };
+  const SortBtn = ({ field, label }) => (
+    <button onClick={() => cycleSort(field)}
+      style={{ background: sortBy===field ? "#0f1e30" : "none", border: `1px solid ${sortBy===field?"#1e3a5f":"transparent"}`, borderRadius:6, color: sortBy===field ? "#38bdf8" : "#3d5a7a", fontSize:10, fontWeight:600, padding:"3px 8px", cursor:"pointer", display:"flex", alignItems:"center", gap:3 }}>
+      {label}{sortBy===field ? (sortDir==="asc"?" ↑":" ↓") : ""}
+    </button>
+  );
 
   const toggleRow = (id) => setSelRows(s => { const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const toggleAllRows = () => setSelRows(s => s.size===roster.length ? new Set() : new Set(roster.map(r=>r.id)));
@@ -2354,23 +2399,43 @@ function Roster({ roster, setRoster, addAudit }) {
 
   return (
     <div>
-      <PH title="Team Roster & Compensation" sub="Click any name, project or rate cell to edit inline · FICA 7.65% · TX SUTA 2.7% · 401(k) 3%">
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+      <PH title="Team Roster & Compensation" sub="Drag ☰ to reorder · Click column headers to sort · FICA 7.65% · TX SUTA 2.7% · 401(k) 3%">
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:4,alignItems:"center",padding:"3px 8px",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:8}}>
+            <span style={{fontSize:10,color:"#3d5a7a",fontWeight:600,marginRight:2}}>SORT:</span>
+            <SortBtn field="name"    label="Name" />
+            <SortBtn field="revenue" label="Revenue" />
+            <SortBtn field="cost"    label="Cost" />
+            <SortBtn field="margin"  label="Margin" />
+            <SortBtn field="rate"    label="Rate" />
+            {sortBy !== "custom" && <button onClick={()=>{setSortBy("custom");setSortDir("asc");}} style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:10,padding:"3px 6px"}}>✕ Reset</button>}
+          </div>
           {selRows.size>0&&<button className="btn br" style={{fontSize:11}} onClick={bulkDeleteRoster}>🗑 Delete {selRows.size} selected</button>}
           <button className="btn bp" onClick={()=>open()}><I d={ICONS.plus} s={14}/>Add Consultant</button>
         </div>
       </PH>
 
       <div className="card" style={{marginBottom:16,overflowX:"auto"}}>
-        <div className="tr" style={{gridTemplateColumns:"28px 200px 1fr 90px 80px 70px 80px 90px 90px 90px 80px 80px",padding:"8px 18px",minWidth:960}}>
+        <div className="tr" style={{gridTemplateColumns:"22px 28px 200px 1fr 90px 80px 70px 80px 90px 90px 90px 80px 80px",padding:"8px 18px",minWidth:960}}>
+          <span className="th" style={{fontSize:10,color:"#1e3a5f"}}>☰</span>
           <input type="checkbox" checked={selRows.size===roster.length&&roster.length>0} onChange={toggleAllRows} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
           {["Name","Projects / Role","Type","Client","Rate","Util","Revenue","Total Cost","Co. Keeps","Margin",""].map(h=><span key={h} className="th">{h}</span>)}
         </div>
-        {roster.map(r => {
+        {displayRoster.map(r => {
           const d = calcRoster(r);
           const projects = (r.projects||"").split(",").map(p=>p.trim()).filter(Boolean);
+          const isDragging = dragId === r.id;
+          const isOver     = dragOver === r.id;
           return (
-            <div key={r.id} className="tr" style={{gridTemplateColumns:"28px 200px 1fr 90px 80px 70px 80px 90px 90px 90px 80px 80px",minWidth:960,alignItems:"start",paddingTop:10,paddingBottom:10,background:selRows.has(r.id)?"#0a1a2e":undefined}}>
+            <div key={r.id}
+              draggable={sortBy === "custom"}
+              onDragStart={e => handleDragStart(e, r.id)}
+              onDragOver={e  => handleDragOver(e, r.id)}
+              onDrop={e      => handleDrop(e, r.id)}
+              onDragEnd={handleDragEnd}
+              className="tr" style={{gridTemplateColumns:"22px 28px 200px 1fr 90px 80px 70px 80px 90px 90px 90px 80px 80px",opacity:isDragging?0.4:1,borderTop:isOver?"2px solid #38bdf8":"none",transition:"border-color 0.1s",minWidth:960,alignItems:"start",paddingTop:10,paddingBottom:10,background:selRows.has(r.id)?"#0a1a2e":undefined}}>
+              {/* Drag handle */}
+              <div title={sortBy==="custom"?"Drag to reorder":"Sort is active — reset to reorder"} style={{color:sortBy==="custom"?"#3d5a7a":"#1e2a3a",cursor:sortBy==="custom"?"grab":"not-allowed",fontSize:14,textAlign:"center",userSelect:"none",paddingTop:2}}>☰</div>
               <input type="checkbox" checked={selRows.has(r.id)} onChange={()=>toggleRow(r.id)} onClick={e=>e.stopPropagation()} style={{accentColor:"#0369a1",cursor:"pointer",marginTop:4}}/>
               {/* Inline-editable Name */}
               <div>
@@ -2432,7 +2497,7 @@ function Roster({ roster, setRoster, addAudit }) {
         })}
         <div className="tr" style={{gridTemplateColumns:"200px 1fr 90px 80px 70px 80px 90px 90px 90px 80px 80px",background:"#0a1626",minWidth:900}}>
           <span style={{fontSize:11,fontWeight:800,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.07em"}}>TOTALS</span>
-          <span/><span/><span/><span/><span/>
+          <span/><span/><span/><span/><span/><span/>
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#38bdf8"}}>{fmt(totals.rev)}</span>
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#f87171"}}>{fmt(totals.cost)}</span>
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#34d399"}}>{fmt(totals.keeps)}</span>
