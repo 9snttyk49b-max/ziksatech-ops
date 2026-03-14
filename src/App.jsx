@@ -384,7 +384,7 @@ const CRM_ACTIVITIES_SEED = [
 
 // Module registry — all controllable modules
 const ALL_MODULES = [
-  { id:"home",       label:"Home",                icon:"🏠", group:"Overview"    },
+  { id:"home",       label:"Home",                icon:ICONS.dash,     group:"Overview"    },
     { id:"dashboard",  label:"Executive Dashboard", group:"Overview"    },
   { id:"notifications",label:"Notifications",         group:"Overview"    },
   { id:"auditlog",    label:"Audit Log",             group:"Overview"    },
@@ -1726,7 +1726,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         boxShadow: isMobile && sideOpen ? "4px 0 24px rgba(0,0,0,0.5)" : "none",
       }}>
         <div style={{padding:"8px 14px 18px",borderBottom:"1px solid #0f1e30",marginBottom:6}}>
-          <div onClick={()=>setTab("home")} style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer"}} title="Go to Home">⬡ ZIKSATECH</div>
+          <div onClick={()=>setTab("home")} style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer",display:"flex",alignItems:"center",gap:6}} title="Go to Home">
+            ⬡ ZIKSATECH
+          </div>
           <div onClick={()=>setTab("home")} style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer"}}>Ops Center</div>
           {supaAuth && authProfile && (
             <div style={{marginTop:10,padding:"8px 10px",background:"#0a1120",borderRadius:8,border:"1px solid #0f1e30"}}>
@@ -1767,6 +1769,25 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       <CommandPalette cmdOpen={cmdOpen} setCmdOpen={setCmdOpen} cmdQuery={cmdQuery} setCmdQuery={setCmdQuery} setTab={setTab}/>
           {searchOpen&&globalSearch.length>1&&<GlobalSearchResults q={globalSearch} roster={shared.roster} finInvoices={shared.finInvoices} apInvoices={shared.apInvoices} projects={shared.projects} crmDeals={shared.crmDeals} clients={shared.clients} tsSubmissions={shared.tsSubmissions} workAuth={shared.workAuth} setTab={setTab} onClose={()=>setSearchOpen(false)}/>}
         </div>
+
+        {/* ── Dedicated Home Button ─────────────────────────────── */}
+        <button
+          onClick={()=>setTab("home")}
+          style={{
+            width:"calc(100% - 20px)", margin:"0 10px 6px",
+            background: tab==="home" ? "#0f1e30" : "none",
+            border: tab==="home" ? "1px solid #1e3a5f" : "1px solid transparent",
+            borderRadius:8, color: tab==="home" ? "#38bdf8" : "#64748b",
+            fontSize:13, fontWeight:700, padding:"8px 12px",
+            cursor:"pointer", textAlign:"left",
+            display:"flex", alignItems:"center", gap:8,
+            transition:"all 0.15s"
+          }}
+          onMouseEnter={e=>{ if(tab!=="home"){ e.currentTarget.style.background="#0a1120"; e.currentTarget.style.color="#94a3b8"; }}}
+          onMouseLeave={e=>{ if(tab!=="home"){ e.currentTarget.style.background="none"; e.currentTarget.style.color="#64748b"; }}}
+        >
+          🏠 Home
+        </button>
 
         {["Overview","Sales","Delivery","Hiring","Finance","Compliance"].map(group => {
           const items = nav.filter(n=>n.group===group);
