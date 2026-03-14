@@ -1342,9 +1342,25 @@ function PendingScreen({ email, onGoLogin }) {
 export default function ZiksatechOps() {
   const [tab, setTab] = useState("dashboard");
   const [portalView, setPortalView] = useState(() => {
+    // Support URL hash navigation: /#hub, /#ops, /#crm
+    const hash = window.location.hash.replace("#","");
+    if (["hub","ops","crm"].includes(hash)) return hash;
     try { return localStorage.getItem("zt-portal-view") || "hub"; } catch { return "hub"; }
   });
-  const goToView = (v) => { localStorage.setItem("zt-portal-view", v); setPortalView(v); };
+  const goToView = (v) => {
+    localStorage.setItem("zt-portal-view", v);
+    window.location.hash = v;
+    setPortalView(v);
+  };
+  // Listen for browser back/forward
+  useEffect(() => {
+    const onHash = () => {
+      const h = window.location.hash.replace("#","");
+      if (["hub","ops","crm"].includes(h)) setPortalView(h);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const [roster, setRoster] = useState(ROSTER_SEED);
   const [pipeline, setPipeline] = useState(PIPELINE_SEED);
   const [clients, setClients] = useState(CLIENTS_SEED);
