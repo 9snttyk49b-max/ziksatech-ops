@@ -21342,8 +21342,7 @@ Provide: Key Discrepancies, Missing Entries, Reconciliation Status, Action Items
           {!aiInsights&&!uploading&&<div style={{color:"#334155",textAlign:"center",padding:"40px",fontSize:13}}>Upload a financial file to get AI-powered reconciliation insights comparing it against your current period data</div>}
           {aiInsights&&(
             <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"18px",fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap",overflowY:"auto",maxHeight:"60vh"}}>
-              {aiInsights.split('
-').map((line,i)=>{
+              {aiInsights.split('\n').map((line,i)=>{
                 if(line.startsWith('## '))return <div key={i} style={{fontSize:14,fontWeight:700,color:"#38bdf8",marginTop:16,marginBottom:6,borderBottom:"1px solid #1a2d45",paddingBottom:3}}>{line.slice(3)}</div>;
                 if(line.startsWith('- '))return <div key={i} style={{paddingLeft:14,color:"#94a3b8"}}>• {line.slice(2)}</div>;
                 return <div key={i} style={{color:"#94a3b8",marginBottom:line===''?6:0}}>{line||"​"}</div>;
