@@ -1,4 +1,59 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+
+// ═══════════════════════════════════════════════════════════════════════
+// DRAG-AND-DROP SORT — reusable hook for all list pages
+// ═══════════════════════════════════════════════════════════════════════
+function useDragSort(items, setItems) {
+  const dragIdx = useRef(null);
+  const overIdx = useRef(null);
+  const onDragStart = (i) => (e) => {
+    dragIdx.current = i;
+    e.dataTransfer.effectAllowed = "move";
+    e.currentTarget.style.opacity = "0.4";
+  };
+  const onDragEnd = (e) => {
+    e.currentTarget.style.opacity = "1";
+    document.querySelectorAll("[data-drag-over]").forEach(el => {
+      el.removeAttribute("data-drag-over");
+      el.style.borderTop = "";
+    });
+  };
+  const onDragOver = (i) => (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    overIdx.current = i;
+    e.currentTarget.setAttribute("data-drag-over", "1");
+    e.currentTarget.style.borderTop = "2px solid #0ea5e9";
+  };
+  const onDragLeave = (e) => {
+    e.currentTarget.removeAttribute("data-drag-over");
+    e.currentTarget.style.borderTop = "";
+  };
+  const onDrop = (i) => (e) => {
+    e.preventDefault();
+    e.currentTarget.removeAttribute("data-drag-over");
+    e.currentTarget.style.borderTop = "";
+    if (dragIdx.current === null || dragIdx.current === i) return;
+    const next = [...items];
+    const [moved] = next.splice(dragIdx.current, 1);
+    next.splice(i, 0, moved);
+    setItems(next);
+  };
+  const dragProps = (i) => ({
+    draggable: true,
+    onDragStart: onDragStart(i),
+    onDragEnd,
+    onDragOver: onDragOver(i),
+    onDragLeave,
+    onDrop: onDrop(i),
+  });
+  return { dragProps };
+}
+
+function DragHandle() {
+  return <span title="Drag to reorder" style={{cursor:"grab",color:"#1e3a5f",fontSize:15,padding:"0 6px 0 0",userSelect:"none",flexShrink:0}}>⋮⋮</span>;
+}
+
 const TODAY_STR = new Date().toISOString().slice(0, 10); // dynamic — always today
 
 // ─── PERSISTENT STORAGE ──────────────────────────────────────────────────────
@@ -2658,6 +2713,7 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 // ─── CLIENT PORTFOLIO ─────────────────────────────────────────────────────────
 function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
   const [modal, setModal] = useState(false);
+  const { dragProps: dragP_c } = useDragSort(clients, setClients);
   const [form, setForm] = useState(null);
   const [editing, setEditing] = useState(null);
   const empty = { name:"", vertical:"", engType:"Staff Aug", annualRev:"", consultants:"", grossMargin:"", health:"Green", renewal:"", notes:"" };
@@ -2699,8 +2755,8 @@ function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
         <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto",padding:"8px 18px"}}>
           {["Client","Vertical","Engagement","Revenue","Cslt.","Margin","Health","Renewal",""].map(h=><span key={h} className="th">{h}</span>)}
         </div>
-        {clients.map(c=>(
-          <div key={c.id} className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto"}}>
+        {clients.map((c, _di_)=>(
+          <div key={c.id} className="tr" {...dragP_c(_di_)} style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto"}}>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c.name}</div>
               <div style={{fontSize:10,color:"#3d5a7a",marginTop:1}}>{c.notes}</div>
@@ -4205,6 +4261,7 @@ function FinOverview({ roster, clients, finInvoices, finPayments, finExpenses })
 // ── INVOICES ──────────────────────────────────────────────────────────────────
 function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFinPayments, addAudit }) {
   const [filter, setFilter]   = useState("all");
+  const { dragProps: _dp } = useDragSort(finInvoices, setFinInvoices);
   const [selected, setSelected] = useState(null);
   const [newModal, setNewModal] = useState(false);
   const [payModal, setPayModal] = useState(null); // invoiceId being paid
@@ -4302,14 +4359,14 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
             <input type="checkbox" checked={selAR.size===filtered.length&&filtered.length>0} onChange={()=>setSelAR(s=>s.size===filtered.length?new Set():new Set(filtered.map(i=>i.id)))} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
             {["Invoice","Client / Project","Period","Issue Date","Total","Balance","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
-          {filtered.map(inv=>{
+          {filtered.map((inv, _i_)=>{
             const cl   = clients.find(c=>c.id===inv.clientId);
             const tot  = invTotal(inv);
             const bal  = invBalance(inv,finPayments);
             const od   = daysOverdue(inv);
             return (
-              <div key={inv.id} className="tr"
-                style={{gridTemplateColumns:"28px 110px 1fr 120px 110px 90px 90px 100px 100px",minWidth:900,cursor:"pointer",background:selAR.has(inv.id)?"#0a1a2e":selected===inv.id?"#061526":undefined}}
+              <div key={inv.id} className="tr" {..._dp(_i_)}
+                style={{cursor:"grab",gridTemplateColumns:"28px 110px 1fr 120px 110px 90px 90px 100px 100px",minWidth:900,cursor:"pointer",background:selAR.has(inv.id)?"#0a1a2e":selected===inv.id?"#061526":undefined}}
                 onClick={()=>setSelected(selected===inv.id?null:inv.id)}>
                 <input type="checkbox" checked={selAR.has(inv.id)} onChange={()=>toggleAR(inv.id)} onClick={e=>e.stopPropagation()} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
                 <span className="mono" style={{fontSize:11,color:"#3d5a7a"}}>{inv.id}</span>
@@ -5170,6 +5227,7 @@ function CandPipelineKanban({ candidates, setCandidates, submissions, interviews
 
 function RecCandidates({ candidates, setCandidates, submissions, interviews, offers, addAudit }) {
   const [modal, setModal] = useState(false);
+  const { dragProps: _dp } = useDragSort(candidates, setCandidates);
   const [form, setForm]   = useState(null);
   const [editing, setEditing] = useState(null);
   const [filter, setFilter]   = useState("all");
@@ -5233,11 +5291,11 @@ function RecCandidates({ candidates, setCandidates, submissions, interviews, off
             <input type="checkbox" checked={selCands.size===filtered.length&&filtered.length>0} onChange={()=>setSelCands(s=>s.size===filtered.length?new Set():new Set(filtered.map(c=>c.id)))} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
             {["Name / Role","Skills","Visa","Source","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
-          {filtered.map(c=>{
+          {filtered.map((c, _i_)=>{
             const cSubs = submissions.filter(s=>s.candidateId===c.id).length;
             const cInts = interviews.filter(i=>i.candidateId===c.id).length;
             return (
-              <div key={c.id} className="tr" style={{gridTemplateColumns:"28px 1.4fr 1fr 80px 90px 80px 90px",minWidth:720,cursor:"pointer",background:selCands.has(c.id)?"#0a1a2e":selected===c.id?"#061526":undefined}} onClick={()=>setSelected(selected===c.id?null:c.id)}>
+              <div key={c.id} className="tr" {..._dp(_i_)} style={{cursor:"grab",gridTemplateColumns:"28px 1.4fr 1fr 80px 90px 80px 90px",minWidth:720,cursor:"pointer",background:selCands.has(c.id)?"#0a1a2e":selected===c.id?"#061526":undefined}} onClick={()=>setSelected(selected===c.id?null:c.id)}>
                 <input type="checkbox" checked={selCands.has(c.id)} onChange={()=>toggleCandRow(c.id)} onClick={e=>e.stopPropagation()} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
                 <div>
                   <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c.name}</div>
@@ -6309,6 +6367,7 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
 // ── Deals ─────────────────────────────────────────────────────────────────────
 function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, addAudit }) {
   const [modal, setModal]   = useState(false);
+  const { dragProps: _dp } = useDragSort(crmDeals, setCrmDeals);
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -6370,11 +6429,11 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
           <div className="tr" style={{gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",padding:"8px 18px"}}>
             {["Deal / Account","Stage","Type","Value","Probability","Close Date","Actions"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
-          {filtered.map(d=>{
+          {filtered.map((d, _i_)=>{
             const acc = crmAccounts.find(a=>a.id===d.accountId);
             return (
-              <div key={d.id} className="tr"
-                style={{gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",cursor:"pointer",
+              <div key={d.id} className="tr" {..._dp(_i_)}
+                style={{cursor:"grab",gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",cursor:"pointer",
                   background:selected===d.id?"#0a1a2e":undefined}}
                 onClick={()=>setSelected(selected===d.id?null:d.id)}>
                 <div>
@@ -6995,6 +7054,7 @@ function ContractsOverview({ contracts, sows, crmAccounts }) {
 
 function ContractsList({ contracts, setContracts, crmAccounts, crmDeals }) {
   const [modal, setModal]   = useState(false);
+  const { dragProps: _dp } = useDragSort(contracts, setContracts);
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -7032,12 +7092,12 @@ function ContractsList({ contracts, setContracts, crmAccounts, crmDeals }) {
           <div className="tr" style={{gridTemplateColumns:"2fr 80px 90px 100px 100px 80px 70px",padding:"8px 18px"}}>
             {["Contract","Type","Account","Value","Expires","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
-          {filtered.map(c=>{
+          {filtered.map((c, _i_)=>{
             const acc = crmAccounts.find(a=>a.id===c.accountId);
             const daysLeft = Math.floor((new Date(c.endDate+"T00:00:00")-new Date("2026-03-11T00:00:00"))/86400000);
             return (
-              <div key={c.id} className="tr"
-                style={{gridTemplateColumns:"2fr 80px 90px 100px 100px 80px 70px",cursor:"pointer",
+              <div key={c.id} className="tr" {..._dp(_i_)}
+                style={{cursor:"grab",gridTemplateColumns:"2fr 80px 90px 100px 100px 80px 70px",cursor:"pointer",
                   background:selected===c.id?"#0a1a2e":undefined}}
                 onClick={()=>setSelected(selected===c.id?null:c.id)}>
                 <div>
@@ -7474,6 +7534,7 @@ function ProjectTracker({ projects, setProjects, tasks, setTasks, risks, setRisk
 
 function ProjOverview({ projects, setProjects, tasks, risks, roster, crmAccounts, sows }) {
   const [modal, setModal]   = useState(false);
+  const { dragProps: _dp } = useDragSort(projects, setProjects);
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -7523,7 +7584,7 @@ function ProjOverview({ projects, setProjects, tasks, risks, roster, crmAccounts
       <div style={{display:"grid",gridTemplateColumns:selProj?"3fr 2fr":"1fr",gap:16}}>
         {/* Project cards */}
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {projects.map(p=>{
+          {projects.map((p, _i_)=>{
             const acc = crmAccounts.find(a=>a.id===p.accountId);
             const sow = sows.find(s=>s.id===p.sowId);
             const pTasks = tasks.filter(t=>t.projectId===p.id);
@@ -7532,7 +7593,7 @@ function ProjOverview({ projects, setProjects, tasks, risks, roster, crmAccounts
             const openT = pTasks.filter(t=>t.status!=="done").length;
             const highT = pTasks.filter(t=>t.priority==="high"&&t.status!=="done").length;
             return (
-              <div key={p.id} className="card" style={{padding:"16px 20px",cursor:"pointer",
+              <div key={p.id} className="card" {..._dp(_i_)} style={{cursor:"grab",padding:"16px 20px",cursor:"pointer",
                 border:selected===p.id?"1px solid #0284c7":"1px solid #1a2d45"}}
                 onClick={()=>setSelected(selected===p.id?null:p.id)}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
@@ -11066,6 +11127,7 @@ function APInvoices({ vendors, apInvoices, setApInvoices, projects, addAudit }) 
 // ── Vendor Registry ───────────────────────────────────────────────────────────
 function VendorRegistry({ vendors, setVendors, apInvoices }) {
   const [modal,   setModal]  = useState(false);
+  const { dragProps: _dp } = useDragSort(vendors, setVendors);
   const [form,    setForm]   = useState(null);
   const [editing, setEditing]= useState(null);
   const [detail,  setDetail] = useState(null);
@@ -11091,10 +11153,10 @@ function VendorRegistry({ vendors, setVendors, apInvoices }) {
           <div className="tr" style={{gridTemplateColumns:"1.5fr 90px 80px 80px 80px 80px 70px",padding:"8px 18px"}}>
             {["Vendor","Type","Payment","Terms","YTD Paid","W-9","Status"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
-          {vendors.map(v=>{
+          {vendors.map((v, _i_)=>{
             const tc = VENDOR_TYPE_COLOR[v.type]||"#475569";
             return (
-              <div key={v.id} className="tr"
+              <div key={v.id} className="tr" {..._dp(_i_)}
                 style={{gridTemplateColumns:"1.5fr 90px 80px 80px 80px 80px 70px",cursor:"pointer",opacity:v.active?1:0.4,background:detail===v.id?"#0a1a2e":undefined}}
                 onClick={()=>setDetail(detail===v.id?null:v.id)}>
                 <div>
@@ -14693,6 +14755,7 @@ function PDFExport({ finInvoices, finPayments, fbInvoices, sows, projects, tasks
 // =============================================================================
 function ProposalBuilder({ proposals, setProposals, crmDeals, crmAccounts, crmContacts, roster, sows, setSows, contracts }) {
   const [sub,      setSub]      = useState("list");
+  const { dragProps: _dp } = useDragSort(proposals, setProposals);
   const [selId,    setSelId]    = useState(null);
   const [editId,   setEditId]   = useState(null);
   const [showNew,  setShowNew]  = useState(false);
@@ -14781,12 +14844,12 @@ function ProposalList({ proposals, setProposals, roster, winRate, totalValue, ac
             <div className="tr" style={{gridTemplateColumns:"40px 1.8fr 90px 80px 80px 80px 80px",padding:"8px 18px"}}>
               {["#","Proposal","Client","Value","Status","Created","Valid Until"].map(h=><span key={h} className="th">{h}</span>)}
             </div>
-            {filtered.map(prop=>{
+            {filtered.map((prop, _i_)=>{
               const val = propValue(prop);
               const isSelected = selId===prop.id;
               const daysLeft = prop.validUntil ? daysUntil(prop.validUntil) : null;
               return (
-                <div key={prop.id} className="tr"
+                <div key={prop.id} className="tr" {..._dp(_i_)} style={{cursor:"grab"}}
                   style={{gridTemplateColumns:"40px 1.8fr 90px 80px 80px 80px 80px",cursor:"pointer",
                     background:isSelected?"#0a1a2e":undefined,
                     borderLeft:`3px solid ${PROP_STATUS_COLOR[prop.status]||"#1a2d45"}`}}
