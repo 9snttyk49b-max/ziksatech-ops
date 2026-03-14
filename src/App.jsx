@@ -17784,7 +17784,13 @@ function buildReportSources(shared) {
     const paid = (finPayments||[]).filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0);
     const overdueDays = inv.dueDate && inv.status!=="paid"
       ? Math.max(0, Math.round((new Date(TODAY_STR)-new Date(inv.dueDate))/86400000)) : 0;
-    return { ...inv, amount: invAmount, amountPaid: paid, balance: invAmount-paid, overdueDays };
+    // Resolve client name from clientId
+    const clientName = inv.client ||
+      (clients||[]).find(c=>c.id===inv.clientId)?.name ||
+      inv.projectName || inv.clientId || "—";
+    // Use existing number or generate from id
+    const invNumber = inv.number || inv.id?.replace("inv","INV-") || "—";
+    return { ...inv, number: invNumber, client: clientName, amount: invAmount, amountPaid: paid, balance: invAmount-paid, overdueDays };
   });
 
   return [
