@@ -21061,7 +21061,6 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
         </div>
 
       </div>
-    </div>
     {/* ─────── WIDGET BOARD ─────────────────────────────────────── */}
     <div style={{gridColumn:"1 / -1",marginTop:4}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
@@ -21124,6 +21123,7 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }
