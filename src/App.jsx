@@ -2742,11 +2742,6 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
   const [modal, setModal] = useState(false);
   const { dragProps: dragP_c } = useDragSort(clients, setClients);
-    const av = v === "annualRev" ? (a.annualRev||0) : v === "name" ? (a.name||"") : v === "health" ? (a.health||"") : 0;
-    const bv = v === "annualRev" ? (b.annualRev||0) : v === "name" ? (b.name||"") : v === "health" ? (b.health||"") : 0;
-    const r = typeof av === "string" ? av.localeCompare(bv) : av - bv;
-    return clientSort.dir === "asc" ? r : -r;
-  }) : clients;
   const [form, setForm] = useState(null);
   const [editing, setEditing] = useState(null);
   const empty = { name:"", vertical:"", engType:"Staff Aug", annualRev:"", consultants:"", grossMargin:"", health:"Green", renewal:"", notes:"" };
