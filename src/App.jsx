@@ -2001,7 +2001,11 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
           {searchOpen&&globalSearch.length>1&&<GlobalSearchResults q={globalSearch} roster={shared.roster} finInvoices={shared.finInvoices} apInvoices={shared.apInvoices} projects={shared.projects} crmDeals={shared.crmDeals} clients={shared.clients} tsSubmissions={shared.tsSubmissions} workAuth={shared.workAuth} setTab={setTab} onClose={()=>setSearchOpen(false)}/>}
         </div>
 
-        {["Overview","Clients","Team","Delivery","Finance","Hiring","Compliance"].map(group => {
+        {["Overview","Clients","Team","Delivery","Finance","Hiring","Compliance"].filter(group => {
+          // In CRM view, only show Clients + Overview (mini calc)
+          if (portalView === "crm") return ["Clients","Overview"].includes(group);
+          return true;
+        }).map(group => {
           const items = nav.filter(n=>n.group===group && canAccess(n.id, authProfile?.role));
           if (!items.length) return null;
           const isCollapsed = collapsedGroups.includes(group);
@@ -17776,10 +17780,11 @@ function buildReportSources(shared) {
   });
 
   const enrichedInvoices = (finInvoices||[]).map(inv => {
-    const paid = (finPayments||[]).filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0);
+    const invAmount = (inv.lines||[]).reduce((s,l)=>s+(+l.amount||0),0) || inv.amount || 0;
+    const paid = (finPayments||[]).filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0);
     const overdueDays = inv.dueDate && inv.status!=="paid"
       ? Math.max(0, Math.round((new Date(TODAY_STR)-new Date(inv.dueDate))/86400000)) : 0;
-    return { ...inv, amountPaid: paid, balance: inv.amount-paid, overdueDays };
+    return { ...inv, amount: invAmount, amountPaid: paid, balance: invAmount-paid, overdueDays };
   });
 
   return [
