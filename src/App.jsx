@@ -20592,6 +20592,94 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
       </div>
       {/* ── END WIDGET BAR ──────────────────────────────────────────── */}
 
+      {/* ── WIDGET ROW 2 ─────────────────────────────────────────────── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:14 }}>
+
+        {/* Cash Flow Widget — 30-day in vs out */}
+        {(() => {
+          const now = new Date();
+          const last30 = new Date(now - 30*86400000);
+          const recentPmts = (finPayments||[]).filter(p=>new Date(p.date)>=last30);
+          const recentExp  = (finExpenses||[]).filter(e=>new Date(e.date)>=last30 && e.status==="approved");
+          const inflow  = recentPmts.reduce((s,p)=>s+(+p.amount||0),0);
+          const outflow = recentExp.reduce((s,e)=>s+(+e.amount||0),0);
+          const net = inflow - outflow;
+          return (
+            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
+                💵 Cash Flow — Last 30 Days
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                <div>
+                  <div style={{ fontSize:10, color:"#334155" }}>IN</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#34d399" }}>{fmt(inflow)}</div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:10, color:"#334155" }}>OUT</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#f87171" }}>{fmt(outflow)}</div>
+                </div>
+              </div>
+              <div style={{ borderTop:"1px solid #1a2d45", paddingTop:6, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span style={{ fontSize:10, color:"#475569" }}>NET</span>
+                <span style={{ fontSize:16, fontWeight:800, color:net>=0?"#34d399":"#f87171" }}>{net>=0?"+":""}{fmt(net)}</span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Top Earner Widget */}
+        {(() => {
+          const sorted = [...(roster||[])].sort((a,b)=>(b.billRate||0)*((b.util||0))-(a.billRate||0)*((a.util||0)));
+          const top3 = sorted.slice(0,3);
+          return (
+            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
+                🏆 Top Billers
+              </div>
+              {top3.map((r,i)=>(
+                <div key={r.id} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:i<2?6:0 }}>
+                  <span style={{ fontSize:11, color:i===0?"#f59e0b":i===1?"#94a3b8":"#cd7c54", fontWeight:700, width:14 }}>{i===0?"🥇":i===1?"🥈":"🥉"}</span>
+                  <span style={{ flex:1, fontSize:11, color:"#cbd5e1", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.name?.split(" ")[0]}</span>
+                  <span style={{ fontSize:11, fontWeight:700, color:"#38bdf8" }}>{fmt((r.billRate||0)*(r.util||0)*1920)}</span>
+                </div>
+              ))}
+              {top3.length===0 && <div style={{ color:"#334155", fontSize:11 }}>No data</div>}
+            </div>
+          );
+        })()}
+
+        {/* Upcoming Renewals Widget */}
+        {(() => {
+          const now = new Date();
+          const in90 = new Date(now.getTime() + 90*86400000);
+          const renewals = (clients||[])
+            .filter(c => c.renewalDate && new Date(c.renewalDate) >= now && new Date(c.renewalDate) <= in90)
+            .sort((a,b)=>new Date(a.renewalDate)-new Date(b.renewalDate))
+            .slice(0,3);
+          return (
+            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
+                🔄 Renewals ≤90 Days
+              </div>
+              {renewals.length===0
+                ? <div style={{ color:"#334155", fontSize:11, textAlign:"center", paddingTop:8 }}>No renewals due soon</div>
+                : renewals.map(c=>{
+                    const days = Math.ceil((new Date(c.renewalDate)-now)/86400000);
+                    return (
+                      <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+                        <span style={{ fontSize:11, color:"#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:110 }}>{c.name}</span>
+                        <span style={{ fontSize:11, fontWeight:700, color:days<=30?"#f87171":days<=60?"#f59e0b":"#34d399" }}>{days}d</span>
+                      </div>
+                    );
+                  })
+              }
+            </div>
+          );
+        })()}
+
+      </div>
+      {/* ── END WIDGET ROW 2 ─────────────────────────────────────────── */}
+
       <div style={{ display:"grid", gridTemplateColumns:"1fr 310px", gap:18, alignItems:"start" }}>
         {/* LEFT */}
         <div>
