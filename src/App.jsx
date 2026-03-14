@@ -8080,6 +8080,358 @@ const PERM_BG      = { full:"#021f14", view:"#0c2340", none:"#070b14" };
 const PERM_LABEL   = { full:"Full",    view:"View",    none:"—"       };
 
 
+
+function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
+  const [sub, setSub] = useState("chart");
+  const tabs = [
+    { id:"chart",   label:"Org Chart"        },
+    { id:"members", label:"Team Members"     },
+    { id:"access",  label:"Access Matrix"    },
+    { id:"roles",   label:"Role Templates"   },
+    { id:"approvals", label:"👤 User Approvals" },
+  ];
+  const props = { orgMembers, setOrgMembers, roster };
+  return (
+    <div>
+      <PH title="Org & Access" sub="Company Structure · Roles · Module Permissions"/>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setSub(t.id)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {sub==="chart"   && <OrgChart   {...props}/>}
+      {sub==="members" && <OrgMembers {...props}/>}
+      {sub==="access"  && <AccessMatrix {...props}/>}
+      {sub==="roles"   && <RoleTemplates/>}
+      {sub==="approvals" && <UserApprovalsPanel />}
+    </div>
+  );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getEffectivePerms(member) {
+  const base = ROLE_TEMPLATES[member.role]?.perms || {};
+  return { ...base, ...(member.customPerms||{}) };
+}
+
+function Avatar({ name, role, size=36 }) {
+  const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const roleC = ROLE_TEMPLATES[role]?.color || "#64748b";
+  return (
+    <div style={{width:size,height:size,borderRadius:"50%",background:ROLE_TEMPLATES[role]?.bg||"#0a1626",
+      border:`2px solid ${roleC}`,display:"flex",alignItems:"center",justifyContent:"center",
+      fontSize:size*0.35,fontWeight:700,color:roleC,flexShrink:0}}>
+      {initials}
+    </div>
+  );
+}
+
+// ── Org Chart ─────────────────────────────────────────────────────────────────
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+function HomePage({ roster, clients, tsHours, finInvoices, finPayments, crmDeals,
+  candidates, offers, compDocs, workAuth, ptoRequests, auditLog, authProfile, setTab,
+  dismissedAlerts, setDismissedAlerts }) {
+
+  // ── Weather ──────────────────────────────────────────────────────────────
+  const [weather, setWeather] = useState(null);
+  const [todos, setTodos] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch { return []; }
+  });
+  const [newTodo, setNewTodo] = useState("");
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    // Fetch weather for Frisco TX using Open-Meteo (free, no key needed)
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=33.1507&longitude=-96.8236&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&temperature_unit=fahrenheit&timezone=America%2FChicago")
+      .then(r => r.json())
+      .then(d => {
+        const cur = d.current;
+        const codes = { 0:"☀️ Clear", 1:"🌤 Mostly Clear", 2:"⛅ Partly Cloudy", 3:"☁️ Overcast",
+          45:"🌫 Foggy", 48:"🌫 Icy Fog", 51:"🌦 Light Drizzle", 61:"🌧 Light Rain",
+          63:"🌧 Moderate Rain", 65:"🌧 Heavy Rain", 71:"❄️ Light Snow", 73:"❄️ Moderate Snow",
+          75:"❄️ Heavy Snow", 80:"🌦 Rain Showers", 81:"🌧 Heavy Showers", 95:"⛈ Thunderstorm" };
+        setWeather({
+          temp: Math.round(cur.temperature_2m),
+          condition: codes[cur.weathercode] || "🌡 " + cur.weathercode,
+          humidity: cur.relative_humidity_2m,
+          wind: Math.round(cur.windspeed_10m),
+          location: "Frisco, TX"
+        });
+      }).catch(() => {});
+  }, []);
+
+  // ── Todo helpers ─────────────────────────────────────────────────────────
+  const saveTodos = (t) => { setTodos(t); localStorage.setItem("zt-todos", JSON.stringify(t)); };
+  const addTodo = () => {
+    if (!newTodo.trim()) return;
+    saveTodos([...todos, { id: Date.now(), text: newTodo.trim(), done: false, createdAt: new Date().toISOString() }]);
+    setNewTodo("");
+  };
+  const toggleTodo = (id) => saveTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const deleteTodo = (id) => saveTodos(todos.filter(t => t.id !== id));
+
+  // ── Computed stats ───────────────────────────────────────────────────────
+  const today = new Date();
+  const greeting = today.getHours() < 12 ? "Good morning" : today.getHours() < 17 ? "Good afternoon" : "Good evening";
+  const dayName = today.toLocaleDateString("en-US", { weekday:"long" });
+  const dateStr = today.toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" });
+
+  const totalRev = clients.reduce((s, c) => s + (c.annualRev || 0), 0);
+  const activeConsultants = roster.filter(r => r.util > 0).length;
+  const overdueInvoices = finInvoices.filter(i => i.status === "overdue").length;
+  const overdueAmt = finInvoices.filter(i => i.status === "overdue").reduce((s, i) => s + (i.amount || 0), 0);
+  const openDeals = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage)).length;
+  const openDealVal = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage)).reduce((s, d) => s + (d.value || 0), 0);
+  const expiringDocs = workAuth.filter(w => {
+    if (!w.expiryDate) return false;
+    const days = (new Date(w.expiryDate) - today) / 86400000;
+    return days >= 0 && days <= 60;
+  }).length;
+  const pendingPTO = (ptoRequests || []).filter(p => p.status === "pending").length;
+  const activeCandidates = candidates.filter(c => !["rejected","hired"].includes(c.stage)).length;
+
+  // ── Notifications (smart alerts) ─────────────────────────────────────────
+  const alerts = [
+    overdueInvoices > 0 && { id:"inv", type:"red", icon:"⚠️", title:`${overdueInvoices} Overdue Invoice${overdueInvoices>1?"s":""}`, sub:`$${(overdueAmt/1000).toFixed(0)}k needs collection`, tab:"finance" },
+    expiringDocs > 0 && { id:"docs", type:"amber", icon:"📋", title:`${expiringDocs} Work Auth Expiring`, sub:"Within 60 days — action required", tab:"hr" },
+    pendingPTO > 0 && { id:"pto", type:"blue", icon:"🏖", title:`${pendingPTO} PTO Request${pendingPTO>1?"s":""}`, sub:"Awaiting your approval", tab:"pto" },
+    activeCandidates > 0 && { id:"hiring", type:"green", icon:"👤", title:`${activeCandidates} Active Candidate${activeCandidates>1?"s":""}`, sub:"In hiring pipeline", tab:"recruiting" },
+    openDeals > 0 && { id:"deals", type:"blue", icon:"💼", title:`${openDeals} Open Deal${openDeals>1?"s":""}`, sub:`$${(openDealVal/1000).toFixed(0)}k in pipeline`, tab:"crm" },
+  ].filter(Boolean).filter(a => !(dismissedAlerts||[]).includes(a.id));
+
+  const alertColors = {
+    red:   { bg:"#2d0a0a", border:"#7f1d1d", text:"#fca5a5", dot:"#ef4444" },
+    amber: { bg:"#2d1f00", border:"#92400e", text:"#fcd34d", dot:"#f59e0b" },
+    blue:  { bg:"#0c1a2e", border:"#1e3a5f", text:"#7dd3fc", dot:"#38bdf8" },
+    green: { bg:"#022c22", border:"#065f46", text:"#6ee7b7", dot:"#34d399" },
+  };
+
+  // ── Tile helpers ─────────────────────────────────────────────────────────
+  const Tile = ({ icon, label, value, sub, color="#38bdf8", onClick, span=1 }) => (
+    <div onClick={onClick} style={{
+      background:"#0a1120", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px",
+      cursor:onClick?"pointer":"default", transition:"border-color 0.15s",
+      gridColumn: span > 1 ? `span ${span}` : undefined,
+    }}
+    onMouseEnter={e => onClick && (e.currentTarget.style.borderColor="#2a4d75")}
+    onMouseLeave={e => onClick && (e.currentTarget.style.borderColor="#1a2d45")}>
+      <div style={{fontSize:22, marginBottom:6}}>{icon}</div>
+      <div style={{fontSize:22, fontWeight:800, color, fontFamily:"'DM Mono',monospace", lineHeight:1}}>{value}</div>
+      <div style={{fontSize:12, fontWeight:600, color:"#cbd5e1", marginTop:4}}>{label}</div>
+      {sub && <div style={{fontSize:10, color:"#475569", marginTop:3}}>{sub}</div>}
+    </div>
+  );
+
+  const fmt = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`;
+
+  return (
+    <div>
+      {/* ── Header: Greeting + Date/Time ── */}
+      <div style={{display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:24, flexWrap:"wrap", gap:12}}>
+        <div>
+          <div style={{fontSize:24, fontWeight:800, color:"#e2e8f0"}}>
+            {greeting}, {authProfile?.full_name?.split(" ")[0] || "Manju"} 👋
+          </div>
+          <div style={{fontSize:13, color:"#475569", marginTop:4}}>{dayName}, {dateStr}</div>
+        </div>
+        <div style={{fontSize:28, fontWeight:700, color:"#38bdf8", fontFamily:"'DM Mono',monospace", letterSpacing:2}}>
+          {time.toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit", second:"2-digit"})}
+        </div>
+      </div>
+
+      <div style={{display:"grid", gridTemplateColumns:"1fr 320px", gap:18, alignItems:"start"}}>
+        {/* ── LEFT COLUMN ── */}
+        <div>
+
+          {/* ── Quick Stats Tiles ── */}
+          <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:18}}>
+            <Tile icon="💰" label="Annual Revenue" value={fmt(totalRev)} sub="All clients" color="#34d399" onClick={()=>setTab("dashboard")}/>
+            <Tile icon="👥" label="Active Consultants" value={activeConsultants} sub={`of ${roster.length} total`} color="#38bdf8" onClick={()=>setTab("roster")}/>
+            <Tile icon="💼" label="Open Pipeline" value={fmt(openDealVal)} sub={`${openDeals} deals`} color="#a78bfa" onClick={()=>setTab("crm")}/>
+            <Tile icon="⚠️" label="Overdue A/R" value={overdueInvoices > 0 ? fmt(overdueAmt) : "$0"} sub={overdueInvoices > 0 ? `${overdueInvoices} invoices` : "All clear"} color={overdueInvoices > 0 ? "#f87171" : "#34d399"} onClick={()=>setTab("finance")}/>
+          </div>
+
+          <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:18}}>
+            <Tile icon="📋" label="Expiring Docs" value={expiringDocs} sub="Work auth ≤60 days" color={expiringDocs > 0 ? "#f59e0b" : "#34d399"} onClick={()=>setTab("hr")}/>
+            <Tile icon="🏖" label="Pending PTO" value={pendingPTO} sub="Awaiting approval" color={pendingPTO > 0 ? "#f59e0b" : "#34d399"} onClick={()=>setTab("pto")}/>
+            <Tile icon="🎯" label="Hiring Pipeline" value={activeCandidates} sub="Active candidates" color="#60a5fa" onClick={()=>setTab("recruiting")}/>
+            <Tile icon="🏢" label="Active Clients" value={clients.filter(c=>c.health!=="Red").length} sub={`of ${clients.length} total`} color="#34d399" onClick={()=>setTab("clients")}/>
+          </div>
+
+          {/* ── Notifications / Alerts ── */}
+          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px", marginBottom:18}}>
+            <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14}}>
+              <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", display:"flex", alignItems:"center", gap:8}}>
+                🔔 Notifications & Alerts
+                {alerts.length > 0 && <span style={{background:"#ef4444", color:"#fff", fontSize:10, fontWeight:700, borderRadius:10, padding:"1px 7px"}}>{alerts.length}</span>}
+              </div>
+            </div>
+            {alerts.length === 0 ? (
+              <div style={{textAlign:"center", padding:"20px 0", color:"#334155", fontSize:13}}>
+                ✅ All clear — no pending alerts
+              </div>
+            ) : (
+              <div style={{display:"flex", flexDirection:"column", gap:8}}>
+                {alerts.map(a => {
+                  const col = alertColors[a.type];
+                  return (
+                    <div key={a.id} style={{display:"flex", alignItems:"center", gap:12, background:col.bg,
+                      border:`1px solid ${col.border}`, borderRadius:8, padding:"10px 14px", cursor:"pointer"}}
+                      onClick={()=>setTab(a.tab)}>
+                      <div style={{width:8, height:8, borderRadius:"50%", background:col.dot, flexShrink:0}}/>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:12, fontWeight:600, color:col.text}}>{a.icon} {a.title}</div>
+                        <div style={{fontSize:10, color:"#475569", marginTop:2}}>{a.sub}</div>
+                      </div>
+                      <div style={{display:"flex", alignItems:"center", gap:8}}>
+                        <span style={{fontSize:11, color:"#3d5a7a"}}>View →</span>
+                        <button onClick={e=>{e.stopPropagation(); setDismissedAlerts(prev=>[...(prev||[]),a.id]);}}
+                          style={{background:"none", border:"none", color:"#334155", cursor:"pointer", fontSize:14, padding:"0 2px"}}>×</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Recent Activity ── */}
+          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
+            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:14}}>📜 Recent Activity</div>
+            {(auditLog||[]).length === 0 ? (
+              <div style={{color:"#334155", fontSize:12, textAlign:"center", padding:"16px 0"}}>No recent activity</div>
+            ) : (
+              <div style={{display:"flex", flexDirection:"column", gap:0}}>
+                {(auditLog||[]).slice(0,6).map((log, i) => (
+                  <div key={i} style={{display:"flex", alignItems:"flex-start", gap:12, padding:"8px 0",
+                    borderBottom: i < Math.min(5, (auditLog||[]).length-1) ? "1px solid #0a1420" : "none"}}>
+                    <div style={{width:28, height:28, borderRadius:8, background:"#0f1e30", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, flexShrink:0}}>
+                      {log.module==="Timesheet"?"⏱":log.module==="Invoice"?"🧾":log.module==="Settings"?"⚙️":log.module==="PTO"?"🏖":"📝"}
+                    </div>
+                    <div style={{flex:1, minWidth:0}}>
+                      <div style={{fontSize:12, color:"#cbd5e1", fontWeight:500}}>{log.action}</div>
+                      <div style={{fontSize:10, color:"#334155", marginTop:2}}>{log.module} · {log.user} · {log.timestamp ? new Date(log.timestamp).toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── RIGHT COLUMN ── */}
+        <div style={{display:"flex", flexDirection:"column", gap:14}}>
+
+          {/* ── Weather ── */}
+          <div style={{background:"linear-gradient(135deg,#0c1e3d,#0a1829)", border:"1px solid #1e3a5f", borderRadius:12, padding:"18px 20px"}}>
+            <div style={{fontSize:11, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12}}>🌍 Weather · Frisco, TX</div>
+            {weather ? (
+              <>
+                <div style={{display:"flex", alignItems:"flex-end", gap:8, marginBottom:8}}>
+                  <div style={{fontSize:48, fontWeight:800, color:"#e2e8f0", lineHeight:1}}>{weather.temp}°</div>
+                  <div style={{fontSize:13, color:"#94a3b8", marginBottom:8}}>F</div>
+                </div>
+                <div style={{fontSize:15, color:"#7dd3fc", fontWeight:600, marginBottom:12}}>{weather.condition}</div>
+                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
+                  {[
+                    {label:"Humidity", value:weather.humidity+"%", icon:"💧"},
+                    {label:"Wind", value:weather.wind+" mph", icon:"💨"},
+                  ].map(w=>(
+                    <div key={w.label} style={{background:"rgba(255,255,255,0.04)", borderRadius:8, padding:"8px 10px"}}>
+                      <div style={{fontSize:10, color:"#475569"}}>{w.icon} {w.label}</div>
+                      <div style={{fontSize:14, fontWeight:700, color:"#cbd5e1", marginTop:2}}>{w.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{color:"#334155", fontSize:13, textAlign:"center", padding:"20px 0"}}>Loading weather…</div>
+            )}
+          </div>
+
+          {/* ── To-Do List ── */}
+          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
+            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:12}}>
+              ✅ My To-Do
+              <span style={{fontSize:10, color:"#334155", fontWeight:400, marginLeft:8}}>
+                {todos.filter(t=>!t.done).length} remaining
+              </span>
+            </div>
+
+            {/* Add Todo */}
+            <div style={{display:"flex", gap:8, marginBottom:12}}>
+              <input className="inp" value={newTodo} onChange={e=>setNewTodo(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&addTodo()}
+                placeholder="Add a task…" style={{flex:1, fontSize:12, padding:"7px 10px"}}/>
+              <button onClick={addTodo} style={{background:"#0369a1", border:"none", borderRadius:7, color:"#fff",
+                padding:"0 12px", cursor:"pointer", fontSize:16, fontWeight:700}}>+</button>
+            </div>
+
+            {/* Todo items */}
+            <div style={{display:"flex", flexDirection:"column", gap:4, maxHeight:240, overflowY:"auto"}}>
+              {todos.length === 0 && (
+                <div style={{color:"#334155", fontSize:12, textAlign:"center", padding:"12px 0"}}>No tasks yet</div>
+              )}
+              {todos.map(todo => (
+                <div key={todo.id} style={{display:"flex", alignItems:"center", gap:8, padding:"7px 10px",
+                  background:"#0a1120", borderRadius:8, border:"1px solid #1a2d45"}}>
+                  <input type="checkbox" checked={todo.done} onChange={()=>toggleTodo(todo.id)}
+                    style={{accentColor:"#0369a1", cursor:"pointer", flexShrink:0}}/>
+                  <span style={{flex:1, fontSize:12, color: todo.done?"#334155":"#cbd5e1",
+                    textDecoration: todo.done?"line-through":"none"}}>{todo.text}</span>
+                  <button onClick={()=>deleteTodo(todo.id)} style={{background:"none", border:"none",
+                    color:"#334155", cursor:"pointer", fontSize:14, padding:"0 2px", lineHeight:1}}>×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Quick Links ── */}
+          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
+            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:12}}>⚡ Quick Actions</div>
+            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
+              {[
+                {icon:"👥", label:"Team Roster", tab:"roster"},
+                {icon:"🧾", label:"Invoices", tab:"finance"},
+                {icon:"📊", label:"Dashboard", tab:"dashboard"},
+                {icon:"🎯", label:"CRM", tab:"crm"},
+                {icon:"⏱", label:"Timesheets", tab:"timesheet"},
+                {icon:"📋", label:"Reports", tab:"reports"},
+              ].map(q => (
+                <button key={q.tab} onClick={()=>setTab(q.tab)} style={{
+                  background:"#0a1120", border:"1px solid #1a2d45", borderRadius:8,
+                  color:"#94a3b8", fontSize:11, fontWeight:600, padding:"8px 10px",
+                  cursor:"pointer", textAlign:"left", transition:"all 0.15s"
+                }}
+                onMouseEnter={e=>{e.currentTarget.style.background="#0f1e30"; e.currentTarget.style.color="#e2e8f0";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="#0a1120"; e.currentTarget.style.color="#94a3b8";}}>
+                  {q.icon} {q.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // MY PROFILE — Team member personal info form
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -8389,355 +8741,6 @@ function UserApprovalsPanel() {
     </div>
   );
 }
-
-function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
-  const [sub, setSub] = useState("chart");
-  const tabs = [
-    { id:"chart",   label:"Org Chart"        },
-    { id:"members", label:"Team Members"     },
-    { id:"access",  label:"Access Matrix"    },
-    { id:"roles",   label:"Role Templates"   },
-    { id:"approvals", label:"👤 User Approvals" },
-  ];
-  const props = { orgMembers, setOrgMembers, roster };
-  return (
-    <div>
-      <PH title="Org & Access" sub="Company Structure · Roles · Module Permissions"/>
-      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
-        {tabs.map(t=>(
-          <button key={t.id} onClick={()=>setSub(t.id)}
-            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
-              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
-              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-      {sub==="chart"   && <OrgChart   {...props}/>}
-      {sub==="members" && <OrgMembers {...props}/>}
-      {sub==="access"  && <AccessMatrix {...props}/>}
-      {sub==="roles"   && <RoleTemplates/>}
-      {sub==="approvals" && <UserApprovalsPanel />}
-    </div>
-  );
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function getEffectivePerms(member) {
-  const base = ROLE_TEMPLATES[member.role]?.perms || {};
-  return { ...base, ...(member.customPerms||{}) };
-}
-
-function Avatar({ name, role, size=36 }) {
-  const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-  const roleC = ROLE_TEMPLATES[role]?.color || "#64748b";
-  return (
-    <div style={{width:size,height:size,borderRadius:"50%",background:ROLE_TEMPLATES[role]?.bg||"#0a1626",
-      border:`2px solid ${roleC}`,display:"flex",alignItems:"center",justifyContent:"center",
-      fontSize:size*0.35,fontWeight:700,color:roleC,flexShrink:0}}>
-      {initials}
-    </div>
-  );
-}
-
-// ── Org Chart ─────────────────────────────────────────────────────────────────
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// HOME PAGE — Dashboard overview with weather, todos, alerts, quick stats
-// ═══════════════════════════════════════════════════════════════════════════════
-function HomePage({ roster, clients, tsHours, finInvoices, finPayments, crmDeals,
-  candidates, offers, compDocs, workAuth, ptoRequests, auditLog, authProfile, setTab,
-  dismissedAlerts, setDismissedAlerts }) {
-
-  // ── Weather ──────────────────────────────────────────────────────────────
-  const [weather, setWeather] = useState(null);
-  const [todos, setTodos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch { return []; }
-  });
-  const [newTodo, setNewTodo] = useState("");
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    // Fetch weather for Frisco TX using Open-Meteo (free, no key needed)
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=33.1507&longitude=-96.8236&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&temperature_unit=fahrenheit&timezone=America%2FChicago")
-      .then(r => r.json())
-      .then(d => {
-        const cur = d.current;
-        const codes = { 0:"☀️ Clear", 1:"🌤 Mostly Clear", 2:"⛅ Partly Cloudy", 3:"☁️ Overcast",
-          45:"🌫 Foggy", 48:"🌫 Icy Fog", 51:"🌦 Light Drizzle", 61:"🌧 Light Rain",
-          63:"🌧 Moderate Rain", 65:"🌧 Heavy Rain", 71:"❄️ Light Snow", 73:"❄️ Moderate Snow",
-          75:"❄️ Heavy Snow", 80:"🌦 Rain Showers", 81:"🌧 Heavy Showers", 95:"⛈ Thunderstorm" };
-        setWeather({
-          temp: Math.round(cur.temperature_2m),
-          condition: codes[cur.weathercode] || "🌡 " + cur.weathercode,
-          humidity: cur.relative_humidity_2m,
-          wind: Math.round(cur.windspeed_10m),
-          location: "Frisco, TX"
-        });
-      }).catch(() => {});
-  }, []);
-
-  // ── Todo helpers ─────────────────────────────────────────────────────────
-  const saveTodos = (t) => { setTodos(t); localStorage.setItem("zt-todos", JSON.stringify(t)); };
-  const addTodo = () => {
-    if (!newTodo.trim()) return;
-    saveTodos([...todos, { id: Date.now(), text: newTodo.trim(), done: false, createdAt: new Date().toISOString() }]);
-    setNewTodo("");
-  };
-  const toggleTodo = (id) => saveTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  const deleteTodo = (id) => saveTodos(todos.filter(t => t.id !== id));
-
-  // ── Computed stats ───────────────────────────────────────────────────────
-  const today = new Date();
-  const greeting = today.getHours() < 12 ? "Good morning" : today.getHours() < 17 ? "Good afternoon" : "Good evening";
-  const dayName = today.toLocaleDateString("en-US", { weekday:"long" });
-  const dateStr = today.toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" });
-
-  const totalRev = clients.reduce((s, c) => s + (c.annualRev || 0), 0);
-  const activeConsultants = roster.filter(r => r.util > 0).length;
-  const overdueInvoices = finInvoices.filter(i => i.status === "overdue").length;
-  const overdueAmt = finInvoices.filter(i => i.status === "overdue").reduce((s, i) => s + (i.amount || 0), 0);
-  const openDeals = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage)).length;
-  const openDealVal = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage)).reduce((s, d) => s + (d.value || 0), 0);
-  const expiringDocs = workAuth.filter(w => {
-    if (!w.expiryDate) return false;
-    const days = (new Date(w.expiryDate) - today) / 86400000;
-    return days >= 0 && days <= 60;
-  }).length;
-  const pendingPTO = (ptoRequests || []).filter(p => p.status === "pending").length;
-  const activeCandidates = candidates.filter(c => !["rejected","hired"].includes(c.stage)).length;
-
-  // ── Notifications (smart alerts) ─────────────────────────────────────────
-  const alerts = [
-    overdueInvoices > 0 && { id:"inv", type:"red", icon:"⚠️", title:`${overdueInvoices} Overdue Invoice${overdueInvoices>1?"s":""}`, sub:`$${(overdueAmt/1000).toFixed(0)}k needs collection`, tab:"finance" },
-    expiringDocs > 0 && { id:"docs", type:"amber", icon:"📋", title:`${expiringDocs} Work Auth Expiring`, sub:"Within 60 days — action required", tab:"hr" },
-    pendingPTO > 0 && { id:"pto", type:"blue", icon:"🏖", title:`${pendingPTO} PTO Request${pendingPTO>1?"s":""}`, sub:"Awaiting your approval", tab:"pto" },
-    activeCandidates > 0 && { id:"hiring", type:"green", icon:"👤", title:`${activeCandidates} Active Candidate${activeCandidates>1?"s":""}`, sub:"In hiring pipeline", tab:"recruiting" },
-    openDeals > 0 && { id:"deals", type:"blue", icon:"💼", title:`${openDeals} Open Deal${openDeals>1?"s":""}`, sub:`$${(openDealVal/1000).toFixed(0)}k in pipeline`, tab:"crm" },
-  ].filter(Boolean).filter(a => !(dismissedAlerts||[]).includes(a.id));
-
-  const alertColors = {
-    red:   { bg:"#2d0a0a", border:"#7f1d1d", text:"#fca5a5", dot:"#ef4444" },
-    amber: { bg:"#2d1f00", border:"#92400e", text:"#fcd34d", dot:"#f59e0b" },
-    blue:  { bg:"#0c1a2e", border:"#1e3a5f", text:"#7dd3fc", dot:"#38bdf8" },
-    green: { bg:"#022c22", border:"#065f46", text:"#6ee7b7", dot:"#34d399" },
-  };
-
-  // ── Tile helpers ─────────────────────────────────────────────────────────
-  const Tile = ({ icon, label, value, sub, color="#38bdf8", onClick, span=1 }) => (
-    <div onClick={onClick} style={{
-      background:"#0a1120", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px",
-      cursor:onClick?"pointer":"default", transition:"border-color 0.15s",
-      gridColumn: span > 1 ? `span ${span}` : undefined,
-    }}
-    onMouseEnter={e => onClick && (e.currentTarget.style.borderColor="#2a4d75")}
-    onMouseLeave={e => onClick && (e.currentTarget.style.borderColor="#1a2d45")}>
-      <div style={{fontSize:22, marginBottom:6}}>{icon}</div>
-      <div style={{fontSize:22, fontWeight:800, color, fontFamily:"'DM Mono',monospace", lineHeight:1}}>{value}</div>
-      <div style={{fontSize:12, fontWeight:600, color:"#cbd5e1", marginTop:4}}>{label}</div>
-      {sub && <div style={{fontSize:10, color:"#475569", marginTop:3}}>{sub}</div>}
-    </div>
-  );
-
-  const fmt = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`;
-
-  return (
-    <div>
-      {/* ── Header: Greeting + Date/Time ── */}
-      <div style={{display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:24, flexWrap:"wrap", gap:12}}>
-        <div>
-          <div style={{fontSize:24, fontWeight:800, color:"#e2e8f0"}}>
-            {greeting}, {authProfile?.full_name?.split(" ")[0] || "Manju"} 👋
-          </div>
-          <div style={{fontSize:13, color:"#475569", marginTop:4}}>{dayName}, {dateStr}</div>
-        </div>
-        <div style={{fontSize:28, fontWeight:700, color:"#38bdf8", fontFamily:"'DM Mono',monospace", letterSpacing:2}}>
-          {time.toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit", second:"2-digit"})}
-        </div>
-      </div>
-
-      <div style={{display:"grid", gridTemplateColumns:"1fr 320px", gap:18, alignItems:"start"}}>
-        {/* ── LEFT COLUMN ── */}
-        <div>
-
-          {/* ── Quick Stats Tiles ── */}
-          <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:18}}>
-            <Tile icon="💰" label="Annual Revenue" value={fmt(totalRev)} sub="All clients" color="#34d399" onClick={()=>setTab("dashboard")}/>
-            <Tile icon="👥" label="Active Consultants" value={activeConsultants} sub={`of ${roster.length} total`} color="#38bdf8" onClick={()=>setTab("roster")}/>
-            <Tile icon="💼" label="Open Pipeline" value={fmt(openDealVal)} sub={`${openDeals} deals`} color="#a78bfa" onClick={()=>setTab("crm")}/>
-            <Tile icon="⚠️" label="Overdue A/R" value={overdueInvoices > 0 ? fmt(overdueAmt) : "$0"} sub={overdueInvoices > 0 ? `${overdueInvoices} invoices` : "All clear"} color={overdueInvoices > 0 ? "#f87171" : "#34d399"} onClick={()=>setTab("finance")}/>
-          </div>
-
-          <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:18}}>
-            <Tile icon="📋" label="Expiring Docs" value={expiringDocs} sub="Work auth ≤60 days" color={expiringDocs > 0 ? "#f59e0b" : "#34d399"} onClick={()=>setTab("hr")}/>
-            <Tile icon="🏖" label="Pending PTO" value={pendingPTO} sub="Awaiting approval" color={pendingPTO > 0 ? "#f59e0b" : "#34d399"} onClick={()=>setTab("pto")}/>
-            <Tile icon="🎯" label="Hiring Pipeline" value={activeCandidates} sub="Active candidates" color="#60a5fa" onClick={()=>setTab("recruiting")}/>
-            <Tile icon="🏢" label="Active Clients" value={clients.filter(c=>c.health!=="Red").length} sub={`of ${clients.length} total`} color="#34d399" onClick={()=>setTab("clients")}/>
-          </div>
-
-          {/* ── Notifications / Alerts ── */}
-          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px", marginBottom:18}}>
-            <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14}}>
-              <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", display:"flex", alignItems:"center", gap:8}}>
-                🔔 Notifications & Alerts
-                {alerts.length > 0 && <span style={{background:"#ef4444", color:"#fff", fontSize:10, fontWeight:700, borderRadius:10, padding:"1px 7px"}}>{alerts.length}</span>}
-              </div>
-            </div>
-            {alerts.length === 0 ? (
-              <div style={{textAlign:"center", padding:"20px 0", color:"#334155", fontSize:13}}>
-                ✅ All clear — no pending alerts
-              </div>
-            ) : (
-              <div style={{display:"flex", flexDirection:"column", gap:8}}>
-                {alerts.map(a => {
-                  const col = alertColors[a.type];
-                  return (
-                    <div key={a.id} style={{display:"flex", alignItems:"center", gap:12, background:col.bg,
-                      border:`1px solid ${col.border}`, borderRadius:8, padding:"10px 14px", cursor:"pointer"}}
-                      onClick={()=>setTab(a.tab)}>
-                      <div style={{width:8, height:8, borderRadius:"50%", background:col.dot, flexShrink:0}}/>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:12, fontWeight:600, color:col.text}}>{a.icon} {a.title}</div>
-                        <div style={{fontSize:10, color:"#475569", marginTop:2}}>{a.sub}</div>
-                      </div>
-                      <div style={{display:"flex", alignItems:"center", gap:8}}>
-                        <span style={{fontSize:11, color:"#3d5a7a"}}>View →</span>
-                        <button onClick={e=>{e.stopPropagation(); setDismissedAlerts(prev=>[...(prev||[]),a.id]);}}
-                          style={{background:"none", border:"none", color:"#334155", cursor:"pointer", fontSize:14, padding:"0 2px"}}>×</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* ── Recent Activity ── */}
-          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
-            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:14}}>📜 Recent Activity</div>
-            {(auditLog||[]).length === 0 ? (
-              <div style={{color:"#334155", fontSize:12, textAlign:"center", padding:"16px 0"}}>No recent activity</div>
-            ) : (
-              <div style={{display:"flex", flexDirection:"column", gap:0}}>
-                {(auditLog||[]).slice(0,6).map((log, i) => (
-                  <div key={i} style={{display:"flex", alignItems:"flex-start", gap:12, padding:"8px 0",
-                    borderBottom: i < Math.min(5, (auditLog||[]).length-1) ? "1px solid #0a1420" : "none"}}>
-                    <div style={{width:28, height:28, borderRadius:8, background:"#0f1e30", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, flexShrink:0}}>
-                      {log.module==="Timesheet"?"⏱":log.module==="Invoice"?"🧾":log.module==="Settings"?"⚙️":log.module==="PTO"?"🏖":"📝"}
-                    </div>
-                    <div style={{flex:1, minWidth:0}}>
-                      <div style={{fontSize:12, color:"#cbd5e1", fontWeight:500}}>{log.action}</div>
-                      <div style={{fontSize:10, color:"#334155", marginTop:2}}>{log.module} · {log.user} · {log.timestamp ? new Date(log.timestamp).toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── RIGHT COLUMN ── */}
-        <div style={{display:"flex", flexDirection:"column", gap:14}}>
-
-          {/* ── Weather ── */}
-          <div style={{background:"linear-gradient(135deg,#0c1e3d,#0a1829)", border:"1px solid #1e3a5f", borderRadius:12, padding:"18px 20px"}}>
-            <div style={{fontSize:11, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12}}>🌍 Weather · Frisco, TX</div>
-            {weather ? (
-              <>
-                <div style={{display:"flex", alignItems:"flex-end", gap:8, marginBottom:8}}>
-                  <div style={{fontSize:48, fontWeight:800, color:"#e2e8f0", lineHeight:1}}>{weather.temp}°</div>
-                  <div style={{fontSize:13, color:"#94a3b8", marginBottom:8}}>F</div>
-                </div>
-                <div style={{fontSize:15, color:"#7dd3fc", fontWeight:600, marginBottom:12}}>{weather.condition}</div>
-                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
-                  {[
-                    {label:"Humidity", value:weather.humidity+"%", icon:"💧"},
-                    {label:"Wind", value:weather.wind+" mph", icon:"💨"},
-                  ].map(w=>(
-                    <div key={w.label} style={{background:"rgba(255,255,255,0.04)", borderRadius:8, padding:"8px 10px"}}>
-                      <div style={{fontSize:10, color:"#475569"}}>{w.icon} {w.label}</div>
-                      <div style={{fontSize:14, fontWeight:700, color:"#cbd5e1", marginTop:2}}>{w.value}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{color:"#334155", fontSize:13, textAlign:"center", padding:"20px 0"}}>Loading weather…</div>
-            )}
-          </div>
-
-          {/* ── To-Do List ── */}
-          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
-            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:12}}>
-              ✅ My To-Do
-              <span style={{fontSize:10, color:"#334155", fontWeight:400, marginLeft:8}}>
-                {todos.filter(t=>!t.done).length} remaining
-              </span>
-            </div>
-
-            {/* Add Todo */}
-            <div style={{display:"flex", gap:8, marginBottom:12}}>
-              <input className="inp" value={newTodo} onChange={e=>setNewTodo(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&addTodo()}
-                placeholder="Add a task…" style={{flex:1, fontSize:12, padding:"7px 10px"}}/>
-              <button onClick={addTodo} style={{background:"#0369a1", border:"none", borderRadius:7, color:"#fff",
-                padding:"0 12px", cursor:"pointer", fontSize:16, fontWeight:700}}>+</button>
-            </div>
-
-            {/* Todo items */}
-            <div style={{display:"flex", flexDirection:"column", gap:4, maxHeight:240, overflowY:"auto"}}>
-              {todos.length === 0 && (
-                <div style={{color:"#334155", fontSize:12, textAlign:"center", padding:"12px 0"}}>No tasks yet</div>
-              )}
-              {todos.map(todo => (
-                <div key={todo.id} style={{display:"flex", alignItems:"center", gap:8, padding:"7px 10px",
-                  background:"#0a1120", borderRadius:8, border:"1px solid #1a2d45"}}>
-                  <input type="checkbox" checked={todo.done} onChange={()=>toggleTodo(todo.id)}
-                    style={{accentColor:"#0369a1", cursor:"pointer", flexShrink:0}}/>
-                  <span style={{flex:1, fontSize:12, color: todo.done?"#334155":"#cbd5e1",
-                    textDecoration: todo.done?"line-through":"none"}}>{todo.text}</span>
-                  <button onClick={()=>deleteTodo(todo.id)} style={{background:"none", border:"none",
-                    color:"#334155", cursor:"pointer", fontSize:14, padding:"0 2px", lineHeight:1}}>×</button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Quick Links ── */}
-          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
-            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:12}}>⚡ Quick Actions</div>
-            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
-              {[
-                {icon:"👥", label:"Team Roster", tab:"roster"},
-                {icon:"🧾", label:"Invoices", tab:"finance"},
-                {icon:"📊", label:"Dashboard", tab:"dashboard"},
-                {icon:"🎯", label:"CRM", tab:"crm"},
-                {icon:"⏱", label:"Timesheets", tab:"timesheet"},
-                {icon:"📋", label:"Reports", tab:"reports"},
-              ].map(q => (
-                <button key={q.tab} onClick={()=>setTab(q.tab)} style={{
-                  background:"#0a1120", border:"1px solid #1a2d45", borderRadius:8,
-                  color:"#94a3b8", fontSize:11, fontWeight:600, padding:"8px 10px",
-                  cursor:"pointer", textAlign:"left", transition:"all 0.15s"
-                }}
-                onMouseEnter={e=>{e.currentTarget.style.background="#0f1e30"; e.currentTarget.style.color="#e2e8f0";}}
-                onMouseLeave={e=>{e.currentTarget.style.background="#0a1120"; e.currentTarget.style.color="#94a3b8";}}>
-                  {q.icon} {q.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 
 
 function OrgChart({ orgMembers, setOrgMembers }) {
