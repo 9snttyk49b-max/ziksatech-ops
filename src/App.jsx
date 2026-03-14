@@ -1419,7 +1419,19 @@ export default function ZiksatechOps() {
   const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | saved | error
   const [backupModal, setBackupModal] = useState(false);
   // Prevent auto-save from overwriting Supabase data on initial load
-  const skipSaveRef = useRef(true); // true = skip, set to false after first load completes
+  const skipSaveRef = useRef(true);
+  // Collapsible sidebar groups — Finance collapsed by default (10 items)
+  const [collapsedGroups, setCollapsedGroups] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-collapsed-groups") || '["Finance"]'); }
+    catch { return ["Finance"]; }
+  });
+  const toggleGroup = (group) => {
+    setCollapsedGroups(prev => {
+      const next = prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group];
+      localStorage.setItem("zt-collapsed-groups", JSON.stringify(next));
+      return next;
+    });
+  }; // true = skip, set to false after first load completes
   const [restoreError, setRestoreError] = useState("");
   const [restoreSuccess, setRestoreSuccess] = useState("");
 
@@ -1808,10 +1820,26 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
 
         {["Overview","Clients","Team","Delivery","Finance","Hiring","Compliance"].map(group => {
           const items = nav.filter(n=>n.group===group);
+          if (!items.length) return null;
+          const isCollapsed = collapsedGroups.includes(group);
+          const hasActive = items.some(n => n.id === tab);
           return (
-            <div key={group}>
-              <div style={{fontSize:9,color:"#1e3a5f",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,padding:"10px 14px 4px"}}>{group}</div>
-              {items.map(n => (
+            <div key={group} style={{marginBottom:2}}>
+              <button
+                onClick={() => toggleGroup(group)}
+                style={{
+                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                  width:"100%", background:"none", border:"none", cursor:"pointer",
+                  padding:"8px 14px 4px", textAlign:"left",
+                }}
+              >
+                <span style={{fontSize:9,color: hasActive ? "#38bdf8" : "#1e3a5f",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>
+                  {group}
+                  {isCollapsed && hasActive && <span style={{marginLeft:5,fontSize:9,color:"#38bdf8"}}>●</span>}
+                </span>
+                <span style={{fontSize:8,color:"#1e3a5f",transition:"transform 0.2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>
+              </button>
+              {!isCollapsed && items.map(n => (
                 <button key={n.id} className={`navi${tab===n.id?" on":""}`} onClick={()=>setTab(n.id)}>
                   <I d={n.icon} s={14}/>{n.label}
                 </button>
@@ -2228,7 +2256,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
         <div className="card">
           <div className="section-hdr" style={{cursor:"pointer"}} onClick={()=>setTab("roster")}>Consultant Snapshot — Utilization & Margin <span style={{fontSize:9,color:"#1e3a5f"}}>↗</span></div>
           <div className="tr" style={{gridTemplateColumns:"1fr 70px 60px 90px 80px 90px",padding:"8px 18px"}}>
-            {["Name","Type","Util %","Bill Rev","Margin","Bar"].map(h=><span key={h} className="th">{h}</span>)}
+            {["Name","Type","Util %","Bill Rev","Margin","Bar"].map(h=><span key={h} className="th" onClick={col?()=>clientSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:clientSort.col===col?"#38bdf8":"inherit"}}>{h}{clientSort.col===col?(clientSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
           </div>
           {rData.map(r=>(
             <div key={r.id} className="tr" style={{gridTemplateColumns:"1fr 70px 60px 90px 80px 90px"}}>
@@ -2714,6 +2742,15 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
   const [modal, setModal] = useState(false);
   const { dragProps: dragP_c } = useDragSort(clients, setClients);
+  const [clientSort, setClientSort] = useState({ col: null, dir: "asc" });
+  const clientSortCycle = (col) => setClientSort(s => s.col === col ? { col, dir: s.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
+  const sortedClients = clientSort.col ? [...clients].sort((a, b) => {
+    const v = clientSort.col;
+    const av = v === "annualRev" ? (a.annualRev||0) : v === "name" ? (a.name||"") : v === "health" ? (a.health||"") : 0;
+    const bv = v === "annualRev" ? (b.annualRev||0) : v === "name" ? (b.name||"") : v === "health" ? (b.health||"") : 0;
+    const r = typeof av === "string" ? av.localeCompare(bv) : av - bv;
+    return clientSort.dir === "asc" ? r : -r;
+  }) : clients;
   const [form, setForm] = useState(null);
   const [editing, setEditing] = useState(null);
   const empty = { name:"", vertical:"", engType:"Staff Aug", annualRev:"", consultants:"", grossMargin:"", health:"Green", renewal:"", notes:"" };
@@ -2753,9 +2790,13 @@ function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
       </div>
       <div className="card">
         <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto",padding:"8px 18px"}}>
-          {["Client","Vertical","Engagement","Revenue","Cslt.","Margin","Health","Renewal",""].map(h=><span key={h} className="th">{h}</span>)}
+          {[
+              {l:"Client",col:"name"},{l:"Vertical",col:null},{l:"Engagement",col:null},
+              {l:"Revenue",col:"annualRev"},{l:"Cslt.",col:null},{l:"Margin",col:null},
+              {l:"Health",col:"health"},{l:"Renewal",col:null},{l:"",col:null}
+            ].map(({l:h,col})=><span key={h} className="th">{h}</span>)}
         </div>
-        {clients.map((c, _di_)=>(
+        {sortedClients.map((c, _di_)=>(
           <div key={c.id} className="tr" {...dragP_c(_di_)} style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto"}}>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c.name}</div>
@@ -4262,6 +4303,8 @@ function FinOverview({ roster, clients, finInvoices, finPayments, finExpenses })
 function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFinPayments, addAudit }) {
   const [filter, setFilter]   = useState("all");
   const { dragProps: _dp } = useDragSort(finInvoices, setFinInvoices);
+  const [invColSort, setInvColSort] = useState({ col: null, dir: "asc" });
+  const invSortCycle = (col) => setInvColSort(s => s.col === col ? { col, dir: s.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
   const [selected, setSelected] = useState(null);
   const [newModal, setNewModal] = useState(false);
   const [payModal, setPayModal] = useState(null); // invoiceId being paid
@@ -4357,7 +4400,7 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
         <div className="card" style={{overflowX:"auto"}}>
           <div className="tr" style={{gridTemplateColumns:"28px 110px 1fr 120px 110px 90px 90px 100px 100px",padding:"8px 18px",minWidth:900}}>
             <input type="checkbox" checked={selAR.size===filtered.length&&filtered.length>0} onChange={()=>setSelAR(s=>s.size===filtered.length?new Set():new Set(filtered.map(i=>i.id)))} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
-            {["Invoice","Client / Project","Period","Issue Date","Total","Balance","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+            {[{l:"Invoice",c:null},{l:"Client / Project",c:"clientId"},{l:"Period",c:"period"},{l:"Issue Date",c:"issueDate"},{l:"Total",c:"total"},{l:"Balance",c:"balance"},{l:"Status",c:"status"},{l:"Actions",c:null}].map(({l:h,c:col})=><span key={h} className="th" onClick={col?()=>invSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:invColSort.col===col?"#38bdf8":"inherit"}}>{h}{invColSort.col===col?(invColSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
           </div>
           {filtered.map((inv, _i_)=>{
             const cl   = clients.find(c=>c.id===inv.clientId);
@@ -6368,6 +6411,14 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
 function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, addAudit }) {
   const [modal, setModal]   = useState(false);
   const { dragProps: _dp } = useDragSort(crmDeals, setCrmDeals);
+  const [dealSort, setDealSort] = useState({ col: null, dir: "asc" });
+  const dealSortCycle = (col) => setDealSort(s => s.col === col ? { col, dir: s.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
+  const sortedDeals = dealSort.col ? [...filtered].sort((a, b) => {
+    const av = dealSort.col === "value" ? (a.value||0) : dealSort.col === "name" ? (a.name||"") : dealSort.col === "stage" ? (a.stage||"") : dealSort.col === "closeDate" ? (a.closeDate||"") : 0;
+    const bv = dealSort.col === "value" ? (b.value||0) : dealSort.col === "name" ? (b.name||"") : dealSort.col === "stage" ? (b.stage||"") : dealSort.col === "closeDate" ? (b.closeDate||"") : 0;
+    const r = typeof av === "string" ? av.localeCompare(bv) : av - bv;
+    return dealSort.dir === "asc" ? r : -r;
+  }) : filtered;
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -6427,9 +6478,9 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
 
         <div className="card">
           <div className="tr" style={{gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",padding:"8px 18px"}}>
-            {["Deal / Account","Stage","Type","Value","Probability","Close Date","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+            {[{l:"Deal / Account",c:"name"},{l:"Stage",c:"stage"},{l:"Type",c:null},{l:"Value",c:"value"},{l:"Prob",c:null},{l:"Close Date",c:"closeDate"},{l:"Actions",c:null}].map(({l:h,c:col})=><span key={h} className="th" onClick={col?()=>dealSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:dealSort.col===col?"#38bdf8":"inherit"}}>{h}{dealSort.col===col?(dealSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
           </div>
-          {filtered.map((d, _i_)=>{
+          {sortedDeals.map((d, _i_)=>{
             const acc = crmAccounts.find(a=>a.id===d.accountId);
             return (
               <div key={d.id} className="tr" {..._dp(_i_)}
