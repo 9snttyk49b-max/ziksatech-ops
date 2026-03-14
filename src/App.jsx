@@ -2092,7 +2092,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
   const baseMonthly = clientRevTotal / 12;
   const MONTHLY_REV = MONTH_KEYS.map((mk, i) => {
     const inv = (finInvoices||[]).filter(inv => inv.issueDate && inv.issueDate.startsWith(mk));
-    const invTotal = inv.reduce((s,inv)=>s+inv.lines.reduce((x,l)=>x+l.amount,0), 0);
+    const invTotal = inv.reduce((s,inv)=>s+(inv.lines||[]).reduce((x,l)=>x+l.amount,0), 0);
     const seed = [0.82,0.88,0.91,0.94,0.97,1.01,1.05,0.98,1.02,1.08,1.04,1.10][i];
     return { month: MONTHS_12[i], key: mk, rev: invTotal > 0 ? invTotal : Math.round(baseMonthly * seed) };
   });
@@ -2135,10 +2135,10 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
   ];
 
   // Finance metrics
-  const finBilled    = (finInvoices||[]).reduce((s,i)=>s+i.lines.reduce((x,l)=>x+l.amount,0),0);
+  const finBilled    = (finInvoices||[]).reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+l.amount,0),0);
   const finCollected = (finPayments||[]).reduce((s,p)=>s+p.amount,0);
-  const finAR        = (finInvoices||[]).filter(i=>["sent","overdue"].includes(i.status)).reduce((s,i)=>s+i.lines.reduce((x,l)=>x+l.amount,0)-((finPayments||[]).filter(p=>p.invoiceId===i.id).reduce((x,p)=>x+p.amount,0)),0);
-  const finOverdue   = (finInvoices||[]).filter(i=>i.status==="overdue").reduce((s,i)=>s+i.lines.reduce((x,l)=>x+l.amount,0),0);
+  const finAR        = (finInvoices||[]).filter(i=>["sent","overdue"].includes(i.status)).reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+l.amount,0)-((finPayments||[]).filter(p=>p.invoiceId===i.id).reduce((x,p)=>x+p.amount,0)),0);
+  const finOverdue   = (finInvoices||[]).filter(i=>i.status==="overdue").reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+l.amount,0),0);
 
   // Compliance alerts
   const compAlerts = [...(workAuth||[]),...(compDocs||[])].filter(w=>{
@@ -4196,7 +4196,7 @@ function FinanceModule({ roster, clients, tsHours, finInvoices, setFinInvoices, 
 }
 
 // ── Finance helpers ────────────────────────────────────────────────────────────
-const invTotal     = inv => inv.lines.reduce((s,l)=>s+l.amount,0);
+const invTotal     = inv => (inv.lines||[]).reduce((s,l)=>s+l.amount,0);
 const invPaid      = (inv, payments) => payments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0);
 const invBalance   = (inv, payments) => invTotal(inv) - invPaid(inv, payments);
 const daysOverdue  = (inv) => {
