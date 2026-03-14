@@ -21053,8 +21053,8 @@ function ResourcePlanAI({ roster, clients, projects, crmDeals }) {
 
   const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
-  // Build current team snapshot for AI context
-  const teamSnapshot = (roster||[]).map(r=>`${r.name} (${r.type}, ${r.role}, util:${Math.round((r.util||0)*100)}%, client:${r.client||"available"})`).join('\n');
+  // Build current team snapshot for AI context — trimmed to avoid token overflow
+  const teamSnapshot = (roster||[]).slice(0,8).map(r=>`${r.name} (${r.type}, util:${Math.round((r.util||0)*100)}%, client:${r.client||"available"})`).join('\n');
   const openDeals = (crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage)).map(d=>`${d.name} ($${(d.value||0).toLocaleString()})`).join(', ');
 
   const generate = async () => {
@@ -21081,9 +21081,10 @@ OPEN PIPELINE: ${openDeals || "None"}
 Provide: Resource Allocation Plan, Recommended Consultants (from team), 
 Capacity Analysis, Skill Gap Assessment, Hiring Needs (if any), 
 Timeline & Ramp-up Plan, Risk Factors, Cost Estimate, Recommendations.`;
-    await callClaude(system, prompt, txt => setOutput(txt));
+    try {
+      await callClaude(system, prompt, txt => { setOutput(txt); });
+    } catch(e) { setOutput("⚠️ Error: " + e.message); }
     setLoading(false);
-  };
 
   return (
     <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
