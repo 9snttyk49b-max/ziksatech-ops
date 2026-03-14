@@ -1076,7 +1076,7 @@ function calcRoster(r) {
   const consTake = r.type === "Contractor" ? Math.round(r.fixedRate * hrs * r.revShare || r.fixedRate * hrs) : bonus;
   const thirdParty = r.type === "Contractor" && r.thirdPartySplit > 0
     ? Math.round((r.billRate - r.fixedRate) * hrs * r.thirdPartySplit) : 0;
-  const coKeeps = rev - (r.type === "Contractor" ? r.fixedRate * hrs : 0) - thirdParty - (r.revShare > 0 && r.baseSalary > 0 ? bonus : 0);
+  // Calculate totalCost FIRST so coKeeps can use it
   let totalCost = 0;
   if (r.type === "FTE") {
     const fica = r.baseSalary * BURDEN.fica;
@@ -1087,8 +1087,14 @@ function calcRoster(r) {
     const oth = r.baseSalary * BURDEN.other;
     totalCost = r.baseSalary + fica + futa + suta + wc + BURDEN.health + ret + oth + bonus;
   } else {
-    totalCost = r.fixedRate * hrs + thirdParty + r.insurance;
+    totalCost = r.fixedRate * hrs + thirdParty + (r.insurance || 0);
   }
+  // Co.Keeps = what the company nets after all costs
+  // FTE: revenue minus full employment cost
+  // Contractor: revenue minus what we pay the contractor + any third-party split
+  const coKeeps = r.type === "FTE"
+    ? rev - totalCost
+    : rev - (r.fixedRate * hrs) - thirdParty - (r.revShare > 0 && r.baseSalary > 0 ? bonus : 0);
   const netMargin = rev > 0 ? (rev - totalCost) / rev : 0;
   return { hrs, rev, bonus, consTake, thirdParty, coKeeps, totalCost, netMargin };
 }
