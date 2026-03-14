@@ -1703,8 +1703,11 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             transform:sideOpen&&i===0?"rotate(45deg) translate(4px,4px)":sideOpen&&i===2?"rotate(-45deg) translate(4px,-4px)":"none",
             opacity:sideOpen&&i===1?0:1}}/>)}
         </button>
-        <div style={{fontSize:15,fontWeight:800,color:"#38bdf8"}}>⬡ ZIKSATECH</div>
+        <div onClick={()=>setTab("home")} style={{fontSize:15,fontWeight:800,color:"#38bdf8",cursor:"pointer"}} title="Home">⬡ ZIKSATECH</div>
         <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
+          <button onClick={()=>setTab("home")} title="Home" style={{background:"none",border:"1px solid #1e2a3a",borderRadius:6,color:"#38bdf8",fontSize:11,fontWeight:700,padding:"3px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+            🏠 Home
+          </button>
           <div style={{width:7,height:7,borderRadius:"50%",background:saveStatus==="saved"?"#34d399":saveStatus==="saving"?"#f59e0b":"#1e3a5f"}}/>
           <span style={{fontSize:10,color:"#3d5a7a"}}>{saveStatus==="saved"?"Saved":saveStatus==="saving"?"Saving…":"Auto-save"}</span>
         </div>
@@ -1723,8 +1726,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         boxShadow: isMobile && sideOpen ? "4px 0 24px rgba(0,0,0,0.5)" : "none",
       }}>
         <div style={{padding:"8px 14px 18px",borderBottom:"1px solid #0f1e30",marginBottom:6}}>
-          <div style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em"}}>⬡ ZIKSATECH</div>
-          <div style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ops Center</div>
+          <div onClick={()=>setTab("home")} style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer"}} title="Go to Home">⬡ ZIKSATECH</div>
+          <div onClick={()=>setTab("home")} style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer"}}>Ops Center</div>
           {supaAuth && authProfile && (
             <div style={{marginTop:10,padding:"8px 10px",background:"#0a1120",borderRadius:8,border:"1px solid #0f1e30"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
