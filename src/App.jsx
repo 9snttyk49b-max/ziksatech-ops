@@ -1401,7 +1401,9 @@ export default function ZiksatechOps() {
   // ── Cmd+K / Ctrl+K command palette ───────────────────────────
   useEffect(()=>{
     const down = (e) => {
-      if ((e.metaKey||e.ctrlKey) && e.key==="k") { e.preventDefault(); setCmdOpen(o=>!o); setCmdQuery(""); setCmdSel(0); }
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      const typing = tag==="input"||tag==="textarea"||tag==="select"||document.activeElement?.contentEditable==="true";
+      if ((e.metaKey||e.ctrlKey) && e.key==="k" && !typing) { e.preventDefault(); setCmdOpen(o=>!o); setCmdQuery(""); setCmdSel(0); }
       if (e.key==="Escape" && cmdOpen) setCmdOpen(false);
     };
     window.addEventListener("keydown", down);
