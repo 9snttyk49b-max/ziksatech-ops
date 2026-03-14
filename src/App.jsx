@@ -6396,10 +6396,6 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
 function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, addAudit }) {
   const [modal, setModal]   = useState(false);
   const { dragProps: _dp } = useDragSort(crmDeals, setCrmDeals);
-    const bv = dealSort.col === "value" ? (b.value||0) : dealSort.col === "name" ? (b.name||"") : dealSort.col === "stage" ? (b.stage||"") : dealSort.col === "closeDate" ? (b.closeDate||"") : 0;
-    const r = typeof av === "string" ? av.localeCompare(bv) : av - bv;
-    return dealSort.dir === "asc" ? r : -r;
-  }) : filtered;
   const selDeal   = crmDeals.find(d=>d.id===selected);
   const selAcc    = selDeal ? crmAccounts.find(a=>a.id===selDeal.accountId) : null;
   const selDealActs = selected ? [...crmActivities].filter(a=>a.dealId===selected).sort((a,b)=>b.date.localeCompare(a.date)) : [];
