@@ -2434,7 +2434,7 @@ function Roster({ roster, setRoster, addAudit }) {
     setSelRows(new Set());
   };
 
-  const emptyForm = { name:"", role:"", type:"FTE", client:"", projects:"", billRate:"", util:"", baseSalary:"", revShare:"", fixedRate:"", thirdPartySplit:"", insurance:"7200" }, contrib401k:"" };
+  const emptyForm = { name:"", role:"", type:"FTE", client:"", projects:"", billRate:"", util:"", baseSalary:"", revShare:"", fixedRate:"", thirdPartySplit:"", insurance:"7200", contrib401k:"" };
 
   const open = (r=null) => { setEditing(r?.id||null); setForm(r ? {...r, projects: r.projects||""} : {...emptyForm}); setModal(true); };
   const save = () => {
