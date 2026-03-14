@@ -21086,6 +21086,7 @@ Timeline & Ramp-up Plan, Risk Factors, Cost Estimate, Recommendations.`;
     } catch(e) { setOutput("⚠️ Error: " + e.message); }
     setLoading(false);
 
+  };
   return (
     <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
       <div>
