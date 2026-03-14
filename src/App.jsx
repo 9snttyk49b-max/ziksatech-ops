@@ -1937,6 +1937,17 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         </div>
       </div>
 
+      {/* AI Agent — floating across all OPS views */}
+      {authProfile && <AIAgent
+        authProfile={authProfile}
+        roster={shared.roster}
+        clients={shared.clients}
+        finInvoices={shared.finInvoices}
+        finPayments={shared.finPayments}
+        crmDeals={shared.crmDeals}
+        portalView={portalView}
+      />}
+
       {/* Sidebar — slides in on mobile, fixed on desktop */}
       <aside className="desktop-sidebar" style={{
         width:210, background:"#060a10", borderRight:"1px solid #0f1e30",
@@ -20134,6 +20145,176 @@ function OnboardingModule({ onboardings, setOnboardings, roster, workAuth, addAu
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// AI AGENT — Floating chat assistant for Ziksatech OPS + Naxon Systems
+// ═══════════════════════════════════════════════════════════════════════
+function AIAgent({ authProfile, roster, clients, finInvoices, finPayments, crmDeals, portalView }) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { role:"assistant", text:"Hi! I'm your Ziksatech AI assistant. Ask me anything about your operations, team, clients, financials, or Naxon products." }
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef();
+  const inputRef = useRef();
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
+  useEffect(() => { if (open) setTimeout(()=>inputRef.current?.focus(), 100); }, [open]);
+
+  // Build context from live data
+  const buildContext = () => {
+    const totalRev = (roster||[]).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*1920,0);
+    const activeC = (roster||[]).filter(r=>(r.util||0)>0).length;
+    const collected = (finPayments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+    const invTotal = (finInvoices||[]).reduce((s,i)=>s+(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0),0);
+    const openPipe = (crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage)).reduce((s,d)=>s+(+d.value||0),0);
+    return `
+You are an AI assistant for Ziksatech, an SAP consulting firm based in Plano, TX.
+You also know about Naxon Systems flagship products: Gridmind (AI energy grid intelligence) and Aria (AI conversation intelligence, scaling to 20-25M interactions).
+
+LIVE CONTEXT (as of today):
+- Annual Revenue: $${Math.round(totalRev).toLocaleString()}
+- Active Consultants: ${activeC} of ${(roster||[]).length}
+- Total Invoiced YTD: $${Math.round(invTotal).toLocaleString()}
+- Collected YTD: $${Math.round(collected).toLocaleString()}
+- Collection Rate: ${invTotal>0?Math.round(collected/invTotal*100):0}%
+- Open Pipeline: $${Math.round(openPipe).toLocaleString()} (${(crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage)).length} deals)
+- Active Clients: ${(clients||[]).filter(c=>c.health!=="Red").length}
+- User: ${authProfile?.full_name} (${authProfile?.role?.replace("_"," ")})
+- Current View: ${portalView}
+
+Team roster: ${(roster||[]).map(r=>`${r.name} (${r.type}, $${r.billRate}/hr, ${Math.round((r.util||0)*100)}% util, ${r.client})`).join("; ")}
+Clients: ${(clients||[]).map(c=>`${c.name} ($${c.annualRev?.toLocaleString()}, ${c.health})`).join("; ")}
+
+Be concise, helpful and professional. Answer based on the context above when possible.`;
+  };
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput("");
+    const userMsg = { role:"user", text };
+    setMessages(m => [...m, userMsg]);
+    setLoading(true);
+
+    const history = [...messages, userMsg]
+      .filter(m=>m.role!=="assistant"||messages.indexOf(m)>0)
+      .map(m=>({ role: m.role==="assistant"?"assistant":"user", content: m.text }));
+
+    let reply = "";
+    setMessages(m => [...m, { role:"assistant", text:"…", streaming:true }]);
+    try {
+      await callClaude(buildContext(), text, txt => {
+        reply = txt;
+        setMessages(m => [...m.slice(0,-1), { role:"assistant", text:txt, streaming:true }]);
+      });
+      setMessages(m => [...m.slice(0,-1), { role:"assistant", text:reply }]);
+    } catch(e) {
+      setMessages(m => [...m.slice(0,-1), { role:"assistant", text:"Sorry, I couldn't connect. Please check your API key in Settings." }]);
+    }
+    setLoading(false);
+  };
+
+  const QUICK = ["What's our revenue YTD?", "Who has capacity?", "Open pipeline value?", "Tell me about Aria", "What is Gridmind?"];
+
+  return (
+    <>
+      {/* Floating button */}
+      <button
+        onClick={()=>setOpen(o=>!o)}
+        style={{
+          position:"fixed", bottom:24, right:24, zIndex:9999,
+          width:52, height:52, borderRadius:"50%",
+          background:"linear-gradient(135deg,#0369a1,#7c3aed)",
+          border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(3,105,161,0.5)",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:22, transition:"transform 0.2s",
+        }}
+        onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"}
+        onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+        {open ? "✕" : "✦"}
+      </button>
+
+      {/* Chat panel */}
+      {open && (
+        <div style={{
+          position:"fixed", bottom:88, right:24, zIndex:9999,
+          width:360, height:520, display:"flex", flexDirection:"column",
+          background:"#060d1c", border:"1px solid #1a2d45", borderRadius:16,
+          boxShadow:"0 24px 60px rgba(0,0,0,0.7)",
+          fontFamily:"'DM Sans','Segoe UI',sans-serif",
+          overflow:"hidden"
+        }}>
+          {/* Header */}
+          <div style={{padding:"14px 16px",borderBottom:"1px solid #0f1e30",background:"#050e1c",display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>✦</div>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Ziksatech AI</div>
+              <div style={{fontSize:10,color:"#334155"}}>Powered by Claude · Ops + Naxon aware</div>
+            </div>
+            <div style={{marginLeft:"auto",width:7,height:7,borderRadius:"50%",background:"#34d399"}}/>
+          </div>
+
+          {/* Messages */}
+          <div style={{flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+            {messages.map((m,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+                <div style={{
+                  maxWidth:"82%", padding:"9px 13px", borderRadius:m.role==="user"?"14px 14px 2px 14px":"14px 14px 14px 2px",
+                  background:m.role==="user"?"linear-gradient(135deg,#0369a1,#0284c7)":"#0a1829",
+                  border:m.role==="user"?"none":"1px solid #1a2d45",
+                  fontSize:12, lineHeight:1.6, color:m.role==="user"?"#fff":"#cbd5e1",
+                  opacity:m.streaming?0.8:1
+                }}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef}/>
+          </div>
+
+          {/* Quick prompts */}
+          {messages.length <= 1 && (
+            <div style={{padding:"0 12px 8px",display:"flex",flexWrap:"wrap",gap:5}}>
+              {QUICK.map(q=>(
+                <button key={q} onClick={()=>{setInput(q);inputRef.current?.focus();}}
+                  style={{background:"#0a1829",border:"1px solid #1a2d45",borderRadius:12,color:"#64748b",fontSize:10,padding:"4px 10px",cursor:"pointer",whiteSpace:"nowrap"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#0369a1";e.currentTarget.style.color="#38bdf8";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="#1a2d45";e.currentTarget.style.color="#64748b";}}>
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          <div style={{padding:"10px 12px",borderTop:"1px solid #0f1e30",display:"flex",gap:8,alignItems:"center"}}>
+            <input
+              ref={inputRef}
+              className="inp"
+              value={input}
+              onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&send()}
+              placeholder="Ask about ops, team, deals, Naxon…"
+              style={{flex:1,fontSize:12,padding:"8px 12px"}}
+              disabled={loading}
+            />
+            <button onClick={send} disabled={loading||!input.trim()}
+              style={{
+                width:34,height:34,borderRadius:"50%",border:"none",cursor:"pointer",
+                background:loading||!input.trim()?"#0a1829":"linear-gradient(135deg,#0369a1,#7c3aed)",
+                color:"#fff",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",
+                flexShrink:0
+              }}>
+              {loading?"⋯":"↑"}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // PROFILE MENU — top-right dropdown for profile, settings, sign out
 // ═══════════════════════════════════════════════════════════════════════
 function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile, setTab }) {
@@ -21642,7 +21823,7 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
     color:"#059669", glow:"rgba(5,150,105,0.18)",
     border:"rgba(52,211,153,0.3)",
     badge:"Naxon Product",
-    url:"https://gridmind.naxonsystems.com",
+    url:"https://product.naxonsystems.com/#gridmind",
     kpis:[
       {l:"Grid Nodes Monitored",v:"12,400", dim:"real-time"},
       {l:"Fault Predictions",   v:"99.2%",  dim:"accuracy YTD"},
@@ -21658,7 +21839,7 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
     color:"#d97706", glow:"rgba(217,119,6,0.18)",
     border:"rgba(251,191,36,0.3)",
     badge:"Naxon Product",
-    url:"https://aria.naxonsystems.com",
+    url:"https://product.naxonsystems.com/#aria",
     kpis:[
       {l:"Interactions/Month",  v:"2.4M",   dim:"scaling to 25M"},
       {l:"Avg Resolution Rate", v:"94.1%",  dim:"AI-first"},
@@ -21865,8 +22046,19 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
 
       {/* Footer */}
       <div style={{textAlign:"center",padding:"16px",borderTop:"1px solid #0a1420",fontSize:11,color:"#1e3a5f"}}>
-        Ziksatech Ops Center · Plano, TX · v2.5
+        Ziksatech Ops Center · Plano, TX · v2.7
       </div>
+
+      {/* AI Agent — always visible on hub */}
+      <AIAgent
+        authProfile={authProfile}
+        roster={[]}
+        clients={[]}
+        finInvoices={[]}
+        finPayments={[]}
+        crmDeals={[]}
+        portalView="hub"
+      />
     </div>
   );
 }
