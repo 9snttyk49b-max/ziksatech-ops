@@ -6413,12 +6413,6 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
   const { dragProps: _dp } = useDragSort(crmDeals, setCrmDeals);
   const [dealSort, setDealSort] = useState({ col: null, dir: "asc" });
   const dealSortCycle = (col) => setDealSort(s => s.col === col ? { col, dir: s.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
-  const sortedDeals = dealSort.col ? [...filtered].sort((a, b) => {
-    const av = dealSort.col === "value" ? (a.value||0) : dealSort.col === "name" ? (a.name||"") : dealSort.col === "stage" ? (a.stage||"") : dealSort.col === "closeDate" ? (a.closeDate||"") : 0;
-    const bv = dealSort.col === "value" ? (b.value||0) : dealSort.col === "name" ? (b.name||"") : dealSort.col === "stage" ? (b.stage||"") : dealSort.col === "closeDate" ? (b.closeDate||"") : 0;
-    const r = typeof av === "string" ? av.localeCompare(bv) : av - bv;
-    return dealSort.dir === "asc" ? r : -r;
-  }) : filtered;
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -6460,6 +6454,12 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
     : stageFilter==="lost" ? crmDeals.filter(d=>d.stage==="closed-lost")
     : crmDeals;
 
+  const sortedDeals = dealSort.col ? [...filtered].sort((a, b) => {
+    const av = dealSort.col === "value" ? (a.value||0) : dealSort.col === "name" ? (a.name||"") : dealSort.col === "stage" ? (a.stage||"") : dealSort.col === "closeDate" ? (a.closeDate||"") : 0;
+    const bv = dealSort.col === "value" ? (b.value||0) : dealSort.col === "name" ? (b.name||"") : dealSort.col === "stage" ? (b.stage||"") : dealSort.col === "closeDate" ? (b.closeDate||"") : 0;
+    const r = typeof av === "string" ? av.localeCompare(bv) : av - bv;
+    return dealSort.dir === "asc" ? r : -r;
+  }) : filtered;
   const selDeal   = crmDeals.find(d=>d.id===selected);
   const selAcc    = selDeal ? crmAccounts.find(a=>a.id===selDeal.accountId) : null;
   const selDealActs = selected ? [...crmActivities].filter(a=>a.dealId===selected).sort((a,b)=>b.date.localeCompare(a.date)) : [];
