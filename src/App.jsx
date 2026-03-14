@@ -384,9 +384,7 @@ const CRM_ACTIVITIES_SEED = [
 
 // Module registry — all controllable modules
 const ALL_MODULES = [
-  { id:"home",       label:"Home",                icon:ICONS.dash,     group:"Overview"    },
-    { id:"home",       label:"Home",                icon:ICONS.dash,     group:"Overview"    },
-    { id:"dashboard",  label:"Executive Dashboard", group:"Overview"    },
+  { id:"dashboard",  label:"Executive Dashboard", group:"Overview"    },
   { id:"notifications",label:"Notifications",         group:"Overview"    },
   { id:"auditlog",    label:"Audit Log",             group:"Overview"    },
   { id:"pdfexport",   label:"PDF Export",            group:"Overview"    },
@@ -1287,7 +1285,7 @@ function PendingScreen({ email, onGoLogin }) {
 }
 
 export default function ZiksatechOps() {
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState("dashboard");
   const [roster, setRoster] = useState(ROSTER_SEED);
   const [pipeline, setPipeline] = useState(PIPELINE_SEED);
   const [clients, setClients] = useState(CLIENTS_SEED);
@@ -1570,7 +1568,6 @@ export default function ZiksatechOps() {
     { id:"budget",       label:"Budget vs. Actual",     icon:ICONS.pl,       group:"Finance"  },
     { id:"onboarding",   label:"Onboarding",            icon:ICONS.dash,     group:"Hiring"   },
     { id:"org",          label:"Org & Access",         icon:ICONS.roster,   group:"Overview" },
-    { id:"myprofile",     label:"My Profile",            icon:ICONS.roster,   group:"Overview" },
     { id:"roster",      label:"Team Roster",          icon:ICONS.roster,   group:"Delivery" },
     { id:"timesheet",   label:"Timesheet",            icon:ICONS.ts,       group:"Delivery" },
     { id:"clients",     label:"Client Portfolio",     icon:ICONS.clients,  group:"Delivery" },
@@ -1704,11 +1701,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             transform:sideOpen&&i===0?"rotate(45deg) translate(4px,4px)":sideOpen&&i===2?"rotate(-45deg) translate(4px,-4px)":"none",
             opacity:sideOpen&&i===1?0:1}}/>)}
         </button>
-        <div onClick={()=>setTab("home")} style={{fontSize:15,fontWeight:800,color:"#38bdf8",cursor:"pointer"}} title="Home">⬡ ZIKSATECH</div>
+        <div style={{fontSize:15,fontWeight:800,color:"#38bdf8"}}>⬡ ZIKSATECH</div>
         <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
-          <button onClick={()=>setTab("home")} title="Home" style={{background:"none",border:"1px solid #1e2a3a",borderRadius:6,color:"#38bdf8",fontSize:11,fontWeight:700,padding:"3px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
-            🏠 Home
-          </button>
           <div style={{width:7,height:7,borderRadius:"50%",background:saveStatus==="saved"?"#34d399":saveStatus==="saving"?"#f59e0b":"#1e3a5f"}}/>
           <span style={{fontSize:10,color:"#3d5a7a"}}>{saveStatus==="saved"?"Saved":saveStatus==="saving"?"Saving…":"Auto-save"}</span>
         </div>
@@ -1727,10 +1721,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         boxShadow: isMobile && sideOpen ? "4px 0 24px rgba(0,0,0,0.5)" : "none",
       }}>
         <div style={{padding:"8px 14px 18px",borderBottom:"1px solid #0f1e30",marginBottom:6}}>
-          <div onClick={()=>setTab("home")} style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer",display:"flex",alignItems:"center",gap:6}} title="Go to Home">
-            ⬡ ZIKSATECH
-          </div>
-          <div onClick={()=>setTab("home")} style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer"}}>Ops Center</div>
+          <div style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em"}}>⬡ ZIKSATECH</div>
+          <div style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ops Center</div>
           {supaAuth && authProfile && (
             <div style={{marginTop:10,padding:"8px 10px",background:"#0a1120",borderRadius:8,border:"1px solid #0f1e30"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -1771,15 +1763,6 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
           {searchOpen&&globalSearch.length>1&&<GlobalSearchResults q={globalSearch} roster={shared.roster} finInvoices={shared.finInvoices} apInvoices={shared.apInvoices} projects={shared.projects} crmDeals={shared.crmDeals} clients={shared.clients} tsSubmissions={shared.tsSubmissions} workAuth={shared.workAuth} setTab={setTab} onClose={()=>setSearchOpen(false)}/>}
         </div>
 
-        <button onClick={()=>setTab("home")}
-          style={{width:"calc(100% - 20px)",margin:"0 10px 6px",background:tab==="home"?"#0f1e30":"none",
-            border:tab==="home"?"1px solid #1e3a5f":"1px solid transparent",borderRadius:8,
-            color:tab==="home"?"#38bdf8":"#64748b",fontSize:13,fontWeight:700,padding:"8px 12px",
-            cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:8}}
-          onMouseEnter={e=>{if(tab!=="home"){e.currentTarget.style.background="#0a1120";e.currentTarget.style.color="#94a3b8";}}}
-          onMouseLeave={e=>{if(tab!=="home"){e.currentTarget.style.background="none";e.currentTarget.style.color="#64748b";}}}>
-          🏠 Home
-        </button>
         {["Overview","Sales","Delivery","Hiring","Finance","Compliance"].map(group => {
           const items = nav.filter(n=>n.group===group);
           return (
@@ -1962,7 +1945,6 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       </nav>
 
       <main className="main-content" style={{flex:1,overflowY:"auto",padding:isMobile?"68px 14px 72px":"28px 32px",minWidth:0}}>
-        {tab==="home"       && <HomePage   {...shared} authProfile={authProfile} />}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
         {tab==="auditlog"      && <AuditLog {...shared}/>}
@@ -1990,7 +1972,6 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="vendors"    && <VendorAPModule {...shared}/>}
         {tab==="adp"        && <ADPPayroll {...shared}/>}
         {tab==="org"          && <OrgAccessModule {...shared}/>}
-        {tab==="myprofile"     && <MyProfilePage authProfile={authProfile} authSession={authSession} />}
         {tab==="contracts"   && <ContractsModule {...shared}/> }
         {tab==="projects"    && <ProjectTracker {...shared}/>}
         {tab==="profitability"&& <ProjectProfitability {...shared}/>}
@@ -2006,7 +1987,6 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-
 function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, finInvoices, finPayments, workAuth, compDocs, candidates, offers, crmDeals, crmAccounts, auditLog, addAudit, setTab }) {
   // ── Period picker ────────────────────────────────────────────────────────
   const PERIODS = [
@@ -8070,757 +8050,6 @@ const PERM_COLOR   = { full:"#34d399", view:"#7dd3fc", none:"#1e3a5f" };
 const PERM_BG      = { full:"#021f14", view:"#0c2340", none:"#070b14" };
 const PERM_LABEL   = { full:"Full",    view:"View",    none:"—"       };
 
-
-
-function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
-  const [sub, setSub] = useState("chart");
-  const tabs = [
-    { id:"chart",   label:"Org Chart"        },
-    { id:"members", label:"Team Members"     },
-    { id:"access",  label:"Access Matrix"    },
-    { id:"roles",   label:"Role Templates"   },
-    { id:"approvals", label:"👤 User Approvals" },
-  ];
-  const props = { orgMembers, setOrgMembers, roster };
-  return (
-    <div>
-      <PH title="Org & Access" sub="Company Structure · Roles · Module Permissions"/>
-      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
-        {tabs.map(t=>(
-          <button key={t.id} onClick={()=>setSub(t.id)}
-            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
-              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
-              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-      {sub==="chart"   && <OrgChart   {...props}/>}
-      {sub==="members" && <OrgMembers {...props}/>}
-      {sub==="access"  && <AccessMatrix {...props}/>}
-      {sub==="roles"   && <RoleTemplates/>}
-      {sub==="approvals" && <UserApprovalsPanel />}
-    </div>
-  );
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function getEffectivePerms(member) {
-  const base = ROLE_TEMPLATES[member.role]?.perms || {};
-  return { ...base, ...(member.customPerms||{}) };
-}
-
-function Avatar({ name, role, size=36 }) {
-  const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-  const roleC = ROLE_TEMPLATES[role]?.color || "#64748b";
-  return (
-    <div style={{width:size,height:size,borderRadius:"50%",background:ROLE_TEMPLATES[role]?.bg||"#0a1626",
-      border:`2px solid ${roleC}`,display:"flex",alignItems:"center",justifyContent:"center",
-      fontSize:size*0.35,fontWeight:700,color:roleC,flexShrink:0}}>
-      {initials}
-    </div>
-  );
-}
-
-// ── Org Chart ─────────────────────────────────────────────────────────────────
-
-
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════════
-// HOME PAGE TILES (module-level — no TDZ issues)
-// ══════════════════════════════════════════════════════════════════
-function HomeTile({ icon, label, value, sub, color, onClick }) {
-  return (
-    <div onClick={onClick} style={{
-      background:"#0a1120", border:"1px solid #1a2d45", borderRadius:12,
-      padding:"16px 18px", cursor:onClick?"pointer":"default", transition:"border-color 0.15s"
-    }}
-    onMouseEnter={e=>{ if(onClick) e.currentTarget.style.borderColor="#2a4d75"; }}
-    onMouseLeave={e=>{ if(onClick) e.currentTarget.style.borderColor="#1a2d45"; }}>
-      <div style={{fontSize:22,marginBottom:6}}>{icon}</div>
-      <div style={{fontSize:22,fontWeight:800,color:color||"#38bdf8",fontFamily:"'DM Mono',monospace",lineHeight:1}}>{value}</div>
-      <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1",marginTop:4}}>{label}</div>
-      {sub&&<div style={{fontSize:10,color:"#475569",marginTop:3}}>{sub}</div>}
-    </div>
-  );
-}
-
-function HomeAlert({ alert: a, onDismiss, onNavigate }) {
-  const cols = {
-    red:  {bg:"#2d0a0a",border:"#7f1d1d",text:"#fca5a5",dot:"#ef4444"},
-    amber:{bg:"#2d1f00",border:"#92400e",text:"#fcd34d",dot:"#f59e0b"},
-    blue: {bg:"#0c1a2e",border:"#1e3a5f",text:"#7dd3fc",dot:"#38bdf8"},
-    green:{bg:"#022c22",border:"#065f46",text:"#6ee7b7",dot:"#34d399"},
-  };
-  const col = cols[a.type] || cols.blue;
-  return (
-    <div style={{display:"flex",alignItems:"center",gap:12,background:col.bg,
-      border:`1px solid ${col.border}`,borderRadius:8,padding:"10px 14px",cursor:"pointer",marginBottom:6}}
-      onClick={()=>onNavigate(a.tab)}>
-      <div style={{width:8,height:8,borderRadius:"50%",background:col.dot,flexShrink:0}}/>
-      <div style={{flex:1}}>
-        <div style={{fontSize:12,fontWeight:600,color:col.text}}>{a.icon} {a.title}</div>
-        <div style={{fontSize:10,color:"#475569",marginTop:2}}>{a.sub}</div>
-      </div>
-      <span style={{fontSize:11,color:"#3d5a7a"}}>View →</span>
-      <button onClick={e=>{e.stopPropagation();onDismiss(a.id);}}
-        style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:16,padding:"0 2px"}}>×</button>
-    </div>
-  );
-}
-
-function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
-  workAuth, ptoRequests, auditLog, authProfile, setTab,
-  dismissedAlerts, setDismissedAlerts }) {
-
-  const [weather, setWeather] = useState(null);
-  const [todos, setTodos]     = useState(()=>{ try{return JSON.parse(localStorage.getItem("zt-home-todos")||"[]")}catch{return [];} });
-  const [newTodo, setNewTodo] = useState("");
-  const [time, setTime]       = useState(new Date());
-
-  useEffect(()=>{ const t=setInterval(()=>setTime(new Date()),1000); return()=>clearInterval(t); },[]);
-
-  useEffect(()=>{
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=33.1507&longitude=-96.8236&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&temperature_unit=fahrenheit&timezone=America%2FChicago")
-      .then(r=>r.json()).then(d=>{
-        const cur=d.current;
-        const codes={0:"☀️ Clear",1:"🌤 Mostly Clear",2:"⛅ Partly Cloudy",3:"☁️ Overcast",51:"🌦 Drizzle",61:"🌧 Rain",63:"🌧 Moderate Rain",80:"🌦 Showers",95:"⛈ Thunderstorm"};
-        setWeather({temp:Math.round(cur.temperature_2m),condition:codes[cur.weathercode]||"🌡 "+cur.weathercode,humidity:cur.relative_humidity_2m,wind:Math.round(cur.windspeed_10m)});
-      }).catch(()=>{});
-  },[]);
-
-  const saveTodos = t => { setTodos(t); localStorage.setItem("zt-home-todos",JSON.stringify(t)); };
-  const addTodo   = ()=>{ if(!newTodo.trim())return; saveTodos([...todos,{id:Date.now(),text:newTodo.trim(),done:false}]); setNewTodo(""); };
-  const toggleTodo= id=>saveTodos(todos.map(t=>t.id===id?{...t,done:!t.done}:t));
-  const deleteTodo= id=>saveTodos(todos.filter(t=>t.id!==id));
-
-  const today = new Date();
-  const hr = today.getHours();
-  const greeting = hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
-  const dayStr = today.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
-
-  const fmtV = v => v>=1000000?`$${(v/1e6).toFixed(1)}M`:v>=1000?`$${(v/1000).toFixed(0)}k`:`$${v}`;
-
-  const totalRev     = clients.reduce((s,c)=>s+(c.annualRev||0),0);
-  const overdueInv   = finInvoices.filter(i=>i.status==="overdue");
-  const openDeals    = crmDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage));
-  const expiringDocs = (workAuth||[]).filter(w=>{ if(!w.expiryDate)return false; const days=(new Date(w.expiryDate)-today)/86400000; return days>=0&&days<=60; });
-  const pendingPTO   = (ptoRequests||[]).filter(p=>p.status==="pending").length;
-  const activeCands  = (candidates||[]).filter(c=>!["rejected","hired"].includes(c.stage)).length;
-
-  const rawAlerts = [
-    overdueInv.length>0&&{id:"inv",type:"red",icon:"⚠️",title:`${overdueInv.length} Overdue Invoice${overdueInv.length>1?"s":""}`,sub:`${fmtV(overdueInv.reduce((s,i)=>s+(i.amount||0),0))} needs collection`,tab:"finance"},
-    expiringDocs.length>0&&{id:"docs",type:"amber",icon:"📋",title:`${expiringDocs.length} Work Auth Expiring`,sub:"Within 60 days — action required",tab:"hr"},
-    pendingPTO>0&&{id:"pto",type:"blue",icon:"🏖",title:`${pendingPTO} PTO Request${pendingPTO>1?"s":""}`,sub:"Awaiting your approval",tab:"pto"},
-    activeCands>0&&{id:"hiring",type:"green",icon:"👤",title:`${activeCands} Active Candidate${activeCands>1?"s":""}`,sub:"In hiring pipeline",tab:"recruiting"},
-    openDeals.length>0&&{id:"deals",type:"blue",icon:"💼",title:`${openDeals.length} Open Deal${openDeals.length>1?"s":""}`,sub:`${fmtV(openDeals.reduce((s,d)=>s+(d.value||0),0))} in pipeline`,tab:"crm"},
-  ].filter(Boolean).filter(a=>!(dismissedAlerts||[]).includes(a.id));
-
-  return (
-    <div>
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:22,flexWrap:"wrap",gap:12}}>
-        <div>
-          <div style={{fontSize:24,fontWeight:800,color:"#e2e8f0"}}>{greeting}, {authProfile?.full_name?.split(" ")[0]||"Manju"} 👋</div>
-          <div style={{fontSize:13,color:"#475569",marginTop:3}}>{dayStr}</div>
-        </div>
-        <div style={{fontSize:26,fontWeight:700,color:"#38bdf8",fontFamily:"'DM Mono',monospace",letterSpacing:2}}>
-          {time.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
-        </div>
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 310px",gap:18,alignItems:"start"}}>
-        {/* LEFT */}
-        <div>
-          {/* Stat Tiles Row 1 */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:12}}>
-            <HomeTile icon="💰" label="Annual Revenue" value={fmtV(totalRev)} sub="All clients" color="#34d399" onClick={()=>setTab("dashboard")}/>
-            <HomeTile icon="👥" label="Active Consultants" value={roster.filter(r=>r.util>0).length} sub={`of ${roster.length} total`} color="#38bdf8" onClick={()=>setTab("roster")}/>
-            <HomeTile icon="💼" label="Open Pipeline" value={fmtV(openDeals.reduce((s,d)=>s+(d.value||0),0))} sub={`${openDeals.length} deals`} color="#a78bfa" onClick={()=>setTab("crm")}/>
-            <HomeTile icon="⚠️" label="Overdue A/R" value={overdueInv.length>0?fmtV(overdueInv.reduce((s,i)=>s+(i.amount||0),0)):"$0"} sub={overdueInv.length>0?`${overdueInv.length} invoices`:"All clear"} color={overdueInv.length>0?"#f87171":"#34d399"} onClick={()=>setTab("finance")}/>
-          </div>
-          {/* Stat Tiles Row 2 */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
-            <HomeTile icon="📋" label="Expiring Docs" value={expiringDocs.length} sub="Work auth ≤60 days" color={expiringDocs.length>0?"#f59e0b":"#34d399"} onClick={()=>setTab("hr")}/>
-            <HomeTile icon="🏖" label="Pending PTO" value={pendingPTO} sub="Awaiting approval" color={pendingPTO>0?"#f59e0b":"#34d399"} onClick={()=>setTab("pto")}/>
-            <HomeTile icon="🎯" label="Hiring Pipeline" value={activeCands} sub="Active candidates" color="#60a5fa" onClick={()=>setTab("recruiting")}/>
-            <HomeTile icon="🏢" label="Active Clients" value={clients.filter(c=>c.health!=="Red").length} sub={`of ${clients.length} total`} color="#34d399" onClick={()=>setTab("clients")}/>
-          </div>
-
-          {/* Alerts */}
-          <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px",marginBottom:16}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-              <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>🔔 Notifications & Alerts</span>
-              {rawAlerts.length>0&&<span style={{background:"#ef4444",color:"#fff",fontSize:10,fontWeight:700,borderRadius:10,padding:"1px 7px"}}>{rawAlerts.length}</span>}
-            </div>
-            {rawAlerts.length===0
-              ? <div style={{textAlign:"center",padding:"16px 0",color:"#334155",fontSize:13}}>✅ All clear — no pending alerts</div>
-              : rawAlerts.map(a=><HomeAlert key={a.id} alert={a} onDismiss={id=>setDismissedAlerts(p=>[...(p||[]),id])} onNavigate={setTab}/>)
-            }
-          </div>
-
-          {/* Recent Activity */}
-          <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px"}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>📜 Recent Activity</div>
-            {!(auditLog||[]).length
-              ? <div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"12px 0"}}>No recent activity</div>
-              : (auditLog||[]).slice(0,6).map((log,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:i<5?"1px solid #0a1420":"none"}}>
-                  <div style={{width:28,height:28,borderRadius:8,background:"#0f1e30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>
-                    {log.module==="Timesheet"?"⏱":log.module==="Invoice"?"🧾":log.module==="Settings"?"⚙️":log.module==="PTO"?"🏖":"📝"}
-                  </div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:12,color:"#cbd5e1",fontWeight:500}}>{log.action}</div>
-                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{log.module} · {log.user} · {log.timestamp?new Date(log.timestamp).toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):""}</div>
-                  </div>
-                </div>
-              ))
-            }
-          </div>
-        </div>
-
-        {/* RIGHT */}
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          {/* Weather */}
-          <div style={{background:"linear-gradient(135deg,#0c1e3d,#0a1829)",border:"1px solid #1e3a5f",borderRadius:12,padding:"18px 20px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>🌍 Weather · Frisco, TX</div>
-            {weather
-              ? <>
-                  <div style={{display:"flex",alignItems:"flex-end",gap:6,marginBottom:6}}>
-                    <div style={{fontSize:46,fontWeight:800,color:"#e2e8f0",lineHeight:1}}>{weather.temp}°</div>
-                    <div style={{fontSize:13,color:"#94a3b8",marginBottom:6}}>F</div>
-                  </div>
-                  <div style={{fontSize:14,color:"#7dd3fc",fontWeight:600,marginBottom:12}}>{weather.condition}</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                    {[{label:"Humidity",value:weather.humidity+"%",icon:"💧"},{label:"Wind",value:weather.wind+" mph",icon:"💨"}].map(w=>(
-                      <div key={w.label} style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"8px 10px"}}>
-                        <div style={{fontSize:10,color:"#475569"}}>{w.icon} {w.label}</div>
-                        <div style={{fontSize:14,fontWeight:700,color:"#cbd5e1",marginTop:2}}>{w.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              : <div style={{color:"#334155",fontSize:13,textAlign:"center",padding:"20px 0"}}>Loading weather…</div>
-            }
-          </div>
-
-          {/* To-Do */}
-          <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px"}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>
-              ✅ My To-Do <span style={{fontSize:10,color:"#334155",fontWeight:400}}>{todos.filter(t=>!t.done).length} remaining</span>
-            </div>
-            <div style={{display:"flex",gap:8,marginBottom:10}}>
-              <input className="inp" value={newTodo} onChange={e=>setNewTodo(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&addTodo()} placeholder="Add a task…"
-                style={{flex:1,fontSize:12,padding:"7px 10px"}}/>
-              <button onClick={addTodo} style={{background:"#0369a1",border:"none",borderRadius:7,color:"#fff",padding:"0 12px",cursor:"pointer",fontSize:16,fontWeight:700}}>+</button>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:220,overflowY:"auto"}}>
-              {todos.length===0&&<div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"10px 0"}}>No tasks yet</div>}
-              {todos.map(todo=>(
-                <div key={todo.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#0a1120",borderRadius:8,border:"1px solid #1a2d45"}}>
-                  <input type="checkbox" checked={todo.done} onChange={()=>toggleTodo(todo.id)} style={{accentColor:"#0369a1",cursor:"pointer",flexShrink:0}}/>
-                  <span style={{flex:1,fontSize:12,color:todo.done?"#334155":"#cbd5e1",textDecoration:todo.done?"line-through":"none"}}>{todo.text}</span>
-                  <button onClick={()=>deleteTodo(todo.id)} style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:15,padding:"0 2px"}}>×</button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px"}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>⚡ Quick Actions</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              {[{icon:"👥",label:"Team Roster",tab:"roster"},{icon:"🧾",label:"Invoices",tab:"finance"},{icon:"📊",label:"Dashboard",tab:"dashboard"},{icon:"🎯",label:"CRM",tab:"crm"},{icon:"⏱",label:"Timesheets",tab:"timesheet"},{icon:"📋",label:"Reports",tab:"reports"}].map(q=>(
-                <button key={q.tab} onClick={()=>setTab(q.tab)}
-                  style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:11,fontWeight:600,padding:"8px 10px",cursor:"pointer",textAlign:"left",transition:"all 0.15s"}}
-                  onMouseEnter={e=>{e.currentTarget.style.background="#0f1e30";e.currentTarget.style.color="#e2e8f0";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background="#0a1120";e.currentTarget.style.color="#94a3b8";}}>
-                  {q.icon} {q.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-function HomePage({ roster, clients, tsHours, finInvoices, finPayments, crmDeals,
-  candidates, offers, compDocs, workAuth, ptoRequests, auditLog, authProfile, setTab,
-  dismissedAlerts, setDismissedAlerts }) {
-
-  // ── Weather ──────────────────────────────────────────────────────────────
-  const [weather, setWeather] = useState(null);
-  const [todos, setTodos] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch { return []; }
-  });
-  const [newTodo, setNewTodo] = useState("");
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    // Fetch weather for Frisco TX using Open-Meteo (free, no key needed)
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=33.1507&longitude=-96.8236&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&temperature_unit=fahrenheit&timezone=America%2FChicago")
-      .then(r => r.json())
-      .then(d => {
-        const cur = d.current;
-        const codes = { 0:"☀️ Clear", 1:"🌤 Mostly Clear", 2:"⛅ Partly Cloudy", 3:"☁️ Overcast",
-          45:"🌫 Foggy", 48:"🌫 Icy Fog", 51:"🌦 Light Drizzle", 61:"🌧 Light Rain",
-          63:"🌧 Moderate Rain", 65:"🌧 Heavy Rain", 71:"❄️ Light Snow", 73:"❄️ Moderate Snow",
-          75:"❄️ Heavy Snow", 80:"🌦 Rain Showers", 81:"🌧 Heavy Showers", 95:"⛈ Thunderstorm" };
-        setWeather({
-          temp: Math.round(cur.temperature_2m),
-          condition: codes[cur.weathercode] || "🌡 " + cur.weathercode,
-          humidity: cur.relative_humidity_2m,
-          wind: Math.round(cur.windspeed_10m),
-          location: "Frisco, TX"
-        });
-      }).catch(() => {});
-  }, []);
-
-  // ── Todo helpers ─────────────────────────────────────────────────────────
-  const saveTodos = (t) => { setTodos(t); localStorage.setItem("zt-todos", JSON.stringify(t)); };
-  const addTodo = () => {
-    if (!newTodo.trim()) return;
-    saveTodos([...todos, { id: Date.now(), text: newTodo.trim(), done: false, createdAt: new Date().toISOString() }]);
-    setNewTodo("");
-  };
-  const toggleTodo = (id) => saveTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  const deleteTodo = (id) => saveTodos(todos.filter(t => t.id !== id));
-
-  // ── Computed stats ───────────────────────────────────────────────────────
-  const today = new Date();
-  const greeting = today.getHours() < 12 ? "Good morning" : today.getHours() < 17 ? "Good afternoon" : "Good evening";
-  const dayName = today.toLocaleDateString("en-US", { weekday:"long" });
-  const dateStr = today.toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" });
-
-  const totalRev = clients.reduce((s, c) => s + (c.annualRev || 0), 0);
-  const activeConsultants = roster.filter(r => r.util > 0).length;
-  const overdueInvoices = finInvoices.filter(i => i.status === "overdue").length;
-  const overdueAmt = finInvoices.filter(i => i.status === "overdue").reduce((s, i) => s + (i.amount || 0), 0);
-  const openDeals = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage)).length;
-  const openDealVal = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage)).reduce((s, d) => s + (d.value || 0), 0);
-  const expiringDocs = workAuth.filter(w => {
-    if (!w.expiryDate) return false;
-    const days = (new Date(w.expiryDate) - today) / 86400000;
-    return days >= 0 && days <= 60;
-  }).length;
-  const pendingPTO = (ptoRequests || []).filter(p => p.status === "pending").length;
-  const activeCandidates = candidates.filter(c => !["rejected","hired"].includes(c.stage)).length;
-
-  // ── Notifications (smart alerts) ─────────────────────────────────────────
-  const alerts = [
-    overdueInvoices > 0 && { id:"inv", type:"red", icon:"⚠️", title:`${overdueInvoices} Overdue Invoice${overdueInvoices>1?"s":""}`, sub:`$${(overdueAmt/1000).toFixed(0)}k needs collection`, tab:"finance" },
-    expiringDocs > 0 && { id:"docs", type:"amber", icon:"📋", title:`${expiringDocs} Work Auth Expiring`, sub:"Within 60 days — action required", tab:"hr" },
-    pendingPTO > 0 && { id:"pto", type:"blue", icon:"🏖", title:`${pendingPTO} PTO Request${pendingPTO>1?"s":""}`, sub:"Awaiting your approval", tab:"pto" },
-    activeCandidates > 0 && { id:"hiring", type:"green", icon:"👤", title:`${activeCandidates} Active Candidate${activeCandidates>1?"s":""}`, sub:"In hiring pipeline", tab:"recruiting" },
-    openDeals > 0 && { id:"deals", type:"blue", icon:"💼", title:`${openDeals} Open Deal${openDeals>1?"s":""}`, sub:`$${(openDealVal/1000).toFixed(0)}k in pipeline`, tab:"crm" },
-  ].filter(Boolean).filter(a => !(dismissedAlerts||[]).includes(a.id));
-
-  const alertColors = {
-    red:   { bg:"#2d0a0a", border:"#7f1d1d", text:"#fca5a5", dot:"#ef4444" },
-    amber: { bg:"#2d1f00", border:"#92400e", text:"#fcd34d", dot:"#f59e0b" },
-    blue:  { bg:"#0c1a2e", border:"#1e3a5f", text:"#7dd3fc", dot:"#38bdf8" },
-    green: { bg:"#022c22", border:"#065f46", text:"#6ee7b7", dot:"#34d399" },
-  };
-
-  // ── Tile helpers ─────────────────────────────────────────────────────────
-  const Tile = ({ icon, label, value, sub, color="#38bdf8", onClick, span=1 }) => (
-    <div onClick={onClick} style={{
-      background:"#0a1120", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px",
-      cursor:onClick?"pointer":"default", transition:"border-color 0.15s",
-      gridColumn: span > 1 ? `span ${span}` : undefined,
-    }}
-    onMouseEnter={e => onClick && (e.currentTarget.style.borderColor="#2a4d75")}
-    onMouseLeave={e => onClick && (e.currentTarget.style.borderColor="#1a2d45")}>
-      <div style={{fontSize:22, marginBottom:6}}>{icon}</div>
-      <div style={{fontSize:22, fontWeight:800, color, fontFamily:"'DM Mono',monospace", lineHeight:1}}>{value}</div>
-      <div style={{fontSize:12, fontWeight:600, color:"#cbd5e1", marginTop:4}}>{label}</div>
-      {sub && <div style={{fontSize:10, color:"#475569", marginTop:3}}>{sub}</div>}
-    </div>
-  );
-
-  const fmt = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`;
-
-  return (
-    <div>
-      {/* ── Header: Greeting + Date/Time ── */}
-      <div style={{display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:24, flexWrap:"wrap", gap:12}}>
-        <div>
-          <div style={{fontSize:24, fontWeight:800, color:"#e2e8f0"}}>
-            {greeting}, {authProfile?.full_name?.split(" ")[0] || "Manju"} 👋
-          </div>
-          <div style={{fontSize:13, color:"#475569", marginTop:4}}>{dayName}, {dateStr}</div>
-        </div>
-        <div style={{fontSize:28, fontWeight:700, color:"#38bdf8", fontFamily:"'DM Mono',monospace", letterSpacing:2}}>
-          {time.toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit", second:"2-digit"})}
-        </div>
-      </div>
-
-      <div style={{display:"grid", gridTemplateColumns:"1fr 320px", gap:18, alignItems:"start"}}>
-        {/* ── LEFT COLUMN ── */}
-        <div>
-
-          {/* ── Quick Stats Tiles ── */}
-          <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:18}}>
-            <Tile icon="💰" label="Annual Revenue" value={fmt(totalRev)} sub="All clients" color="#34d399" onClick={()=>setTab("dashboard")}/>
-            <Tile icon="👥" label="Active Consultants" value={activeConsultants} sub={`of ${roster.length} total`} color="#38bdf8" onClick={()=>setTab("roster")}/>
-            <Tile icon="💼" label="Open Pipeline" value={fmt(openDealVal)} sub={`${openDeals} deals`} color="#a78bfa" onClick={()=>setTab("crm")}/>
-            <Tile icon="⚠️" label="Overdue A/R" value={overdueInvoices > 0 ? fmt(overdueAmt) : "$0"} sub={overdueInvoices > 0 ? `${overdueInvoices} invoices` : "All clear"} color={overdueInvoices > 0 ? "#f87171" : "#34d399"} onClick={()=>setTab("finance")}/>
-          </div>
-
-          <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:18}}>
-            <Tile icon="📋" label="Expiring Docs" value={expiringDocs} sub="Work auth ≤60 days" color={expiringDocs > 0 ? "#f59e0b" : "#34d399"} onClick={()=>setTab("hr")}/>
-            <Tile icon="🏖" label="Pending PTO" value={pendingPTO} sub="Awaiting approval" color={pendingPTO > 0 ? "#f59e0b" : "#34d399"} onClick={()=>setTab("pto")}/>
-            <Tile icon="🎯" label="Hiring Pipeline" value={activeCandidates} sub="Active candidates" color="#60a5fa" onClick={()=>setTab("recruiting")}/>
-            <Tile icon="🏢" label="Active Clients" value={clients.filter(c=>c.health!=="Red").length} sub={`of ${clients.length} total`} color="#34d399" onClick={()=>setTab("clients")}/>
-          </div>
-
-          {/* ── Notifications / Alerts ── */}
-          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px", marginBottom:18}}>
-            <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14}}>
-              <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", display:"flex", alignItems:"center", gap:8}}>
-                🔔 Notifications & Alerts
-                {alerts.length > 0 && <span style={{background:"#ef4444", color:"#fff", fontSize:10, fontWeight:700, borderRadius:10, padding:"1px 7px"}}>{alerts.length}</span>}
-              </div>
-            </div>
-            {alerts.length === 0 ? (
-              <div style={{textAlign:"center", padding:"20px 0", color:"#334155", fontSize:13}}>
-                ✅ All clear — no pending alerts
-              </div>
-            ) : (
-              <div style={{display:"flex", flexDirection:"column", gap:8}}>
-                {alerts.map(a => {
-                  const col = alertColors[a.type];
-                  return (
-                    <div key={a.id} style={{display:"flex", alignItems:"center", gap:12, background:col.bg,
-                      border:`1px solid ${col.border}`, borderRadius:8, padding:"10px 14px", cursor:"pointer"}}
-                      onClick={()=>setTab(a.tab)}>
-                      <div style={{width:8, height:8, borderRadius:"50%", background:col.dot, flexShrink:0}}/>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:12, fontWeight:600, color:col.text}}>{a.icon} {a.title}</div>
-                        <div style={{fontSize:10, color:"#475569", marginTop:2}}>{a.sub}</div>
-                      </div>
-                      <div style={{display:"flex", alignItems:"center", gap:8}}>
-                        <span style={{fontSize:11, color:"#3d5a7a"}}>View →</span>
-                        <button onClick={e=>{e.stopPropagation(); setDismissedAlerts(prev=>[...(prev||[]),a.id]);}}
-                          style={{background:"none", border:"none", color:"#334155", cursor:"pointer", fontSize:14, padding:"0 2px"}}>×</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* ── Recent Activity ── */}
-          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
-            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:14}}>📜 Recent Activity</div>
-            {(auditLog||[]).length === 0 ? (
-              <div style={{color:"#334155", fontSize:12, textAlign:"center", padding:"16px 0"}}>No recent activity</div>
-            ) : (
-              <div style={{display:"flex", flexDirection:"column", gap:0}}>
-                {(auditLog||[]).slice(0,6).map((log, i) => (
-                  <div key={i} style={{display:"flex", alignItems:"flex-start", gap:12, padding:"8px 0",
-                    borderBottom: i < Math.min(5, (auditLog||[]).length-1) ? "1px solid #0a1420" : "none"}}>
-                    <div style={{width:28, height:28, borderRadius:8, background:"#0f1e30", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, flexShrink:0}}>
-                      {log.module==="Timesheet"?"⏱":log.module==="Invoice"?"🧾":log.module==="Settings"?"⚙️":log.module==="PTO"?"🏖":"📝"}
-                    </div>
-                    <div style={{flex:1, minWidth:0}}>
-                      <div style={{fontSize:12, color:"#cbd5e1", fontWeight:500}}>{log.action}</div>
-                      <div style={{fontSize:10, color:"#334155", marginTop:2}}>{log.module} · {log.user} · {log.timestamp ? new Date(log.timestamp).toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : ""}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── RIGHT COLUMN ── */}
-        <div style={{display:"flex", flexDirection:"column", gap:14}}>
-
-          {/* ── Weather ── */}
-          <div style={{background:"linear-gradient(135deg,#0c1e3d,#0a1829)", border:"1px solid #1e3a5f", borderRadius:12, padding:"18px 20px"}}>
-            <div style={{fontSize:11, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12}}>🌍 Weather · Frisco, TX</div>
-            {weather ? (
-              <>
-                <div style={{display:"flex", alignItems:"flex-end", gap:8, marginBottom:8}}>
-                  <div style={{fontSize:48, fontWeight:800, color:"#e2e8f0", lineHeight:1}}>{weather.temp}°</div>
-                  <div style={{fontSize:13, color:"#94a3b8", marginBottom:8}}>F</div>
-                </div>
-                <div style={{fontSize:15, color:"#7dd3fc", fontWeight:600, marginBottom:12}}>{weather.condition}</div>
-                <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
-                  {[
-                    {label:"Humidity", value:weather.humidity+"%", icon:"💧"},
-                    {label:"Wind", value:weather.wind+" mph", icon:"💨"},
-                  ].map(w=>(
-                    <div key={w.label} style={{background:"rgba(255,255,255,0.04)", borderRadius:8, padding:"8px 10px"}}>
-                      <div style={{fontSize:10, color:"#475569"}}>{w.icon} {w.label}</div>
-                      <div style={{fontSize:14, fontWeight:700, color:"#cbd5e1", marginTop:2}}>{w.value}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{color:"#334155", fontSize:13, textAlign:"center", padding:"20px 0"}}>Loading weather…</div>
-            )}
-          </div>
-
-          {/* ── To-Do List ── */}
-          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
-            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:12}}>
-              ✅ My To-Do
-              <span style={{fontSize:10, color:"#334155", fontWeight:400, marginLeft:8}}>
-                {todos.filter(t=>!t.done).length} remaining
-              </span>
-            </div>
-
-            {/* Add Todo */}
-            <div style={{display:"flex", gap:8, marginBottom:12}}>
-              <input className="inp" value={newTodo} onChange={e=>setNewTodo(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&addTodo()}
-                placeholder="Add a task…" style={{flex:1, fontSize:12, padding:"7px 10px"}}/>
-              <button onClick={addTodo} style={{background:"#0369a1", border:"none", borderRadius:7, color:"#fff",
-                padding:"0 12px", cursor:"pointer", fontSize:16, fontWeight:700}}>+</button>
-            </div>
-
-            {/* Todo items */}
-            <div style={{display:"flex", flexDirection:"column", gap:4, maxHeight:240, overflowY:"auto"}}>
-              {todos.length === 0 && (
-                <div style={{color:"#334155", fontSize:12, textAlign:"center", padding:"12px 0"}}>No tasks yet</div>
-              )}
-              {todos.map(todo => (
-                <div key={todo.id} style={{display:"flex", alignItems:"center", gap:8, padding:"7px 10px",
-                  background:"#0a1120", borderRadius:8, border:"1px solid #1a2d45"}}>
-                  <input type="checkbox" checked={todo.done} onChange={()=>toggleTodo(todo.id)}
-                    style={{accentColor:"#0369a1", cursor:"pointer", flexShrink:0}}/>
-                  <span style={{flex:1, fontSize:12, color: todo.done?"#334155":"#cbd5e1",
-                    textDecoration: todo.done?"line-through":"none"}}>{todo.text}</span>
-                  <button onClick={()=>deleteTodo(todo.id)} style={{background:"none", border:"none",
-                    color:"#334155", cursor:"pointer", fontSize:14, padding:"0 2px", lineHeight:1}}>×</button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Quick Links ── */}
-          <div style={{background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px"}}>
-            <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:12}}>⚡ Quick Actions</div>
-            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
-              {[
-                {icon:"👥", label:"Team Roster", tab:"roster"},
-                {icon:"🧾", label:"Invoices", tab:"finance"},
-                {icon:"📊", label:"Dashboard", tab:"dashboard"},
-                {icon:"🎯", label:"CRM", tab:"crm"},
-                {icon:"⏱", label:"Timesheets", tab:"timesheet"},
-                {icon:"📋", label:"Reports", tab:"reports"},
-              ].map(q => (
-                <button key={q.tab} onClick={()=>setTab(q.tab)} style={{
-                  background:"#0a1120", border:"1px solid #1a2d45", borderRadius:8,
-                  color:"#94a3b8", fontSize:11, fontWeight:600, padding:"8px 10px",
-                  cursor:"pointer", textAlign:"left", transition:"all 0.15s"
-                }}
-                onMouseEnter={e=>{e.currentTarget.style.background="#0f1e30"; e.currentTarget.style.color="#e2e8f0";}}
-                onMouseLeave={e=>{e.currentTarget.style.background="#0a1120"; e.currentTarget.style.color="#94a3b8";}}>
-                  {q.icon} {q.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MY PROFILE — Team member personal info form
-// ═══════════════════════════════════════════════════════════════════════════════
-function MyProfilePage({ authProfile, authSession }) {
-  const PROFILE_KEY = authProfile?.id ? `zt-profile-${authProfile.id}` : null;
-
-  const blank = {
-    firstName:"", lastName:"",
-    cellPhone:"", altPhone:"", workPhone:"",
-    currentAddress:"", currentCity:"", currentState:"", currentZip:"",
-    intlAddress:"", intlCity:"", intlCountry:"", intlPhone:"",
-    emergencyName:"", emergencyRelation:"", emergencyPhone:"", emergencyAltPhone:"",
-    updatedAt:""
-  };
-
-  const [form, setForm] = useState(blank);
-  const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Load existing profile data from Supabase
-  useEffect(() => {
-    if (!PROFILE_KEY || !supaAuth) { setLoading(false); return; }
-    const sess = authSession || supaAuth.loadSession();
-    if (!sess?.access_token) { setLoading(false); return; }
-    const SUPA_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_URL;
-    const SUPA_ANON = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_ANON;
-    if (!SUPA_URL) { setLoading(false); return; }
-    fetch(`${SUPA_URL}/rest/v1/ops_store?key=eq.${PROFILE_KEY}&select=value`, {
-      headers: { "apikey": SUPA_ANON, "Authorization": `Bearer ${sess.access_token}` }
-    }).then(r => r.json()).then(rows => {
-      if (rows?.[0]?.value) setForm({ ...blank, ...JSON.parse(rows[0].value) });
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [PROFILE_KEY]);
-
-  const saveProfile = async () => {
-    if (!PROFILE_KEY || !supaAuth) return;
-    const sess = authSession || supaAuth.loadSession();
-    if (!sess?.access_token) return;
-    const SUPA_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_URL;
-    const SUPA_ANON = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_ANON;
-    if (!SUPA_URL) return;
-    const payload = { ...form, updatedAt: new Date().toISOString() };
-    await fetch(`${SUPA_URL}/rest/v1/ops_store?on_conflict=key`, {
-      method: "POST",
-      headers: { "Content-Type":"application/json", "apikey":SUPA_ANON, "Authorization":`Bearer ${sess.access_token}`, "Prefer":"return=minimal,resolution=merge-duplicates" },
-      body: JSON.stringify({ key: PROFILE_KEY, value: JSON.stringify(payload), updated_at: new Date().toISOString() })
-    });
-    setForm(payload);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  const f = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
-
-  const Section = ({ title, children }) => (
-    <div className="card" style={{ padding:"20px 22px", marginBottom:16 }}>
-      <div style={{ fontSize:12, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:16, paddingBottom:10, borderBottom:"1px solid #0f1e30" }}>{title}</div>
-      {children}
-    </div>
-  );
-
-  const Row = ({ children }) => (
-    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>{children}</div>
-  );
-
-  const Field = ({ label, value, onChange, type="text", placeholder="" }) => (
-    <div>
-      <div style={{ fontSize:11, fontWeight:600, color:"#64748b", marginBottom:5, letterSpacing:"0.04em" }}>{label}</div>
-      <input className="inp" type={type} value={value} onChange={onChange} placeholder={placeholder}
-        style={{ width:"100%", boxSizing:"border-box" }} />
-    </div>
-  );
-
-  const FullField = ({ label, value, onChange, placeholder="" }) => (
-    <div style={{ marginBottom:12 }}>
-      <div style={{ fontSize:11, fontWeight:600, color:"#64748b", marginBottom:5, letterSpacing:"0.04em" }}>{label}</div>
-      <input className="inp" value={value} onChange={onChange} placeholder={placeholder}
-        style={{ width:"100%", boxSizing:"border-box" }} />
-    </div>
-  );
-
-  if (loading) return <div style={{ padding:40, textAlign:"center", color:"#64748b" }}>Loading your profile…</div>;
-
-  return (
-    <div style={{ maxWidth:860 }}>
-      <PH title="My Profile" sub="Personal info · Emergency contact · Contact details"/>
-
-      {/* Name & Role banner */}
-      <div style={{ display:"flex", alignItems:"center", gap:16, padding:"16px 20px", background:"#0a1120", border:"1px solid #1a2d45", borderRadius:12, marginBottom:20 }}>
-        <Avatar name={(form.firstName||authProfile?.full_name||"?")} size={48}/>
-        <div>
-          <div style={{ fontSize:16, fontWeight:700, color:"#e2e8f0" }}>
-            {form.firstName || form.lastName ? `${form.firstName} ${form.lastName}`.trim() : (authProfile?.full_name || "Your Name")}
-          </div>
-          <div style={{ fontSize:12, color:"#475569", marginTop:2, textTransform:"capitalize" }}>
-            {authProfile?.role?.replace("_"," ")} · {authProfile?.email}
-          </div>
-        </div>
-        {form.updatedAt && (
-          <div style={{ marginLeft:"auto", fontSize:10, color:"#334155" }}>
-            Last updated {new Date(form.updatedAt).toLocaleDateString()}
-          </div>
-        )}
-      </div>
-
-      {/* Personal Info */}
-      <Section title="👤 Personal Information">
-        <Row>
-          <Field label="First Name *" value={form.firstName} onChange={f("firstName")} placeholder="Manju" />
-          <Field label="Last Name *" value={form.lastName} onChange={f("lastName")} placeholder="Murthy" />
-        </Row>
-        <Row>
-          <Field label="Cell Phone *" value={form.cellPhone} onChange={f("cellPhone")} type="tel" placeholder="+1 (555) 000-0000" />
-          <Field label="Alternative Phone" value={form.altPhone} onChange={f("altPhone")} type="tel" placeholder="+1 (555) 000-0001" />
-        </Row>
-        <Row>
-          <Field label="Work / Office Phone" value={form.workPhone} onChange={f("workPhone")} type="tel" placeholder="+1 (555) 000-0002" />
-        </Row>
-      </Section>
-
-      {/* Current US Address */}
-      <Section title="🏠 Current Address (US)">
-        <FullField label="Street Address" value={form.currentAddress} onChange={f("currentAddress")} placeholder="123 Main Street, Apt 4B" />
-        <Row>
-          <Field label="City" value={form.currentCity} onChange={f("currentCity")} placeholder="Frisco" />
-          <Field label="State" value={form.currentState} onChange={f("currentState")} placeholder="TX" />
-        </Row>
-        <Row>
-          <Field label="ZIP Code" value={form.currentZip} onChange={f("currentZip")} placeholder="75034" />
-        </Row>
-      </Section>
-
-      {/* Address Outside US */}
-      <Section title="✈️ Address Outside US (Home Country)">
-        <FullField label="Street Address" value={form.intlAddress} onChange={f("intlAddress")} placeholder="123 Street Name" />
-        <Row>
-          <Field label="City" value={form.intlCity} onChange={f("intlCity")} placeholder="Hyderabad" />
-          <Field label="Country" value={form.intlCountry} onChange={f("intlCountry")} placeholder="India" />
-        </Row>
-        <Row>
-          <Field label="Phone Number (International)" value={form.intlPhone} onChange={f("intlPhone")} type="tel" placeholder="+91 98765 43210" />
-        </Row>
-      </Section>
-
-      {/* Emergency Contact */}
-      <Section title="🚨 Emergency Contact">
-        <Row>
-          <Field label="Contact Name *" value={form.emergencyName} onChange={f("emergencyName")} placeholder="Spouse / Parent name" />
-          <Field label="Relationship" value={form.emergencyRelation} onChange={f("emergencyRelation")} placeholder="Spouse, Parent, Sibling…" />
-        </Row>
-        <Row>
-          <Field label="Primary Phone *" value={form.emergencyPhone} onChange={f("emergencyPhone")} type="tel" placeholder="+1 (555) 000-0000" />
-          <Field label="Alternative Phone" value={form.emergencyAltPhone} onChange={f("emergencyAltPhone")} type="tel" placeholder="+1 (555) 000-0001" />
-        </Row>
-      </Section>
-
-      {/* Save */}
-      <div style={{ display:"flex", alignItems:"center", gap:14, marginTop:4 }}>
-        <button className="btn bp" style={{ padding:"11px 32px", fontSize:14, fontWeight:700 }} onClick={saveProfile}>
-          Save Profile
-        </button>
-        {saved && (
-          <span style={{ fontSize:13, color:"#34d399", fontWeight:600, display:"flex", alignItems:"center", gap:6 }}>
-            ✓ Profile saved successfully
-          </span>
-        )}
-      </div>
-
-      <div style={{ marginTop:16, padding:"10px 14px", background:"#060d1c", borderRadius:8, border:"1px solid #0f1e30", fontSize:11, color:"#334155", lineHeight:1.6 }}>
-        🔒 Your profile data is stored securely in our database. Only HR and admins can view your emergency contact details.
-      </div>
-    </div>
-  );
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // USER APPROVALS PANEL — Admin approves / rejects access requests
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -8955,7 +8184,57 @@ function UserApprovalsPanel() {
   );
 }
 
+function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
+  const [sub, setSub] = useState("chart");
+  const tabs = [
+    { id:"chart",   label:"Org Chart"        },
+    { id:"members", label:"Team Members"     },
+    { id:"access",  label:"Access Matrix"    },
+    { id:"roles",   label:"Role Templates"   },
+    { id:"approvals", label:"👤 User Approvals" },
+  ];
+  const props = { orgMembers, setOrgMembers, roster };
+  return (
+    <div>
+      <PH title="Org & Access" sub="Company Structure · Roles · Module Permissions"/>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setSub(t.id)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {sub==="chart"   && <OrgChart   {...props}/>}
+      {sub==="members" && <OrgMembers {...props}/>}
+      {sub==="access"  && <AccessMatrix {...props}/>}
+      {sub==="roles"   && <RoleTemplates/>}
+      {sub==="approvals" && <UserApprovalsPanel />}
+    </div>
+  );
+}
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getEffectivePerms(member) {
+  const base = ROLE_TEMPLATES[member.role]?.perms || {};
+  return { ...base, ...(member.customPerms||{}) };
+}
+
+function Avatar({ name, role, size=36 }) {
+  const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const roleC = ROLE_TEMPLATES[role]?.color || "#64748b";
+  return (
+    <div style={{width:size,height:size,borderRadius:"50%",background:ROLE_TEMPLATES[role]?.bg||"#0a1626",
+      border:`2px solid ${roleC}`,display:"flex",alignItems:"center",justifyContent:"center",
+      fontSize:size*0.35,fontWeight:700,color:roleC,flexShrink:0}}>
+      {initials}
+    </div>
+  );
+}
+
+// ── Org Chart ─────────────────────────────────────────────────────────────────
 function OrgChart({ orgMembers, setOrgMembers }) {
   const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -11328,4 +10607,9131 @@ function COImpact({ changeOrders, projects, roster }) {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // VENDOR / AP MODULE
+// ═══════════════════════════════════════════════════════════════════════════════
+function VendorAPModule({ vendors, setVendors, apInvoices, setApInvoices, projects, roster, addAudit }) {
+  const [sub, setSub] = useState("dashboard");
+  const tabs = [
+    { id:"dashboard", label:"AP Dashboard"   },
+    { id:"invoices",  label:"AP Invoices"    },
+    { id:"vendors",   label:"Vendor Registry"},
+    { id:"1099",      label:"1099 Tracker"   },
+  ];
+  const overdueCount = apInvoices.filter(i=>i.status==="overdue").length;
+  const pendingCount = apInvoices.filter(i=>["pending","approved"].includes(i.status)).length;
+  const props = { vendors, setVendors, apInvoices, setApInvoices, projects, roster, addAudit };
+  return (
+    <div>
+      <PH title="Vendors & Accounts Payable" sub="Subcontractors  /  Software  /  Office  /  Legal  /  1099  /  Payment tracking"/>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setSub(t.id)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,position:"relative",
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+            {t.id==="invoices"&&(overdueCount>0||pendingCount>0)&&(
+              <span style={{position:"absolute",top:4,right:6,background:overdueCount>0?"#f87171":"#f59e0b",color:"#000",borderRadius:"50%",width:16,height:16,fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{overdueCount||pendingCount}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {sub==="dashboard" && <APDashboard  {...props}/>}
+      {sub==="invoices"  && <APInvoices   {...props}/>}
+      {sub==="vendors"   && <VendorRegistry {...props}/>}
+      {sub==="1099"      && <Tracker1099  {...props}/>}
+    </div>
+  );
+}
 
+// ── AP Dashboard ──────────────────────────────────────────────────────────────
+function APDashboard({ vendors, apInvoices, setApInvoices, projects }) {
+  const paid     = apInvoices.filter(i=>i.status==="paid");
+  const approved = apInvoices.filter(i=>i.status==="approved");
+  const pending  = apInvoices.filter(i=>i.status==="pending");
+  const overdue  = apInvoices.filter(i=>i.status==="overdue");
+  const draft    = apInvoices.filter(i=>i.status==="draft");
+
+  const totalPaid    = paid.reduce((s,i)=>s+i.amount,0);
+  const totalOwed    = [...approved,...pending,...overdue].reduce((s,i)=>s+i.amount,0);
+  const totalOverdue = overdue.reduce((s,i)=>s+i.amount,0);
+
+  // Spending by category
+  const byCategory = {};
+  apInvoices.filter(i=>i.status==="paid").forEach(i=>{
+    byCategory[i.category]=(byCategory[i.category]||0)+i.amount;
+  });
+  const catEntries = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
+  const catTotal   = Object.values(byCategory).reduce((s,v)=>s+v,0);
+
+  // Spending by vendor
+  const byVendor = {};
+  apInvoices.filter(i=>i.status!=="voided"&&i.status!=="draft").forEach(i=>{
+    byVendor[i.vendorId]=(byVendor[i.vendorId]||0)+i.amount;
+  });
+
+  const approveAll = () => setApInvoices(inv=>inv.map(i=>i.status==="pending"?{...i,status:"approved"}:i));
+  const payAll     = () => setApInvoices(inv=>inv.map(i=>i.status==="approved"?{...i,status:"paid",paidDate:TODAY_STR}:i));
+
+  const daysOverdueAP = (inv) => {
+    if(!inv.dueDate) return 0;
+    return Math.floor((new Date()-new Date(inv.dueDate))/86400000);
+  };
+
+  return (
+    <div>
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"YTD Paid",       v:fmt(totalPaid),    c:"#34d399"},
+          {l:"Outstanding",    v:fmt(totalOwed),    c:"#f59e0b"},
+          {l:"Overdue",        v:fmt(totalOverdue), c:totalOverdue>0?"#f87171":"#34d399"},
+          {l:"Pending Approval",v:pending.length,   c:"#38bdf8"},
+          {l:"Active Vendors", v:vendors.filter(v=>v.active).length, c:"#a78bfa"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Alerts */}
+      {(overdue.length>0||vendors.some(v=>v.w9Status==="missing")) && (
+        <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
+          {overdue.map(inv=>{
+            const v = vendors.find(x=>x.id===inv.vendorId);
+            const days = daysOverdueAP(inv);
+            return (
+              <div key={inv.id} style={{padding:"12px 18px",borderRadius:10,background:"#1a0808",border:"1px solid #f8717144",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <span style={{color:"#f87171",fontWeight:700,fontSize:13}}>! OVERDUE: </span>
+                  <span style={{color:"#e2e8f0",fontSize:13}}>{v?.name}  -  {inv.description.slice(0,50)}</span>
+                  <div style={{fontSize:10,color:"#f87171",marginTop:2}}>{fmt(inv.amount)}  /  {days} days overdue  /  Due {fmtDate(inv.dueDate)}</div>
+                  {inv.notes&&<div style={{fontSize:10,color:"#f59e0b",marginTop:2}}>{inv.notes}</div>}
+                </div>
+                <button className="btn bs" style={{fontSize:11,padding:"5px 12px",flexShrink:0}}
+                  onClick={()=>setApInvoices(aps=>aps.map(i=>i.id===inv.id?{...i,status:"paid",paidDate:TODAY_STR}:i))}>
+                  Mark Paid
+                </button>
+              </div>
+            );
+          })}
+          {vendors.filter(v=>v.w9Status==="missing"&&v.active&&v.needs1099).map(v=>(
+            <div key={v.id} style={{padding:"12px 18px",borderRadius:10,background:"#1a1005",border:"1px solid #f59e0b44",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <span style={{color:"#f59e0b",fontWeight:700,fontSize:13}}>! W-9 MISSING: </span>
+                <span style={{color:"#e2e8f0",fontSize:13}}>{v.name}</span>
+                <div style={{fontSize:10,color:"#475569",marginTop:2}}>Cannot pay or issue 1099 without W-9 on file.</div>
+              </div>
+              <span className="bdg" style={{background:"#1a1005",color:"#f59e0b"}}>Request W-9</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:16}}>
+        {/* AP Aging */}
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
+            <span>AP Aging  -  Outstanding Bills</span>
+            <div style={{display:"flex",gap:8}}>
+              {pending.length>0&&<button className="btn bp" style={{fontSize:10,padding:"4px 10px"}} onClick={approveAll}>Approve All Pending</button>}
+              {approved.length>0&&<button className="btn bs" style={{fontSize:10,padding:"4px 10px"}} onClick={payAll}>Pay All Approved</button>}
+            </div>
+          </div>
+          {[...overdue,...approved,...pending,...draft].length===0 && (
+            <div style={{padding:"16px",fontSize:11,color:"#1e3a5f",textAlign:"center"}}>All bills paid! check</div>
+          )}
+          {[...overdue,...approved,...pending,...draft].map(inv=>{
+            const v    = vendors.find(x=>x.id===inv.vendorId);
+            const days = daysOverdueAP(inv);
+            const isOv = inv.status==="overdue";
+            return (
+              <div key={inv.id} className="tr" style={{gridTemplateColumns:"1.5fr 90px 80px 90px 80px"}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{v?.name}</div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{inv.number}  /  {inv.description.slice(0,40)}</div>
+                </div>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:isOv?"#f87171":"#e2e8f0",fontWeight:700}}>{fmt(inv.amount)}</span>
+                <span style={{fontSize:10,color:isOv?"#f87171":days>14?"#f59e0b":"#475569"}}>{fmtDate(inv.dueDate)}</span>
+                <span className="bdg" style={{background:AP_STATUS_BG[inv.status],color:AP_STATUS_COLOR[inv.status],fontSize:9}}>{AP_STATUS_LABEL[inv.status]}</span>
+                <div style={{display:"flex",gap:4}}>
+                  {inv.status==="pending"&&<button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>{setApInvoices(aps=>aps.map(i=>i.id===inv.id?{...i,status:"approved"}:i));addAudit&&addAudit("Finance","Approve AP Invoice","Vendor/AP",`Approved ${inv.number}`); }}>Approve</button>}
+                  {inv.status==="approved"&&<button className="btn bs" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>{setApInvoices(aps=>aps.map(i=>i.id===inv.id?{...i,status:"paid",paidDate:TODAY_STR}:i));addAudit&&addAudit("Finance","Pay AP Invoice","Vendor/AP",`Paid ${inv.number} to ${inv.vendor}`); }}>Pay</button>}
+                  {isOv&&<button className="btn bs" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>setApInvoices(aps=>aps.map(i=>i.id===inv.id?{...i,status:"paid",paidDate:TODAY_STR}:i))}>Pay Now</button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Spend by category */}
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div className="section-hdr">YTD Spend by Category</div>
+          {catEntries.map(([cat,amt])=>(
+            <div key={cat} style={{marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:VENDOR_TYPE_COLOR[cat]||"#475569",display:"inline-block"}}/>
+                  <span style={{fontSize:11,color:"#94a3b8",textTransform:"capitalize"}}>{cat}</span>
+                </div>
+                <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#e2e8f0",fontWeight:600}}>{fmt(amt)}</span>
+              </div>
+              <div style={{height:5,background:"#0a1626",borderRadius:3}}>
+                <div style={{height:5,borderRadius:3,background:VENDOR_TYPE_COLOR[cat]||"#475569",width:`${(amt/catTotal)*100}%`}}/>
+              </div>
+            </div>
+          ))}
+          <div style={{borderTop:"1px solid #1a2d45",paddingTop:10,marginTop:8,display:"flex",justifyContent:"space-between"}}>
+            <span style={{fontSize:11,color:"#3d5a7a",fontWeight:700}}>YTD Total Paid</span>
+            <span style={{fontSize:13,fontFamily:"'DM Mono',monospace",color:"#38bdf8",fontWeight:800}}>{fmt(catTotal)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Top vendors by spend */}
+      <div className="card">
+        <div className="section-hdr">Vendor Spend Summary (all-time)</div>
+        <div className="tr" style={{gridTemplateColumns:"1.5fr 80px 80px 80px 80px 90px",padding:"8px 18px"}}>
+          {["Vendor","Type","YTD Paid","Outstanding","# Invoices","W-9"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {vendors.filter(v=>v.active).map(v=>{
+          const vInvs  = apInvoices.filter(i=>i.vendorId===v.id);
+          const vPaid  = vInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+          const vOwed  = vInvs.filter(i=>["pending","approved","overdue"].includes(i.status)).reduce((s,i)=>s+i.amount,0);
+          return (
+            <div key={v.id} className="tr" style={{gridTemplateColumns:"1.5fr 80px 80px 80px 80px 90px"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{v.name}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{v.contact}</div>
+              </div>
+              <span className="bdg" style={{background:VENDOR_TYPE_COLOR[v.type]+"22",color:VENDOR_TYPE_COLOR[v.type],fontSize:9,textTransform:"capitalize"}}>{v.type}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#34d399"}}>{fmt(vPaid)}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:vOwed>0?"#f59e0b":"#3d5a7a"}}>{vOwed>0?fmt(vOwed):" - "}</span>
+              <span style={{fontSize:12,color:"#475569",fontFamily:"'DM Mono',monospace"}}>{vInvs.length}</span>
+              <span className="bdg" style={{background:W9_STATUS_COLOR[v.w9Status]+"22",color:W9_STATUS_COLOR[v.w9Status],fontSize:9,textTransform:"capitalize"}}>{v.w9Status}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── AP Invoices ───────────────────────────────────────────────────────────────
+function APInvoices({ vendors, apInvoices, setApInvoices, projects, addAudit }) {
+  const [filter, setFilter] = useState("all");
+  const [modal,  setModal]  = useState(false);
+  const [form,   setForm]   = useState(null);
+  const [editing, setEditing]= useState(null);
+  const [detail, setDetail] = useState(null);
+  const [selAP, setSelAP]   = useState(new Set());
+
+  const toggleAP = (id) => setSelAP(s => { const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
+  const bulkPayAP = () => {
+    if (!selAP.size) return;
+    const payable = apInvoices.filter(i => selAP.has(i.id) && ["approved","pending"].includes(i.status));
+    if (!payable.length) { alert("No approved/pending invoices selected to pay."); return; }
+    if (!window.confirm(`Mark ${payable.length} invoice(s) as paid?`)) return;
+    setApInvoices(aps => aps.map(i => selAP.has(i.id) && ["approved","pending"].includes(i.status)
+      ? {...i, status:"paid", paidDate:TODAY_STR} : i));
+    addAudit && addAudit("Vendors/AP","Bulk Pay AP","AP Invoice",`Bulk paid ${payable.length} AP invoices`);
+    setSelAP(new Set());
+  };
+  const bulkDeleteAP = () => {
+    if (!selAP.size) return;
+    const deletable = apInvoices.filter(i => selAP.has(i.id) && ["draft","voided"].includes(i.status));
+    if (!deletable.length) { alert("Only draft or voided invoices can be deleted. Select draft/voided bills."); return; }
+    if (!window.confirm(`Permanently delete ${deletable.length} draft/voided bill(s)?`)) return;
+    const ids = new Set(deletable.map(i=>i.id));
+    setApInvoices(aps => aps.filter(i => !ids.has(i.id)));
+    addAudit && addAudit("Vendors/AP","Bulk Delete AP","AP Invoice",`Deleted ${deletable.length} AP invoices`);
+    setSelAP(new Set());
+  };
+
+  const emptyInv = { vendorId:"", number:"", description:"", amount:0, status:"draft", issueDate:TODAY_STR, dueDate:"", paidDate:"", projectId:"", poNumber:"", category:"subcontractor", notes:"" };
+  const open = (inv=null) => { setEditing(inv?.id||null); setForm(inv?{...inv}:{...emptyInv}); setModal(true); };
+  const save = () => {
+    if(editing) { setApInvoices(aps=>aps.map(i=>i.id===editing?{...form}:i)); addAudit&&addAudit("Finance","Update AP Invoice","Vendor/AP",`Updated AP ${form.number}`); }
+    else { setApInvoices(aps=>[...aps,{...form,id:"ap"+uid()}]); addAudit&&addAudit("Finance","New AP Invoice","Vendor/AP",`Created AP ${form.number} — ${form.vendor} ${fmt(form.amount)}`); }
+    setModal(false);
+  };
+
+  const statusAction = (id, newStatus, extra={}) =>
+    setApInvoices(aps=>aps.map(i=>i.id===id?{...i,status:newStatus,...extra}:i));
+
+  const [voidModal, setVoidModal] = useState(null);
+  const [voidReason, setVoidReason] = useState("");
+  const confirmVoid = () => {
+    if(!voidModal) return;
+    statusAction(voidModal.id, "voided", {voidReason, voidedAt:TODAY_STR});
+    addAudit&&addAudit("Vendors/AP","Void AP Invoice","AP Invoice",
+      `Voided ${voidModal.number} — ${voidModal.vendor} (${fmt(voidModal.amount)}). Reason: ${voidReason||"Not stated"}`,
+      {voidReason});
+    setVoidModal(null); setVoidReason("");
+  };
+
+  const filtered = apInvoices
+    .filter(i=>filter==="all"||i.status===filter||i.category===filter)
+    .sort((a,b)=>{
+      const ord={overdue:0,pending:1,approved:2,draft:3,paid:4,voided:5};
+      return (ord[a.status]??9)-(ord[b.status]??9);
+    });
+
+  const selInv = detail ? apInvoices.find(i=>i.id===detail) : null;
+  const selVendor = selInv ? vendors.find(v=>v.id===selInv.vendorId) : null;
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:selInv?"1fr 300px":"1fr",gap:16}}>
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            {[["all","All"],["overdue","Overdue"],["pending","Pending"],["approved","Approved"],["paid","Paid"],["draft","Draft"],["subcontractor","Subcontractors"],["software","Software"],["office","Office"],["legal","Legal"]].map(([f,l])=>(
+              <button key={f} className="btn bg" style={{fontSize:10,padding:"3px 8px",
+                borderColor:filter===f?"#0284c7":"#1a2d45",color:filter===f?"#38bdf8":"#475569"}}
+                onClick={()=>setFilter(f)}>{l}</button>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"center"}}>
+            {selAP.size>0&&(<>
+              <button className="btn bg" style={{fontSize:11}} onClick={bulkPayAP}>✓ Pay {selAP.size}</button>
+              <button className="btn br" style={{fontSize:11}} onClick={bulkDeleteAP}>🗑 Delete {selAP.size}</button>
+            </>)}
+            <button className="btn bp" style={{fontSize:12}} onClick={()=>open()}><I d={ICONS.plus} s={12}/>New Bill</button>
+          </div>
+        </div>
+
+        <div className="card" style={{overflowX:"auto"}}>
+          <div className="tr" style={{gridTemplateColumns:"28px 1fr 80px 90px 80px 90px 100px",padding:"8px 18px",minWidth:700}}>
+            <input type="checkbox" checked={selAP.size===filtered.length&&filtered.length>0} onChange={()=>setSelAP(s=>s.size===filtered.length?new Set():new Set(filtered.map(i=>i.id)))} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
+            {["Vendor / Bill","Amount","Due","Category","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+          </div>
+          {filtered.map(inv=>{
+            const v   = vendors.find(x=>x.id===inv.vendorId);
+            const isOv = inv.status==="overdue";
+            return (
+              <div key={inv.id} className="tr"
+                style={{gridTemplateColumns:"28px 1fr 80px 90px 80px 90px 100px",minWidth:700,cursor:"pointer",
+                  background:selAP.has(inv.id)?"#0a1a2e":detail===inv.id?"#061526":undefined,
+                  borderLeft:isOv?"3px solid #f87171":undefined}}
+                onClick={()=>setDetail(detail===inv.id?null:inv.id)}>
+                <input type="checkbox" checked={selAP.has(inv.id)} onChange={()=>toggleAP(inv.id)} onClick={e=>e.stopPropagation()} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{v?.name||"Unknown"}</div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{inv.number}  /  {inv.description.slice(0,42)}</div>
+                  {inv.notes&&<div style={{fontSize:9,color:"#f59e0b",marginTop:1}}>{inv.notes.slice(0,50)}</div>}
+                </div>
+                <span style={{fontSize:13,fontWeight:700,fontFamily:"'DM Mono',monospace",color:isOv?"#f87171":"#e2e8f0"}}>{fmt(inv.amount)}</span>
+                <span style={{fontSize:11,color:isOv?"#f87171":"#475569"}}>{fmtDate(inv.dueDate)||" - "}</span>
+                <span className="bdg" style={{background:VENDOR_TYPE_COLOR[inv.category]+"22",color:VENDOR_TYPE_COLOR[inv.category],fontSize:9,textTransform:"capitalize"}}>{inv.category}</span>
+                <span className="bdg" style={{background:AP_STATUS_BG[inv.status],color:AP_STATUS_COLOR[inv.status],fontSize:9}}>{AP_STATUS_LABEL[inv.status]}</span>
+                <div style={{display:"flex",gap:3}} onClick={e=>e.stopPropagation()}>
+                  {inv.status==="draft"   &&<button className="btn bp" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>statusAction(inv.id,"pending")}>Submit</button>}
+                  {inv.status==="pending" &&<button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>statusAction(inv.id,"approved")}>Approve</button>}
+                  {["approved","overdue"].includes(inv.status)&&<button className="btn bs" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>statusAction(inv.id,"paid",{paidDate:TODAY_STR})}>Pay</button>}
+                  <button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>open(inv)}><I d={ICONS.edit} s={10}/></button>
+                  {!["paid","voided"].includes(inv.status)&&<button className="btn br" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>setVoidModal({id:inv.id,number:inv.number,amount:inv.amount,vendor:v?.name||"Unknown"})}>Void</button>}
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length===0&&<div style={{padding:"18px",fontSize:11,color:"#1e3a5f",textAlign:"center"}}>No bills match this filter.</div>}
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      {selInv&&selVendor&&(
+        <div className="card" style={{height:"fit-content",position:"sticky",top:0}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #111d2d",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:11,color:"#3d5a7a"}}>{selInv.number}</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{selVendor.name}</div>
+            </div>
+            <button className="btn bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setDetail(null)}>x</button>
+          </div>
+          <div style={{padding:"14px 18px"}}>
+            <div style={{background:"#070c18",borderRadius:8,padding:"14px",border:"1px solid #1a2d45",marginBottom:14,textAlign:"center"}}>
+              <div style={{fontSize:28,fontWeight:800,color:AP_STATUS_COLOR[selInv.status],fontFamily:"'DM Mono',monospace"}}>{fmt(selInv.amount)}</div>
+              <span className="bdg" style={{background:AP_STATUS_BG[selInv.status],color:AP_STATUS_COLOR[selInv.status]}}>{AP_STATUS_LABEL[selInv.status]}</span>
+            </div>
+            {[["Description",selInv.description],["Category",selInv.category],["Issue Date",fmtDate(selInv.issueDate)||" - "],["Due Date",fmtDate(selInv.dueDate)||" - "],["Paid Date",selInv.paidDate?fmtDate(selInv.paidDate):" - "],["PO Number",selInv.poNumber||" - "],["Vendor email",selVendor.contact],["Payment method",selVendor.paymentMethod],["Payment terms",selVendor.paymentTerms]].map(([l,v])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #070b14",gap:8}}>
+                <span style={{fontSize:10,color:"#3d5a7a",flexShrink:0}}>{l}</span>
+                <span style={{fontSize:11,color:"#94a3b8",textAlign:"right"}}>{v}</span>
+              </div>
+            ))}
+            {selInv.notes&&<div style={{marginTop:12,fontSize:11,color:"#f59e0b",background:"#1a1005",borderRadius:6,padding:"8px 10px",lineHeight:1.4}}>{selInv.notes}</div>}
+            <div style={{display:"flex",gap:8,marginTop:14}}>
+              {selInv.status==="pending"&&<button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>statusAction(selInv.id,"approved")}>Approve</button>}
+              {["approved","overdue"].includes(selInv.status)&&<button className="btn bs" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>statusAction(selInv.id,"paid",{paidDate:TODAY_STR})}>Mark Paid</button>}
+              <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>open(selInv)}>Edit</button>
+              {!["paid","voided"].includes(selInv.status)&&<button className="btn br" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>setVoidModal({id:selInv.id,number:selInv.number,amount:selInv.amount,vendor:selVendor?.name||"Unknown"})}>Void Invoice</button>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modal&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title={editing?"Edit Bill":"New AP Bill"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Vendor" style={{gridColumn:"span 2"}}><select className="inp" value={form.vendorId} onChange={e=>setForm({...form,vendorId:e.target.value})}>
+                <option value=""> -  Select vendor  - </option>
+                {vendors.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}
+              </select></FF>
+              <FF label="Invoice Number"><input className="inp" value={form.number} onChange={e=>setForm({...form,number:e.target.value})}/></FF>
+              <FF label="Category"><select className="inp" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>
+                {["subcontractor","staffing","software","office","legal","insurance"].map(c=><option key={c} value={c} style={{textTransform:"capitalize"}}>{c}</option>)}
+              </select></FF>
+              <FF label="Amount ($)"><input className="inp" type="number" value={form.amount} onChange={e=>setForm({...form,amount:+e.target.value})}/></FF>
+              <FF label="Status"><select className="inp" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
+                {Object.entries(AP_STATUS_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+              </select></FF>
+              <FF label="Issue Date"><input className="inp" type="date" value={form.issueDate} onChange={e=>setForm({...form,issueDate:e.target.value})}/></FF>
+              <FF label="Due Date"><input className="inp" type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})}/></FF>
+              <FF label="PO Number"><input className="inp" value={form.poNumber} onChange={e=>setForm({...form,poNumber:e.target.value})}/></FF>
+              <FF label="Project"><select className="inp" value={form.projectId} onChange={e=>setForm({...form,projectId:e.target.value})}>
+                <option value="">None</option>
+                {projects?.map(p=><option key={p.id} value={p.id}>{p.name.slice(0,30)}</option>)}
+              </select></FF>
+              <FF label="Description" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></FF>
+              <FF label="Notes / Flags" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Disputes, holds, special instructions..."/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Vendor Registry ───────────────────────────────────────────────────────────
+function VendorRegistry({ vendors, setVendors, apInvoices }) {
+  const [modal,   setModal]  = useState(false);
+  const [form,    setForm]   = useState(null);
+  const [editing, setEditing]= useState(null);
+  const [detail,  setDetail] = useState(null);
+
+  const emptyV = { name:"", type:"subcontractor", taxId:"", w9Status:"pending", w9Date:"", contact:"", phone:"", address:"", paymentTerms:"Net 30", paymentMethod:"ACH", accountNotes:"", ytdPaid:0, ytdThreshold:600, needs1099:true, active:true };
+  const open = (v=null) => { setEditing(v?.id||null); setForm(v?{...v}:{...emptyV}); setModal(true); };
+  const save = () => {
+    if(editing) setVendors(vs=>vs.map(v=>v.id===editing?{...form}:v));
+    else setVendors(vs=>[...vs,{...form,id:"v"+uid()}]);
+    setModal(false);
+  };
+
+  const selV = detail ? vendors.find(v=>v.id===detail) : null;
+  const selInvs = selV ? apInvoices.filter(i=>i.vendorId===selV.id) : [];
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:selV?"1fr 300px":"1fr",gap:16}}>
+      <div>
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+          <button className="btn bp" style={{fontSize:12}} onClick={()=>open()}><I d={ICONS.plus} s={13}/>Add Vendor</button>
+        </div>
+        <div className="card">
+          <div className="tr" style={{gridTemplateColumns:"1.5fr 90px 80px 80px 80px 80px 70px",padding:"8px 18px"}}>
+            {["Vendor","Type","Payment","Terms","YTD Paid","W-9","Status"].map(h=><span key={h} className="th">{h}</span>)}
+          </div>
+          {vendors.map(v=>{
+            const tc = VENDOR_TYPE_COLOR[v.type]||"#475569";
+            return (
+              <div key={v.id} className="tr"
+                style={{gridTemplateColumns:"1.5fr 90px 80px 80px 80px 80px 70px",cursor:"pointer",opacity:v.active?1:0.4,background:detail===v.id?"#0a1a2e":undefined}}
+                onClick={()=>setDetail(detail===v.id?null:v.id)}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{v.name}</div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{v.contact}</div>
+                  {v.accountNotes&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:1}}>{v.accountNotes.slice(0,45)}</div>}
+                </div>
+                <span className="bdg" style={{background:tc+"22",color:tc,fontSize:9,textTransform:"capitalize"}}>{v.type}</span>
+                <span style={{fontSize:11,color:"#475569"}}>{v.paymentMethod}</span>
+                <span style={{fontSize:11,color:"#475569"}}>{v.paymentTerms}</span>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#34d399"}}>{fmt(v.ytdPaid)}</span>
+                <span className="bdg" style={{background:W9_STATUS_COLOR[v.w9Status]+"22",color:W9_STATUS_COLOR[v.w9Status],fontSize:9,textTransform:"capitalize"}}>{v.w9Status}</span>
+                <div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
+                  <button className="btn bg" style={{fontSize:9,padding:"3px 7px"}} onClick={()=>setVendors(vs=>vs.map(x=>x.id===v.id?{...x,active:!x.active}:x))}>{v.active?"Active":"Off"}</button>
+                  <button className="btn bg" style={{fontSize:9,padding:"3px 7px"}} onClick={()=>open(v)}><I d={ICONS.edit} s={10}/></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {selV&&(
+        <div className="card" style={{height:"fit-content",position:"sticky",top:0}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #111d2d",display:"flex",justifyContent:"space-between"}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{selV.name}</div>
+              <span className="bdg" style={{background:VENDOR_TYPE_COLOR[selV.type]+"22",color:VENDOR_TYPE_COLOR[selV.type],fontSize:9,marginTop:4,display:"inline-block",textTransform:"capitalize"}}>{selV.type}</span>
+            </div>
+            <button className="btn bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setDetail(null)}>x</button>
+          </div>
+          <div style={{padding:"14px 18px"}}>
+            {/* YTD summary */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+              <div className="card" style={{padding:"10px 12px",textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:800,color:"#34d399",fontFamily:"'DM Mono',monospace"}}>{fmt(selInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0))}</div>
+                <div style={{fontSize:9,color:"#475569"}}>YTD Paid</div>
+              </div>
+              <div className="card" style={{padding:"10px 12px",textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:800,color:"#f59e0b",fontFamily:"'DM Mono',monospace"}}>{fmt(selInvs.filter(i=>["pending","approved","overdue"].includes(i.status)).reduce((s,i)=>s+i.amount,0))}</div>
+                <div style={{fontSize:9,color:"#475569"}}>Outstanding</div>
+              </div>
+            </div>
+            {[["Email",selV.contact],["Phone",selV.phone||" - "],["Address",selV.address||" - "],["Payment",selV.paymentMethod+"  /  "+selV.paymentTerms],["Tax ID",selV.taxId||"! Missing"],["W-9",selV.w9Status+(selV.w9Date?" ("+fmtDate(selV.w9Date)+")":"")],["1099 Required",selV.needs1099?"Yes":"No"],["YTD Threshold",fmt(selV.ytdThreshold)+" (1099 at $600)"]].map(([l,v])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #070b14",gap:8}}>
+                <span style={{fontSize:10,color:"#3d5a7a",flexShrink:0}}>{l}</span>
+                <span style={{fontSize:11,color:"#94a3b8",textAlign:"right"}}>{v}</span>
+              </div>
+            ))}
+            {selV.accountNotes&&<div style={{marginTop:10,fontSize:11,color:"#475569",background:"#070b14",borderRadius:6,padding:"8px",lineHeight:1.4}}>{selV.accountNotes}</div>}
+            {/* Recent invoices */}
+            <div style={{marginTop:14}}>
+              <div className="lbl" style={{marginBottom:6}}>Recent Bills</div>
+              {selInvs.slice(-4).reverse().map(i=>(
+                <div key={i.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #070b14"}}>
+                  <span style={{fontSize:10,color:"#64748b"}}>{i.number}</span>
+                  <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:AP_STATUS_COLOR[i.status]}}>{fmt(i.amount)}</span>
+                </div>
+              ))}
+            </div>
+            <button className="btn bg" style={{width:"100%",justifyContent:"center",fontSize:11,marginTop:10}} onClick={()=>open(selV)}>Edit Vendor</button>
+          </div>
+        </div>
+      )}
+
+      {modal&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title={editing?"Edit Vendor":"Add Vendor"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Vendor Name" style={{gridColumn:"span 2"}}><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></FF>
+              <FF label="Type"><select className="inp" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+                {["subcontractor","staffing","software","office","legal","insurance"].map(t=><option key={t} value={t} style={{textTransform:"capitalize"}}>{t}</option>)}
+              </select></FF>
+              <FF label="Tax ID (EIN/SSN last 4)"><input className="inp" value={form.taxId} onChange={e=>setForm({...form,taxId:e.target.value})} placeholder="XX-XXXXXXX"/></FF>
+              <FF label="W-9 Status"><select className="inp" value={form.w9Status} onChange={e=>setForm({...form,w9Status:e.target.value})}>
+                <option value="received">Received</option><option value="pending">Pending</option><option value="missing">Missing</option>
+              </select></FF>
+              <FF label="W-9 Date Received"><input className="inp" type="date" value={form.w9Date} onChange={e=>setForm({...form,w9Date:e.target.value})}/></FF>
+              <FF label="Email"><input className="inp" type="email" value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})}/></FF>
+              <FF label="Phone"><input className="inp" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></FF>
+              <FF label="Payment Method"><select className="inp" value={form.paymentMethod} onChange={e=>setForm({...form,paymentMethod:e.target.value})}>
+                {["ACH","Check","Wire","CC","Zelle"].map(m=><option key={m}>{m}</option>)}
+              </select></FF>
+              <FF label="Payment Terms"><select className="inp" value={form.paymentTerms} onChange={e=>setForm({...form,paymentTerms:e.target.value})}>
+                {["Due on receipt","Net 15","Net 30","Net 45","Annual"].map(t=><option key={t}>{t}</option>)}
+              </select></FF>
+              <FF label="Needs 1099?"><select className="inp" value={form.needs1099?"yes":"no"} onChange={e=>setForm({...form,needs1099:e.target.value==="yes"})}>
+                <option value="yes">Yes</option><option value="no">No</option>
+              </select></FF>
+              <FF label="Status"><select className="inp" value={form.active?"active":"inactive"} onChange={e=>setForm({...form,active:e.target.value==="active"})}>
+                <option value="active">Active</option><option value="inactive">Inactive</option>
+              </select></FF>
+              <FF label="Account Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.accountNotes} onChange={e=>setForm({...form,accountNotes:e.target.value})}/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save Vendor</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── 1099 Tracker ──────────────────────────────────────────────────────────────
+function Tracker1099({ vendors, apInvoices }) {
+  const currentYear = 2026;
+  // Aggregate YTD paid per vendor from AP invoices
+  const vendorTotals = vendors
+    .filter(v=>v.needs1099&&v.active)
+    .map(v=>{
+      const paid = apInvoices
+        .filter(i=>i.vendorId===v.id&&i.status==="paid")
+        .reduce((s,i)=>s+i.amount,0);
+      const threshold = v.ytdThreshold||600;
+      const needs1099 = paid>=threshold;
+      const pct       = Math.min(100,Math.round((paid/threshold)*100));
+      return {...v, ytdActual:paid, threshold, needs1099, pct };
+    })
+    .sort((a,b)=>b.ytdActual-a.ytdActual);
+
+  const confirmed   = vendorTotals.filter(v=>v.needs1099&&v.w9Status==="received");
+  const w9Missing   = vendorTotals.filter(v=>v.needs1099&&v.w9Status!=="received");
+  const belowThresh = vendorTotals.filter(v=>!v.needs1099);
+
+  const total1099Value = confirmed.reduce((s,v)=>s+v.ytdActual,0);
+
+  return (
+    <div>
+      {/* Summary */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:`${currentYear} 1099 Recipients`,v:confirmed.length,  c:"#34d399"},
+          {l:"Total 1099 Value",              v:fmt(total1099Value),c:"#38bdf8"},
+          {l:"W-9 Missing (need before pay)", v:w9Missing.length,  c:w9Missing.length>0?"#f87171":"#34d399"},
+          {l:"Below $600 Threshold",          v:belowThresh.length, c:"#475569"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Deadlines */}
+      <div style={{padding:"12px 18px",borderRadius:10,background:"#0c2340",border:"1px solid #0284c744",marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#38bdf8",marginBottom:4}}>📅 2026 Filing Deadlines</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,fontSize:11,color:"#64748b"}}>
+          <div><b style={{color:"#e2e8f0"}}>Jan 31, 2026</b><br/>1099-NEC due to recipients</div>
+          <div><b style={{color:"#e2e8f0"}}>Jan 31, 2026</b><br/>Paper 1099s filed with IRS</div>
+          <div><b style={{color:"#e2e8f0"}}>Mar 31, 2026</b><br/>E-file deadline with IRS</div>
+        </div>
+        <div style={{marginTop:8,fontSize:10,color:"#f59e0b"}}>! E-file deadline is Mar 31, 2026  -  19 days away. Confirm all payments and W-9s now.</div>
+      </div>
+
+      {/* Ready to file */}
+      {confirmed.length>0&&(
+        <div className="card" style={{marginBottom:14}}>
+          <div className="section-hdr" style={{color:"#34d399"}}>check Ready to File ({confirmed.length} vendors)</div>
+          <div className="tr" style={{gridTemplateColumns:"1.5fr 80px 90px 90px 80px 80px 80px",padding:"8px 18px"}}>
+            {["Vendor","Type","YTD Paid","Threshold","Progress","W-9","1099 Form"].map(h=><span key={h} className="th">{h}</span>)}
+          </div>
+          {confirmed.map(v=>(
+            <div key={v.id} className="tr" style={{gridTemplateColumns:"1.5fr 80px 90px 90px 80px 80px 80px"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{v.name}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{v.address}</div>
+              </div>
+              <span className="bdg" style={{background:VENDOR_TYPE_COLOR[v.type]+"22",color:VENDOR_TYPE_COLOR[v.type],fontSize:9,textTransform:"capitalize"}}>{v.type}</span>
+              <span style={{fontSize:13,fontWeight:700,fontFamily:"'DM Mono',monospace",color:"#34d399"}}>{fmt(v.ytdActual)}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{fmt(v.threshold)}</span>
+              <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                <div style={{height:5,background:"#0a1626",borderRadius:3}}>
+                  <div style={{height:5,borderRadius:3,background:"#34d399",width:`${v.pct}%`}}/>
+                </div>
+                <span style={{fontSize:9,color:"#34d399"}}>{v.pct}%</span>
+              </div>
+              <span className="bdg" style={{background:"#021f14",color:"#34d399",fontSize:9}}>check On file</span>
+              <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:9}}>1099-NEC</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* W-9 missing */}
+      {w9Missing.length>0&&(
+        <div className="card" style={{marginBottom:14}}>
+          <div className="section-hdr" style={{color:"#f87171"}}>! W-9 Missing  -  Cannot File ({w9Missing.length})</div>
+          {w9Missing.map(v=>(
+            <div key={v.id} className="tr" style={{gridTemplateColumns:"1.5fr 80px 90px 80px 1fr"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{v.name}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{v.contact}</div>
+              </div>
+              <span style={{fontSize:13,fontFamily:"'DM Mono',monospace",color:"#f87171",fontWeight:700}}>{fmt(v.ytdActual)}</span>
+              <div style={{height:5,background:"#0a1626",borderRadius:3,alignSelf:"center"}}>
+                <div style={{height:5,borderRadius:3,background:"#f87171",width:`${v.pct}%`}}/>
+              </div>
+              <span className="bdg" style={{background:"#1a0808",color:"#f87171",fontSize:9}}>W-9 {v.w9Status}</span>
+              <div style={{fontSize:11,color:"#f59e0b"}}>Request W-9 immediately  -  hold further payments until received.</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Below threshold */}
+      {belowThresh.length>0&&(
+        <div className="card">
+          <div className="section-hdr" style={{color:"#475569"}}>Below $600 Threshold  -  No 1099 Required Yet</div>
+          {belowThresh.map(v=>(
+            <div key={v.id} className="tr" style={{gridTemplateColumns:"1.5fr 80px 90px 80px 80px"}}>
+              <div style={{fontSize:12,color:"#475569"}}>{v.name}</div>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{fmt(v.ytdActual)}</span>
+              <div style={{height:5,background:"#0a1626",borderRadius:3,alignSelf:"center"}}>
+                <div style={{height:5,borderRadius:3,background:"#1e3a5f",width:`${v.pct}%`}}/>
+              </div>
+              <span style={{fontSize:10,color:"#1e3a5f"}}>{fmt(v.threshold-v.ytdActual)} to go</span>
+              <span style={{fontSize:10,color:"#1e3a5f"}}>{v.pct}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// CASH FLOW FORECAST MODULE
+// =============================================================================
+function CashFlowModule({ finInvoices, finPayments, apInvoices, vendors, adpRuns, roster, fbInvoices, cfOverrides, setCfOverrides }) {
+  const [sub, setSub]         = useState("overview");
+  const [horizon, setHorizon] = useState(12); // weeks
+
+  const tabs = [
+    { id:"overview",  label:"Cash Flow Overview" },
+    { id:"ar",        label:"AR Forecast"        },
+    { id:"ap",        label:"AP Obligations"     },
+    { id:"runway",    label:"Runway Calculator"  },
+  ];
+  const shared = { finInvoices, finPayments, apInvoices, vendors, adpRuns, roster, fbInvoices, cfOverrides, setCfOverrides, horizon, setHorizon };
+  return (
+    <div>
+      <PH title="Cash Flow Forecast" sub="13-week rolling cash position · AR timing · AP obligations · Runway">
+        <button className="btn bg" style={{fontSize:11,padding:"5px 12px"}} onClick={()=>{
+          // Build weeks data same as CFOverview
+          const w = buildWeeks(horizon);
+          const arOpen = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided");
+          const apOpen = apInvoices.filter(i=>["approved","overdue","pending"].includes(i.status));
+          const totalCollected = finPayments.reduce((s,p)=>s+p.amount,0);
+          const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+          const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+r.netPay,0);
+          let cash = totalCollected - totalApPaid - payrollPaid;
+          const wPay = monthlyPayroll(roster) / 4.33;
+          const arB = new Array(w.length).fill(0);
+          const apB = new Array(w.length).fill(0);
+          arOpen.forEach(inv=>{ const idx=assignToWeek(w,expectedPayDate(inv.issueDate,inv.paymentTerms||"Net 30")); if(idx>=0)arB[idx]+=inv.balance||(inv.amount-(inv.paid||0)); });
+          apOpen.forEach(inv=>{ const idx=assignToWeek(w,inv.dueDate); if(idx>=0)apB[idx]+=inv.amount; });
+          const rows = [["Week","Period","AR Inflow","AP + Payroll","Net","Running Balance"]];
+          w.forEach((wk,i)=>{ apB[i]+=wPay; const net=arB[i]-apB[i]; cash+=net; rows.push([i+1,wk.label,arB[i].toFixed(0),apB[i].toFixed(0),net.toFixed(0),cash.toFixed(0)]); });
+          downloadCSV(rows, "ziksatech-cashflow.csv");
+        }}>⬇ Export CSV</button>
+      </PH>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setSub(t.id)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {sub==="overview" && <CFOverview  {...shared}/>}
+      {sub==="ar"       && <CFArForecast {...shared}/>}
+      {sub==="ap"       && <CFApObligs  {...shared}/>}
+      {sub==="runway"   && <CFRunway    {...shared}/>}
+    </div>
+  );
+}
+
+// --- helpers -----------------------------------------------------------------
+const TODAY    = new Date(); // dynamic
+const MS_DAY   = 86400000;
+function addDays(d, n) { return new Date(+d + n*MS_DAY); }
+function startOfWeek(d) { const r=new Date(d); r.setDate(r.getDate()-r.getDay()); return r; }
+function weekLabel(d) {
+  const m=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return m[d.getMonth()]+" "+d.getDate();
+}
+function parseDate(s) { return s ? new Date(s) : null; }
+
+// Build weekly buckets from today forward
+function buildWeeks(n) {
+  const weeks = [];
+  let w = startOfWeek(TODAY);
+  for (let i=0; i<n; i++) {
+    weeks.push({ start: new Date(w), end: addDays(w,6), label: weekLabel(w) });
+    w = addDays(w, 7);
+  }
+  return weeks;
+}
+
+// Assign an invoice to a week bucket (by expected payment date)
+function assignToWeek(weeks, date) {
+  if (!date) return -1;
+  const d = typeof date === 'string' ? parseDate(date) : date;
+  for (let i=0; i<weeks.length; i++) {
+    if (d >= weeks[i].start && d <= weeks[i].end) return i;
+  }
+  if (d < weeks[0].start) return 0;  // overdue -> first bucket
+  return weeks.length - 1;           // beyond horizon -> last bucket
+}
+
+// Estimate expected payment date from issue date + terms
+function expectedPayDate(issueDateStr, terms) {
+  const d = parseDate(issueDateStr);
+  if (!d) return null;
+  const map = { "Net 15": 15, "Net 30": 30, "Net 45": 45, "Net 60": 60, "Due on receipt": 0, "Annual": 0 };
+  const days = map[terms] ?? 30;
+  return addDays(d, days);
+}
+
+// Monthly payroll cost from roster
+function monthlyPayroll(roster) {
+  return roster.filter(r=>r.type==="FTE").reduce((s,r)=>{
+    const base = (r.salary||0) / 12;
+    const burden = base * (7.65+0.6+2.7+0.5+3+1.5)/100 + 7200/12;
+    return s + base + burden;
+  }, 0);
+}
+
+// ── Cash Flow Overview ────────────────────────────────────────────────────────
+function CFOverview({ finInvoices, finPayments, apInvoices, adpRuns, roster, horizon, setHorizon, cfOverrides, setCfOverrides }) {
+  const weeks = buildWeeks(horizon);
+
+  // Current cash estimate: total collected - total paid out
+  const totalCollected = finPayments.reduce((s,p)=>s+p.amount,0);
+  const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+  const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+r.netPay,0);
+  const cashOnHand     = totalCollected - totalApPaid - payrollPaid;
+
+  // AR: unpaid invoices — bucket by expected collection
+  const arOpen = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided");
+  // AP: approved/overdue AP bills — bucket by due date  
+  const apOpen = apInvoices.filter(i=>["approved","overdue","pending"].includes(i.status));
+  // Monthly payroll — spread across weeks
+  const weeklyPayroll = monthlyPayroll(roster) / 4.33;
+
+  // Build weekly cash flow
+  const arBuckets  = new Array(weeks.length).fill(0);
+  const apBuckets  = new Array(weeks.length).fill(0);
+  const netBuckets = new Array(weeks.length).fill(0);
+  const cumBuckets = new Array(weeks.length).fill(0);
+
+  arOpen.forEach(inv => {
+    const expectedDate = expectedPayDate(inv.issueDate, inv.paymentTerms||"Net 30");
+    const idx = assignToWeek(weeks, expectedDate);
+    if (idx >= 0) arBuckets[idx] += inv.balance || (inv.amount - (inv.paid||0));
+  });
+
+  apOpen.forEach(inv => {
+    const idx = assignToWeek(weeks, inv.dueDate);
+    if (idx >= 0) apBuckets[idx] += inv.amount;
+  });
+
+  weeks.forEach((_, i) => {
+    const override = cfOverrides[`pay_${i}`] || 0;
+    apBuckets[i] += weeklyPayroll + override;
+    netBuckets[i] = arBuckets[i] - apBuckets[i];
+    cumBuckets[i] = (i===0 ? cashOnHand : cumBuckets[i-1]) + netBuckets[i];
+  });
+
+  const minCash   = Math.min(...cumBuckets);
+  const maxCash   = Math.max(...cumBuckets);
+  const negWeeks  = cumBuckets.filter(v=>v<0).length;
+  const firstNeg  = cumBuckets.findIndex(v=>v<0);
+  const totalArEx = arBuckets.reduce((s,v)=>s+v,0);
+  const totalApEx = apBuckets.reduce((s,v)=>s+v,0);
+
+  // Chart dimensions
+  const W=780, H=160, PAD=40;
+  const xStep = (W-PAD*2)/(weeks.length-1||1);
+  const yMin  = Math.min(0, minCash);
+  const yMax  = Math.max(maxCash, 1);
+  const yRange= yMax-yMin;
+  const toY   = v => PAD + (H-PAD*2) * (1 - (v-yMin)/yRange);
+  const pts   = cumBuckets.map((v,i)=>`${PAD+i*xStep},${toY(v)}`).join(" ");
+  // Zero line
+  const zeroY = toY(0);
+
+  return (
+    <div>
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Est. Cash on Hand",  v:fmt(cashOnHand),    c: cashOnHand<0?"#f87171":"#34d399"},
+          {l:"AR Expected (13w)",  v:fmt(totalArEx),     c:"#38bdf8"},
+          {l:"AP + Payroll (13w)", v:fmt(totalApEx),     c:"#f59e0b"},
+          {l:"Net Position (13w)", v:fmt(totalArEx-totalApEx), c:totalArEx-totalApEx>=0?"#34d399":"#f87171"},
+          {l:"Weeks Below Zero",   v:negWeeks,           c:negWeeks>0?"#f87171":"#34d399"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {negWeeks>0&&(
+        <div style={{padding:"12px 18px",borderRadius:10,background:"#1a0808",border:"1px solid #f8717144",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <span style={{color:"#f87171",fontWeight:700}}>Cash Warning: </span>
+            <span style={{color:"#e2e8f0",fontSize:13}}>
+              {firstNeg>=0 ? `Cash goes negative in week ${firstNeg+1} (${weeks[firstNeg]?.label})` : "Cash position goes negative"} — lowest point {fmt(minCash)}
+            </span>
+          </div>
+          <span style={{fontSize:11,color:"#f87171"}}>Accelerate AR collection or defer AP</span>
+        </div>
+      )}
+
+      {/* Cumulative cash chart */}
+      <div className="card" style={{marginBottom:16,overflow:"hidden"}}>
+        <div style={{padding:"14px 20px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span className="section-hdr" style={{margin:0}}>13-Week Cumulative Cash Position</span>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <span style={{fontSize:10,color:"#475569"}}>Horizon:</span>
+            {[8,13,26].map(h=>(
+              <button key={h} className="btn bg" style={{fontSize:10,padding:"3px 8px",borderColor:horizon===h?"#0284c7":"#1a2d45",color:horizon===h?"#38bdf8":"#475569"}}
+                onClick={()=>setHorizon(h)}>{h}w</button>
+            ))}
+          </div>
+        </div>
+        <svg viewBox={`0 0 ${W} ${H+10}`} style={{width:"100%",height:"auto",display:"block"}}>
+          {/* Grid lines */}
+          {[0,25,50,75,100].map(pct=>{
+            const y = PAD + (H-PAD*2)*pct/100;
+            return <line key={pct} x1={PAD} y1={y} x2={W-PAD} y2={y} stroke="#0a1626" strokeWidth="1"/>;
+          })}
+          {/* Zero line */}
+          {zeroY > PAD && zeroY < H-PAD && (
+            <line x1={PAD} y1={zeroY} x2={W-PAD} y2={zeroY} stroke="#f87171" strokeWidth="1" strokeDasharray="4,3" opacity="0.6"/>
+          )}
+          {/* Negative area fill */}
+          {zeroY < H-PAD && (
+            <clipPath id="negClip">
+              <rect x={PAD} y={zeroY} width={W-PAD*2} height={H-PAD-zeroY}/>
+            </clipPath>
+          )}
+          {/* Area fill */}
+          <polygon
+            points={`${PAD},${H-PAD} ${pts} ${PAD+xStep*(weeks.length-1)},${H-PAD}`}
+            fill="#0284c722" stroke="none"/>
+          {/* Negative area */}
+          <polygon
+            points={`${PAD},${zeroY} ${pts} ${PAD+xStep*(weeks.length-1)},${zeroY}`}
+            fill="#f8717122" stroke="none"/>
+          {/* Line */}
+          <polyline points={pts} fill="none" stroke="#0284c7" strokeWidth="2.5"/>
+          {/* Data points */}
+          {cumBuckets.map((v,i)=>(
+            <circle key={i} cx={PAD+i*xStep} cy={toY(v)} r="3"
+              fill={v<0?"#f87171":"#0284c7"} stroke="#060d1c" strokeWidth="1.5"/>
+          ))}
+          {/* Week labels — every 2 */}
+          {weeks.filter((_,i)=>i%2===0).map((w,i)=>(
+            <text key={i} x={PAD+i*2*xStep} y={H+6} textAnchor="middle" fontSize="8" fill="#475569">{w.label}</text>
+          ))}
+          {/* Y axis labels */}
+          {[yMin, (yMin+yMax)/2, yMax].map((v,i)=>(
+            <text key={i} x={PAD-4} y={toY(v)+4} textAnchor="end" fontSize="8" fill="#3d5a7a">
+              {v>=1000?`$${Math.round(v/1000)}k`:v<=-1000?`-$${Math.round(-v/1000)}k`:`$${Math.round(v)}`}
+            </text>
+          ))}
+        </svg>
+      </div>
+
+      {/* Weekly table */}
+      <div className="card">
+        <div className="section-hdr">Weekly Cash Flow Detail</div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+            <thead>
+              <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                {["Week","AR In","AP+Payroll Out","Net","Cumulative"].map(h=>(
+                  <th key={h} style={{padding:"8px 12px",textAlign:h==="Week"?"left":"right",color:"#3d5a7a",fontWeight:600,fontSize:10}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {weeks.slice(0,13).map((w,i)=>{
+                const cum = cumBuckets[i];
+                const net = netBuckets[i];
+                return (
+                  <tr key={i} style={{borderBottom:"1px solid #070b14",background:i%2===0?"transparent":"#050c1a"}}>
+                    <td style={{padding:"7px 12px",color:"#64748b",fontWeight:600}}>{w.label}</td>
+                    <td style={{padding:"7px 12px",textAlign:"right",color:"#34d399",fontFamily:"'DM Mono',monospace"}}>{arBuckets[i]>0?fmt(arBuckets[i]):"—"}</td>
+                    <td style={{padding:"7px 12px",textAlign:"right",color:"#f59e0b",fontFamily:"'DM Mono',monospace"}}>{fmt(apBuckets[i])}</td>
+                    <td style={{padding:"7px 12px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:700,color:net>=0?"#34d399":"#f87171"}}>{net>=0?"+":""}{fmt(net)}</td>
+                    <td style={{padding:"7px 12px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:800,color:cum<0?"#f87171":cum<50000?"#f59e0b":"#e2e8f0"}}>{fmt(cum)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── AR Forecast ───────────────────────────────────────────────────────────────
+function CFArForecast({ finInvoices, finPayments, fbInvoices }) {
+  // Combine AR sources
+  const allAR = [];
+  
+  // From finInvoices
+  finInvoices.forEach(inv => {
+    if (inv.status === "paid" || inv.status === "voided") return;
+    const balance = inv.amount - (finPayments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0));
+    if (balance <= 0) return;
+    const terms   = inv.paymentTerms || "Net 30";
+    const expDate = expectedPayDate(inv.issueDate, terms);
+    const daysOut = expDate ? Math.round((expDate - TODAY)/MS_DAY) : null;
+    const isOverdue = daysOut !== null && daysOut < 0;
+    allAR.push({
+      id: inv.id, number: inv.number, client: inv.client||inv.clientId||"Unknown",
+      amount: inv.amount, balance, issued: inv.issueDate,
+      expDate, daysOut, isOverdue, terms, source: "Finance"
+    });
+  });
+
+  // From fbInvoices (FreshBooks)
+  fbInvoices.forEach(inv => {
+    if (inv.status === "paid" || inv.status === "draft") return;
+    const balance = inv.amount - (inv.paid||0);
+    if (balance <= 0) return;
+    const expDate = expectedPayDate(inv.issueDate, "Net 30");
+    const daysOut = expDate ? Math.round((expDate - TODAY)/MS_DAY) : null;
+    const isOverdue = daysOut !== null && daysOut < 0;
+    allAR.push({
+      id: inv.id, number: inv.number, client: inv.client||inv.clientId||"Unknown",
+      amount: inv.amount, balance, issued: inv.issueDate,
+      expDate, daysOut, isOverdue, terms: "Net 30", source: "FreshBooks"
+    });
+  });
+
+  allAR.sort((a,b)=>(a.daysOut??999)-(b.daysOut??999));
+
+  const overdueItems = allAR.filter(i=>i.isOverdue);
+  const due30        = allAR.filter(i=>!i.isOverdue&&(i.daysOut??999)<=30);
+  const due60        = allAR.filter(i=>!i.isOverdue&&(i.daysOut??999)>30&&(i.daysOut??999)<=60);
+  const later        = allAR.filter(i=>!i.isOverdue&&(i.daysOut??999)>60);
+
+  const totalAR = allAR.reduce((s,i)=>s+i.balance,0);
+
+  const bucket = (items, label, color, bg) => items.length === 0 ? null : (
+    <div className="card" style={{marginBottom:14}}>
+      <div className="section-hdr" style={{color}}>{label} — {fmt(items.reduce((s,i)=>s+i.balance,0))}</div>
+      <div className="tr" style={{gridTemplateColumns:"1fr 90px 80px 80px 80px 70px",padding:"8px 18px"}}>
+        {["Invoice","Client","Balance","Issued","Exp. Payment","Source"].map(h=><span key={h} className="th">{h}</span>)}
+      </div>
+      {items.map(inv=>(
+        <div key={inv.id} className="tr" style={{gridTemplateColumns:"1fr 90px 80px 80px 80px 70px",borderLeft:`3px solid ${color}`}}>
+          <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{inv.number}</div>
+          <div style={{fontSize:11,color:"#64748b"}}>{typeof inv.client === 'string' ? inv.client : inv.client}</div>
+          <div style={{fontSize:13,fontWeight:700,fontFamily:"'DM Mono',monospace",color}}>{fmt(inv.balance)}</div>
+          <div style={{fontSize:10,color:"#475569"}}>{fmtDate(inv.issued)||"—"}</div>
+          <div style={{fontSize:11,color:inv.isOverdue?"#f87171":"#64748b"}}>
+            {inv.expDate?fmtDate(inv.expDate.toISOString().slice(0,10)):"Unknown"}
+            {inv.isOverdue&&<span style={{fontSize:9,color:"#f87171",marginLeft:4}}>(OVERDUE {Math.abs(inv.daysOut)}d)</span>}
+          </div>
+          <span className="bdg" style={{background:bg,color,fontSize:9}}>{inv.source}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total AR Outstanding",  v:fmt(totalAR),                    c:"#38bdf8"},
+          {l:"Overdue",               v:fmt(overdueItems.reduce((s,i)=>s+i.balance,0)), c:overdueItems.length>0?"#f87171":"#34d399"},
+          {l:"Due in 30 Days",        v:fmt(due30.reduce((s,i)=>s+i.balance,0)),       c:"#f59e0b"},
+          {l:"Due 31-60 Days",        v:fmt(due60.reduce((s,i)=>s+i.balance,0)),       c:"#94a3b8"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+      {bucket(overdueItems,"Overdue — Collect Immediately","#f87171","#1a0808")}
+      {bucket(due30,"Due Within 30 Days","#f59e0b","#1a1005")}
+      {bucket(due60,"Due 31-60 Days","#38bdf8","#0c2340")}
+      {bucket(later,"Due 60+ Days","#475569","#0a1626")}
+      {allAR.length===0&&<div className="card" style={{padding:"24px",textAlign:"center",color:"#1e3a5f"}}>No open AR — all invoices paid!</div>}
+    </div>
+  );
+}
+
+// ── AP Obligations ────────────────────────────────────────────────────────────
+function CFApObligs({ apInvoices, vendors, adpRuns, roster }) {
+  const weeks = buildWeeks(13);
+  const weeklyPayroll = monthlyPayroll(roster) / 4.33;
+
+  const pendingAP = apInvoices.filter(i=>["approved","overdue","pending"].includes(i.status));
+  const byWeek    = weeks.map(w=>{
+    const bills = pendingAP.filter(inv=>{
+      const d = parseDate(inv.dueDate);
+      return d && d >= w.start && d <= w.end;
+    });
+    return { ...w, bills, billTotal: bills.reduce((s,i)=>s+i.amount,0) };
+  });
+
+  // Group by category
+  const byCat = {};
+  pendingAP.forEach(i=>{ byCat[i.category]=(byCat[i.category]||0)+i.amount; });
+
+  const totalPendingAP = pendingAP.reduce((s,i)=>s+i.amount,0);
+  const totalPayroll13w = weeklyPayroll * 13;
+  const nextPayroll = addDays(TODAY, 7 - TODAY.getDay() + 5); // next Friday
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Pending AP Bills",    v:fmt(totalPendingAP),  c:"#f59e0b"},
+          {l:"13w Payroll Forecast",v:fmt(totalPayroll13w), c:"#a78bfa"},
+          {l:"Weekly Payroll",      v:fmt(weeklyPayroll),   c:"#a78bfa"},
+          {l:"Total Obligations",   v:fmt(totalPendingAP+totalPayroll13w), c:"#f87171"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:16}}>
+        {/* Weekly AP schedule */}
+        <div className="card">
+          <div className="section-hdr">AP Payment Schedule — 13 Weeks</div>
+          {byWeek.map((w,i)=>(
+            <div key={i} style={{borderBottom:"1px solid #070b14",padding:"8px 18px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:w.bills.length>0?4:0}}>
+                <span style={{fontSize:12,fontWeight:600,color:"#64748b"}}>{w.label}</span>
+                <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                  {w.billTotal>0&&<span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#f59e0b"}}>{fmt(w.billTotal)} AP</span>}
+                  <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#a78bfa"}}>{fmt(weeklyPayroll)} payroll</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700,color:"#e2e8f0"}}>{fmt(w.billTotal+weeklyPayroll)}</span>
+                </div>
+              </div>
+              {w.bills.map(bill=>{
+                const v = vendors.find(x=>x.id===bill.vendorId);
+                return (
+                  <div key={bill.id} style={{display:"flex",justifyContent:"space-between",padding:"2px 8px",fontSize:10,color:"#3d5a7a"}}>
+                    <span>{v?.name} — {bill.number}</span>
+                    <span style={{fontFamily:"'DM Mono',monospace",color:"#f59e0b"}}>{fmt(bill.amount)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* By category */}
+        <div>
+          <div className="card" style={{marginBottom:12}}>
+            <div className="section-hdr">Pending AP by Category</div>
+            {Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>(
+              <div key={cat} style={{padding:"8px 18px",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:12,color:"#94a3b8",textTransform:"capitalize"}}>{cat}</span>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:VENDOR_TYPE_COLOR[cat]||"#475569",fontWeight:700}}>{fmt(amt)}</span>
+              </div>
+            ))}
+            {Object.keys(byCat).length===0&&<div style={{padding:"12px 18px",fontSize:11,color:"#1e3a5f"}}>No pending AP bills</div>}
+          </div>
+
+          <div className="card">
+            <div className="section-hdr">Payroll Schedule</div>
+            {[0,1,2,3].map(w=>{
+              const payday = addDays(nextPayroll, w*7);
+              return (
+                <div key={w} style={{padding:"8px 18px",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:11,color:"#64748b"}}>{weekLabel(payday)} (Fri)</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#a78bfa"}}>{fmt(weeklyPayroll)}</span>
+                </div>
+              );
+            })}
+            <div style={{padding:"8px 18px",display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontSize:10,color:"#1e3a5f"}}>FTE count</span>
+              <span style={{fontSize:11,color:"#475569"}}>{roster.filter(r=>r.type==="FTE").length} employees</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Runway Calculator ─────────────────────────────────────────────────────────
+function CFRunway({ finInvoices, finPayments, apInvoices, adpRuns, roster, cfOverrides, setCfOverrides }) {
+  const [cashInput,    setCashInput]    = useState("");
+  const [arInput,      setArInput]      = useState("");
+  const [extraMonthly, setExtraMonthly] = useState("");
+  const [revGrowth,    setRevGrowth]    = useState(0);   // % per month
+  const [scenarioName, setScenarioName] = useState("Base Case");
+
+  // Auto-estimates
+  const totalCollected = finPayments.reduce((s,p)=>s+p.amount,0);
+  const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+  const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+r.netPay,0);
+  const estCash        = totalCollected - totalApPaid - payrollPaid;
+  const estAR          = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided").reduce((s,i)=>s+i.balance,0)
+                       + (finPayments.length>0 ? 0 : 0);
+
+  const cashBal    = parseFloat(cashInput)    || estCash;
+  const arBal      = parseFloat(arInput)      || Math.max(0, estAR);
+  const extraOut   = parseFloat(extraMonthly) || 0;
+  const monthlyPayroll = monthlyPayroll_fn(roster);
+
+  // Monthly AR inflow estimate (based on open invoices / last 3 months billed)
+  const last3moBilled = finInvoices.filter(inv=>{
+    const d = parseDate(inv.issueDate);
+    return d && d >= addDays(TODAY, -90);
+  }).reduce((s,i)=>s+i.amount,0);
+  const estMonthlyRevenue = last3moBilled / 3;
+
+  // Monthly fixed costs
+  const monthlyAP = apInvoices.filter(i=>i.status!=="voided"&&i.status!=="draft").reduce((s,i)=>s+i.amount,0) / 3;
+  const monthlyBurn = monthlyPayroll + monthlyAP + extraOut;
+
+  // Build 24-month forecast
+  const months = 24;
+  const monthData = [];
+  let runningCash = cashBal + arBal * 0.9; // 90% of AR expected to collect
+  let revenue = estMonthlyRevenue * (1 + revGrowth/100);
+
+  for (let i=0; i<months; i++) {
+    const rev = revenue * Math.pow(1 + revGrowth/100, i);
+    const net = rev - monthlyBurn;
+    runningCash += net;
+    monthData.push({ month: i+1, revenue: rev, burn: monthlyBurn, net, cash: runningCash });
+    if (runningCash < 0 && monthData.length === i+1) break;
+  }
+
+  const runwayMonths = monthData.filter(m=>m.cash>=0).length;
+  const breakeven    = monthData.find(m=>m.net>=0)?.month || null;
+  const lastCash     = monthData[monthData.length-1]?.cash;
+  const scenarios = [
+    { label:"Worst (-20% Rev)", multiplier: 0.8,  growth: -2 },
+    { label:"Base Case",        multiplier: 1.0,  growth: 0  },
+    { label:"Optimistic (+20%)",multiplier: 1.2,  growth: 2  },
+  ];
+
+  // Chart
+  const W=760, H=140, PAD=38;
+  const xStep  = (W-PAD*2)/(monthData.length-1||1);
+  const vals   = monthData.map(m=>m.cash);
+  const yMin   = Math.min(0,...vals);
+  const yMax   = Math.max(...vals,1);
+  const toY    = v => PAD + (H-PAD*2)*(1-(v-yMin)/(yMax-yMin));
+  const pts    = vals.map((v,i)=>`${PAD+i*xStep},${toY(v)}`).join(" ");
+  const zeroY  = toY(0);
+
+  function monthlyPayroll_fn(r) {
+    return r.filter(x=>x.type==="FTE").reduce((s,x)=>{
+      const base=(x.salary||0)/12;
+      return s+base+base*(7.65+0.6+2.7+0.5+3+1.5)/100+7200/12;
+    },0);
+  }
+
+  return (
+    <div>
+      {/* Scenario inputs */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:18}}>
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div className="section-hdr">Scenario Inputs</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <FF label="Cash on Hand ($)">
+              <input className="inp" type="number" placeholder={fmt(estCash)} value={cashInput} onChange={e=>setCashInput(e.target.value)}/>
+            </FF>
+            <FF label="AR Expected to Collect ($)">
+              <input className="inp" type="number" placeholder={fmt(arBal)} value={arInput} onChange={e=>setArInput(e.target.value)}/>
+            </FF>
+            <FF label="Extra Monthly Costs ($)">
+              <input className="inp" type="number" placeholder="0" value={extraMonthly} onChange={e=>setExtraMonthly(e.target.value)}/>
+            </FF>
+            <FF label="Monthly Revenue Growth (%)">
+              <input className="inp" type="number" step="0.5" value={revGrowth} onChange={e=>setRevGrowth(+e.target.value)}/>
+            </FF>
+          </div>
+          <div style={{marginTop:12,display:"flex",gap:6,flexWrap:"wrap"}}>
+            {scenarios.map(s=>(
+              <button key={s.label} className="btn bg" style={{fontSize:10,padding:"4px 10px"}}
+                onClick={()=>{ setRevGrowth(s.growth); setScenarioName(s.label); }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Auto-estimates */}
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div className="section-hdr">Auto-Estimated Inputs</div>
+          {[
+            ["Est. Cash on Hand",     fmt(estCash),           estCash<0?"#f87171":"#34d399"],
+            ["Open AR (90% collect)", fmt(arBal*0.9),        "#38bdf8"],
+            ["Monthly Payroll",       fmt(monthlyPayroll),   "#a78bfa"],
+            ["Monthly AP (avg)",      fmt(monthlyAP),        "#f59e0b"],
+            ["Est. Monthly Revenue",  fmt(estMonthlyRevenue),"#34d399"],
+            ["Total Monthly Burn",    fmt(monthlyBurn),      "#f87171"],
+          ].map(([l,v,c])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #070b14"}}>
+              <span style={{fontSize:11,color:"#3d5a7a"}}>{l}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700,color:c}}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Runway result */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Runway",              v:runwayMonths>=24?"24m+":runwayMonths+"mo", c:runwayMonths<6?"#f87171":runwayMonths<12?"#f59e0b":"#34d399"},
+          {l:"Monthly Burn",       v:fmt(monthlyBurn),          c:"#f87171"},
+          {l:"Breakeven Month",    v:breakeven?`Mo ${breakeven}`:"Already+",  c:breakeven?"#f59e0b":"#34d399"},
+          {l:"Cash at 12 Months",  v:fmt(monthData[11]?.cash||0), c:(monthData[11]?.cash||0)<0?"#f87171":"#34d399"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"16px 14px",textAlign:"center"}}>
+            <div style={{fontSize:28,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Cash runway chart */}
+      <div className="card" style={{marginBottom:16}}>
+        <div style={{padding:"14px 20px 6px"}}>
+          <span className="section-hdr" style={{margin:0}}>24-Month Cash Runway — {scenarioName}</span>
+        </div>
+        <svg viewBox={`0 0 ${W} ${H+12}`} style={{width:"100%",height:"auto",display:"block"}}>
+          {[0,25,50,75,100].map(pct=>(
+            <line key={pct} x1={PAD} y1={PAD+(H-PAD*2)*pct/100} x2={W-PAD} y2={PAD+(H-PAD*2)*pct/100} stroke="#0a1626" strokeWidth="1"/>
+          ))}
+          {zeroY>PAD&&zeroY<H-PAD&&(
+            <line x1={PAD} y1={zeroY} x2={W-PAD} y2={zeroY} stroke="#f87171" strokeWidth="1.5" strokeDasharray="5,3" opacity="0.7"/>
+          )}
+          <polygon points={`${PAD},${H-PAD} ${pts} ${PAD+xStep*(vals.length-1)},${H-PAD}`} fill="#0284c711"/>
+          <polygon points={`${PAD},${zeroY} ${pts} ${PAD+xStep*(vals.length-1)},${zeroY}`} fill="#f8717133"/>
+          <polyline points={pts} fill="none" stroke="#0284c7" strokeWidth="2.5"/>
+          {vals.map((v,i)=>(
+            <circle key={i} cx={PAD+i*xStep} cy={toY(v)} r="3" fill={v<0?"#f87171":"#0284c7"} stroke="#060d1c" strokeWidth="1.5"/>
+          ))}
+          {monthData.filter((_,i)=>i%3===0).map((m,i)=>(
+            <text key={i} x={PAD+i*3*xStep} y={H+8} textAnchor="middle" fontSize="8" fill="#475569">Mo {m.month}</text>
+          ))}
+          {[yMin,(yMin+yMax)/2,yMax].map((v,i)=>(
+            <text key={i} x={PAD-4} y={toY(v)+4} textAnchor="end" fontSize="8" fill="#3d5a7a">
+              {Math.abs(v)>=1000?`${v<0?"-":""}$${Math.round(Math.abs(v)/1000)}k`:v.toFixed(0)}
+            </text>
+          ))}
+        </svg>
+      </div>
+
+      {/* Monthly table */}
+      <div className="card">
+        <div className="section-hdr">Monthly Forecast Detail</div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+            <thead>
+              <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                {["Month","Revenue","Burn","Net","Cumulative Cash"].map(h=>(
+                  <th key={h} style={{padding:"8px 12px",textAlign:h==="Month"?"left":"right",color:"#3d5a7a",fontWeight:600,fontSize:10}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {monthData.slice(0,12).map(m=>(
+                <tr key={m.month} style={{borderBottom:"1px solid #070b14",background:m.month%2===0?"transparent":"#050c1a"}}>
+                  <td style={{padding:"7px 12px",color:"#64748b",fontWeight:600}}>Month {m.month}</td>
+                  <td style={{padding:"7px 12px",textAlign:"right",color:"#34d399",fontFamily:"'DM Mono',monospace"}}>{fmt(m.revenue)}</td>
+                  <td style={{padding:"7px 12px",textAlign:"right",color:"#f87171",fontFamily:"'DM Mono',monospace"}}>{fmt(m.burn)}</td>
+                  <td style={{padding:"7px 12px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:700,color:m.net>=0?"#34d399":"#f87171"}}>{m.net>=0?"+":""}{fmt(m.net)}</td>
+                  <td style={{padding:"7px 12px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:800,color:m.cash<0?"#f87171":m.cash<50000?"#f59e0b":"#e2e8f0"}}>{fmt(m.cash)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PTO & LEAVE MODULE
+// =============================================================================
+function PTOModule({ ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, roster, addAudit }) {
+  const [sub, setSub] = useState("calendar");
+  const tabs = [
+    { id:"calendar",  label:"Team Calendar"   },
+    { id:"requests",  label:"Leave Requests"  },
+    { id:"balances",  label:"Balances"        },
+    { id:"new",       label:"+ Request Leave" },
+  ];
+  const pending = ptoRequests.filter(r=>r.status==="pending").length;
+  const shared  = { ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, roster };
+  return (
+    <div>
+      <PH title="PTO & Leave" sub="Request leave - Team calendar - Balances - Approvals"/>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setSub(t.id)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,position:"relative",
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+            {t.id==="requests"&&pending>0&&<span style={{position:"absolute",top:4,right:6,background:"#f59e0b",color:"#000",borderRadius:"50%",width:16,height:16,fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{pending}</span>}
+          </button>
+        ))}
+      </div>
+      {sub==="calendar" && <PTOCalendar  {...shared} onNav={setSub}/>}
+      {sub==="requests" && <PTORequests  {...shared}/>}
+      {sub==="balances" && <PTOBalances  {...shared}/>}
+      {sub==="new"      && <PTONewRequest {...shared} onSaved={()=>setSub("requests")}/>}
+    </div>
+  );
+}
+
+// helpers
+function ptoDateRange(start, end) {
+  const days = [];
+  let d = new Date(start+"T00:00:00");
+  const e = new Date(end+"T00:00:00");
+  while (d <= e) {
+    days.push(d.toISOString().slice(0,10));
+    d = new Date(+d + 86400000);
+  }
+  return days;
+}
+function ptoBusinessDays(start, end) {
+  return ptoDateRange(start, end).filter(d=>{ const day=new Date(d+"T00:00:00").getDay(); return day>0&&day<6; }).length;
+}
+
+// ── Team Calendar ─────────────────────────────────────────────────────────────
+function PTOCalendar({ ptoRequests, setPtoRequests, ptoBalances, roster, onNav }) {
+  const [viewDate, setViewDate] = useState(new Date("2026-03-01"));
+
+  const year  = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const firstDow    = new Date(year, month, 1).getDay();
+
+  const approved = ptoRequests.filter(r=>r.status==="approved"||r.status==="pending");
+  const fteMembers = ptoBalances.map(b=>b.name);
+
+  // Build day map: date -> list of {name, type, status}
+  const dayMap = {};
+  approved.forEach(req=>{
+    const days = ptoDateRange(req.start, req.end);
+    days.forEach(d=>{
+      if (!dayMap[d]) dayMap[d] = [];
+      dayMap[d].push({ name: req.name, type: req.type, status: req.status, reqId: req.id });
+    });
+  });
+
+  const prevMonth = () => setViewDate(new Date(year, month-1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month+1, 1));
+
+  const pending  = ptoRequests.filter(r=>r.status==="pending");
+  const upcoming = ptoRequests.filter(r=>r.status==="approved"&&r.start>=TODAY_STR).sort((a,b)=>a.start.localeCompare(b.start));
+
+  const today = TODAY_STR;
+
+  return (
+    <div>
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Pending Approvals",   v:pending.length,  c:pending.length>0?"#f59e0b":"#34d399"},
+          {l:"FTE on Leave Today",  v:approved.filter(r=>r.start<=today&&r.end>=today).length, c:"#38bdf8"},
+          {l:"Approved This Month", v:ptoRequests.filter(r=>r.status==="approved"&&r.start.startsWith("2026-03")).length, c:"#34d399"},
+          {l:"Total Days Used YTD", v:ptoRequests.filter(r=>r.status==="approved"&&r.start.startsWith("2026")).reduce((s,r)=>s+r.days,0), c:"#a78bfa"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Pending alerts */}
+      {pending.length>0&&(
+        <div style={{marginBottom:14,padding:"12px 18px",borderRadius:10,background:"#1a1005",border:"1px solid #f59e0b44",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <span style={{color:"#f59e0b",fontWeight:700}}>Pending: </span>
+            {pending.map(r=><span key={r.id} style={{marginRight:16,fontSize:12,color:"#e2e8f0"}}>{r.name} ({r.start})</span>)}
+          </div>
+          <button className="btn bp" style={{fontSize:11}} onClick={()=>onNav("requests")}>Review Requests</button>
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
+        {/* Monthly calendar */}
+        <div className="card" style={{overflow:"hidden"}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #111d2d",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <button className="btn bg" style={{padding:"4px 10px",fontSize:12}} onClick={prevMonth}>{'<'}</button>
+            <span style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{monthNames[month]} {year}</span>
+            <button className="btn bg" style={{padding:"4px 10px",fontSize:12}} onClick={nextMonth}>{'>'}</button>
+          </div>
+          {/* Day-of-week headers */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#070c18"}}>
+            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>(
+              <div key={d} style={{textAlign:"center",padding:"6px 0",fontSize:10,fontWeight:700,color:"#1e3a5f"}}>{d}</div>
+            ))}
+          </div>
+          {/* Calendar grid */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+            {Array(firstDow).fill(null).map((_,i)=>(
+              <div key={"e"+i} style={{minHeight:70,borderRight:"1px solid #070b14",borderBottom:"1px solid #070b14",background:"#040810"}}/>
+            ))}
+            {Array(daysInMonth).fill(null).map((_,i)=>{
+              const day = i+1;
+              const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+              const isToday = dateStr === today;
+              const entries = dayMap[dateStr] || [];
+              const isWeekend = [0,6].includes(new Date(dateStr+"T00:00:00").getDay());
+              return (
+                <div key={day} style={{minHeight:70,borderRight:"1px solid #070b14",borderBottom:"1px solid #070b14",padding:"4px",background:isToday?"#0c2340":isWeekend?"#040810":undefined}}>
+                  <div style={{fontSize:11,fontWeight:isToday?800:400,color:isToday?"#38bdf8":"#475569",marginBottom:2}}>{day}</div>
+                  {entries.slice(0,3).map((e,ei)=>(
+                    <div key={ei} style={{fontSize:8,padding:"1px 4px",borderRadius:3,marginBottom:1,background:PTO_TYPE_BG[e.type],color:PTO_TYPE_COLOR[e.type],opacity:e.status==="pending"?0.6:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
+                      {e.name.split(" ")[0]}{e.status==="pending"?" *":""}
+                    </div>
+                  ))}
+                  {entries.length>3&&<div style={{fontSize:8,color:"#3d5a7a"}}>+{entries.length-3} more</div>}
+                </div>
+              );
+            })}
+          </div>
+          {/* Legend */}
+          <div style={{padding:"10px 18px",display:"flex",gap:14,flexWrap:"wrap",borderTop:"1px solid #111d2d"}}>
+            {Object.entries(PTO_TYPE_COLOR).map(([type,color])=>(
+              <div key={type} style={{display:"flex",alignItems:"center",gap:4}}>
+                <div style={{width:8,height:8,borderRadius:2,background:color}}/>
+                <span style={{fontSize:9,color:"#475569",textTransform:"capitalize"}}>{type}</span>
+              </div>
+            ))}
+            <div style={{display:"flex",alignItems:"center",gap:4}}>
+              <span style={{fontSize:9,color:"#3d5a7a"}}>* = pending approval</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming leaves */}
+        <div>
+          <div className="card" style={{marginBottom:12}}>
+            <div className="section-hdr">Upcoming Approved Leave</div>
+            {upcoming.length===0&&<div style={{padding:"12px 18px",fontSize:11,color:"#1e3a5f"}}>No upcoming leaves</div>}
+            {upcoming.slice(0,8).map(req=>(
+              <div key={req.id} style={{padding:"8px 18px",borderBottom:"1px solid #070b14"}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{req.name}</span>
+                  <span className="bdg" style={{background:PTO_TYPE_BG[req.type],color:PTO_TYPE_COLOR[req.type],fontSize:9,textTransform:"capitalize"}}>{req.type}</span>
+                </div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{fmtDate(req.start)}{req.start!==req.end?" - "+fmtDate(req.end):""} ({req.days}d)</div>
+                {req.notes&&<div style={{fontSize:9,color:"#f59e0b",marginTop:1}}>{req.notes}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* Coverage gaps */}
+          <div className="card">
+            <div className="section-hdr" style={{color:"#f59e0b"}}>Coverage Gaps</div>
+            {(() => {
+              const gaps = [];
+              ptoRequests.filter(r=>r.status==="approved"&&r.start>=TODAY_STR).forEach(req=>{
+                const days = ptoDateRange(req.start, req.end).filter(d=>{ const day=new Date(d+"T00:00:00").getDay(); return day>0&&day<6; });
+                days.forEach(d=>{
+                  const others = ptoRequests.filter(r=>r.id!==req.id&&r.status==="approved"&&r.start<=d&&r.end>=d);
+                  if (others.length>0) gaps.push({ date:d, members:[req.name, ...others.map(o=>o.name)] });
+                });
+              });
+              const unique = [...new Map(gaps.map(g=>[g.date,g])).values()].slice(0,5);
+              if (unique.length===0) return <div style={{padding:"12px 18px",fontSize:11,color:"#34d399"}}>No coverage gaps detected</div>;
+              return unique.map(g=>(
+                <div key={g.date} style={{padding:"8px 18px",borderBottom:"1px solid #070b14"}}>
+                  <div style={{fontSize:11,fontWeight:600,color:"#f59e0b"}}>{fmtDate(g.date)}</div>
+                  <div style={{fontSize:10,color:"#64748b"}}>{g.members.join(" + ")} both out</div>
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Leave Requests (Approval Queue) ──────────────────────────────────────────
+function PTORequests({ ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, setTab, auditLog, setAuditLog, proposals, setProposals }) {
+  const [filter, setFilter] = useState("pending");
+  const [detail, setDetail] = useState(null);
+
+  const approve = (id) => {
+    const req = ptoRequests.find(r=>r.id===id);
+    setPtoRequests(rs=>rs.map(r=>r.id===id?{...r,status:"approved",approvedBy:"Manju"}:r));
+    const _req=ptoRequests.find(r=>r.id===id); if(_req) addAudit&&addAudit("PTO","PTO Approved","PTO & Leave",`Approved ${_req.days}d ${_req.type} for ${_req.name||_req.memberId}`);
+    // Deduct balance
+    if (req) {
+      setPtoBalances(bs=>bs.map(b=>{
+        if (b.memberId!==req.memberId) return b;
+        if (req.type==="pto")      return {...b, ptoUsed: b.ptoUsed+req.days};
+        if (req.type==="sick")     return {...b, sickUsed: b.sickUsed+req.days};
+        if (req.type==="personal") return {...b, personalUsed: b.personalUsed+req.days};
+        return b;
+      }));
+    }
+  };
+  const deny = (id, reason) => {
+    setPtoRequests(rs=>rs.map(r=>r.id===id?{...r,status:"denied",notes:reason||r.notes,approvedBy:"Manju"}:r));
+    const _d=ptoRequests.find(r=>r.id===id); addAudit&&addAudit("PTO","PTO Denied","PTO & Leave",`Denied ${_d?.type} for ${_d?.name||id}`);
+  };
+  const cancel = (id) => setPtoRequests(rs=>rs.map(r=>r.id===id?{...r,status:"cancelled"}:r));
+
+  const filtered = ptoRequests.filter(r=>filter==="all"||r.status===filter)
+    .sort((a,b)=>b.submitted.localeCompare(a.submitted));
+
+  const selReq = detail ? ptoRequests.find(r=>r.id===detail) : null;
+  const selBal = selReq ? ptoBalances.find(b=>b.memberId===selReq.memberId) : null;
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:selReq?"1fr 300px":"1fr",gap:16}}>
+      <div>
+        <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
+          {[["pending","Pending"],["approved","Approved"],["denied","Denied"],["cancelled","Cancelled"],["all","All"]].map(([f,l])=>(
+            <button key={f} className="btn bg" style={{fontSize:11,padding:"4px 10px",
+              borderColor:filter===f?"#0284c7":"#1a2d45",color:filter===f?"#38bdf8":"#475569"}}
+              onClick={()=>setFilter(f)}>{l}
+              {f==="pending"&&ptoRequests.filter(r=>r.status==="pending").length>0&&
+                <span style={{marginLeft:4,background:"#f59e0b",color:"#000",borderRadius:"50%",padding:"1px 5px",fontSize:9,fontWeight:800}}>
+                  {ptoRequests.filter(r=>r.status==="pending").length}
+                </span>}
+            </button>
+          ))}
+        </div>
+
+        <div className="card">
+          <div className="tr" style={{gridTemplateColumns:"1.2fr 80px 80px 70px 80px 100px",padding:"8px 18px"}}>
+            {["Employee","Type","Dates","Days","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+          </div>
+          {filtered.map(req=>(
+            <div key={req.id} className="tr"
+              style={{gridTemplateColumns:"1.2fr 80px 80px 70px 80px 100px",cursor:"pointer",
+                background:detail===req.id?"#0a1a2e":undefined,
+                borderLeft:req.status==="pending"?"3px solid #f59e0b":undefined}}
+              onClick={()=>setDetail(detail===req.id?null:req.id)}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{req.name}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>Submitted {fmtDate(req.submitted)}</div>
+                {req.reason&&<div style={{fontSize:10,color:"#475569",marginTop:1}}>{req.reason}</div>}
+              </div>
+              <span className="bdg" style={{background:PTO_TYPE_BG[req.type],color:PTO_TYPE_COLOR[req.type],fontSize:9,textTransform:"capitalize"}}>{req.type}</span>
+              <div style={{fontSize:11,color:"#64748b"}}>
+                <div>{fmtDate(req.start)}</div>
+                {req.start!==req.end&&<div style={{color:"#1e3a5f"}}>{fmtDate(req.end)}</div>}
+              </div>
+              <span style={{fontSize:13,fontFamily:"'DM Mono',monospace",fontWeight:700,color:"#e2e8f0"}}>{req.days}d</span>
+              <span className="bdg" style={{background:PTO_STATUS_BG[req.status],color:PTO_STATUS_COLOR[req.status],fontSize:9,textTransform:"capitalize"}}>{req.status}</span>
+              <div style={{display:"flex",gap:3}} onClick={e=>e.stopPropagation()}>
+                {req.status==="pending"&&<>
+                  <button className="btn bg" style={{fontSize:9,padding:"3px 7px",borderColor:"#34d399",color:"#34d399"}} onClick={()=>approve(req.id)}>Approve</button>
+                  <button className="btn bg" style={{fontSize:9,padding:"3px 7px",borderColor:"#f87171",color:"#f87171"}} onClick={()=>deny(req.id,"")}>Deny</button>
+                </>}
+                {req.status==="approved"&&req.start>=TODAY_STR&&(
+                  <button className="btn bg" style={{fontSize:9,padding:"3px 7px",borderColor:"#f87171",color:"#f87171"}} onClick={()=>cancel(req.id)}>Cancel</button>
+                )}
+              </div>
+            </div>
+          ))}
+          {filtered.length===0&&<div style={{padding:"18px",fontSize:11,color:"#1e3a5f",textAlign:"center"}}>No {filter} requests</div>}
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      {selReq&&(
+        <div className="card" style={{height:"fit-content",position:"sticky",top:0}}>
+          <div style={{padding:"14px 18px",borderBottom:"1px solid #111d2d",display:"flex",justifyContent:"space-between"}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{selReq.name}</div>
+              <span className="bdg" style={{background:PTO_STATUS_BG[selReq.status],color:PTO_STATUS_COLOR[selReq.status],fontSize:9,marginTop:4,display:"inline-block",textTransform:"capitalize"}}>{selReq.status}</span>
+            </div>
+            <button className="btn bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setDetail(null)}>x</button>
+          </div>
+          <div style={{padding:"14px 18px"}}>
+            <div style={{background:"#070c18",borderRadius:8,padding:"12px",border:"1px solid #1a2d45",marginBottom:14,textAlign:"center"}}>
+              <div style={{fontSize:28,fontWeight:800,color:PTO_TYPE_COLOR[selReq.type],fontFamily:"'DM Mono',monospace"}}>{selReq.days} days</div>
+              <span className="bdg" style={{background:PTO_TYPE_BG[selReq.type],color:PTO_TYPE_COLOR[selReq.type],textTransform:"capitalize"}}>{selReq.type}</span>
+            </div>
+            {[
+              ["Start Date", fmtDate(selReq.start)],
+              ["End Date",   fmtDate(selReq.end)],
+              ["Business Days", selReq.days+"d"],
+              ["Reason",     selReq.reason||"—"],
+              ["Submitted",  fmtDate(selReq.submitted)],
+              ["Approved by",selReq.approvedBy||"—"],
+            ].map(([l,v])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #070b14"}}>
+                <span style={{fontSize:10,color:"#3d5a7a"}}>{l}</span>
+                <span style={{fontSize:11,color:"#94a3b8"}}>{v}</span>
+              </div>
+            ))}
+            {selReq.notes&&<div style={{marginTop:10,fontSize:11,color:"#f59e0b",background:"#1a1005",borderRadius:6,padding:"8px"}}>{selReq.notes}</div>}
+
+            {/* Balance remaining */}
+            {selBal&&(
+              <div style={{marginTop:14}}>
+                <div className="lbl" style={{marginBottom:6}}>Balance After This Request</div>
+                {[
+                  ["PTO",      selBal.ptoAccrued-(selBal.ptoUsed+(selReq.type==="pto"&&selReq.status==="pending"?selReq.days:0)), selBal.ptoAccrued,      "#34d399"],
+                  ["Sick",     selBal.sickAccrued-(selBal.sickUsed+(selReq.type==="sick"&&selReq.status==="pending"?selReq.days:0)), selBal.sickAccrued, "#f87171"],
+                  ["Personal", selBal.personalAccrued-(selBal.personalUsed+(selReq.type==="personal"&&selReq.status==="pending"?selReq.days:0)), selBal.personalAccrued, "#a78bfa"],
+                ].map(([l,rem,total,c])=>(
+                  <div key={l} style={{marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                      <span style={{fontSize:10,color:"#475569"}}>{l}</span>
+                      <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:rem<0?"#f87171":c}}>{Math.max(0,rem)}/{total}d remaining</span>
+                    </div>
+                    <div style={{height:4,background:"#0a1626",borderRadius:2}}>
+                      <div style={{height:4,borderRadius:2,background:c,width:`${Math.max(0,Math.min(100,(rem/total)*100))}%`}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {selReq.status==="pending"&&(
+              <div style={{display:"flex",gap:8,marginTop:14}}>
+                <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11,borderColor:"#34d399",color:"#34d399"}} onClick={()=>{approve(selReq.id);setDetail(null);}}>Approve</button>
+                <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11,borderColor:"#f87171",color:"#f87171"}} onClick={()=>{deny(selReq.id,"");setDetail(null);}}>Deny</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Balances ──────────────────────────────────────────────────────────────────
+function PTOBalances({ ptoBalances, setPtoBalances, ptoRequests }) {
+  const [editing, setEditing] = useState(null);
+  const [form,    setForm]    = useState(null);
+
+  const save = () => {
+    setPtoBalances(bs=>bs.map(b=>b.memberId===editing?{...b,...form}:b));
+    setEditing(null);
+  };
+
+  return (
+    <div>
+      <div className="card">
+        <div style={{padding:"14px 18px",borderBottom:"1px solid #111d2d",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span className="section-hdr" style={{margin:0}}>Leave Balances — 2026 YTD</span>
+          <span style={{fontSize:10,color:"#3d5a7a"}}>Click row to edit accruals</span>
+        </div>
+        <div className="tr" style={{gridTemplateColumns:"1.3fr repeat(6,80px) 60px",padding:"8px 18px"}}>
+          {["Employee","PTO Accrued","PTO Used","PTO Left","Sick Used","Sick Left","Personal Left","Edit"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {ptoBalances.map(b=>{
+          const ptoLeft  = b.ptoAccrued  - b.ptoUsed;
+          const sickLeft = b.sickAccrued - b.sickUsed;
+          const persLeft = b.personalAccrued - b.personalUsed;
+          const pending  = ptoRequests.filter(r=>r.memberId===b.memberId&&r.status==="pending").reduce((s,r)=>s+r.days,0);
+          return (
+            <div key={b.memberId} className="tr" style={{gridTemplateColumns:"1.3fr repeat(6,80px) 60px"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{b.name}</div>
+                {pending>0&&<div style={{fontSize:9,color:"#f59e0b"}}>{pending}d pending</div>}
+              </div>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{b.ptoAccrued}d</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#f59e0b"}}>{b.ptoUsed}d</span>
+              <div>
+                <span style={{fontSize:13,fontFamily:"'DM Mono',monospace",fontWeight:700,color:ptoLeft<=2?"#f87171":ptoLeft<=5?"#f59e0b":"#34d399"}}>{ptoLeft}d</span>
+                <div style={{height:4,background:"#0a1626",borderRadius:2,marginTop:2,width:50}}>
+                  <div style={{height:4,borderRadius:2,background:ptoLeft<=2?"#f87171":ptoLeft<=5?"#f59e0b":"#34d399",width:`${(ptoLeft/b.ptoAccrued)*100}%`}}/>
+                </div>
+              </div>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#f59e0b"}}>{b.sickUsed}d</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:sickLeft<=1?"#f87171":"#34d399"}}>{sickLeft}d</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:persLeft<=0?"#f87171":"#a78bfa"}}>{persLeft}d</span>
+              <button className="btn bg" style={{fontSize:9,padding:"3px 7px"}} onClick={()=>{setEditing(b.memberId);setForm({ptoAccrued:b.ptoAccrued,ptoUsed:b.ptoUsed,sickAccrued:b.sickAccrued,sickUsed:b.sickUsed,personalAccrued:b.personalAccrued,personalUsed:b.personalUsed});}}>Edit</button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Team summary */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+        <div className="card">
+          <div className="section-hdr">PTO Usage Summary</div>
+          {ptoBalances.sort((a,b)=>b.ptoUsed-a.ptoUsed).map(b=>(
+            <div key={b.memberId} style={{padding:"6px 18px",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+              <span style={{fontSize:11,color:"#94a3b8",minWidth:120}}>{b.name.split(" ")[0]}</span>
+              <div style={{flex:1,height:5,background:"#0a1626",borderRadius:2}}>
+                <div style={{height:5,borderRadius:2,background:"#34d399",width:`${(b.ptoUsed/b.ptoAccrued)*100}%`}}/>
+              </div>
+              <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#34d399",minWidth:50,textAlign:"right"}}>{b.ptoUsed}/{b.ptoAccrued}d</span>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="section-hdr">Leave History by Type</div>
+          {Object.entries(
+            ptoRequests.filter(r=>r.status==="approved").reduce((acc,r)=>{
+              acc[r.type]=(acc[r.type]||0)+r.days; return acc;
+            },{})
+          ).sort((a,b)=>b[1]-a[1]).map(([type,days])=>(
+            <div key={type} style={{padding:"6px 18px",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:PTO_TYPE_COLOR[type],display:"inline-block"}}/>
+                <span style={{fontSize:12,color:"#94a3b8",textTransform:"capitalize"}}>{type}</span>
+              </div>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:PTO_TYPE_COLOR[type],fontWeight:700}}>{days} days</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Edit modal */}
+      {editing&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setEditing(null)}>
+          <div className="modal" style={{maxWidth:400}}>
+            <MH title={"Edit Balances - "+ptoBalances.find(b=>b.memberId===editing)?.name} onClose={()=>setEditing(null)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="PTO Accrued (days)"><input className="inp" type="number" value={form.ptoAccrued} onChange={e=>setForm({...form,ptoAccrued:+e.target.value})}/></FF>
+              <FF label="PTO Used (days)"><input className="inp" type="number" value={form.ptoUsed} onChange={e=>setForm({...form,ptoUsed:+e.target.value})}/></FF>
+              <FF label="Sick Accrued"><input className="inp" type="number" value={form.sickAccrued} onChange={e=>setForm({...form,sickAccrued:+e.target.value})}/></FF>
+              <FF label="Sick Used"><input className="inp" type="number" value={form.sickUsed} onChange={e=>setForm({...form,sickUsed:+e.target.value})}/></FF>
+              <FF label="Personal Accrued"><input className="inp" type="number" value={form.personalAccrued} onChange={e=>setForm({...form,personalAccrued:+e.target.value})}/></FF>
+              <FF label="Personal Used"><input className="inp" type="number" value={form.personalUsed} onChange={e=>setForm({...form,personalUsed:+e.target.value})}/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setEditing(null)}>Cancel</button>
+              <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save Balances</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── New Leave Request ─────────────────────────────────────────────────────────
+function PTONewRequest({ ptoRequests, setPtoRequests, ptoBalances, roster, onSaved }) {
+  const [form, setForm] = useState({
+    memberId:"r1", type:"pto", start:"", end:"", reason:"", notes:""
+  });
+  const [error, setError] = useState("");
+
+  const member = ptoBalances.find(b=>b.memberId===form.memberId);
+  const days   = form.start&&form.end ? ptoBusinessDays(form.start, form.end) : 0;
+
+  // Balance check
+  const balanceLeft = () => {
+    if (!member) return 99;
+    if (form.type==="pto")      return member.ptoAccrued - member.ptoUsed;
+    if (form.type==="sick")     return member.sickAccrued - member.sickUsed;
+    if (form.type==="personal") return member.personalAccrued - member.personalUsed;
+    return 99;
+  };
+
+  // Conflict check
+  const hasConflict = () => {
+    if (!form.start||!form.end) return false;
+    const reqDays = ptoDateRange(form.start, form.end);
+    return ptoRequests.some(r=>
+      r.memberId===form.memberId && r.status!=="cancelled" && r.status!=="denied" &&
+      ptoDateRange(r.start, r.end).some(d=>reqDays.includes(d))
+    );
+  };
+
+  const submit = () => {
+    if (!form.start||!form.end) { setError("Please select start and end dates."); return; }
+    if (form.end < form.start)  { setError("End date must be on or after start date."); return; }
+    if (days === 0)             { setError("No business days in selected range."); return; }
+    if (days > balanceLeft())   { setError(`Insufficient balance. ${balanceLeft()} days remaining.`); return; }
+    if (hasConflict())          { setError("Date conflict with existing request for this employee."); return; }
+    setError("");
+    const name = ptoBalances.find(b=>b.memberId===form.memberId)?.name || form.memberId;
+    setPtoRequests(rs=>[...rs, {
+      id:"pt"+uid(), ...form, name, days,
+      status:"pending", approvedBy:"", submitted:TODAY_STR
+    }]);
+    addAudit&&addAudit("PTO","New Leave Request","PTO & Leave",`${name} requested ${days}d ${form.type}`,{start:form.startDate,end:form.endDate});
+    onSaved();
+  };
+
+  const left = balanceLeft();
+  const conflict = hasConflict();
+
+  return (
+    <div style={{maxWidth:600}}>
+      <div className="card" style={{padding:"22px 24px"}}>
+        <div className="section-hdr">New Leave Request</div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <FF label="Employee" style={{gridColumn:"span 2"}}>
+            <select className="inp" value={form.memberId} onChange={e=>setForm({...form,memberId:e.target.value})}>
+              {ptoBalances.map(b=><option key={b.memberId} value={b.memberId}>{b.name}</option>)}
+            </select>
+          </FF>
+
+          <FF label="Leave Type">
+            <select className="inp" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+              {Object.keys(PTO_TYPE_COLOR).map(t=><option key={t} value={t} style={{textTransform:"capitalize"}}>{t.toUpperCase()}</option>)}
+            </select>
+          </FF>
+
+          <div style={{padding:"8px 0",display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:12,color:"#3d5a7a"}}>Balance remaining:</span>
+            <span style={{fontSize:14,fontWeight:800,fontFamily:"'DM Mono',monospace",color:left<=2?"#f87171":left<=5?"#f59e0b":"#34d399"}}>{left} days</span>
+          </div>
+
+          <FF label="Start Date">
+            <input className="inp" type="date" value={form.start} onChange={e=>setForm({...form,start:e.target.value})}/>
+          </FF>
+          <FF label="End Date">
+            <input className="inp" type="date" value={form.end} min={form.start} onChange={e=>setForm({...form,end:e.target.value})}/>
+          </FF>
+
+          {days>0&&(
+            <div style={{gridColumn:"span 2",padding:"10px 14px",borderRadius:8,background:"#070c18",border:"1px solid #1a2d45",display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontSize:12,color:"#3d5a7a"}}>Business days requested</span>
+              <span style={{fontSize:16,fontWeight:800,fontFamily:"'DM Mono',monospace",color:days>left?"#f87171":"#38bdf8"}}>{days} days</span>
+            </div>
+          )}
+
+          <FF label="Reason" style={{gridColumn:"span 2"}}>
+            <input className="inp" value={form.reason} placeholder="Vacation, appointment, etc." onChange={e=>setForm({...form,reason:e.target.value})}/>
+          </FF>
+          <FF label="Coverage / Notes" style={{gridColumn:"span 2"}}>
+            <textarea className="inp" rows={2} value={form.notes} placeholder="Who will cover? Any handoff notes?" onChange={e=>setForm({...form,notes:e.target.value})}/>
+          </FF>
+        </div>
+
+        {conflict&&<div style={{padding:"10px 14px",borderRadius:8,background:"#1a0808",border:"1px solid #f87171",marginTop:12,fontSize:12,color:"#f87171"}}>Date conflict with an existing request for this employee.</div>}
+        {error&&<div style={{padding:"10px 14px",borderRadius:8,background:"#1a0808",border:"1px solid #f87171",marginTop:12,fontSize:12,color:"#f87171"}}>{error}</div>}
+
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}>
+          <button className="btn bg" onClick={()=>setForm({memberId:"r1",type:"pto",start:"",end:"",reason:"",notes:""})}>Clear</button>
+          <button className="btn bp" onClick={submit} disabled={conflict}>
+            <I d={ICONS.check} s={13}/>Submit Request
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PROJECT PROFITABILITY MODULE
+// =============================================================================
+
+// Cost calculation helpers
+function calcProjectCost(proj, roster, tsHours, changeOrders) {
+  // Identify assigned consultants
+  const assignedIds = proj.consultants || [];
+
+  // Hours logged to this project from timesheet
+  const projHours = {};
+  if (tsHours) {
+    Object.entries(tsHours).forEach(([memberId, weeks]) => {
+      if (!assignedIds.includes(memberId)) return;
+      let total = 0;
+      Object.values(weeks).forEach(weekData => {
+        if (typeof weekData === 'object') {
+          Object.entries(weekData).forEach(([pid, hrs]) => {
+            if (pid === proj.id) total += (hrs || 0);
+          });
+        }
+      });
+      if (total > 0) projHours[memberId] = total;
+    });
+  }
+
+  // Cost per consultant
+  let laborCost = 0;
+  let laborRevenue = 0;
+  const consultantDetails = [];
+
+  assignedIds.forEach(memberId => {
+    const r = roster.find(x => x.id === memberId);
+    if (!r) return;
+    const hours = projHours[memberId] || 0;
+    let cost = 0, revenue = 0;
+
+    if (r.type === 'FTE') {
+      // Hourly cost = (salary + burden) / 1920
+      const annualSalary = r.salary || 0;
+      const burden = annualSalary * (7.65+0.6+2.7+0.5+3+1.5)/100 + 7200;
+      const hourlyFullCost = (annualSalary + burden) / 1920;
+      cost = hours * hourlyFullCost;
+      revenue = hours * (r.billRate || 0);
+    } else {
+      // Contractor: cost = hours * fixedRate (what we pay them)
+      const payRate = r.fixedRate || r.billRate * (r.revShare || 0.7);
+      cost = hours * payRate;
+      revenue = hours * (r.billRate || 0);
+    }
+
+    laborCost    += cost;
+    laborRevenue += revenue;
+    consultantDetails.push({ memberId, name: r.name, hours, cost, revenue, margin: revenue > 0 ? (revenue - cost) / revenue * 100 : 0, billRate: r.billRate, type: r.type });
+  });
+
+  // Change order impact
+  const projCOs = (changeOrders || []).filter(co => co.projectId === proj.id && co.status !== 'voided');
+  const coRevAdj = projCOs.reduce((s, co) => s + (co.amount || 0), 0);
+
+  // Budget from project record
+  const budget = proj.budget || 0;
+  const spent  = proj.spent  || laborCost;
+  const totalRevenue = budget + coRevAdj;
+  const totalCost    = laborCost > 0 ? laborCost : spent;
+  const grossMargin  = totalRevenue > 0 ? (totalRevenue - totalCost) / totalRevenue * 100 : 0;
+  const burnPct      = budget > 0 ? (totalCost / budget) * 100 : 0;
+
+  return {
+    budget, coRevAdj, totalRevenue, totalCost, grossMargin, burnPct,
+    laborCost, laborRevenue, consultantDetails, projCOs,
+    hoursLogged: Object.values(projHours).reduce((s,v)=>s+v,0),
+  };
+}
+
+function ProjectProfitability({ projects, roster, tsHours, changeOrders, finInvoices, sows, clients }) {
+  const [sub,     setSub]     = useState("overview");
+  const [selProj, setSelProj] = useState(null);
+
+  const tabs = [
+    { id:"overview",    label:"Portfolio Overview" },
+    { id:"project",     label:"Project Deep-Dive"  },
+    { id:"consultant",  label:"By Consultant"      },
+    { id:"margin",      label:"Margin Analysis"    },
+  ];
+
+  // Enrich all projects with P&L data
+  const enriched = projects.map(proj => ({
+    ...proj,
+    pl: calcProjectCost(proj, roster, tsHours, changeOrders),
+  }));
+
+  const shared = { projects, enriched, roster, tsHours, changeOrders, finInvoices, sows, clients, selProj, setSelProj };
+
+  return (
+    <div>
+      <PH title="Project P&L" sub="Per-project revenue, cost, margin and burn vs budget"/>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setSub(t.id)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {sub==="overview"   && <PLOverview   {...shared} onDrill={(id)=>{setSelProj(id);setSub("project");}}/>}
+      {sub==="project"    && <PLProjectDrill {...shared}/>}
+      {sub==="consultant" && <PLConsultant  {...shared}/>}
+      {sub==="margin"     && <PLMargin      {...shared}/>}
+    </div>
+  );
+}
+
+// ── Portfolio Overview ────────────────────────────────────────────────────────
+function PLOverview({ enriched, onDrill }) {
+  const active   = enriched.filter(p => p.status !== "closed");
+  const totalRev = active.reduce((s,p) => s + p.pl.totalRevenue, 0);
+  const totalCost= active.reduce((s,p) => s + p.pl.totalCost,    0);
+  const totalMgn = totalRev > 0 ? (totalRev - totalCost) / totalRev * 100 : 0;
+  const atRisk   = active.filter(p => p.pl.burnPct > 90 || p.health === "red").length;
+  const avgMargin= active.length > 0 ? active.reduce((s,p)=>s+p.pl.grossMargin,0)/active.length : 0;
+
+  // Waterfall-style bar chart data
+  const maxRev = Math.max(...active.map(p=>p.pl.totalRevenue), 1);
+
+  return (
+    <div>
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Portfolio Revenue",  v:fmt(totalRev),          c:"#38bdf8"},
+          {l:"Total Cost",               v:fmt(totalCost),         c:"#f59e0b"},
+          {l:"Portfolio Gross Margin",   v:pct(totalMgn/100),      c:totalMgn<30?"#f87171":totalMgn<50?"#f59e0b":"#34d399"},
+          {l:"Avg Project Margin",       v:pct(avgMargin/100),     c:avgMargin<30?"#f87171":avgMargin<50?"#f59e0b":"#34d399"},
+          {l:"At-Risk Projects",         v:atRisk,                 c:atRisk>0?"#f87171":"#34d399"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Project P&L table */}
+      <div className="card" style={{marginBottom:16}}>
+        <div className="section-hdr">Active Project P&L</div>
+        <div className="tr" style={{gridTemplateColumns:"1.6fr 80px 80px 80px 80px 70px 80px 80px",padding:"8px 18px"}}>
+          {["Project","Budget","CO Adj","Total Rev","Cost","Margin","Burn%","Health"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {active.sort((a,b)=>b.pl.totalRevenue-a.pl.totalRevenue).map(proj=>{
+          const {pl} = proj;
+          const marginColor = pl.grossMargin<20?"#f87171":pl.grossMargin<40?"#f59e0b":"#34d399";
+          const burnColor   = pl.burnPct>100?"#f87171":pl.burnPct>85?"#f59e0b":"#34d399";
+          const hColor      = PROJ_STATUS_C[proj.health]||"#475569";
+          return (
+            <div key={proj.id} className="tr"
+              style={{gridTemplateColumns:"1.6fr 80px 80px 80px 80px 70px 80px 80px",cursor:"pointer",
+                borderLeft:`3px solid ${hColor}`}}
+              onClick={()=>onDrill(proj.id)}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{proj.name}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{proj.client||proj.pm||""}</div>
+                {pl.burnPct>90&&<div style={{fontSize:9,color:"#f87171",marginTop:1}}>Budget warning</div>}
+              </div>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{fmt(pl.budget)}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:pl.coRevAdj>0?"#34d399":pl.coRevAdj<0?"#f87171":"#1e3a5f"}}>{pl.coRevAdj!==0?(pl.coRevAdj>0?"+":"")+fmt(pl.coRevAdj):"—"}</span>
+              <span style={{fontSize:13,fontWeight:700,fontFamily:"'DM Mono',monospace",color:"#38bdf8"}}>{fmt(pl.totalRevenue)}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#f59e0b"}}>{fmt(pl.totalCost)}</span>
+              <span style={{fontSize:13,fontWeight:700,fontFamily:"'DM Mono',monospace",color:marginColor}}>{pl.grossMargin.toFixed(1)}%</span>
+              <div>
+                <div style={{height:5,background:"#0a1626",borderRadius:2,width:60}}>
+                  <div style={{height:5,borderRadius:2,background:burnColor,width:`${Math.min(100,pl.burnPct)}%`}}/>
+                </div>
+                <span style={{fontSize:9,color:burnColor}}>{pl.burnPct.toFixed(0)}%</span>
+              </div>
+              <span className="bdg" style={{background:hColor+"22",color:hColor,fontSize:9,textTransform:"capitalize"}}>{proj.health||"—"}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Visual comparison bars */}
+      <div className="card">
+        <div className="section-hdr">Revenue vs Cost by Project</div>
+        {active.sort((a,b)=>b.pl.totalRevenue-a.pl.totalRevenue).map(proj=>{
+          const {pl} = proj;
+          const revW  = (pl.totalRevenue/maxRev)*100;
+          const costW = pl.totalRevenue > 0 ? (pl.totalCost/pl.totalRevenue)*revW : 0;
+          const marginColor = pl.grossMargin<20?"#f87171":pl.grossMargin<40?"#f59e0b":"#34d399";
+          return (
+            <div key={proj.id} style={{padding:"10px 18px",borderBottom:"1px solid #070b14"}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <span style={{fontSize:12,fontWeight:600,color:"#94a3b8"}}>{proj.name}</span>
+                <div style={{display:"flex",gap:14,fontSize:11}}>
+                  <span style={{color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{fmt(pl.totalRevenue)}</span>
+                  <span style={{color:"#f59e0b",fontFamily:"'DM Mono',monospace"}}>{fmt(pl.totalCost)}</span>
+                  <span style={{color:marginColor,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{pl.grossMargin.toFixed(1)}% margin</span>
+                </div>
+              </div>
+              <div style={{height:10,background:"#0a1626",borderRadius:5,position:"relative",overflow:"hidden"}}>
+                <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${revW}%`,background:"#0284c733",borderRadius:5}}/>
+                <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${costW}%`,background:"#f59e0b",borderRadius:5,opacity:0.8}}/>
+                <div style={{position:"absolute",left:`${costW}%`,top:0,height:"100%",width:`${revW-costW}%`,background:marginColor,borderRadius:5,opacity:0.6}}/>
+              </div>
+              <div style={{display:"flex",gap:12,marginTop:3,fontSize:9,color:"#3d5a7a"}}>
+                <span style={{color:"#f59e0b"}}>Cost</span>
+                <span style={{color:marginColor}}>Margin</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Project Deep-Dive ─────────────────────────────────────────────────────────
+function PLProjectDrill({ enriched, selProj, setSelProj, changeOrders, finInvoices, sows }) {
+  const proj = selProj ? enriched.find(p=>p.id===selProj) : enriched[0];
+  if (!proj) return <div style={{padding:24,color:"#1e3a5f"}}>No projects found</div>;
+  const {pl} = proj;
+
+  const projInvoices = finInvoices.filter(i=>i.projectId===proj.id||i.clientId===proj.clientId);
+  const projSow      = sows.find(s=>s.projectId===proj.id||s.name?.includes(proj.client||"XXXXX"));
+  const projCOs      = pl.projCOs;
+
+  const totalInvoiced= projInvoices.reduce((s,i)=>s+i.amount,0);
+  const totalCollected=projInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+
+  const marginColor = pl.grossMargin<20?"#f87171":pl.grossMargin<40?"#f59e0b":"#34d399";
+  const burnColor   = pl.burnPct>100?"#f87171":pl.burnPct>85?"#f59e0b":"#34d399";
+
+  return (
+    <div>
+      {/* Project selector */}
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        {enriched.filter(p=>p.status!=="closed").map(p=>(
+          <button key={p.id} className="btn bg"
+            style={{fontSize:11,padding:"5px 12px",borderColor:p.id===proj.id?"#0284c7":"#1a2d45",color:p.id===proj.id?"#38bdf8":"#475569"}}
+            onClick={()=>setSelProj(p.id)}>
+            {p.name.slice(0,24)}
+          </button>
+        ))}
+      </div>
+
+      {/* Header */}
+      <div className="card" style={{marginBottom:16,padding:"18px 22px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div style={{fontSize:18,fontWeight:800,color:"#e2e8f0"}}>{proj.name}</div>
+            <div style={{fontSize:12,color:"#3d5a7a",marginTop:2}}>{proj.client} &middot; PM: {proj.pm} &middot; Status: <span style={{color:PROJ_STATUS_C[proj.health]||"#475569"}}>{proj.status}</span></div>
+          </div>
+          <span className="bdg" style={{background:PROJ_STATUS_C[proj.health]+"22",color:PROJ_STATUS_C[proj.health]||"#475569",fontSize:11,padding:"4px 12px"}}>{proj.health?.toUpperCase()||"—"}</span>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
+          {[
+            {l:"Contract Value",  v:fmt(pl.totalRevenue), c:"#38bdf8"},
+            {l:"Total Cost",      v:fmt(pl.totalCost),    c:"#f59e0b"},
+            {l:"Gross Margin",    v:pl.grossMargin.toFixed(1)+"%", c:marginColor},
+            {l:"Budget Burn",     v:pl.burnPct.toFixed(0)+"%",     c:burnColor},
+            {l:"Hours Logged",    v:(pl.hoursLogged||0)+"h",       c:"#a78bfa"},
+          ].map(k=>(
+            <div key={k.l} style={{textAlign:"center",padding:"10px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+              <div style={{fontSize:9,color:"#475569",marginTop:2}}>{k.l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {/* Consultant breakdown */}
+        <div className="card">
+          <div className="section-hdr">Consultant Cost Breakdown</div>
+          {pl.consultantDetails.length === 0 && (
+            <div style={{padding:"12px 18px",fontSize:11,color:"#1e3a5f"}}>No timesheet hours logged yet — showing estimated costs from budget.</div>
+          )}
+          {pl.consultantDetails.map(c=>(
+            <div key={c.memberId} style={{padding:"10px 18px",borderBottom:"1px solid #070b14"}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <div>
+                  <span style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c.name}</span>
+                  <span className="bdg" style={{marginLeft:6,fontSize:9,background:"#0a1626",color:"#3d5a7a"}}>{c.type}</span>
+                </div>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:c.margin<30?"#f87171":c.margin<50?"#f59e0b":"#34d399",fontWeight:700}}>{c.margin.toFixed(1)}% margin</span>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4,fontSize:10}}>
+                <div style={{color:"#3d5a7a"}}>{c.hours}h logged</div>
+                <div style={{color:"#f59e0b"}}>Cost: {fmt(c.cost)}</div>
+                <div style={{color:"#34d399"}}>Rev: {fmt(c.revenue)}</div>
+              </div>
+              <div style={{marginTop:5,height:4,background:"#0a1626",borderRadius:2}}>
+                <div style={{height:4,borderRadius:2,background:c.margin<30?"#f87171":c.margin<50?"#f59e0b":"#34d399",width:`${Math.max(0,Math.min(100,c.margin))}%`}}/>
+              </div>
+            </div>
+          ))}
+
+          {/* Budget vs Actual summary */}
+          <div style={{padding:"12px 18px",background:"#070c18",borderTop:"1px solid #1a2d45"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+              <span style={{fontSize:11,color:"#3d5a7a"}}>Budget burn</span>
+              <span style={{fontSize:13,fontFamily:"'DM Mono',monospace",color:burnColor,fontWeight:700}}>{fmt(pl.totalCost)} / {fmt(pl.budget)}</span>
+            </div>
+            <div style={{height:8,background:"#0a1626",borderRadius:4}}>
+              <div style={{height:8,borderRadius:4,background:burnColor,width:`${Math.min(100,pl.burnPct)}%`,transition:"width 0.3s"}}/>
+            </div>
+            {pl.burnPct>90&&<div style={{fontSize:9,color:"#f87171",marginTop:4}}>At {pl.burnPct.toFixed(0)}% budget consumed — review scope</div>}
+          </div>
+        </div>
+
+        {/* Revenue waterfall */}
+        <div>
+          <div className="card" style={{marginBottom:12}}>
+            <div className="section-hdr">Revenue Waterfall</div>
+            {[
+              {l:"Base Contract",   v:pl.budget,       c:"#38bdf8"},
+              {l:"Change Orders",   v:pl.coRevAdj,     c:pl.coRevAdj>=0?"#34d399":"#f87171"},
+              {l:"Total Revenue",   v:pl.totalRevenue, c:"#e2e8f0", bold:true},
+              {l:"Labor Cost",      v:-pl.totalCost,   c:"#f59e0b"},
+              {l:"Gross Profit",    v:pl.totalRevenue-pl.totalCost, c:(pl.totalRevenue-pl.totalCost)>=0?"#34d399":"#f87171", bold:true},
+            ].map(row=>(
+              <div key={row.l} style={{display:"flex",justifyContent:"space-between",padding:"7px 18px",borderBottom:"1px solid #070b14"}}>
+                <span style={{fontSize:12,color:row.bold?"#e2e8f0":"#64748b",fontWeight:row.bold?700:400}}>{row.l}</span>
+                <span style={{fontSize:row.bold?14:12,fontFamily:"'DM Mono',monospace",color:row.c,fontWeight:row.bold?800:600}}>
+                  {row.v<0?"-":row.v>0&&row.l==="Change Orders"?"+":" "}{fmt(Math.abs(row.v))}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Change orders */}
+          <div className="card" style={{marginBottom:12}}>
+            <div className="section-hdr">Change Orders ({projCOs.length})</div>
+            {projCOs.length===0&&<div style={{padding:"10px 18px",fontSize:11,color:"#1e3a5f"}}>No change orders</div>}
+            {projCOs.map(co=>(
+              <div key={co.id} style={{padding:"8px 18px",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between"}}>
+                <div>
+                  <span style={{fontSize:12,color:"#cbd5e1"}}>{co.number}</span>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{co.description?.slice(0,40)}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:co.amount>=0?"#34d399":"#f87171",fontWeight:700}}>{co.amount>=0?"+":""}{fmt(co.amount)}</div>
+                  <span className="bdg" style={{fontSize:8}}>{co.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Invoicing status */}
+          <div className="card">
+            <div className="section-hdr">Invoicing Status</div>
+            {[
+              {l:"Total Invoiced",   v:fmt(totalInvoiced),  c:"#38bdf8"},
+              {l:"Collected",        v:fmt(totalCollected), c:"#34d399"},
+              {l:"Outstanding",      v:fmt(totalInvoiced-totalCollected), c:"#f59e0b"},
+              {l:"Not Yet Invoiced", v:fmt(Math.max(0,pl.totalRevenue-totalInvoiced)), c:"#475569"},
+            ].map(row=>(
+              <div key={row.l} style={{display:"flex",justifyContent:"space-between",padding:"6px 18px",borderBottom:"1px solid #070b14"}}>
+                <span style={{fontSize:11,color:"#64748b"}}>{row.l}</span>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:row.c,fontWeight:600}}>{row.v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── By Consultant ─────────────────────────────────────────────────────────────
+function PLConsultant({ enriched, roster }) {
+  // Aggregate across all projects
+  const consultantMap = {};
+  enriched.forEach(proj=>{
+    proj.pl.consultantDetails.forEach(c=>{
+      if (!consultantMap[c.memberId]) {
+        consultantMap[c.memberId] = { ...c, projects:[], totalHours:0, totalCost:0, totalRevenue:0 };
+      }
+      const entry = consultantMap[c.memberId];
+      entry.projects.push(proj.name);
+      entry.totalHours   += c.hours;
+      entry.totalCost    += c.cost;
+      entry.totalRevenue += c.revenue;
+    });
+  });
+
+  // Merge with all roster members (even if no hours logged yet)
+  roster.forEach(r=>{
+    if (!consultantMap[r.id]) {
+      consultantMap[r.id] = {
+        memberId:r.id, name:r.name, type:r.type,
+        projects:[], totalHours:0, totalCost:0, totalRevenue:0,
+        billRate:r.billRate, margin:0
+      };
+    }
+  });
+
+  const rows = Object.values(consultantMap).map(c=>({
+    ...c,
+    margin: c.totalRevenue > 0 ? (c.totalRevenue - c.totalCost) / c.totalRevenue * 100 : 0,
+    revenuePerHour: c.totalHours > 0 ? c.totalRevenue / c.totalHours : 0,
+  })).sort((a,b)=>b.totalRevenue-a.totalRevenue);
+
+  const totalRev  = rows.reduce((s,r)=>s+r.totalRevenue,0);
+  const totalCost = rows.reduce((s,r)=>s+r.totalCost,0);
+  const totalHrs  = rows.reduce((s,r)=>s+r.totalHours,0);
+  const avgMargin = totalRev>0?(totalRev-totalCost)/totalRev*100:0;
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Revenue (all)",   v:fmt(totalRev),         c:"#38bdf8"},
+          {l:"Total Cost (all)",      v:fmt(totalCost),        c:"#f59e0b"},
+          {l:"Blended Margin",        v:avgMargin.toFixed(1)+"%", c:avgMargin<30?"#f87171":avgMargin<50?"#f59e0b":"#34d399"},
+          {l:"Total Hours Logged",    v:totalHrs+"h",          c:"#a78bfa"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        <div className="section-hdr">Consultant Revenue, Cost & Margin</div>
+        <div className="tr" style={{gridTemplateColumns:"1.4fr 60px 80px 80px 80px 60px 80px 1fr",padding:"8px 18px"}}>
+          {["Consultant","Type","Hours","Revenue","Cost","Margin","Rev/Hr","Projects"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {rows.map(c=>{
+          const mc = c.margin<20?"#f87171":c.margin<40?"#f59e0b":"#34d399";
+          return (
+            <div key={c.memberId} className="tr" style={{gridTemplateColumns:"1.4fr 60px 80px 80px 80px 60px 80px 1fr"}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c.name}</div>
+              <span className="bdg" style={{fontSize:9,background:"#0a1626",color:"#3d5a7a"}}>{c.type}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#a78bfa"}}>{c.totalHours}h</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#38bdf8",fontWeight:700}}>{fmt(c.totalRevenue)}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#f59e0b"}}>{fmt(c.totalCost)}</span>
+              <div>
+                <div style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:mc,fontWeight:700}}>{c.margin.toFixed(0)}%</div>
+                <div style={{height:3,background:"#0a1626",borderRadius:2,width:40,marginTop:2}}>
+                  <div style={{height:3,borderRadius:2,background:mc,width:`${Math.max(0,Math.min(100,c.margin))}%`}}/>
+                </div>
+              </div>
+              <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{c.revenuePerHour>0?"$"+c.revenuePerHour.toFixed(0):"—"}</span>
+              <div style={{fontSize:10,color:"#3d5a7a"}}>{c.projects.slice(0,2).join(", ")}{c.projects.length>2?` +${c.projects.length-2}`:""}
+                {c.projects.length===0&&<span style={{color:"#1e3a5f"}}>No hours logged</span>}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Margin Analysis ───────────────────────────────────────────────────────────
+function PLMargin({ enriched, roster }) {
+  // Margin by project type / client
+  const byClient = {};
+  enriched.forEach(p=>{
+    const key = p.client || "Unknown";
+    if (!byClient[key]) byClient[key]={rev:0,cost:0,projects:[]};
+    byClient[key].rev  += p.pl.totalRevenue;
+    byClient[key].cost += p.pl.totalCost;
+    byClient[key].projects.push(p.name);
+  });
+  const clientRows = Object.entries(byClient).map(([client,d])=>({
+    client, ...d, margin: d.rev>0?(d.rev-d.cost)/d.rev*100:0
+  })).sort((a,b)=>b.margin-a.margin);
+
+  // FTE vs Contractor margin comparison
+  const fteMargin  = enriched.flatMap(p=>p.pl.consultantDetails.filter(c=>c.type==="FTE"));
+  const ctorMargin = enriched.flatMap(p=>p.pl.consultantDetails.filter(c=>c.type!=="FTE"));
+  const avgFte  = fteMargin.length>0 ? fteMargin.reduce((s,c)=>s+c.margin,0)/fteMargin.length : 0;
+  const avgCtor = ctorMargin.length>0? ctorMargin.reduce((s,c)=>s+c.margin,0)/ctorMargin.length: 0;
+
+  // Margin ranges / buckets
+  const buckets = {">60%":0,"40-60%":0,"20-40%":0,"<20%":0};
+  enriched.forEach(p=>{
+    const m = p.pl.grossMargin;
+    if (m>=60) buckets[">60%"]++;
+    else if (m>=40) buckets["40-60%"]++;
+    else if (m>=20) buckets["20-40%"]++;
+    else buckets["<20%"]++;
+  });
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,marginBottom:16}}>
+        {/* Margin by client */}
+        <div className="card" style={{gridColumn:"span 2"}}>
+          <div className="section-hdr">Margin by Client</div>
+          <div className="tr" style={{gridTemplateColumns:"1.2fr 80px 80px 70px 1fr",padding:"8px 18px"}}>
+            {["Client","Revenue","Cost","Margin","Projects"].map(h=><span key={h} className="th">{h}</span>)}
+          </div>
+          {clientRows.map(row=>{
+            const mc=row.margin<20?"#f87171":row.margin<40?"#f59e0b":"#34d399";
+            return (
+              <div key={row.client} className="tr" style={{gridTemplateColumns:"1.2fr 80px 80px 70px 1fr"}}>
+                <span style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{row.client}</span>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#38bdf8"}}>{fmt(row.rev)}</span>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#f59e0b"}}>{fmt(row.cost)}</span>
+                <span style={{fontSize:13,fontWeight:700,fontFamily:"'DM Mono',monospace",color:mc}}>{row.margin.toFixed(1)}%</span>
+                <span style={{fontSize:10,color:"#3d5a7a"}}>{row.projects.join(", ")}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Margin distribution */}
+        <div className="card">
+          <div className="section-hdr">Margin Distribution</div>
+          {Object.entries(buckets).map(([label,count])=>{
+            const color=label===">60%"?"#34d399":label==="40-60%"?"#38bdf8":label==="20-40%"?"#f59e0b":"#f87171";
+            return (
+              <div key={label} style={{padding:"10px 18px",borderBottom:"1px solid #070b14"}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{fontSize:12,color}}>{label}</span>
+                  <span style={{fontSize:16,fontFamily:"'DM Mono',monospace",fontWeight:800,color}}>{count}</span>
+                </div>
+                <div style={{height:5,background:"#0a1626",borderRadius:2}}>
+                  <div style={{height:5,borderRadius:2,background:color,width:`${enriched.length>0?(count/enriched.length)*100:0}%`}}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* FTE vs Contractor margin */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div className="card" style={{padding:"22px 24px"}}>
+          <div className="section-hdr">FTE vs Contractor Margin Comparison</div>
+          {[
+            {l:"Avg FTE Margin",        v:avgFte.toFixed(1)+"%",  c:avgFte<40?"#f59e0b":"#34d399"},
+            {l:"Avg Contractor Margin", v:avgCtor.toFixed(1)+"%", c:avgCtor<40?"#f59e0b":"#34d399"},
+            {l:"FTE Head-count",        v:fteMargin.length+" consultants",  c:"#38bdf8"},
+            {l:"Contractor Head-count", v:ctorMargin.length+" consultants", c:"#a78bfa"},
+          ].map(row=>(
+            <div key={row.l} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #070b14"}}>
+              <span style={{fontSize:12,color:"#64748b"}}>{row.l}</span>
+              <span style={{fontSize:14,fontFamily:"'DM Mono',monospace",fontWeight:700,color:row.c}}>{row.v}</span>
+            </div>
+          ))}
+          <div style={{marginTop:14,padding:"12px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45",fontSize:11,color:"#3d5a7a",lineHeight:1.5}}>
+            {avgCtor>avgFte
+              ? `Contractors generate ${(avgCtor-avgFte).toFixed(1)}pp higher margin than FTEs on average. Consider extending contractor bench.`
+              : `FTEs generate ${(avgFte-avgCtor).toFixed(1)}pp higher margin than contractors. Strong case for FTE retention.`
+            }
+          </div>
+        </div>
+
+        {/* Top & bottom margin projects */}
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div className="section-hdr">Project Margin Ranking</div>
+          {[...enriched].sort((a,b)=>b.pl.grossMargin-a.pl.grossMargin).map((p,i)=>{
+            const mc=p.pl.grossMargin<20?"#f87171":p.pl.grossMargin<40?"#f59e0b":"#34d399";
+            return (
+              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #070b14"}}>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <span style={{fontSize:11,color:"#1e3a5f",width:16,textAlign:"right"}}>{i+1}</span>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:600,color:"#94a3b8"}}>{p.name.slice(0,30)}</div>
+                    <div style={{fontSize:9,color:"#1e3a5f"}}>{fmt(p.pl.totalRevenue)} contract value</div>
+                  </div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:14,fontFamily:"'DM Mono',monospace",fontWeight:800,color:mc}}>{p.pl.grossMargin.toFixed(1)}%</div>
+                  <div style={{height:3,background:"#0a1626",borderRadius:2,width:60}}>
+                    <div style={{height:3,borderRadius:2,background:mc,width:`${Math.max(0,Math.min(100,p.pl.grossMargin))}%`}}/>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// NOTIFICATION CENTER
+// =============================================================================
+
+// ── Alert engine — generates all alerts from live data ────────────────────────
+function generateAlerts({
+  roster, workAuth, compDocs, finInvoices, finPayments, apInvoices,
+  contracts, sows, crmDeals, crmActivities, ptoRequests, ptoBalances,
+  tsSubmissions, changeOrders, vendors, risks, projects, offers
+}) {
+  // TODAY_STR defined globally above
+  const today = new Date(TODAY_STR+"T00:00:00");
+  const alerts = [];
+  let seq = 0;
+  const add = (category, severity, title, body, meta={}) => {
+    alerts.push({ id:`alert-${++seq}`, category, severity, title, body, ts: TODAY_STR, ...meta });
+  };
+
+  // ── COMPLIANCE: Work Auth expiry ──────────────────────────────────────────
+  (workAuth||[]).forEach(wa => {
+    const days = daysUntil(wa.expiry);
+    if (days === null) return;
+    const name = roster.find(r=>r.id===wa.memberId)?.name || wa.memberId;
+    if (days < 0)       add("compliance","critical",`${wa.visaType} EXPIRED: ${name}`,`Expired ${Math.abs(days)}d ago. Immediate action required.`,{link:"compliance",memberId:wa.memberId});
+    else if (days <= 30)add("compliance","critical",`${wa.visaType} Expires in ${days}d: ${name}`,`Expires ${fmtDate(wa.expiry)}. File extensions now.`,{link:"compliance",memberId:wa.memberId});
+    else if (days <= 90)add("compliance","warning",`${wa.visaType} Expiring Soon: ${name}`,`Expires ${fmtDate(wa.expiry)} (${days} days).`,{link:"compliance",memberId:wa.memberId});
+  });
+
+  // ── COMPLIANCE: Documents ─────────────────────────────────────────────────
+  (compDocs||[]).filter(d=>d.status==="pending"||d.status==="missing"||d.dueDate).forEach(doc => {
+    const days = doc.dueDate ? daysUntil(doc.dueDate) : null;
+    const name = roster.find(r=>r.id===doc.memberId)?.name || doc.memberId;
+    if (doc.status==="missing") add("compliance","critical",`Missing Document: ${doc.type}`,`${name} — Required document missing. ${doc.notes||""}`,{link:"compliance"});
+    else if (days !== null && days <= 0) add("compliance","critical",`Document Overdue: ${doc.type} for ${name}`,`Due ${fmtDate(doc.dueDate)} — ${Math.abs(days)}d overdue.`,{link:"compliance"});
+    else if (days !== null && days <= 21) add("compliance","warning",`Document Due Soon: ${doc.type} for ${name}`,`Due ${fmtDate(doc.dueDate)} in ${days} days.`,{link:"compliance"});
+  });
+
+  // ── FINANCE: Overdue AR ───────────────────────────────────────────────────
+  (finInvoices||[]).filter(i=>i.status!=="paid"&&i.status!=="voided").forEach(inv => {
+    const issued = inv.issueDate ? new Date(inv.issueDate+"T00:00:00") : null;
+    const terms  = inv.paymentTerms || "Net 30";
+    const map    = {"Net 15":15,"Net 30":30,"Net 45":45,"Net 60":60,"Due on receipt":0};
+    const netDays= map[terms]??30;
+    if (!issued) return;
+    const dueDate= new Date(+issued + netDays*86400000);
+    const daysOv = Math.round((today - dueDate)/86400000);
+    const bal    = inv.balance || inv.amount;
+    if (daysOv > 30)      add("finance","critical",`AR Severely Overdue: ${inv.number}`,`${inv.client||inv.clientId} — ${fmt(bal)} overdue ${daysOv}d.`,{link:"finance",invoiceId:inv.id});
+    else if (daysOv > 0)  add("finance","warning",`AR Overdue: ${inv.number}`,`${inv.client||inv.clientId} — ${fmt(bal)} overdue ${daysOv}d.`,{link:"finance",invoiceId:inv.id});
+    else if (daysOv > -7) add("finance","info",`AR Due Soon: ${inv.number}`,`${inv.client||inv.clientId} — ${fmt(bal)} due in ${Math.abs(daysOv)}d.`,{link:"finance",invoiceId:inv.id});
+  });
+
+  // ── FINANCE: AP Overdue ───────────────────────────────────────────────────
+  (apInvoices||[]).filter(i=>i.status==="overdue"||i.status==="approved").forEach(inv => {
+    const days = daysUntil(inv.dueDate);
+    const vname= vendors?.find(v=>v.id===inv.vendorId)?.name||"Vendor";
+    if (inv.status==="overdue"||days<0)   add("finance","critical",`AP Overdue: ${inv.number}`,`${vname} — ${fmt(inv.amount)} overdue. Pay immediately.`,{link:"vendors",apId:inv.id});
+    else if (days<=5)                      add("finance","warning",`AP Due in ${days}d: ${inv.number}`,`${vname} — ${fmt(inv.amount)} due ${fmtDate(inv.dueDate)}.`,{link:"vendors",apId:inv.id});
+  });
+
+  // ── FINANCE: Vendors missing W-9 ─────────────────────────────────────────
+  (vendors||[]).filter(v=>v.w9Status==="missing"&&v.needs1099).forEach(v => {
+    add("finance","warning",`Missing W-9: ${v.name}`,`W-9 not on file. Required before payment and 1099 filing.`,{link:"vendors",vendorId:v.id});
+  });
+
+  // ── CONTRACTS: Expiring soon ──────────────────────────────────────────────
+  (contracts||[]).filter(c=>c.status==="active"||c.status==="expiring").forEach(c => {
+    const days = daysUntil(c.expiryDate);
+    if (days === null) return;
+    if (days <= 0)        add("contracts","critical",`Contract EXPIRED: ${c.name}`,`Expired ${Math.abs(days)}d ago. Renew or close immediately.`,{link:"contracts"});
+    else if (days <= 30)  add("contracts","critical",`Contract Expiring in ${days}d: ${c.name}`,`Expires ${fmtDate(c.expiryDate)}. Start renewal process.`,{link:"contracts"});
+    else if (days <= 90)  add("contracts","warning",`Contract Due for Renewal: ${c.name}`,`Expires ${fmtDate(c.expiryDate)} (${days} days).`,{link:"contracts"});
+  });
+
+  // ── CONTRACTS: Pending signature ─────────────────────────────────────────
+  (contracts||[]).filter(c=>c.status==="pending").forEach(c => {
+    add("contracts","warning",`Contract Awaiting Signature: ${c.name}`,`Value ${fmt(c.value||0)} — follow up with client.`,{link:"contracts"});
+  });
+
+  // ── SOW: Milestone overdue ────────────────────────────────────────────────
+  (sows||[]).forEach(sow => {
+    (sow.milestones||[]).filter(m=>m.status!=="complete"&&m.dueDate).forEach(m => {
+      const days = daysUntil(m.dueDate);
+      if (days !== null && days < 0) add("delivery","warning",`SOW Milestone Overdue: ${m.name}`,`${sow.name} — due ${fmtDate(m.dueDate)}, ${Math.abs(days)}d past due.`,{link:"contracts"});
+    });
+  });
+
+  // ── PROJECTS: At-risk ─────────────────────────────────────────────────────
+  (projects||[]).filter(p=>p.health==="red"||p.health==="amber").forEach(p => {
+    const sev = p.health==="red"?"critical":"warning";
+    add("delivery",sev,`Project ${p.health==="red"?"At Risk":"Needs Attention"}: ${p.name}`,`Health: ${p.health?.toUpperCase()}. ${p.notes||"Review project status."}`,{link:"projects",projectId:p.id});
+  });
+
+  // ── PROJECTS: Budget burn ─────────────────────────────────────────────────
+  (projects||[]).filter(p=>p.budget>0&&(p.spent||0)/p.budget>0.9).forEach(p => {
+    const pct = Math.round((p.spent||0)/p.budget*100);
+    add("delivery","warning",`Project Budget Warning: ${p.name}`,`${pct}% of budget consumed. Review scope and billing.`,{link:"projects",projectId:p.id});
+  });
+
+  // ── RISKS: High severity open ─────────────────────────────────────────────
+  (risks||[]).filter(r=>r.status==="open"&&r.impact==="high"&&r.probability==="high").forEach(r => {
+    add("delivery","critical",`Critical Risk: ${r.title}`,`${r.description||""} Owner: ${r.owner||"Unassigned"}.`,{link:"projects"});
+  });
+
+  // ── CRM: Deals stale / overdue follow-up ─────────────────────────────────
+  (crmDeals||[]).filter(d=>d.stage!=="Won"&&d.stage!=="Lost").forEach(deal => {
+    const lastAct = (crmActivities||[]).filter(a=>a.dealId===deal.id).sort((a,b)=>b.date.localeCompare(a.date))[0];
+    if (lastAct) {
+      const daysSince = Math.round((today - new Date(lastAct.date+"T00:00:00"))/86400000);
+      if (daysSince > 14) add("sales","warning",`Deal Stale: ${deal.name}`,`${fmt(deal.value)} — No activity for ${daysSince} days. Schedule follow-up.`,{link:"crm",dealId:deal.id});
+    }
+    if (deal.closeDate && daysUntil(deal.closeDate) !== null && daysUntil(deal.closeDate) < 0) {
+      add("sales","warning",`Deal Close Date Passed: ${deal.name}`,`${fmt(deal.value)} — Expected close ${fmtDate(deal.closeDate)}. Update forecast.`,{link:"crm",dealId:deal.id});
+    }
+  });
+
+  // ── RECRUITING: Pending offers ────────────────────────────────────────────
+  (offers||[]).filter(o=>o.status==="pending").forEach(o => {
+    const days = daysUntil(o.deadline);
+    if (days !== null && days <= 3) add("hiring","critical",`Offer Expiring in ${days}d: ${o.candidateName}`,`${fmt(o.salary||0)}/hr — ${o.position}. Follow up immediately.`,{link:"recruiting"});
+    else if (days !== null && days <= 7) add("hiring","warning",`Offer Expiring Soon: ${o.candidateName}`,`Deadline ${fmtDate(o.deadline)}.`,{link:"recruiting"});
+    else add("hiring","info",`Offer Pending: ${o.candidateName}`,`${fmt(o.salary||0)}/hr for ${o.position}. Awaiting acceptance.`,{link:"recruiting"});
+  });
+
+  // ── TIMESHEETS: Pending approvals ─────────────────────────────────────────
+  const pendingTS = (tsSubmissions||[]).filter(t=>t.status==="submitted"||t.status==="pm_approved");
+  if (pendingTS.length > 0) {
+    add("delivery","info",`${pendingTS.length} Timesheets Awaiting Approval`,`${pendingTS.map(t=>t.memberName||t.memberId).join(", ")} — pending in approval queue.`,{link:"timesheet"});
+  }
+
+  // ── PTO: Pending requests ─────────────────────────────────────────────────
+  const pendingPTO = (ptoRequests||[]).filter(r=>r.status==="pending");
+  if (pendingPTO.length > 0) {
+    add("hr","info",`${pendingPTO.length} PTO Requests Pending Approval`,pendingPTO.map(r=>`${r.name} (${fmtDate(r.start)})`).join(", "),{link:"pto"});
+  }
+
+  // ── CHANGE ORDERS: Awaiting signature ────────────────────────────────────
+  (changeOrders||[]).filter(co=>co.status==="pending_client").forEach(co => {
+    add("delivery","warning",`Change Order Awaiting Client Signature: ${co.number}`,`${fmt(co.amount)} — ${co.description?.slice(0,60)||""}`,{link:"changeorders"});
+  });
+
+  return alerts.sort((a,b)=>{
+    const sev = {critical:0,warning:1,info:2};
+    return (sev[a.severity]??3)-(sev[b.severity]??3);
+  });
+}
+
+// ── Browser Push Notification Helper ──────────────────────────────────────────
+function requestNotifyPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") Notification.requestPermission();
+}
+
+function pushNotify(title, body, icon="🔔") {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    new Notification(title, { body, icon: "/favicon.ico", tag: title });
+  } catch(e) { /* Safari may block */ }
+}
+
+// Call on load — ask for permission once
+if (typeof window !== "undefined") {
+  setTimeout(requestNotifyPermission, 3000);
+}
+
+
+// ── Severity config ────────────────────────────────────────────────────────────
+const SEV_COLOR = { critical:"#f87171", warning:"#f59e0b", info:"#38bdf8" };
+const SEV_BG    = { critical:"#1a0808", warning:"#1a1005", info:"#0c2340" };
+const SEV_BORDER= { critical:"#f87171", warning:"#f59e0b", info:"#0284c7" };
+const SEV_ICON  = { critical:"⚠", warning:"●", info:"ℹ" };
+const CAT_COLOR = { compliance:"#f87171", finance:"#f59e0b", delivery:"#a78bfa", contracts:"#38bdf8", sales:"#34d399", hiring:"#818cf8", hr:"#fb923c" };
+const CAT_LABEL = { compliance:"Compliance", finance:"Finance / AP", delivery:"Delivery", contracts:"Contracts", sales:"Sales", hiring:"Hiring", hr:"HR / PTO" };
+const NAV_LINKS = { compliance:"compliance", finance:"finance", vendors:"vendors", contracts:"contracts", delivery:"projects", projects:"projects", crm:"crm", recruiting:"recruiting", timesheet:"timesheet", pto:"pto", changeorders:"changeorders" };
+
+
+// ── Global Search Results ──────────────────────────────────────────────────────
+
+// ── Command Palette (Cmd+K) ───────────────────────────────────────────────────
+function CommandPalette({ cmdOpen, setCmdOpen, cmdQuery, setCmdQuery, setTab }) {
+  const [sel, setSel] = useState(0);
+  const inputRef = useRef(null);
+
+  const COMMANDS = [
+    // Navigation
+    { type:"nav", label:"Dashboard",           icon:"🏠", tab:"dashboard",    keys:["dash","home","overview"] },
+    { type:"nav", label:"Sales CRM",           icon:"🎯", tab:"crm",          keys:["crm","sales","deals","pipeline"] },
+    { type:"nav", label:"Project Tracker",     icon:"📋", tab:"projects",     keys:["proj","tasks","tracker"] },
+    { type:"nav", label:"Roster",              icon:"👥", tab:"roster",       keys:["roster","team","staff","people"] },
+    { type:"nav", label:"Finance",             icon:"💰", tab:"finance",      keys:["finance","invoice","ar","billing"] },
+    { type:"nav", label:"Cash Flow",           icon:"📈", tab:"cashflow",     keys:["cash","flow","runway","forecast"] },
+    { type:"nav", label:"ADP Payroll",         icon:"💼", tab:"adp",          keys:["adp","payroll","salary","pay"] },
+    { type:"nav", label:"Vendor / AP",         icon:"🏦", tab:"vendors",      keys:["vendor","ap","bills","payables"] },
+    { type:"nav", label:"Recruiting",          icon:"🔍", tab:"recruiting",   keys:["recruit","hire","candidate","jobs"] },
+    { type:"nav", label:"Compliance",          icon:"⚖️",  tab:"compliance",  keys:["compliance","visa","work","auth"] },
+    { type:"nav", label:"PTO Manager",         icon:"🌴", tab:"pto",          keys:["pto","vacation","leave","time off"] },
+    { type:"nav", label:"Benefits",            icon:"❤️",  tab:"benefits",    keys:["benefits","health","401k","insurance"] },
+    { type:"nav", label:"Client Portfolio",    icon:"🤝", tab:"clients",      keys:["client","portfolio","account"] },
+    { type:"nav", label:"EBITDA Model",        icon:"📊", tab:"ebitda",       keys:["ebitda","model","valuation"] },
+    { type:"nav", label:"P&L Statement",       icon:"📉", tab:"pl",           keys:["pl","profit","loss","income"] },
+    { type:"nav", label:"Tax Calendar",        icon:"🗓", tab:"taxcal",       keys:["tax","irs","deadline","quarterly"] },
+    { type:"nav", label:"Proposals",           icon:"📝", tab:"proposals",    keys:["proposal","rfp","quote","sow"] },
+    { type:"nav", label:"E-Signature",         icon:"✍️",  tab:"esign",       keys:["sign","esign","docusign","contract"] },
+    { type:"nav", label:"Onboarding",          icon:"🚀", tab:"onboarding",   keys:["onboard","new hire","setup"] },
+    { type:"nav", label:"Settings",            icon:"⚙️",  tab:"settings",    keys:["settings","config","preferences"] },
+    { type:"nav", label:"Audit Log",           icon:"📜", tab:"auditlog",     keys:["audit","log","history","activity"] },
+    { type:"nav", label:"Notifications",       icon:"🔔", tab:"notifications",keys:["alert","notification","warning"] },
+    { type:"nav", label:"Report Builder",      icon:"📑", tab:"reports",      keys:["report","export","analytics"] },
+    { type:"nav", label:"GL Export",           icon:"🏛",  tab:"glexport",    keys:["gl","general ledger","quickbooks","export"] },
+  ];
+
+  const q = cmdQuery.trim().toLowerCase();
+  const filtered = q.length < 1 ? COMMANDS.slice(0, 8) : COMMANDS.filter(cmd =>
+    cmd.label.toLowerCase().includes(q) ||
+    cmd.keys.some(k => k.includes(q))
+  ).slice(0, 10);
+
+  // Arrow keys + Enter
+  useEffect(()=>{
+    if (!cmdOpen) return;
+    const handle = (e) => {
+      if (e.key==="ArrowDown") { e.preventDefault(); setSel(s=>Math.min(s+1,filtered.length-1)); }
+      if (e.key==="ArrowUp")   { e.preventDefault(); setSel(s=>Math.max(s-1,0)); }
+      if (e.key==="Enter"&&filtered[sel]) { setTab(filtered[sel].tab); setCmdOpen(false); }
+    };
+    window.addEventListener("keydown", handle);
+    return () => window.removeEventListener("keydown", handle);
+  },[cmdOpen, filtered, sel]);
+
+  useEffect(()=>{ setSel(0); },[cmdQuery]);
+  useEffect(()=>{ if(cmdOpen && inputRef.current) setTimeout(()=>inputRef.current?.focus(),30); },[cmdOpen]);
+
+  if (!cmdOpen) return null;
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"flex-start",justifyContent:"center",
+      paddingTop:"12vh",background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)"}}
+      onClick={e=>e.target===e.currentTarget&&setCmdOpen(false)}>
+      <div style={{width:560,background:"#070e1c",border:"1px solid #1a3a5c",borderRadius:16,
+        boxShadow:"0 24px 80px rgba(0,0,0,0.8)",overflow:"hidden"}}>
+        {/* Search input */}
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"16px 20px",borderBottom:"1px solid #111d2d"}}>
+          <span style={{fontSize:18,opacity:0.5}}>⌘</span>
+          <input ref={inputRef} value={cmdQuery} onChange={e=>setCmdQuery(e.target.value)}
+            placeholder="Jump to any module…"
+            style={{flex:1,background:"transparent",border:"none",outline:"none",fontSize:16,
+              color:"#e2e8f0",fontFamily:"inherit"}}/>
+          <span style={{fontSize:10,color:"#1e3a5f",padding:"3px 6px",background:"#060d1c",borderRadius:4,border:"1px solid #1a2d45"}}>ESC</span>
+        </div>
+
+        {/* Results */}
+        <div style={{maxHeight:360,overflowY:"auto"}}>
+          {filtered.length===0&&(
+            <div style={{padding:"32px",textAlign:"center",color:"#1e3a5f",fontSize:13}}>No modules match "{cmdQuery}"</div>
+          )}
+          {filtered.map((cmd,i)=>(
+            <div key={cmd.tab} onClick={()=>{setTab(cmd.tab);setCmdOpen(false);}}
+              onMouseEnter={()=>setSel(i)}
+              style={{display:"flex",alignItems:"center",gap:14,padding:"12px 20px",cursor:"pointer",
+                background:sel===i?"#0c1f35":"transparent",
+                borderLeft:sel===i?"3px solid #0284c7":"3px solid transparent",
+                transition:"all 0.1s"}}>
+              <span style={{fontSize:20,width:28,textAlign:"center"}}>{cmd.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:sel===i?600:400,color:sel===i?"#e2e8f0":"#94a3b8"}}>{cmd.label}</div>
+                <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>Navigate → {cmd.tab}</div>
+              </div>
+              {sel===i&&<span style={{fontSize:10,color:"#0284c7",padding:"2px 6px",background:"#060d1c",borderRadius:4,border:"1px solid #0369a1"}}>↵ Go</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{padding:"10px 20px",borderTop:"1px solid #111d2d",display:"flex",gap:16,alignItems:"center"}}>
+          <span style={{fontSize:10,color:"#1e3a5f"}}>↑↓ navigate</span>
+          <span style={{fontSize:10,color:"#1e3a5f"}}>↵ open</span>
+          <span style={{fontSize:10,color:"#1e3a5f"}}>Esc close</span>
+          <span style={{marginLeft:"auto",fontSize:10,color:"#1e3a5f"}}>⌘K to toggle</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crmDeals, clients, tsSubmissions, workAuth, setTab, onClose }) {
+  const qq = q.trim().toLowerCase();
+  const hit = (...vals) => vals.some(v => v && String(v).toLowerCase().includes(qq));
+
+  const results = [
+    // Roster
+    ...(roster||[]).filter(r => hit(r.name, r.role, r.client, r.skills, r.type, r.id))
+      .map(r => ({ icon:"👤", label:r.name, sub:`${r.role} · ${r.client}`, tab:"roster", id:r.id })),
+    // Finance invoices
+    ...(finInvoices||[]).filter(i => hit(i.id, i.number, i.clientId, i.status, i.period, i.notes))
+      .map(i => ({ icon:"🧾", label:`Invoice ${i.number||i.id}`, sub:`${i.status} · ${i.lines?.reduce((s,l)=>s+l.amount,0)?.toLocaleString?.() || ""}`, tab:"finance", id:i.id })),
+    // AP invoices
+    ...(apInvoices||[]).filter(i => hit(i.number, i.vendor, i.description, i.status, i.category))
+      .map(i => ({ icon:"📤", label:`${i.vendor} – ${i.number}`, sub:`${i.status} · $${i.amount?.toLocaleString?.()}`, tab:"vendors", id:i.id })),
+    // Projects
+    ...(projects||[]).filter(p => hit(p.name, p.clientId, p.status, p.pm, p.description, p.id))
+      .map(p => ({ icon:"📋", label:p.name, sub:`${p.status} · ${p.clientId}`, tab:"projects", id:p.id })),
+    // CRM Deals
+    ...(crmDeals||[]).filter(d => hit(d.name, d.stage, d.owner, d.notes, d.nextStep, d.type))
+      .map(d => ({ icon:"💼", label:d.name, sub:`${d.stage} · $${d.value?.toLocaleString?.()}`, tab:"crm", id:d.id })),
+    // Clients
+    ...(clients||[]).filter(cl => hit(cl.name, cl.contact, cl.email, cl.type, cl.health, cl.id))
+      .map(cl => ({ icon:"🏢", label:cl.name, sub:`$${cl.annualRev?.toLocaleString?.()}/yr · ${cl.health}`, tab:"clients", id:cl.id })),
+    // Work Auth
+    ...(workAuth||[]).filter(w => hit(w.name, w.visaType, w.status, w.employer, w.id))
+      .map(w => ({ icon:"📄", label:`${w.name} – ${w.visaType}`, sub:`Expires ${w.expiryDate}`, tab:"compliance", id:w.id })),
+    // Candidates
+    ...(tsSubmissions||[]).filter(s => hit(s.consultantId, s.status, s.notes, s.weekStart))
+      .map(s => ({ icon:"⏱", label:`Timesheet ${s.weekStart}`, sub:`${s.consultantId} · ${s.status}`, tab:"timesheet", id:s.id })),
+  ].slice(0, 12);
+
+  if (!results.length) return (
+    <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:999,background:"#0b1422",border:"1px solid #1a2d45",borderRadius:"0 0 10px 10px",padding:"18px",textAlign:"center",color:"#1e3a5f",fontSize:12}}>
+      No results for "{q}"
+    </div>
+  );
+
+  return (
+    <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:999,background:"#0b1422",border:"1px solid #1a2d45",borderRadius:"0 0 10px 10px",overflow:"hidden",boxShadow:"0 8px 24px #00000066"}}>
+      {results.map((r,i) => (
+        <div key={i} onMouseDown={()=>{ setTab(r.tab); onClose(); }}
+          style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",cursor:"pointer",borderBottom:"1px solid #111d2d",transition:"background 0.1s"}}
+          onMouseEnter={e=>e.currentTarget.style.background="#0f1e35"}
+          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+          <span style={{fontSize:16,width:22,textAlign:"center"}}>{r.icon}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.label}</div>
+            <div style={{fontSize:10,color:"#3d5a7a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.sub}</div>
+          </div>
+          <span style={{fontSize:10,color:"#1e3a5f",flexShrink:0}}>{r.tab}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+// SettingsField — defined OUTSIDE SettingsPage to prevent remounting on every keystroke
+function SettingsField({label, children}) {
+  return (
+    <div style={{marginBottom:16}}>
+      <div className="lbl" style={{marginBottom:6}}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function SettingsPage({ appSettings, setAppSettings, addAudit }) {
+  const [form, setForm] = useState({...appSettings});
+  const [saved, setSaved] = useState(false);
+
+  const save = () => {
+    setAppSettings(form);
+    addAudit&&addAudit("Settings","Settings Updated","System","User updated company/app settings");
+    setSaved(true);
+    setTimeout(()=>setSaved(false),2500);
+  };
+
+  const F = SettingsField;
+
+  return (
+    <div>
+      <PH title="Settings" sub="Company info · Owner preferences · App configuration"/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,maxWidth:900}}>
+
+        {/* Company Info */}
+        <div className="card" style={{padding:"20px 22px"}}>
+          <div className="section-hdr" style={{marginBottom:18}}>Company Info</div>
+          <F label="Company name">
+            <input className="inp" value={form.companyName} onChange={e=>setForm({...form,companyName:e.target.value})} placeholder="Ziksatech LLC"/>
+          </F>
+          <F label="Company website">
+            <input className="inp" value={form.companyWebsite} onChange={e=>setForm({...form,companyWebsite:e.target.value})} placeholder="ziksatech.com"/>
+          </F>
+          <F label="Fiscal year start">
+            <select className="inp" value={form.fiscalYearStart} onChange={e=>setForm({...form,fiscalYearStart:e.target.value})}>
+              {["January","February","March","April","May","June","July","August","September","October","November","December"].map(m=><option key={m} value={m}>{m}</option>)}
+            </select>
+          </F>
+          <F label="Currency">
+            <select className="inp" value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}>
+              {["USD","EUR","GBP","CAD","INR"].map(c=><option key={c}>{c}</option>)}
+            </select>
+          </F>
+          <F label="Timezone">
+            <select className="inp" value={form.timezone} onChange={e=>setForm({...form,timezone:e.target.value})}>
+              {["America/Chicago","America/New_York","America/Los_Angeles","America/Denver","UTC"].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </F>
+        </div>
+
+        {/* Owner / Approver */}
+        <div className="card" style={{padding:"20px 22px"}}>
+          <div className="section-hdr" style={{marginBottom:18}}>Owner / Approver</div>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,padding:"12px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+            <Avatar name={form.ownerName||"?"} size={44}/>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{form.ownerName||"Owner"}</div>
+              <div style={{fontSize:11,color:"#3d5a7a"}}>{form.ownerEmail}</div>
+            </div>
+          </div>
+          <F label="Owner / approver name">
+            <input className="inp" value={form.ownerName} onChange={e=>setForm({...form,ownerName:e.target.value})} placeholder="Manju"/>
+          </F>
+          <F label="Owner email">
+            <input className="inp" type="email" value={form.ownerEmail} onChange={e=>setForm({...form,ownerEmail:e.target.value})} placeholder="manju@ziksatech.com"/>
+          </F>
+          <F label="Default bill rate ($/hr)">
+            <input className="inp" type="number" value={form.defaultBillRate} onChange={e=>setForm({...form,defaultBillRate:+e.target.value})} placeholder="150"/>
+          </F>
+          <div style={{marginTop:6,padding:"10px 12px",background:"#070c18",borderRadius:6,border:"1px solid #1a2d45",fontSize:11,color:"#3d5a7a",lineHeight:1.5}}>
+            Owner name is used as the approver in Timesheets, PTO, Change Orders, and the Audit Log. Changes take effect immediately on new actions.
+          </div>
+        </div>
+
+        {/* Appearance / Branding */}
+        <div className="card" style={{padding:"20px 22px"}}>
+          <div className="section-hdr" style={{marginBottom:18}}>Branding &amp; Portal</div>
+          <F label="Logo URL (for PDF exports &amp; Client Portal)">
+            <input className="inp" value={form.logoUrl||""} onChange={e=>setForm({...form,logoUrl:e.target.value})} placeholder="https://ziksatech.com/logo.png"/>
+          </F>
+          <F label="Primary contact email (shown on invoices)">
+            <input className="inp" value={form.billingEmail||"billing@ziksatech.com"} onChange={e=>setForm({...form,billingEmail:e.target.value})}/>
+          </F>
+          <F label="Invoice footer text">
+            <input className="inp" value={form.invoiceFooter||"Payment due Net 30. ACH preferred."} onChange={e=>setForm({...form,invoiceFooter:e.target.value})}/>
+          </F>
+        </div>
+
+        {/* Module toggles */}
+        <div className="card" style={{padding:"20px 22px"}}>
+          <div className="section-hdr" style={{marginBottom:18}}>Module Visibility</div>
+          <div style={{fontSize:12,color:"#3d5a7a",marginBottom:14}}>Show / hide tabs from the sidebar. Hidden tabs are still accessible from direct links and drill-through.</div>
+          {[
+            ["showPortal","Client Portal"],
+            ["showCapacity","Capacity Planner"],
+            ["showBudget","Budget vs. Actual"],
+            ["showEsign","E-Signature"],
+            ["showGlExport","QB GL Export"],
+          ].map(([key,label])=>(
+            <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0a1420"}}>
+              <span style={{fontSize:13,color:"#cbd5e1"}}>{label}</span>
+              <button
+                onClick={()=>setForm(f=>({...f,[key]:!f[key]}))}
+                style={{width:40,height:22,borderRadius:11,border:"none",cursor:"pointer",transition:"background 0.2s",
+                  background:form[key]===false?"#0f1e30":"#0369a1",position:"relative"}}>
+                <div style={{width:18,height:18,borderRadius:9,background:"#fff",position:"absolute",top:2,
+                  left:form[key]===false?2:20,transition:"left 0.2s"}}/>
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Save */}
+      <div style={{marginTop:18,display:"flex",alignItems:"center",gap:12}}>
+        <button className="btn bp" style={{padding:"10px 28px",fontSize:14,fontWeight:700}} onClick={save}>
+          Save Settings
+        </button>
+        <button className="btn bg" style={{padding:"10px 18px",fontSize:13}} onClick={()=>setForm({...appSettings})}>
+          Reset
+        </button>
+        {saved&&<span style={{fontSize:12,color:"#34d399",fontWeight:600}}>✓ Settings saved</span>}
+      </div>
+    </div>
+  );
+}
+
+function NotificationCenter(props) {
+  const { dismissedAlerts, setDismissedAlerts, setTab, ...rest } = props;
+  const [filter, setFilter]   = useState("all");
+  const [catFilter, setCat]   = useState("all");
+  const [showDismissed, setShowDismissed] = useState(false);
+
+  const allAlerts = generateAlerts(rest);
+  const active  = allAlerts.filter(a=>!dismissedAlerts.includes(a.id));
+  const dismissed = allAlerts.filter(a=>dismissedAlerts.includes(a.id));
+
+  // Push browser notification for critical alerts (once per session, not on every render)
+  const notifiedRef = useRef(new Set());
+  useEffect(() => {
+    if (Notification?.permission !== "granted") return;
+    active.filter(a => a.severity === "critical").forEach(a => {
+      if (!notifiedRef.current.has(a.id)) {
+        notifiedRef.current.add(a.id);
+        pushNotify(`🚨 ${a.category}: ${a.title}`, a.detail || "", "🔔");
+      }
+    });
+  }, [active.length]);
+
+  const sevCounts = { critical:0, warning:0, info:0 };
+  active.forEach(a=>sevCounts[a.severity]++);
+
+  const visible = active
+    .filter(a=>filter==="all"||a.severity===filter)
+    .filter(a=>catFilter==="all"||a.category===catFilter);
+
+  const dismiss  = (id) => setDismissedAlerts(d=>[...d,id]);
+  const dismissAll = () => setDismissedAlerts(d=>[...d,...visible.map(a=>a.id)]);
+  const restore  = (id) => setDismissedAlerts(d=>d.filter(x=>x!==id));
+  const restoreAll = () => setDismissedAlerts([]);
+
+  const categories = [...new Set(active.map(a=>a.category))];
+
+  // Nav to linked module
+  const navTo = (alert) => {
+    const dest = NAV_LINKS[alert.link] || alert.link;
+    if (dest && setTab) setTab(dest);
+  };
+
+  return (
+    <div>
+      <PH title="Notification Center" sub="Live alerts from all modules — compliance, finance, delivery, sales, HR"/>
+
+      {/* Summary bar */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Critical",    v:sevCounts.critical, c:"#f87171", f:"critical"},
+          {l:"Warnings",    v:sevCounts.warning,  c:"#f59e0b", f:"warning"},
+          {l:"Info",        v:sevCounts.info,     c:"#38bdf8", f:"info"},
+          {l:"Total Active",v:active.length,      c:"#e2e8f0", f:"all"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center",cursor:"pointer",
+            border:`1px solid ${filter===k.f?k.c:"#1a2d45"}`}}
+            onClick={()=>setFilter(filter===k.f?"all":k.f)}>
+            <div style={{fontSize:28,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {sevCounts.critical > 0 && (
+        <div style={{padding:"12px 18px",borderRadius:10,background:"#1a0808",border:"1px solid #f8717166",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <span style={{color:"#f87171",fontWeight:800}}>🚨 {sevCounts.critical} Critical Alert{sevCounts.critical!==1?"s":""} Require Immediate Action</span>
+            <div style={{fontSize:11,color:"#64748b",marginTop:2}}>Review critical items below — some may have legal or financial consequences if not addressed.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Category + actions row */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+          <button className="btn bg" style={{fontSize:10,padding:"4px 9px",borderColor:catFilter==="all"?"#0284c7":"#1a2d45",color:catFilter==="all"?"#38bdf8":"#475569"}}
+            onClick={()=>setCat("all")}>All Categories</button>
+          {categories.map(cat=>(
+            <button key={cat} className="btn bg" style={{fontSize:10,padding:"4px 9px",borderColor:catFilter===cat?(CAT_COLOR[cat]||"#0284c7"):"#1a2d45",color:catFilter===cat?(CAT_COLOR[cat]||"#38bdf8"):"#475569"}}
+              onClick={()=>setCat(catFilter===cat?"all":cat)}>
+              {CAT_LABEL[cat]||cat}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          {visible.length>0&&<button className="btn bg" style={{fontSize:10,padding:"4px 9px",color:"#475569"}} onClick={dismissAll}>Dismiss All Visible</button>}
+          {dismissed.length>0&&<button className="btn bg" style={{fontSize:10,padding:"4px 9px",color:"#3d5a7a"}} onClick={()=>setShowDismissed(s=>!s)}>{showDismissed?"Hide":"Show"} Dismissed ({dismissed.length})</button>}
+          {dismissed.length>0&&<button className="btn bg" style={{fontSize:10,padding:"4px 9px",color:"#475569"}} onClick={restoreAll}>Restore All</button>}
+        </div>
+      </div>
+
+      {/* Alert list */}
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {visible.length === 0 && (
+          <div className="card" style={{padding:"32px",textAlign:"center"}}>
+            <div style={{fontSize:32,marginBottom:8}}>✅</div>
+            <div style={{fontSize:14,fontWeight:700,color:"#34d399"}}>All clear!</div>
+            <div style={{fontSize:12,color:"#1e3a5f",marginTop:4}}>No active alerts for the selected filter.</div>
+          </div>
+        )}
+        {visible.map(alert=>(
+          <div key={alert.id} style={{borderRadius:10,padding:"12px 16px",
+            background:SEV_BG[alert.severity],border:`1px solid ${SEV_BORDER[alert.severity]}44`,
+            borderLeft:`4px solid ${SEV_BORDER[alert.severity]}`,
+            display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+            <div style={{display:"flex",gap:12,flex:1,minWidth:0}}>
+              <div style={{fontSize:18,marginTop:1,lineHeight:1}}>{SEV_ICON[alert.severity]}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3,flexWrap:"wrap"}}>
+                  <span style={{fontSize:13,fontWeight:700,color:SEV_COLOR[alert.severity]}}>{alert.title}</span>
+                  <span className="bdg" style={{fontSize:9,background:CAT_COLOR[alert.category]+"22",color:CAT_COLOR[alert.category]||"#475569",textTransform:"capitalize"}}>{CAT_LABEL[alert.category]||alert.category}</span>
+                  <span className="bdg" style={{fontSize:9,background:SEV_BG[alert.severity],color:SEV_COLOR[alert.severity],textTransform:"capitalize"}}>{alert.severity}</span>
+                </div>
+                <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.4}}>{alert.body}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:6,flexShrink:0,alignItems:"center"}}>
+              {alert.link&&setTab&&(
+                <button className="btn bg" style={{fontSize:10,padding:"4px 9px",borderColor:"#0284c7",color:"#38bdf8"}}
+                  onClick={()=>navTo(alert)}>Go →</button>
+              )}
+              <button className="btn bg" style={{fontSize:10,padding:"4px 9px",color:"#3d5a7a"}}
+                onClick={()=>dismiss(alert.id)}>Dismiss</button>
+            </div>
+          </div>
+        ))}
+
+        {/* Dismissed section */}
+        {showDismissed && dismissed.length > 0 && (
+          <div style={{marginTop:12}}>
+            <div style={{fontSize:11,color:"#1e3a5f",marginBottom:8,fontWeight:600}}>DISMISSED ALERTS ({dismissed.length})</div>
+            {dismissed.map(alert=>(
+              <div key={alert.id} style={{borderRadius:10,padding:"10px 16px",background:"#040810",border:"1px solid #0a1626",
+                display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:4,opacity:0.5}}>
+                <div style={{display:"flex",gap:10,flex:1}}>
+                  <span style={{fontSize:11,color:"#1e3a5f"}}>{SEV_ICON[alert.severity]}</span>
+                  <div>
+                    <span style={{fontSize:12,color:"#1e3a5f",fontWeight:600}}>{alert.title}</span>
+                    <div style={{fontSize:10,color:"#0f1f35"}}>{alert.body?.slice(0,80)}</div>
+                  </div>
+                </div>
+                <button className="btn bg" style={{fontSize:10,padding:"3px 8px",color:"#1e3a5f"}}
+                  onClick={()=>restore(alert.id)}>Restore</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Module health summary */}
+      <div className="card" style={{marginTop:20}}>
+        <div className="section-hdr">Alert Count by Module</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0}}>
+          {Object.entries(CAT_LABEL).map(([cat,label])=>{
+            const catAlerts = active.filter(a=>a.category===cat);
+            const critical  = catAlerts.filter(a=>a.severity==="critical").length;
+            const warning   = catAlerts.filter(a=>a.severity==="warning").length;
+            const info      = catAlerts.filter(a=>a.severity==="info").length;
+            return (
+              <div key={cat} style={{padding:"14px 18px",borderRight:"1px solid #070b14",borderBottom:"1px solid #070b14",cursor:"pointer"}}
+                onClick={()=>setCat(catFilter===cat?"all":cat)}>
+                <div style={{fontSize:11,fontWeight:700,color:CAT_COLOR[cat]||"#475569",marginBottom:6}}>{label}</div>
+                <div style={{display:"flex",gap:8}}>
+                  {critical>0&&<span className="bdg" style={{background:"#1a0808",color:"#f87171",fontSize:10}}>{critical} critical</span>}
+                  {warning>0 &&<span className="bdg" style={{background:"#1a1005",color:"#f59e0b",fontSize:10}}>{warning} warn</span>}
+                  {info>0    &&<span className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:10}}>{info} info</span>}
+                  {catAlerts.length===0&&<span style={{fontSize:10,color:"#1e3a5f"}}>All clear ✓</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// AUDIT LOG MODULE
+// =============================================================================
+
+// Hook — call addAudit(module, action, entity, detail, before, after) from anywhere
+// We surface this via the shared prop: addAudit
+function makeAddAudit(setAuditLog, currentUser="Manju") {
+  return function addAudit(module, action, entity, detail, before=null, after=null) {
+    const entry = {
+      id: "al"+uid(),
+      ts: new Date().toISOString(),
+      user: currentUser,
+      module, action, entity, detail, before, after
+    };
+    setAuditLog(log => [entry, ...log].slice(0, 500)); // keep last 500
+  };
+}
+
+function AuditLog({ auditLog, setAuditLog, roster }) {
+  const [search,    setSearch]    = useState("");
+  const [modFilter, setModFilter] = useState("all");
+  const [actFilter, setActFilter] = useState("all");
+  const [userFilter,setUserFilter]= useState("all");
+  const [expanded,  setExpanded]  = useState(null);
+  const [page,      setPage]      = useState(0);
+  const PAGE_SIZE = 25;
+
+  // Clear log with confirmation
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  // Derived filters
+  const modules = [...new Set(auditLog.map(e=>e.module))].sort();
+  const actions = [...new Set(auditLog.map(e=>e.action))].sort();
+  const users   = [...new Set(auditLog.map(e=>e.user))].sort();
+
+  const filtered = auditLog.filter(e => {
+    if (modFilter  !== "all" && e.module !== modFilter)  return false;
+    if (actFilter  !== "all" && e.action !== actFilter)  return false;
+    if (userFilter !== "all" && e.user   !== userFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!e.entity?.toLowerCase().includes(q) && !e.detail?.toLowerCase().includes(q) && !e.user?.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  const paginated = filtered.slice(page * PAGE_SIZE, (page+1) * PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+
+  // Stats for header
+  const today = TODAY_STR;
+  const todayEntries  = auditLog.filter(e=>e.ts.startsWith(today));
+  const criticalActs  = auditLog.filter(e=>["delete","deny","lock"].includes(e.action));
+  const uniqueUsers   = new Set(auditLog.map(e=>e.user)).size;
+
+  // Format diff for before/after
+  const formatDiff = (before, after) => {
+    if (!before && !after) return null;
+    const allKeys = new Set([...Object.keys(before||{}), ...Object.keys(after||{})]);
+    return [...allKeys].map(k => {
+      const bv = before?.[k], av = after?.[k];
+      if (JSON.stringify(bv) === JSON.stringify(av)) return null;
+      return { key: k, before: bv, after: av };
+    }).filter(Boolean);
+  };
+
+  return (
+    <div>
+      <PH title="Audit Log" sub="Complete record of all actions across every module — who did what, when"/>
+
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Events",      v:auditLog.length,       c:"#38bdf8"},
+          {l:"Events Today",      v:todayEntries.length,   c:"#34d399"},
+          {l:"Active Users",      v:uniqueUsers,            c:"#a78bfa"},
+          {l:"High-Impact Events",v:criticalActs.length,   c:"#f59e0b"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,marginBottom:16}}>
+        {/* Search */}
+        <input className="inp" placeholder="Search events, entities, users..."
+          value={search} onChange={e=>{setSearch(e.target.value);setPage(0);}}
+          style={{width:"100%",boxSizing:"border-box"}}/>
+        <div style={{display:"flex",gap:6}}>
+          {!confirmClear
+            ? <button className="btn bg" style={{fontSize:11,color:"#f87171",borderColor:"#f87171"}} onClick={()=>setConfirmClear(true)}>Clear Log</button>
+            : <>
+                <button className="btn bg" style={{fontSize:11,color:"#f87171",borderColor:"#f87171"}} onClick={()=>{setAuditLog([]);setConfirmClear(false);}}>Confirm Clear</button>
+                <button className="btn bg" style={{fontSize:11}} onClick={()=>setConfirmClear(false)}>Cancel</button>
+              </>
+          }
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:10,color:"#3d5a7a",fontWeight:600}}>Module:</span>
+        <select className="inp" style={{width:"auto",padding:"4px 8px",fontSize:11}} value={modFilter}
+          onChange={e=>{setModFilter(e.target.value);setPage(0);}}>
+          <option value="all">All Modules</option>
+          {modules.map(m=><option key={m} value={m} style={{textTransform:"capitalize"}}>{m}</option>)}
+        </select>
+        <span style={{fontSize:10,color:"#3d5a7a",fontWeight:600}}>Action:</span>
+        <select className="inp" style={{width:"auto",padding:"4px 8px",fontSize:11}} value={actFilter}
+          onChange={e=>{setActFilter(e.target.value);setPage(0);}}>
+          <option value="all">All Actions</option>
+          {actions.map(a=><option key={a} value={a} style={{textTransform:"capitalize"}}>{a}</option>)}
+        </select>
+        <span style={{fontSize:10,color:"#3d5a7a",fontWeight:600}}>User:</span>
+        <select className="inp" style={{width:"auto",padding:"4px 8px",fontSize:11}} value={userFilter}
+          onChange={e=>{setUserFilter(e.target.value);setPage(0);}}>
+          <option value="all">All Users</option>
+          {users.map(u=><option key={u} value={u}>{u}</option>)}
+        </select>
+        {(modFilter!=="all"||actFilter!=="all"||userFilter!=="all"||search)&&(
+          <button className="btn bg" style={{fontSize:10,padding:"4px 9px",color:"#475569"}}
+            onClick={()=>{setModFilter("all");setActFilter("all");setUserFilter("all");setSearch("");setPage(0);}}>
+            Clear Filters
+          </button>
+        )}
+        <span style={{marginLeft:"auto",fontSize:11,color:"#1e3a5f"}}>{filtered.length} events</span>
+      </div>
+
+      {/* Timeline */}
+      <div className="card" style={{marginBottom:16}}>
+        {paginated.length === 0 && (
+          <div style={{padding:"24px",textAlign:"center",color:"#1e3a5f",fontSize:12}}>No audit events match your filters.</div>
+        )}
+        {paginated.map((entry, idx) => {
+          const isOpen = expanded === entry.id;
+          const diff   = formatDiff(entry.before, entry.after);
+          const ac     = AUDIT_ACTION_COLOR[entry.action] || "#475569";
+          const mc     = AUDIT_MODULE_COLOR[entry.module] || "#475569";
+          const tsDate = entry.ts.slice(0,10);
+          const tsTime = entry.ts.slice(11,19);
+          // Group header: show date if different from previous
+          const prevEntry = paginated[idx-1];
+          const showDate = !prevEntry || prevEntry.ts.slice(0,10) !== tsDate;
+          return (
+            <div key={entry.id}>
+              {showDate && (
+                <div style={{padding:"6px 18px",background:"#040810",borderBottom:"1px solid #0a1626",borderTop:idx>0?"1px solid #0a1626":undefined}}>
+                  <span style={{fontSize:10,fontWeight:700,color:"#1e3a5f",letterSpacing:1}}>
+                    {tsDate === today ? "TODAY" : fmtDate(tsDate)}
+                  </span>
+                </div>
+              )}
+              <div style={{borderBottom:"1px solid #070b14",cursor:"pointer",
+                background:isOpen?"#070c18":idx%2===0?"transparent":"#050c1a",
+                borderLeft:`3px solid ${ac}44`}}
+                onClick={()=>setExpanded(isOpen?null:entry.id)}>
+                <div style={{padding:"10px 18px",display:"grid",gridTemplateColumns:"70px 70px 90px 1fr 90px 24px",gap:8,alignItems:"center"}}>
+                  {/* Time */}
+                  <span style={{fontSize:10,fontFamily:"'DM Mono',monospace",color:"#1e3a5f"}}>{tsTime}</span>
+                  {/* User */}
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
+                    <Avatar name={entry.user} size={18}/>
+                    <span style={{fontSize:10,color:"#3d5a7a"}}>{entry.user}</span>
+                  </div>
+                  {/* Action badge */}
+                  <span className="bdg" style={{background:ac+"22",color:ac,fontSize:9,textTransform:"capitalize",width:"fit-content"}}>{entry.action}</span>
+                  {/* Detail */}
+                  <div>
+                    <div style={{fontSize:12,color:"#94a3b8"}}>{entry.detail}</div>
+                    <div style={{fontSize:10,color:"#1e3a5f",marginTop:1}}>{entry.entity}</div>
+                  </div>
+                  {/* Module */}
+                  <span className="bdg" style={{background:mc+"22",color:mc,fontSize:9,textTransform:"capitalize"}}>{entry.module}</span>
+                  {/* Expand chevron */}
+                  {diff&&diff.length>0
+                    ? <span style={{color:"#3d5a7a",fontSize:10,userSelect:"none"}}>{isOpen?"▲":"▼"}</span>
+                    : <span/>
+                  }
+                </div>
+                {/* Expanded diff */}
+                {isOpen && diff && diff.length > 0 && (
+                  <div style={{padding:"8px 18px 14px 110px"}}>
+                    <div style={{background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",overflow:"hidden"}}>
+                      <div style={{padding:"6px 14px",background:"#040810",borderBottom:"1px solid #1a2d45",fontSize:9,fontWeight:700,color:"#1e3a5f",letterSpacing:1}}>FIELD CHANGES</div>
+                      {diff.map(d=>(
+                        <div key={d.key} style={{display:"grid",gridTemplateColumns:"100px 1fr 1fr",gap:0,borderBottom:"1px solid #070b14",fontSize:11}}>
+                          <div style={{padding:"6px 14px",color:"#1e3a5f",fontWeight:600,background:"#050c1a"}}>{d.key}</div>
+                          <div style={{padding:"6px 14px",color:"#f87171",fontFamily:"'DM Mono',monospace",borderRight:"1px solid #0a1626"}}>
+                            {d.before!==undefined&&d.before!==null ? String(d.before) : "—"}
+                          </div>
+                          <div style={{padding:"6px 14px",color:"#34d399",fontFamily:"'DM Mono',monospace"}}>
+                            {d.after!==undefined&&d.after!==null ? String(d.after) : "—"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:16}}>
+          <button className="btn bg" style={{padding:"4px 10px",fontSize:11}} disabled={page===0} onClick={()=>setPage(p=>p-1)}>← Prev</button>
+          {Array.from({length:Math.min(totalPages,7)},(_,i)=>{
+            const p = totalPages<=7 ? i : Math.max(0,Math.min(totalPages-7,page-3))+i;
+            return (
+              <button key={p} className="btn bg" style={{padding:"4px 10px",fontSize:11,
+                borderColor:page===p?"#0284c7":"#1a2d45",color:page===p?"#38bdf8":"#475569"}}
+                onClick={()=>setPage(p)}>{p+1}</button>
+            );
+          })}
+          <button className="btn bg" style={{padding:"4px 10px",fontSize:11}} disabled={page>=totalPages-1} onClick={()=>setPage(p=>p+1)}>Next →</button>
+        </div>
+      )}
+
+      {/* Activity by module & user heatmap */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div className="card">
+          <div className="section-hdr">Events by Module</div>
+          {modules.map(m=>{
+            const count = auditLog.filter(e=>e.module===m).length;
+            const pct   = auditLog.length>0?count/auditLog.length*100:0;
+            return (
+              <div key={m} style={{padding:"7px 18px",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,minWidth:90}}>
+                  <span style={{width:8,height:8,borderRadius:2,background:AUDIT_MODULE_COLOR[m]||"#475569",display:"inline-block",flexShrink:0}}/>
+                  <span style={{fontSize:11,color:"#94a3b8",textTransform:"capitalize"}}>{m}</span>
+                </div>
+                <div style={{flex:1,height:5,background:"#0a1626",borderRadius:2}}>
+                  <div style={{height:5,borderRadius:2,background:AUDIT_MODULE_COLOR[m]||"#475569",width:`${pct}%`}}/>
+                </div>
+                <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#475569",minWidth:28,textAlign:"right"}}>{count}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div>
+          <div className="card" style={{marginBottom:12}}>
+            <div className="section-hdr">Events by Action Type</div>
+            {Object.entries(
+              auditLog.reduce((acc,e)=>{acc[e.action]=(acc[e.action]||0)+1;return acc;},{})
+            ).sort((a,b)=>b[1]-a[1]).map(([action,count])=>(
+              <div key={action} style={{padding:"6px 18px",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span className="bdg" style={{background:(AUDIT_ACTION_COLOR[action]||"#475569")+"22",color:AUDIT_ACTION_COLOR[action]||"#475569",fontSize:10,textTransform:"capitalize"}}>{action}</span>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{count}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="card">
+            <div className="section-hdr">Events by User</div>
+            {Object.entries(
+              auditLog.reduce((acc,e)=>{acc[e.user]=(acc[e.user]||0)+1;return acc;},{})
+            ).sort((a,b)=>b[1]-a[1]).map(([user,count])=>(
+              <div key={user} style={{padding:"7px 18px",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <Avatar name={user} size={18}/>
+                  <span style={{fontSize:12,color:"#94a3b8"}}>{user}</span>
+                </div>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{count} events</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PDF EXPORT MODULE
+// =============================================================================
+
+// ── Print engine — injects a styled iframe and triggers window.print() ─────────
+function printHTML(html, title="Ziksatech Document") {
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:0';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+  iframe.contentWindow.focus();
+  setTimeout(() => {
+    iframe.contentWindow.print();
+    setTimeout(() => document.body.removeChild(iframe), 1500);
+  }, 400);
+}
+
+// ── Shared print CSS ──────────────────────────────────────────────────────────
+const PRINT_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; color: #1e293b; background: #fff; font-size: 13px; line-height: 1.5; }
+  @page { margin: 18mm 16mm; size: A4; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  .page { max-width: 800px; margin: 0 auto; padding: 0; }
+  .hdr { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 3px solid #0369a1; margin-bottom: 24px; }
+  .logo-block { display: flex; flex-direction: column; }
+  .company-name { font-size: 22px; font-weight: 800; color: #0369a1; letter-spacing: -0.5px; }
+  .company-sub  { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .doc-type  { font-size: 26px; font-weight: 800; color: #0f172a; text-align: right; }
+  .doc-meta  { font-size: 11px; color: #64748b; text-align: right; margin-top: 4px; }
+  .section { margin-bottom: 22px; }
+  .section-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .kv { display: flex; flex-direction: column; gap: 2px; }
+  .kv .k { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kv .v { font-size: 13px; font-weight: 600; color: #0f172a; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: #f8fafc; padding: 8px 10px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr.subtotal td { border-top: 2px solid #e2e8f0; font-weight: 700; background: #f8fafc; }
+  tr.total td { border-top: 3px solid #0369a1; font-weight: 800; font-size: 14px; background: #eff6ff; color: #0369a1; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; }
+  .badge-green  { background: #dcfce7; color: #15803d; }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+  .badge-amber  { background: #fef3c7; color: #b45309; }
+  .badge-red    { background: #fee2e2; color: #dc2626; }
+  .badge-gray   { background: #f1f5f9; color: #475569; }
+  .kpi-row { display: grid; gap: 10px; margin-bottom: 18px; }
+  .kpi-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; text-align: center; }
+  .kpi-val { font-size: 20px; font-weight: 800; color: #0369a1; }
+  .kpi-lbl { font-size: 9px; color: #94a3b8; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .progress-bar-wrap { background: #e2e8f0; border-radius: 4px; height: 8px; width: 100%; }
+  .progress-bar-fill { background: #0369a1; border-radius: 4px; height: 8px; }
+  .footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; }
+  .highlight-box { background: #eff6ff; border-left: 4px solid #0369a1; padding: 10px 14px; border-radius: 4px; margin: 12px 0; }
+  .warn-box { background: #fef3c7; border-left: 4px solid #d97706; padding: 10px 14px; border-radius: 4px; margin: 12px 0; }
+  .danger-box { background: #fee2e2; border-left: 4px solid #dc2626; padding: 10px 14px; border-radius: 4px; margin: 12px 0; }
+  .right { text-align: right; }
+  .mono { font-family: 'Courier New', monospace; }
+  .bold { font-weight: 700; }
+  .muted { color: #94a3b8; }
+  .page-break { page-break-after: always; }
+`;
+
+const ZT_FOOTER = `
+  <div class="footer">
+    <span>Ziksatech LLC · Frisco, TX · www.ziksatech.com</span>
+    <span>Confidential — For authorized recipients only</span>
+    <span>Generated ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</span>
+  </div>`;
+
+// ── Invoice PDF ───────────────────────────────────────────────────────────────
+function buildInvoicePDF(inv, payments) {
+  const paid    = payments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0);
+  const balance = inv.amount - paid;
+  const statusBadge = inv.status==="paid"?"badge-green":inv.status==="overdue"?"badge-red":"badge-amber";
+  const lineItems = inv.lineItems || [{ description: inv.description||"Professional Services", qty: 1, rate: inv.amount, amount: inv.amount }];
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice ${inv.number}</title>
+  <style>${PRINT_CSS}</style></head><body><div class="page">
+  <div class="hdr">
+    <div class="logo-block">
+      <div class="company-name">Ziksatech LLC</div>
+      <div class="company-sub">SAP · Cloud · Analytics Consulting</div>
+      <div class="company-sub" style="margin-top:10px;color:#0f172a">123 Main St, Frisco TX 75034</div>
+      <div class="company-sub">billing@ziksatech.com · +1 (214) 555-0100</div>
+    </div>
+    <div>
+      <div class="doc-type">INVOICE</div>
+      <div class="doc-meta" style="font-size:16px;font-weight:700;color:#0369a1">${inv.number}</div>
+      <div class="doc-meta">Date: ${inv.issueDate||"—"}</div>
+      <div class="doc-meta">Due: ${inv.dueDate||"Net 30"}</div>
+      <div class="doc-meta" style="margin-top:6px"><span class="badge ${statusBadge}">${(inv.status||"sent").toUpperCase()}</span></div>
+    </div>
+  </div>
+
+  <div class="grid-2 section">
+    <div>
+      <div class="section-title">Bill To</div>
+      <div style="font-weight:700;font-size:14px">${inv.client||inv.clientId||"Client"}</div>
+      <div class="muted" style="margin-top:4px">${inv.clientAddress||""}</div>
+      <div class="muted">${inv.clientEmail||""}</div>
+    </div>
+    <div>
+      <div class="section-title">Invoice Details</div>
+      <div class="kv" style="gap:6px">
+        <div class="kv"><span class="k">Invoice #</span><span class="v">${inv.number}</span></div>
+        <div class="kv"><span class="k">Project</span><span class="v">${inv.project||inv.projectId||"—"}</span></div>
+        <div class="kv"><span class="k">Payment Terms</span><span class="v">${inv.paymentTerms||"Net 30"}</span></div>
+        <div class="kv"><span class="k">PO Number</span><span class="v">${inv.poNumber||"—"}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Services</div>
+    <table>
+      <thead><tr>
+        <th style="width:45%">Description</th>
+        <th class="right">Qty / Hours</th>
+        <th class="right">Rate</th>
+        <th class="right">Amount</th>
+      </tr></thead>
+      <tbody>
+        ${lineItems.map(li=>`<tr>
+          <td>${li.description||"Professional Services"}</td>
+          <td class="right mono">${li.qty||li.hours||1}</td>
+          <td class="right mono">$${(li.rate||0).toLocaleString()}</td>
+          <td class="right mono bold">$${(li.amount||0).toLocaleString()}</td>
+        </tr>`).join("")}
+        <tr class="subtotal"><td colspan="3">Subtotal</td><td class="right mono">$${inv.amount.toLocaleString()}</td></tr>
+        ${paid>0?`<tr class="subtotal"><td colspan="3">Payments Received</td><td class="right mono" style="color:#15803d">($${paid.toLocaleString()})</td></tr>`:""}
+        <tr class="total"><td colspan="3">Balance Due</td><td class="right mono">$${balance.toLocaleString()}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  ${balance===0?`<div class="highlight-box"><strong>✓ Paid in Full</strong> — Thank you for your payment.</div>`:
+    balance>0&&inv.status==="overdue"?`<div class="danger-box"><strong>Payment Overdue</strong> — Please remit $${balance.toLocaleString()} immediately. Contact billing@ziksatech.com.</div>`:
+    `<div class="highlight-box"><strong>Payment Instructions:</strong> ACH · Routing: 111000025 · Account: 987654321 · Ref: ${inv.number}</div>`}
+
+  <div class="section" style="margin-top:20px">
+    <div class="section-title">Notes</div>
+    <p class="muted">${inv.notes||"Thank you for your business. Please reference invoice number when making payment."}</p>
+  </div>
+  ${ZT_FOOTER}</div></body></html>`;
+}
+
+// ── SOW PDF ───────────────────────────────────────────────────────────────────
+function buildSOWPDF(sow, roster) {
+  const consultants = (sow.consultants||[]).map(id=>roster.find(r=>r.id===id)?.name||id).join(", ");
+  const totalMilestoneAmt = (sow.milestones||[]).reduce((s,m)=>s+(m.amount||0),0);
+  const completedMilestones = (sow.milestones||[]).filter(m=>m.status==="complete");
+  const pctComplete = sow.milestones?.length>0 ? Math.round(completedMilestones.length/sow.milestones.length*100) : 0;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SOW - ${sow.name}</title>
+  <style>${PRINT_CSS}</style></head><body><div class="page">
+  <div class="hdr">
+    <div class="logo-block">
+      <div class="company-name">Ziksatech LLC</div>
+      <div class="company-sub">SAP · Cloud · Analytics Consulting</div>
+    </div>
+    <div>
+      <div class="doc-type">STATEMENT OF WORK</div>
+      <div class="doc-meta">${sow.id?.toUpperCase()||""}</div>
+      <div class="doc-meta">Effective: ${sow.startDate||"—"}</div>
+      <div class="doc-meta">Expires: ${sow.endDate||"—"}</div>
+      <div class="doc-meta" style="margin-top:6px"><span class="badge badge-blue">${(sow.status||"active").toUpperCase()}</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Overview</div>
+    <div class="grid-2">
+      <div class="kv"><span class="k">SOW Title</span><span class="v" style="font-size:15px">${sow.name}</span></div>
+      <div class="kv"><span class="k">Client</span><span class="v">${sow.client||sow.clientId||"—"}</span></div>
+    </div>
+    <div class="grid-3" style="margin-top:12px">
+      <div class="kv"><span class="k">Contract Value</span><span class="v mono">$${(sow.totalValue||0).toLocaleString()}</span></div>
+      <div class="kv"><span class="k">Billing Rate</span><span class="v mono">$${sow.billRate||0}/hr</span></div>
+      <div class="kv"><span class="k">Total Hours</span><span class="v mono">${sow.totalHours||0} hrs</span></div>
+      <div class="kv"><span class="k">Billing Type</span><span class="v">${sow.billingType||"Time & Materials"}</span></div>
+      <div class="kv"><span class="k">Start Date</span><span class="v">${sow.startDate||"—"}</span></div>
+      <div class="kv"><span class="k">End Date</span><span class="v">${sow.endDate||"—"}</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Assigned Consultants</div>
+    <p>${consultants||"TBD"}</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Scope of Work</div>
+    <p>${sow.scope||sow.description||"As mutually agreed upon by the parties. Detailed scope available in the master services agreement."}</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Milestones & Deliverables</div>
+    <div style="margin-bottom:10px">
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pctComplete}%"></div></div>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${completedMilestones.length} of ${sow.milestones?.length||0} milestones complete (${pctComplete}%)</div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>#</th><th>Milestone</th><th>Due Date</th><th>Amount</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+        ${(sow.milestones||[]).map((m,i)=>`<tr>
+          <td class="muted">${i+1}</td>
+          <td><strong>${m.name}</strong>${m.description?`<br><span style="font-size:11px;color:#94a3b8">${m.description}</span>`:""}</td>
+          <td>${m.dueDate||"—"}</td>
+          <td class="right mono">$${(m.amount||0).toLocaleString()}</td>
+          <td><span class="badge ${m.status==="complete"?"badge-green":m.status==="in_progress"?"badge-blue":"badge-gray"}">${(m.status||"pending").replace("_"," ").toUpperCase()}</span></td>
+        </tr>`).join("")}
+        <tr class="total"><td colspan="3">Total Contract Value</td><td class="right mono">$${totalMilestoneAmt.toLocaleString()}</td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Terms & Conditions</div>
+    <p class="muted" style="font-size:11px">This Statement of Work is governed by the Master Services Agreement between Ziksatech LLC and Client. All work performed under this SOW is confidential. Invoices are due Net 30 from issue date. Ziksatech reserves the right to suspend work if invoices exceed 45 days past due.</p>
+  </div>
+
+  <div class="grid-2 section" style="margin-top:40px">
+    <div>
+      <div class="section-title">Ziksatech LLC</div>
+      <div style="margin-top:30px;border-top:1px solid #cbd5e1;padding-top:6px;font-size:11px;color:#64748b">Authorized Signature · Date</div>
+    </div>
+    <div>
+      <div class="section-title">${sow.client||"Client"}</div>
+      <div style="margin-top:30px;border-top:1px solid #cbd5e1;padding-top:6px;font-size:11px;color:#64748b">Authorized Signature · Date</div>
+    </div>
+  </div>
+  ${ZT_FOOTER}</div></body></html>`;
+}
+
+// ── Project Status Report PDF ─────────────────────────────────────────────────
+function buildProjectReportPDF(proj, roster, tasks, risks, changeOrders, finInvoices) {
+  const assignedRoster = (proj.consultants||[]).map(id=>roster.find(r=>r.id===id)).filter(Boolean);
+  const projTasks  = (tasks||[]).filter(t=>t.projectId===proj.id);
+  const projRisks  = (risks||[]).filter(r=>r.projectId===proj.id&&r.status==="open");
+  const projCOs    = (changeOrders||[]).filter(c=>c.projectId===proj.id&&c.status!=="voided");
+  const projInvs   = (finInvoices||[]).filter(i=>i.projectId===proj.id||i.clientId===proj.clientId);
+  const burnPct    = proj.budget>0?Math.round((proj.spent||0)/proj.budget*100):0;
+  const invoiced   = projInvs.reduce((s,i)=>s+i.amount,0);
+  const collected  = projInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+  const hColor     = proj.health==="green"?"#15803d":proj.health==="amber"?"#b45309":"#dc2626";
+  const hBadge     = proj.health==="green"?"badge-green":proj.health==="amber"?"badge-amber":"badge-red";
+  const openTasks  = projTasks.filter(t=>t.status!=="done"&&t.status!=="completed");
+  const doneTasks  = projTasks.filter(t=>t.status==="done"||t.status==="completed");
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Project Report - ${proj.name}</title>
+  <style>${PRINT_CSS}</style></head><body><div class="page">
+  <div class="hdr">
+    <div class="logo-block">
+      <div class="company-name">Ziksatech LLC</div>
+      <div class="company-sub">SAP · Cloud · Analytics Consulting</div>
+    </div>
+    <div>
+      <div class="doc-type">PROJECT STATUS REPORT</div>
+      <div class="doc-meta">Report Date: ${new Date().toLocaleDateString()}</div>
+      <div class="doc-meta" style="margin-top:6px"><span class="badge ${hBadge}">${(proj.health||"green").toUpperCase()}</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Project Overview</div>
+    <div class="grid-3">
+      <div class="kv"><span class="k">Project Name</span><span class="v">${proj.name}</span></div>
+      <div class="kv"><span class="k">Client</span><span class="v">${proj.client||"—"}</span></div>
+      <div class="kv"><span class="k">Project Manager</span><span class="v">${proj.pm||"—"}</span></div>
+      <div class="kv"><span class="k">Status</span><span class="v">${proj.status||"active"}</span></div>
+      <div class="kv"><span class="k">Start Date</span><span class="v">${proj.startDate||"—"}</span></div>
+      <div class="kv"><span class="k">End Date</span><span class="v">${proj.endDate||"—"}</span></div>
+    </div>
+  </div>
+
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi-box"><div class="kpi-val">$${(proj.budget||0).toLocaleString()}</div><div class="kpi-lbl">Budget</div></div>
+    <div class="kpi-box"><div class="kpi-val" style="color:${burnPct>90?"#dc2626":"#0369a1"}">${burnPct}%</div><div class="kpi-lbl">Budget Burn</div></div>
+    <div class="kpi-box"><div class="kpi-val">$${invoiced.toLocaleString()}</div><div class="kpi-lbl">Invoiced</div></div>
+    <div class="kpi-box"><div class="kpi-val" style="color:#15803d">$${collected.toLocaleString()}</div><div class="kpi-lbl">Collected</div></div>
+  </div>
+
+  ${burnPct>90?`<div class="danger-box"><strong>⚠ Budget Warning:</strong> Project has consumed ${burnPct}% of budget. Immediate review required.</div>`:""}
+
+  <div class="section">
+    <div class="section-title">Budget Analysis</div>
+    <div class="progress-bar-wrap" style="height:14px;margin-bottom:6px">
+      <div class="progress-bar-fill" style="width:${Math.min(100,burnPct)}%;height:14px;background:${burnPct>90?"#dc2626":burnPct>75?"#d97706":"#0369a1"}"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b">
+      <span>Spent: $${(proj.spent||0).toLocaleString()}</span>
+      <span>Remaining: $${Math.max(0,(proj.budget||0)-(proj.spent||0)).toLocaleString()}</span>
+      <span>Budget: $${(proj.budget||0).toLocaleString()}</span>
+    </div>
+    ${projCOs.length>0?`<div style="margin-top:10px;font-size:11px;color:#64748b">Change Orders: ${projCOs.length} approved (+$${projCOs.reduce((s,c)=>s+c.amount,0).toLocaleString()})</div>`:""}
+  </div>
+
+  <div class="grid-2 section">
+    <div>
+      <div class="section-title">Team (${assignedRoster.length} consultants)</div>
+      <table>
+        <thead><tr><th>Name</th><th>Role</th><th>Type</th></tr></thead>
+        <tbody>
+          ${assignedRoster.map(r=>`<tr>
+            <td><strong>${r.name}</strong></td>
+            <td class="muted">${r.role||r.title||"Consultant"}</td>
+            <td><span class="badge badge-gray">${r.type}</span></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div class="section-title">Task Summary</div>
+      <div class="kpi-row" style="grid-template-columns:1fr 1fr;gap:8px">
+        <div class="kpi-box"><div class="kpi-val" style="font-size:16px">${openTasks.length}</div><div class="kpi-lbl">Open Tasks</div></div>
+        <div class="kpi-box"><div class="kpi-val" style="font-size:16px;color:#15803d">${doneTasks.length}</div><div class="kpi-lbl">Completed</div></div>
+      </div>
+    </div>
+  </div>
+
+  ${projTasks.length>0?`<div class="section">
+    <div class="section-title">Open Tasks (${openTasks.length})</div>
+    <table>
+      <thead><tr><th>Task</th><th>Priority</th><th>Assignee</th><th>Due</th><th>Status</th></tr></thead>
+      <tbody>
+        ${openTasks.slice(0,10).map(t=>`<tr>
+          <td><strong>${t.title||t.name}</strong></td>
+          <td><span class="badge ${t.priority==="high"||t.priority==="critical"?"badge-red":t.priority==="medium"?"badge-amber":"badge-gray"}">${t.priority||"—"}</span></td>
+          <td class="muted">${roster.find(r=>r.id===t.assigneeId)?.name||t.assignee||"—"}</td>
+          <td>${t.dueDate||"—"}</td>
+          <td><span class="badge badge-blue">${t.status||"open"}</span></td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`:""}
+
+  ${projRisks.length>0?`<div class="section">
+    <div class="section-title">Open Risks (${projRisks.length})</div>
+    <table>
+      <thead><tr><th>Risk</th><th>Probability</th><th>Impact</th><th>Owner</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        ${projRisks.slice(0,8).map(r=>`<tr>
+          <td><strong>${r.title}</strong></td>
+          <td><span class="badge ${r.probability==="high"?"badge-red":r.probability==="medium"?"badge-amber":"badge-gray"}">${r.probability}</span></td>
+          <td><span class="badge ${r.impact==="high"?"badge-red":r.impact==="medium"?"badge-amber":"badge-gray"}">${r.impact}</span></td>
+          <td class="muted">${r.owner||"—"}</td>
+          <td style="font-size:11px" class="muted">${(r.mitigation||"").slice(0,60)}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`:""}
+
+  <div class="section">
+    <div class="section-title">Project Notes</div>
+    <p class="muted">${proj.notes||"No additional notes. Project progressing as planned."}</p>
+  </div>
+  ${ZT_FOOTER}</div></body></html>`;
+}
+
+// ── Compliance Snapshot PDF ───────────────────────────────────────────────────
+function buildCompliancePDF(workAuth, compDocs, roster) {
+  const today = TODAY_STR;
+  const critical = workAuth.filter(w=>{const d=daysUntil(w.expiry);return d!==null&&d<=30;});
+  const warning  = workAuth.filter(w=>{const d=daysUntil(w.expiry);return d!==null&&d>30&&d<=90;});
+  const ok       = workAuth.filter(w=>{const d=daysUntil(w.expiry);return d!==null&&d>90;});
+  const missingDocs = compDocs.filter(d=>d.status==="missing"||d.status==="pending");
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Compliance Snapshot</title>
+  <style>${PRINT_CSS}</style></head><body><div class="page">
+  <div class="hdr">
+    <div class="logo-block">
+      <div class="company-name">Ziksatech LLC</div>
+      <div class="company-sub">SAP · Cloud · Analytics Consulting</div>
+    </div>
+    <div>
+      <div class="doc-type">COMPLIANCE SNAPSHOT</div>
+      <div class="doc-meta">As of ${today}</div>
+      <div class="doc-meta">Confidential — HR Use Only</div>
+    </div>
+  </div>
+
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi-box"><div class="kpi-val" style="color:#dc2626">${critical.length}</div><div class="kpi-lbl">Critical (&le;30d)</div></div>
+    <div class="kpi-box"><div class="kpi-val" style="color:#b45309">${warning.length}</div><div class="kpi-lbl">Warning (31-90d)</div></div>
+    <div class="kpi-box"><div class="kpi-val" style="color:#15803d">${ok.length}</div><div class="kpi-lbl">In Good Standing</div></div>
+    <div class="kpi-box"><div class="kpi-val" style="color:#b45309">${missingDocs.length}</div><div class="kpi-lbl">Missing/Pending Docs</div></div>
+  </div>
+
+  ${critical.length>0?`<div class="danger-box"><strong>⚠ IMMEDIATE ACTION REQUIRED:</strong> ${critical.length} employee work authorization(s) expire within 30 days.</div>`:""}
+
+  <div class="section">
+    <div class="section-title">Work Authorization Status</div>
+    <table>
+      <thead><tr><th>Employee</th><th>Visa Type</th><th>Expiry Date</th><th>Days Remaining</th><th>Status</th><th>Action Required</th></tr></thead>
+      <tbody>
+        ${workAuth.sort((a,b)=>(daysUntil(a.expiry)||999)-(daysUntil(b.expiry)||999)).map(wa=>{
+          const days = daysUntil(wa.expiry);
+          const name = roster.find(r=>r.id===wa.memberId)?.name||wa.memberId;
+          const isCrit = days!==null&&days<=30;
+          const isWarn = days!==null&&days>30&&days<=90;
+          const badge  = isCrit?"badge-red":isWarn?"badge-amber":"badge-green";
+          const status = isCrit?"CRITICAL":isWarn?"WARNING":"OK";
+          const action = isCrit?"File extension immediately":isWarn?"Begin renewal process":"No action needed";
+          return `<tr ${isCrit?'style="background:#fff5f5"':""}>
+            <td><strong>${name}</strong></td>
+            <td class="mono">${wa.visaType||"—"}</td>
+            <td class="mono">${wa.expiry||"—"}</td>
+            <td class="right mono ${isCrit?"bold":""}" style="color:${isCrit?"#dc2626":isWarn?"#b45309":"#15803d"}">${days!==null?(days<0?`${Math.abs(days)}d EXPIRED`:`${days}d`):"—"}</td>
+            <td><span class="badge ${badge}">${status}</span></td>
+            <td style="font-size:11px" class="muted">${action}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  </div>
+
+  ${missingDocs.length>0?`<div class="section">
+    <div class="section-title">Pending / Missing Documents</div>
+    <table>
+      <thead><tr><th>Employee</th><th>Document Type</th><th>Due Date</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        ${missingDocs.map(doc=>{
+          const name = roster.find(r=>r.id===doc.memberId)?.name||doc.memberId;
+          return `<tr>
+            <td><strong>${name}</strong></td>
+            <td>${doc.type||doc.docType||"—"}</td>
+            <td>${doc.dueDate||"—"}</td>
+            <td><span class="badge ${doc.status==="missing"?"badge-red":"badge-amber"}">${doc.status?.toUpperCase()}</span></td>
+            <td style="font-size:11px" class="muted">${doc.notes||"—"}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  </div>`:""}
+
+  <div class="section">
+    <div class="section-title">Disclaimer</div>
+    <p class="muted" style="font-size:10px">This report is generated from internal HR records. Verify all dates with official documentation before taking legal action. Ziksatech LLC recommends consulting with immigration counsel for all H-1B, OPT, and visa-related matters. This document is confidential and for authorized HR personnel only.</p>
+  </div>
+  ${ZT_FOOTER}</div></body></html>`;
+}
+
+// ── PDF Export Module UI ──────────────────────────────────────────────────────
+function PDFExport({ finInvoices, finPayments, fbInvoices, sows, projects, tasks, risks, changeOrders, workAuth, compDocs, roster }) {
+  const [selInvoice,  setSelInvoice]  = useState(finInvoices[0]?.id||"");
+  const [selSOW,      setSelSOW]      = useState(sows[0]?.id||"");
+  const [selProject,  setSelProject]  = useState(projects[0]?.id||"");
+  const [previewType, setPreviewType] = useState(null);
+  const [lastPrinted, setLastPrinted] = useState(null);
+
+  const doInvoice = () => {
+    const inv = finInvoices.find(i=>i.id===selInvoice);
+    if (!inv) return;
+    printHTML(buildInvoicePDF(inv, finPayments));
+    setLastPrinted(`Invoice ${inv.number}`);
+  };
+  const doSOW = () => {
+    const sow = sows.find(s=>s.id===selSOW);
+    if (!sow) return;
+    printHTML(buildSOWPDF(sow, roster));
+    setLastPrinted(`SOW — ${sow.name}`);
+  };
+  const doProject = () => {
+    const proj = projects.find(p=>p.id===selProject);
+    if (!proj) return;
+    printHTML(buildProjectReportPDF(proj, roster, tasks, risks, changeOrders, finInvoices));
+    setLastPrinted(`Project Report — ${proj.name}`);
+  };
+  const doCompliance = () => {
+    printHTML(buildCompliancePDF(workAuth, compDocs, roster));
+    setLastPrinted("Compliance Snapshot");
+  };
+  const doAllInvoices = () => {
+    const unpaid = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided");
+    if (unpaid.length===0) return;
+    const pages = unpaid.map(inv=>buildInvoicePDF(inv, finPayments).replace(/.*<body>/s,"").replace(/<\/body>.*/s,"")+"<div class='page-break'></div>").join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>All Open Invoices</title><style>${PRINT_CSS}</style></head><body>${pages}</body></html>`;
+    printHTML(html);
+    setLastPrinted(`${unpaid.length} open invoices`);
+  };
+
+  const templates = [
+    {
+      id:"invoice",
+      icon:"🧾",
+      title:"Invoice PDF",
+      desc:"Professional client invoice with line items, payment status, and ACH instructions.",
+      color:"#38bdf8",
+      selector: (
+        <FF label="Select Invoice">
+          <select className="inp" value={selInvoice} onChange={e=>setSelInvoice(e.target.value)}>
+            {finInvoices.map(i=><option key={i.id} value={i.id}>{i.number} — {i.client||i.clientId} (${i.amount?.toLocaleString()})</option>)}
+          </select>
+        </FF>
+      ),
+      action: doInvoice,
+      actionLabel: "Print Invoice"
+    },
+    {
+      id:"invoices_all",
+      icon:"📋",
+      title:"All Open Invoices",
+      desc:`Export all unpaid invoices as a multi-page PDF. Currently ${finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided").length} open.`,
+      color:"#f59e0b",
+      selector: null,
+      action: doAllInvoices,
+      actionLabel: "Print All Open"
+    },
+    {
+      id:"sow",
+      icon:"📄",
+      title:"Statement of Work",
+      desc:"Full SOW document with milestones, scope, team, and signature blocks.",
+      color:"#a78bfa",
+      selector: (
+        <FF label="Select SOW">
+          <select className="inp" value={selSOW} onChange={e=>setSelSOW(e.target.value)}>
+            {sows.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </FF>
+      ),
+      action: doSOW,
+      actionLabel: "Print SOW"
+    },
+    {
+      id:"project",
+      icon:"📊",
+      title:"Project Status Report",
+      desc:"Full project report with budget analysis, team, tasks, risks, and invoicing status.",
+      color:"#34d399",
+      selector: (
+        <FF label="Select Project">
+          <select className="inp" value={selProject} onChange={e=>setSelProject(e.target.value)}>
+            {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </FF>
+      ),
+      action: doProject,
+      actionLabel: "Print Report"
+    },
+    {
+      id:"compliance",
+      icon:"🛡️",
+      title:"Compliance Snapshot",
+      desc:"Full work authorization status, expiry calendar, and missing document summary.",
+      color:"#f87171",
+      selector: null,
+      action: doCompliance,
+      actionLabel: "Print Compliance Report"
+    },
+  ];
+
+  return (
+    <div>
+      <PH title="PDF Export" sub="Print professional PDFs — invoices, SOWs, project reports, compliance snapshots"/>
+
+      {lastPrinted && (
+        <div style={{marginBottom:16,padding:"12px 18px",borderRadius:10,background:"#021f14",border:"1px solid #34d39944",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{color:"#34d399",fontWeight:600}}>✓ Print dialog opened for: <span style={{color:"#e2e8f0"}}>{lastPrinted}</span></span>
+          <span style={{fontSize:11,color:"#1e3a5f"}}>Choose "Save as PDF" in the print dialog</span>
+        </div>
+      )}
+
+      <div style={{padding:"12px 18px",borderRadius:10,background:"#0c2340",border:"1px solid #0284c744",marginBottom:22,fontSize:12,color:"#38bdf8"}}>
+        <strong>How to save as PDF:</strong> Click any "Print" button → your browser's print dialog will open → change destination to <strong>"Save as PDF"</strong> → click Save.
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {templates.map(t=>(
+          <div key={t.id} className="card" style={{padding:"20px 22px",borderLeft:`4px solid ${t.color}`}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:14}}>
+              <span style={{fontSize:28,lineHeight:1}}>{t.icon}</span>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>{t.title}</div>
+                <div style={{fontSize:11,color:"#475569",marginTop:3,lineHeight:1.4}}>{t.desc}</div>
+              </div>
+            </div>
+            {t.selector && <div style={{marginBottom:14}}>{t.selector}</div>}
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:13,padding:"10px 0",background:`linear-gradient(135deg,${t.color}22,${t.color}11)`,borderColor:t.color,color:t.color}}
+              onClick={t.action}>
+              🖨 {t.actionLabel}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Tips */}
+      <div className="card" style={{marginTop:18,padding:"16px 20px"}}>
+        <div className="section-hdr">Tips for Best Results</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,fontSize:11,color:"#3d5a7a"}}>
+          {[
+            ["Paper Size","Use A4 or Letter — documents are designed for both"],
+            ["Margins","Use 'Default' or 'Minimal' margins in print dialog"],
+            ["Background Graphics","Enable 'Background graphics' for colored headers"],
+            ["Scale","Use 100% scale — layouts are optimized for full size"],
+            ["Headers & Footers","Disable browser headers/footers — documents have their own"],
+            ["Multi-page","For long SOWs, allow automatic page breaks"],
+          ].map(([k,v])=>(
+            <div key={k} style={{padding:"8px 10px",background:"#060d1c",borderRadius:6,border:"1px solid #111d2d"}}>
+              <div style={{fontWeight:600,color:"#64748b",marginBottom:2}}>{k}</div>
+              <div>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PROPOSAL & QUOTE BUILDER
+// =============================================================================
+function ProposalBuilder({ proposals, setProposals, crmDeals, crmAccounts, crmContacts, roster, sows, setSows, contracts }) {
+  const [sub,      setSub]      = useState("list");
+  const [selId,    setSelId]    = useState(null);
+  const [editId,   setEditId]   = useState(null);
+  const [showNew,  setShowNew]  = useState(false);
+
+  const sel  = proposals.find(p=>p.id===selId);
+  const edit = proposals.find(p=>p.id===editId);
+
+  const tabs = [
+    { id:"list",     label:"All Proposals" },
+    { id:"builder",  label:"Builder"       },
+    { id:"preview",  label:"PDF Preview"   },
+  ];
+
+  const totalValue  = proposals.filter(p=>p.status!=="declined"&&p.status!=="expired").reduce((s,p)=>s+p.scopeItems.reduce((ss,i)=>ss+i.hours*i.rate,0),0);
+  const acceptedVal = proposals.filter(p=>p.status==="accepted").reduce((s,p)=>s+p.scopeItems.reduce((ss,i)=>ss+i.hours*i.rate,0),0);
+  const winRate     = proposals.filter(p=>p.status==="accepted"||p.status==="declined").length > 0
+    ? Math.round(proposals.filter(p=>p.status==="accepted").length / proposals.filter(p=>p.status==="accepted"||p.status==="declined").length * 100)
+    : 0;
+
+  const shared = { proposals, setProposals, crmDeals, crmAccounts, crmContacts, roster, sows, setSows, selId, setSelId, editId, setEditId, sel, edit, setSub };
+
+  return (
+    <div>
+      <PH title="Proposals & Quotes" sub="Build, send, and track client proposals — connect CRM deals to SOWs"/>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setSub(t.id)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {sub==="list"    && <ProposalList    {...shared} winRate={winRate} totalValue={totalValue} acceptedVal={acceptedVal} onNew={()=>{setShowNew(true);setSub("builder");}}/>}
+      {sub==="builder" && <ProposalEditor  {...shared} showNew={showNew} setShowNew={setShowNew}/>}
+      {sub==="preview" && <ProposalPreview {...shared}/>}
+    </div>
+  );
+}
+
+// ── Proposal List ─────────────────────────────────────────────────────────────
+function ProposalList({ proposals, setProposals, roster, winRate, totalValue, acceptedVal, selId, setSelId, setSub, setEditId, onNew }) {
+  const [filter, setFilter] = useState("all");
+  const sel = proposals.find(p=>p.id===selId);
+
+  const filtered = proposals.filter(p=>filter==="all"||p.status===filter)
+    .sort((a,b)=>b.createdDate.localeCompare(a.createdDate));
+
+  const propValue = p => p.scopeItems.reduce((s,i)=>s+i.hours*i.rate,0);
+
+  return (
+    <div>
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Pipeline Value",   v:fmt(totalValue),     c:"#38bdf8"},
+          {l:"Accepted Value",         v:fmt(acceptedVal),    c:"#34d399"},
+          {l:"Win Rate",               v:winRate+"%",         c:winRate>=50?"#34d399":"#f59e0b"},
+          {l:"Awaiting Response",      v:proposals.filter(p=>p.status==="sent").length, c:"#f59e0b"},
+          {l:"Total Proposals",        v:proposals.length,    c:"#a78bfa"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:sel?"1fr 340px":"1fr",gap:16}}>
+        <div>
+          {/* Filter + New button */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{display:"flex",gap:5}}>
+              {["all","draft","sent","accepted","declined","expired"].map(f=>(
+                <button key={f} className="btn bg" style={{fontSize:11,padding:"4px 10px",
+                  borderColor:filter===f?"#0284c7":"#1a2d45",color:filter===f?"#38bdf8":"#475569"}}
+                  onClick={()=>setFilter(f)}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>
+              ))}
+            </div>
+            <button className="btn bp" style={{fontSize:12}} onClick={onNew}>+ New Proposal</button>
+          </div>
+
+          <div className="card">
+            <div className="tr" style={{gridTemplateColumns:"40px 1.8fr 90px 80px 80px 80px 80px",padding:"8px 18px"}}>
+              {["#","Proposal","Client","Value","Status","Created","Valid Until"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {filtered.map(prop=>{
+              const val = propValue(prop);
+              const isSelected = selId===prop.id;
+              const daysLeft = prop.validUntil ? daysUntil(prop.validUntil) : null;
+              return (
+                <div key={prop.id} className="tr"
+                  style={{gridTemplateColumns:"40px 1.8fr 90px 80px 80px 80px 80px",cursor:"pointer",
+                    background:isSelected?"#0a1a2e":undefined,
+                    borderLeft:`3px solid ${PROP_STATUS_COLOR[prop.status]||"#1a2d45"}`}}
+                  onClick={()=>setSelId(isSelected?null:prop.id)}>
+                  <span style={{fontSize:10,color:"#1e3a5f",fontFamily:"'DM Mono',monospace"}}>{prop.number}</span>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{prop.title}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginTop:1}}>{prop.scopeItems.length} line items · {prop.teamIds.length} consultant{prop.teamIds.length!==1?"s":""}</div>
+                  </div>
+                  <span style={{fontSize:11,color:"#64748b"}}>{prop.client}</span>
+                  <span style={{fontSize:13,fontWeight:700,fontFamily:"'DM Mono',monospace",color:"#38bdf8"}}>{fmt(val)}</span>
+                  <span className="bdg" style={{background:PROP_STATUS_BG[prop.status],color:PROP_STATUS_COLOR[prop.status],fontSize:9,textTransform:"capitalize"}}>{prop.status}</span>
+                  <span style={{fontSize:10,color:"#475569"}}>{fmtDate(prop.createdDate)}</span>
+                  <div style={{fontSize:10}}>
+                    {prop.validUntil
+                      ? <span style={{color:daysLeft!==null&&daysLeft<=7?"#f87171":daysLeft!==null&&daysLeft<=14?"#f59e0b":"#475569"}}>{fmtDate(prop.validUntil)}{daysLeft!==null&&daysLeft<=7&&<span style={{fontSize:8,display:"block",color:"#f87171"}}>{daysLeft<0?"EXPIRED":daysLeft+"d left"}</span>}</span>
+                      : <span style={{color:"#1e3a5f"}}>—</span>
+                    }
+                  </div>
+                </div>
+              );
+            })}
+            {filtered.length===0&&<div style={{padding:"18px",fontSize:11,color:"#1e3a5f",textAlign:"center"}}>No proposals match filter</div>}
+          </div>
+        </div>
+
+        {/* Detail panel */}
+        {sel&&(
+          <div className="card" style={{height:"fit-content",position:"sticky",top:0}}>
+            <div style={{padding:"14px 18px",borderBottom:"1px solid #111d2d",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",lineHeight:1.3}}>{sel.title}</div>
+                <span className="bdg" style={{background:PROP_STATUS_BG[sel.status],color:PROP_STATUS_COLOR[sel.status],fontSize:9,marginTop:4,display:"inline-block",textTransform:"capitalize"}}>{sel.status}</span>
+              </div>
+              <button className="btn bg" style={{padding:"3px 8px",fontSize:10}} onClick={()=>setSelId(null)}>✕</button>
+            </div>
+            <div style={{padding:"14px 18px"}}>
+              {/* Value summary */}
+              <div style={{background:"#070c18",borderRadius:8,padding:"12px",border:"1px solid #1a2d45",marginBottom:14,textAlign:"center"}}>
+                <div style={{fontSize:26,fontWeight:800,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{fmt(sel.scopeItems.reduce((s,i)=>s+i.hours*i.rate,0))}</div>
+                <div style={{fontSize:10,color:"#3d5a7a",marginTop:2}}>Total Proposal Value</div>
+              </div>
+
+              {/* Scope items */}
+              <div style={{marginBottom:12}}>
+                <div className="lbl" style={{marginBottom:6}}>Scope ({sel.scopeItems.length} items)</div>
+                {sel.scopeItems.map(item=>(
+                  <div key={item.id} style={{padding:"6px 0",borderBottom:"1px solid #070b14",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:11,color:"#94a3b8",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.title}</div>
+                      <div style={{fontSize:9,color:"#3d5a7a"}}>{item.hours}h @ ${item.rate}/hr</div>
+                    </div>
+                    <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#38bdf8",marginLeft:8,flexShrink:0}}>{fmt(item.hours*item.rate)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Team */}
+              <div style={{marginBottom:12}}>
+                <div className="lbl" style={{marginBottom:6}}>Proposed Team</div>
+                {sel.teamIds.map(id=>{
+                  const r = roster.find(x=>x.id===id);
+                  return r ? (
+                    <div key={id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 0"}}>
+                      <Avatar name={r.name} size={20}/>
+                      <span style={{fontSize:11,color:"#94a3b8"}}>{r.name}</span>
+                      <span style={{fontSize:9,color:"#1e3a5f"}}>· ${r.billRate}/hr</span>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+
+              {[
+                ["Client",        sel.client],
+                ["Contact",       sel.contactName+" · "+sel.contactEmail],
+                ["Timeline",      sel.timeline||"—"],
+                ["Payment Terms", sel.paymentTerms],
+                ["Billing Type",  sel.billingType],
+                ["Sent Date",     sel.sentDate?fmtDate(sel.sentDate):"Not sent"],
+                ["Valid Until",   sel.validUntil?fmtDate(sel.validUntil):"—"],
+              ].map(([l,v])=>(
+                <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #070b14"}}>
+                  <span style={{fontSize:10,color:"#3d5a7a"}}>{l}</span>
+                  <span style={{fontSize:10,color:"#94a3b8",textAlign:"right",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v}</span>
+                </div>
+              ))}
+
+              {sel.notes&&<div style={{marginTop:10,fontSize:11,color:"#64748b",background:"#070c18",borderRadius:6,padding:"8px"}}>{sel.notes}</div>}
+
+              <div style={{display:"flex",gap:6,marginTop:14,flexWrap:"wrap"}}>
+                <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:11}}
+                  onClick={()=>{setEditId(sel.id);setSub("builder");}}>✏ Edit</button>
+                <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}}
+                  onClick={()=>setSub("preview")}>👁 Preview PDF</button>
+              </div>
+              <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                {sel.status==="draft"&&(
+                  <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11,borderColor:"#38bdf8",color:"#38bdf8"}}
+                    onClick={()=>setProposals(ps=>ps.map(p=>p.id===sel.id?{...p,status:"sent",sentDate:TODAY_STR,validUntil:"2026-04-10"}:p))}>
+                    → Mark Sent
+                  </button>
+                )}
+                {sel.status==="sent"&&<>
+                  <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11,borderColor:"#34d399",color:"#34d399"}}
+                    onClick={()=>setProposals(ps=>ps.map(p=>p.id===sel.id?{...p,status:"accepted"}:p))}>✓ Accept</button>
+                  <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11,borderColor:"#f87171",color:"#f87171"}}
+                    onClick={()=>setProposals(ps=>ps.map(p=>p.id===sel.id?{...p,status:"declined"}:p))}>✗ Decline</button>
+                </>}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Proposal Editor / Builder ─────────────────────────────────────────────────
+function ProposalEditor({ proposals, setProposals, crmDeals, roster, selId, setSelId, editId, setEditId, sel, edit, setSub, showNew, setShowNew }) {
+  const makeBlank = () => ({ id:"", number:"PRO-"+String(proposals.length+1).padStart(4,"0"), status:"draft",
+    createdDate:TODAY_STR, sentDate:"", validUntil:"", title:"", client:"", contactName:"", contactEmail:"",
+    dealId:"", executiveSummary:"", scopeItems:[], teamIds:[], paymentTerms:"Net 30", billingType:"Time & Materials",
+    timeline:"", notes:"", internalNotes:"" });
+
+  const getSource = () => showNew ? makeBlank() : (edit || sel || null);
+  const [form, setForm] = useState(()=>getSource()||makeBlank());
+  const [activeSection, setActiveSection] = useState("exec");
+
+  // Sync form when switching proposal or entering new mode
+  useEffect(()=>{
+    const s = getSource();
+    if (s) setForm(s);
+    else if (showNew) setForm(makeBlank());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId, selId, showNew]);
+
+  const addScope = () => setForm(f=>({...f, scopeItems:[...f.scopeItems,{id:uid(),title:"",description:"",hours:0,rate:135}]}));
+  const updScope = (id,field,val) => setForm(f=>({...f, scopeItems:f.scopeItems.map(i=>i.id===id?{...i,[field]:field==="hours"||field==="rate"?+val:val}:i)}));
+  const delScope = (id) => setForm(f=>({...f, scopeItems:f.scopeItems.filter(i=>i.id!==id)}));
+  const toggleTeam = (memberId) => setForm(f=>({...f,
+    teamIds: f.teamIds.includes(memberId) ? f.teamIds.filter(x=>x!==memberId) : [...f.teamIds, memberId]
+  }));
+
+  const totalValue = (form.scopeItems||[]).reduce((s,i)=>s+(i.hours||0)*(i.rate||0),0);
+  const totalHours = (form.scopeItems||[]).reduce((s,i)=>s+(i.hours||0),0);
+
+  const prefillFromDeal = (dealId) => {
+    const deal = (crmDeals||[]).find(d=>d.id===dealId);
+    if (!deal) return;
+    setForm(f=>({...f, dealId, client:deal.account||f.client, title:deal.name||f.title }));
+  };
+
+  const save = () => {
+    if (!form.title||!form.client) { alert("Title and Client are required."); return; }
+    const entry = {...form, id: form.id||("prop"+uid()), number: form.number||"PRO-"+String(proposals.length+1).padStart(4,"0") };
+    if (showNew||!form.id) { setProposals(ps=>[entry,...ps]); setSelId(entry.id); }
+    else { setProposals(ps=>ps.map(p=>p.id===entry.id?entry:p)); }
+    setEditId(null); setShowNew(false); setSub("list");
+  };
+
+  // Empty state — no proposal to edit and not creating new
+  if (!showNew && !edit && !sel) {
+    return (
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"60px 24px",gap:16}}>
+        <div style={{fontSize:40,marginBottom:8}}>📄</div>
+        <div style={{fontSize:16,fontWeight:700,color:"#cbd5e1"}}>No Proposal Selected</div>
+        <div style={{fontSize:12,color:"#3d5a7a",textAlign:"center",maxWidth:340}}>Select a proposal from the list to edit it, or create a new one.</div>
+        <div style={{display:"flex",gap:10,marginTop:8}}>
+          <button className="btn bg" style={{fontSize:13,padding:"10px 20px"}} onClick={()=>setSub("list")}>← Back to List</button>
+          <button className="btn bp" style={{fontSize:13,padding:"10px 20px"}} onClick={()=>{ setForm(makeBlank()); setShowNew(true); }}>+ New Proposal</button>
+        </div>
+      </div>
+    );
+  }
+
+  const fteRoster  = (roster||[]).filter(r=>r.type==="FTE");
+  const ctorRoster = (roster||[]).filter(r=>r.type!=="FTE");
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"200px 1fr",gap:16}}>
+      {/* Section sidebar */}
+      <div className="card" style={{height:"fit-content",position:"sticky",top:0,padding:"8px"}}>
+        <div style={{fontSize:10,color:"#1e3a5f",fontWeight:700,padding:"8px 10px",marginBottom:4}}>SECTIONS</div>
+        {PROPOSAL_SECTIONS.map(s=>(
+          <button key={s.id} onClick={()=>setActiveSection(s.id)}
+            style={{display:"block",width:"100%",textAlign:"left",padding:"8px 10px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,
+              background:activeSection===s.id?"#0c2340":"transparent",
+              color:activeSection===s.id?"#38bdf8":"#475569",marginBottom:2}}>
+            {s.label}
+          </button>
+        ))}
+        <div style={{marginTop:12,padding:"12px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45",textAlign:"center"}}>
+          <div style={{fontSize:18,fontWeight:800,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{fmt(totalValue)}</div>
+          <div style={{fontSize:9,color:"#3d5a7a"}}>Proposal Value</div>
+          <div style={{fontSize:11,color:"#475569",marginTop:4}}>{totalHours}h total</div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:12}}>
+          <button className="btn bp" style={{justifyContent:"center",fontSize:12}} onClick={save}>
+            <I d={ICONS.check} s={13}/>{showNew?"Create":"Save"} Proposal
+          </button>
+          <button className="btn bg" style={{justifyContent:"center",fontSize:11}}
+            onClick={()=>{setEditId(null);setShowNew(false);setSub("list");}}>Cancel</button>
+        </div>
+      </div>
+
+      {/* Section content */}
+      <div className="card" style={{padding:"22px 24px"}}>
+
+        {/* ── Executive Summary ── */}
+        {activeSection==="exec"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <div className="section-hdr">Proposal Details</div>
+            <div>
+              <div className="lbl">Proposal Title *</div>
+              <input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="e.g. AT&T BRIM Phase 3 Consulting Services"/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div>
+                <div className="lbl">Client Name *</div>
+                <input className="inp" value={form.client} onChange={e=>setForm({...form,client:e.target.value})} placeholder="Client name"/>
+              </div>
+              <div>
+                <div className="lbl">Link CRM Deal</div>
+                <select className="inp" value={form.dealId} onChange={e=>prefillFromDeal(e.target.value)}>
+                  <option value="">— Select deal to prefill —</option>
+                  {(crmDeals||[]).map(d=><option key={d.id} value={d.id}>{d.name} ({fmt(d.value)})</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Contact Name</div>
+                <input className="inp" value={form.contactName} onChange={e=>setForm({...form,contactName:e.target.value})} placeholder="John Smith"/>
+              </div>
+              <div>
+                <div className="lbl">Contact Email</div>
+                <input className="inp" type="email" value={form.contactEmail} onChange={e=>setForm({...form,contactEmail:e.target.value})} placeholder="contact@client.com"/>
+              </div>
+              <div>
+                <div className="lbl">Proposal Number</div>
+                <input className="inp" value={form.number} onChange={e=>setForm({...form,number:e.target.value})}/>
+              </div>
+              <div>
+                <div className="lbl">Status</div>
+                <select className="inp" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
+                  {Object.keys(PROP_STATUS_COLOR).map(s=><option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <div className="lbl">Executive Summary</div>
+              <textarea className="inp" rows={4} value={form.executiveSummary} onChange={e=>setForm({...form,executiveSummary:e.target.value})} placeholder="Overview of what you're proposing and why Ziksatech is the right partner..."/>
+            </div>
+            <div>
+              <div className="lbl">External Notes (shown in proposal)</div>
+              <textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Follow-up notes, next steps..."/>
+            </div>
+            <div>
+              <div className="lbl">Internal Notes (not printed)</div>
+              <textarea className="inp" rows={2} value={form.internalNotes} onChange={e=>setForm({...form,internalNotes:e.target.value})} placeholder="Margin notes, deal context, strategy..."/>
+            </div>
+          </div>
+        )}
+
+        {/* ── Scope ── */}
+        {activeSection==="scope"&&(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <span className="section-hdr" style={{margin:0}}>Scope of Work Items</span>
+              <button className="btn bp" style={{fontSize:11}} onClick={addScope}>+ Add Line Item</button>
+            </div>
+            {(form.scopeItems||[]).length===0&&(
+              <div style={{padding:"32px",textAlign:"center",border:"2px dashed #1a2d45",borderRadius:10,color:"#1e3a5f",fontSize:12}}>
+                No scope items yet — click <strong style={{color:"#38bdf8"}}>+ Add Line Item</strong> to start
+              </div>
+            )}
+            {(form.scopeItems||[]).map((item,idx)=>(
+              <div key={item.id} style={{background:"#070c18",borderRadius:10,border:"1px solid #1a2d45",padding:"14px 16px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
+                  <span style={{fontSize:11,fontWeight:700,color:"#3d5a7a"}}>Line Item {idx+1}</span>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{fontSize:13,fontFamily:"'DM Mono',monospace",color:"#38bdf8",fontWeight:700}}>{fmt((item.hours||0)*(item.rate||0))}</span>
+                    <button className="btn bg" style={{fontSize:9,padding:"2px 7px",borderColor:"#f87171",color:"#f87171"}} onClick={()=>delScope(item.id)}>Remove</button>
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:10,marginBottom:8}}>
+                  <div><div className="lbl">Title</div><input className="inp" value={item.title} onChange={e=>updScope(item.id,"title",e.target.value)} placeholder="e.g. BRIM Configuration"/></div>
+                  <div><div className="lbl">Hours</div><input className="inp" type="number" value={item.hours} onChange={e=>updScope(item.id,"hours",e.target.value)} min="0"/></div>
+                  <div><div className="lbl">Rate ($/hr)</div><input className="inp" type="number" value={item.rate} onChange={e=>updScope(item.id,"rate",e.target.value)} min="0"/></div>
+                </div>
+                <div><div className="lbl">Description</div><textarea className="inp" rows={2} value={item.description} onChange={e=>updScope(item.id,"description",e.target.value)} placeholder="What's included..."/></div>
+              </div>
+            ))}
+            {(form.scopeItems||[]).length>0&&(
+              <div style={{padding:"10px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:12,color:"#3d5a7a"}}>{totalHours}h across {form.scopeItems.length} items</span>
+                <span style={{fontSize:14,fontFamily:"'DM Mono',monospace",fontWeight:800,color:"#38bdf8"}}>{fmt(totalValue)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Team ── */}
+        {activeSection==="team"&&(
+          <div>
+            <div className="section-hdr">Proposed Team</div>
+            <div style={{marginBottom:14,fontSize:11,color:"#3d5a7a"}}>Click consultants to add or remove them from this proposal.</div>
+            {[["FTE Consultants", fteRoster],["Contractors", ctorRoster]].map(([label, members])=>(
+              <div key={label} style={{marginBottom:18}}>
+                <div className="lbl" style={{marginBottom:8}}>{label}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {members.map(r=>{
+                    const selected = (form.teamIds||[]).includes(r.id);
+                    return (
+                      <div key={r.id} onClick={()=>toggleTeam(r.id)}
+                        style={{padding:"10px 14px",borderRadius:8,border:`2px solid ${selected?"#0284c7":"#1a2d45"}`,cursor:"pointer",
+                          background:selected?"#0c2340":"#070c18",transition:"all 0.15s",display:"flex",alignItems:"center",gap:10}}>
+                        <Avatar name={r.name} size={28}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:600,color:selected?"#38bdf8":"#94a3b8"}}>{r.name}</div>
+                          <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role||"Consultant"} · ${r.billRate}/hr</div>
+                          {r.skills&&<div style={{fontSize:9,color:"#1e3a5f",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.skills}</div>}
+                        </div>
+                        <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${selected?"#0284c7":"#1a2d45"}`,background:selected?"#0284c7":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                          {selected&&<span style={{color:"#fff",fontSize:11,fontWeight:800}}>✓</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {(form.teamIds||[]).length>0&&(
+              <div style={{padding:"10px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:11,color:"#3d5a7a",marginBottom:6}}>Selected ({form.teamIds.length}):</div>
+                {form.teamIds.map(id=>{const r=roster.find(x=>x.id===id);return r?(
+                  <div key={id} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11}}>
+                    <span style={{color:"#94a3b8"}}>{r.name}</span>
+                    <span style={{color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>${r.billRate}/hr</span>
+                  </div>
+                ):null;})}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Timeline ── */}
+        {activeSection==="timeline"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <div className="section-hdr">Timeline & Dates</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div style={{gridColumn:"span 2"}}>
+                <div className="lbl">Project Timeline Description</div>
+                <input className="inp" value={form.timeline} onChange={e=>setForm({...form,timeline:e.target.value})} placeholder="e.g. April 2026 — December 2026"/>
+              </div>
+              <div>
+                <div className="lbl">Valid Until</div>
+                <input className="inp" type="date" value={form.validUntil} onChange={e=>setForm({...form,validUntil:e.target.value})}/>
+              </div>
+              <div>
+                <div className="lbl">Sent Date</div>
+                <input className="inp" type="date" value={form.sentDate} onChange={e=>setForm({...form,sentDate:e.target.value})}/>
+              </div>
+              <div>
+                <div className="lbl">Created Date</div>
+                <input className="inp" type="date" value={form.createdDate} onChange={e=>setForm({...form,createdDate:e.target.value})}/>
+              </div>
+            </div>
+            <div style={{padding:"14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:11,color:"#3d5a7a",marginBottom:4}}>Tip: Be specific about major phases.</div>
+              <div style={{fontSize:11,color:"#1e3a5f"}}>"Phase 1 (Design): Apr–May · Phase 2 (Build): Jun–Sep · Phase 3 (Go-Live): Oct–Dec"</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Pricing ── */}
+        {activeSection==="pricing"&&(
+          <div>
+            <div className="section-hdr">Pricing & Terms</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+              <div>
+                <div className="lbl">Billing Type</div>
+                <select className="inp" value={form.billingType} onChange={e=>setForm({...form,billingType:e.target.value})}>
+                  {["Time & Materials","Fixed Price","Retainer","Milestone-Based"].map(t=><option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Payment Terms</div>
+                <select className="inp" value={form.paymentTerms} onChange={e=>setForm({...form,paymentTerms:e.target.value})}>
+                  {["Net 15","Net 30","Net 45","Net 60","Due on receipt","50% upfront / 50% completion"].map(t=><option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="card" style={{overflow:"hidden",marginBottom:14}}>
+              <div className="section-hdr" style={{padding:"10px 18px",margin:0,borderBottom:"1px solid #111d2d"}}>Pricing Summary</div>
+              {(form.scopeItems||[]).length===0
+                ? <div style={{padding:"16px 18px",fontSize:11,color:"#1e3a5f"}}>No scope items yet — add them in the Scope section.</div>
+                : <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                    <thead><tr style={{borderBottom:"1px solid #1a2d45"}}>
+                      {["Line Item","Hours","Rate","Amount"].map(h=><th key={h} style={{padding:"8px 18px",textAlign:h==="Line Item"?"left":"right",color:"#3d5a7a",fontSize:10,fontWeight:600}}>{h}</th>)}
+                    </tr></thead>
+                    <tbody>
+                      {form.scopeItems.map(item=>(
+                        <tr key={item.id} style={{borderBottom:"1px solid #070b14"}}>
+                          <td style={{padding:"8px 18px",color:"#94a3b8"}}>{item.title||"—"}</td>
+                          <td style={{padding:"8px 18px",textAlign:"right",fontFamily:"'DM Mono',monospace",color:"#475569"}}>{item.hours}</td>
+                          <td style={{padding:"8px 18px",textAlign:"right",fontFamily:"'DM Mono',monospace",color:"#475569"}}>${item.rate}/hr</td>
+                          <td style={{padding:"8px 18px",textAlign:"right",fontFamily:"'DM Mono',monospace",color:"#38bdf8",fontWeight:700}}>{fmt(item.hours*item.rate)}</td>
+                        </tr>
+                      ))}
+                      <tr style={{borderTop:"2px solid #1a2d45",background:"#060d1c"}}>
+                        <td colSpan={3} style={{padding:"10px 18px",fontWeight:700,color:"#e2e8f0"}}>Total</td>
+                        <td style={{padding:"10px 18px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:800,fontSize:16,color:"#38bdf8"}}>{fmt(totalValue)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+              }
+            </div>
+            {(form.teamIds||[]).length>0&&(
+              <div style={{padding:"12px 16px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div className="lbl" style={{marginBottom:8}}>Internal Margin Estimate</div>
+                {form.teamIds.map(id=>{
+                  const r = roster.find(x=>x.id===id);
+                  if (!r) return null;
+                  const annCost = r.type==="FTE" ? (r.salary||0)+(r.salary||0)*(7.65+0.6+2.7+0.5+3+1.5)/100+7200 : (r.fixedRate||r.billRate*0.7)*1920;
+                  const hrCost  = annCost/1920;
+                  const mgn     = r.billRate>0?(r.billRate-hrCost)/r.billRate*100:0;
+                  return (
+                    <div key={id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",fontSize:11,borderBottom:"1px solid #070b14"}}>
+                      <span style={{color:"#64748b"}}>{r.name}</span>
+                      <div style={{display:"flex",gap:12,fontFamily:"'DM Mono',monospace",fontSize:10}}>
+                        <span style={{color:"#f59e0b"}}>Cost ~${hrCost.toFixed(0)}/hr</span>
+                        <span style={{color:"#38bdf8"}}>Bill ${r.billRate}/hr</span>
+                        <span style={{fontWeight:700,color:mgn<30?"#f87171":mgn<50?"#f59e0b":"#34d399"}}>{mgn.toFixed(0)}% margin</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Terms ── */}
+        {activeSection==="terms"&&(
+          <div>
+            <div className="section-hdr">Standard Terms</div>
+            <div style={{fontSize:11,color:"#64748b",lineHeight:1.9,background:"#070c18",borderRadius:8,border:"1px solid #1a2d45",padding:"16px"}}>
+              {[
+                "1. This proposal is valid for 30 days from the date of issue unless otherwise specified.",
+                "2. All work is performed on a Time & Materials basis unless a fixed fee is explicitly stated.",
+                "3. Invoices are due Net 30 from issue date. Work may be suspended for invoices 45+ days overdue.",
+                "4. Travel expenses are billed at cost with advance client approval.",
+                "5. Either party may terminate with 30 days written notice. Work performed through notice period is billable.",
+                "6. All deliverables and work product remain property of Client upon payment in full.",
+                "7. Ziksatech LLC maintains Professional Liability insurance of $1M per occurrence.",
+                "8. This proposal is subject to execution of a Master Services Agreement.",
+              ].map((t,i)=><div key={i} style={{marginBottom:4}}>{t}</div>)}
+            </div>
+            <div style={{marginTop:12,padding:"10px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",fontSize:11,color:"#1e3a5f"}}>
+              Customize these terms in your MSA. They appear automatically in printed proposals.
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+function ProposalPreview({ proposals, setProposals, roster, selId, setSelId, setSub }) {
+  const prop = proposals.find(p=>p.id===selId) || proposals[0];
+  const [selPropId, setSelPropId] = useState(prop?.id||"");
+
+  const displayProp = proposals.find(p=>p.id===selPropId) || proposals[0];
+
+  const printProposal = () => {
+    if (!displayProp) return;
+    printHTML(buildProposalPDF(displayProp, roster));
+  };
+
+  if (!displayProp) return <div style={{padding:24,color:"#1e3a5f"}}>No proposals yet. Create one in the Builder tab.</div>;
+
+  const totalVal  = displayProp.scopeItems.reduce((s,i)=>s+i.hours*i.rate,0);
+  const totalHrs  = displayProp.scopeItems.reduce((s,i)=>s+i.hours,0);
+  const team      = displayProp.teamIds.map(id=>roster.find(r=>r.id===id)).filter(Boolean);
+  const daysLeft  = displayProp.validUntil ? daysUntil(displayProp.validUntil) : null;
+
+  return (
+    <div>
+      {/* Selector */}
+      <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
+        <FF label="Preview Proposal" style={{flex:1}}>
+          <select className="inp" value={selPropId} onChange={e=>setSelPropId(e.target.value)}>
+            {proposals.map(p=><option key={p.id} value={p.id}>{p.number} — {p.title}</option>)}
+          </select>
+        </FF>
+        <button className="btn bp" style={{fontSize:13,padding:"10px 20px",marginTop:18}} onClick={printProposal}>🖨 Print / Save PDF</button>
+      </div>
+
+      {/* Document preview card */}
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #1a2d45",overflow:"hidden",boxShadow:"0 4px 40px #00000040"}}>
+        {/* Header bar */}
+        <div style={{background:"#0369a1",padding:"22px 28px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <div style={{fontSize:22,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>Ziksatech LLC</div>
+            <div style={{fontSize:12,color:"#bae6fd",marginTop:2}}>SAP · Cloud · Analytics Consulting</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:24,fontWeight:800,color:"#fff"}}>PROPOSAL</div>
+            <div style={{fontSize:13,color:"#bae6fd",marginTop:2}}>{displayProp.number}</div>
+            <div style={{marginTop:6,display:"inline-block",padding:"3px 10px",borderRadius:12,background:"rgba(255,255,255,0.2)",fontSize:11,color:"#fff",textTransform:"capitalize"}}>{displayProp.status}</div>
+          </div>
+        </div>
+
+        <div style={{padding:"24px 28px"}}>
+          {/* Title + meta */}
+          <div style={{marginBottom:22,borderBottom:"2px solid #e2e8f0",paddingBottom:16}}>
+            <div style={{fontSize:20,fontWeight:800,color:"#0f172a",marginBottom:8}}>{displayProp.title}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16}}>
+              {[
+                ["Prepared For", displayProp.client],
+                ["Contact",      displayProp.contactName],
+                ["Valid Until",  displayProp.validUntil?fmtDate(displayProp.validUntil):"—"],
+                ["Created",      fmtDate(displayProp.createdDate)],
+              ].map(([l,v])=>(
+                <div key={l}>
+                  <div style={{fontSize:9,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:2}}>{l}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#0f172a"}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {daysLeft!==null&&daysLeft<=14&&(
+              <div style={{marginTop:10,padding:"8px 12px",borderRadius:6,background:daysLeft<0?"#fee2e2":"#fef3c7",color:daysLeft<0?"#dc2626":"#b45309",fontSize:12,fontWeight:600}}>
+                {daysLeft<0?`This proposal expired ${Math.abs(daysLeft)} days ago.`:`Proposal expires in ${daysLeft} days.`}
+              </div>
+            )}
+          </div>
+
+          {/* Executive summary */}
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>Executive Summary</div>
+            <div style={{fontSize:13,color:"#374151",lineHeight:1.6}}>{displayProp.executiveSummary||"—"}</div>
+          </div>
+
+          {/* Scope table */}
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>Scope of Work</div>
+            <div style={{border:"1px solid #e2e8f0",borderRadius:8,overflow:"hidden"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 90px",background:"#f8fafc",padding:"8px 14px",borderBottom:"1px solid #e2e8f0"}}>
+                {["Description","Hours","Rate","Amount"].map(h=><span key={h} style={{fontSize:10,fontWeight:700,color:"#64748b",textTransform:"uppercase",textAlign:h!=="Description"?"right":"left"}}>{h}</span>)}
+              </div>
+              {displayProp.scopeItems.map((item,i)=>(
+                <div key={item.id} style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 90px",padding:"10px 14px",borderBottom:i<displayProp.scopeItems.length-1?"1px solid #f1f5f9":undefined,background:i%2===0?"#fff":"#fafafa"}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:"#0f172a"}}>{item.title}</div>
+                    {item.description&&<div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{item.description}</div>}
+                  </div>
+                  <span style={{fontSize:12,color:"#475569",textAlign:"right",fontFamily:"monospace"}}>{item.hours}h</span>
+                  <span style={{fontSize:12,color:"#475569",textAlign:"right",fontFamily:"monospace"}}>${item.rate}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:"#0369a1",textAlign:"right",fontFamily:"monospace"}}>${(item.hours*item.rate).toLocaleString()}</span>
+                </div>
+              ))}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 90px",padding:"12px 14px",background:"#eff6ff",borderTop:"2px solid #0369a1"}}>
+                <span style={{fontSize:13,fontWeight:800,color:"#0f172a",gridColumn:"span 3"}}>Total Engagement Value</span>
+                <span style={{fontSize:16,fontWeight:800,color:"#0369a1",textAlign:"right",fontFamily:"monospace"}}>${totalVal.toLocaleString()}</span>
+              </div>
+            </div>
+            <div style={{marginTop:8,fontSize:11,color:"#94a3b8"}}>{totalHrs} total hours · {displayProp.billingType} · {displayProp.paymentTerms}</div>
+          </div>
+
+          {/* Team */}
+          {team.length>0&&(
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}}>Proposed Team</div>
+              <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(team.length,4)},1fr)`,gap:12}}>
+                {team.map(r=>(
+                  <div key={r.id} style={{padding:"12px",border:"1px solid #e2e8f0",borderRadius:8,background:"#f8fafc",textAlign:"center"}}>
+                    <div style={{width:40,height:40,borderRadius:"50%",background:"#0369a1",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,margin:"0 auto 8px"}}>{r.name.split(" ").map(w=>w[0]).slice(0,2).join("")}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#0f172a"}}>{r.name}</div>
+                    <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{r.role||r.title||"Consultant"}</div>
+                    <div style={{fontSize:10,color:"#0369a1",marginTop:2,fontFamily:"monospace"}}>${r.billRate}/hr</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Timeline */}
+          {displayProp.timeline&&(
+            <div style={{marginBottom:20,padding:"14px",background:"#eff6ff",borderRadius:8,borderLeft:"4px solid #0369a1"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#1d4ed8",marginBottom:4}}>TIMELINE</div>
+              <div style={{fontSize:13,color:"#1e40af"}}>{displayProp.timeline}</div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {displayProp.notes&&(
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>Notes</div>
+              <div style={{fontSize:12,color:"#374151"}}>{displayProp.notes}</div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div style={{borderTop:"1px solid #e2e8f0",paddingTop:14,display:"flex",justifyContent:"space-between",fontSize:11,color:"#94a3b8"}}>
+            <span>Ziksatech LLC · Frisco, TX · billing@ziksatech.com</span>
+            <span>Confidential — {displayProp.number}</span>
+            <span>Valid until {displayProp.validUntil?fmtDate(displayProp.validUntil):"—"}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Proposal PDF builder ──────────────────────────────────────────────────────
+function buildProposalPDF(prop, roster) {
+  const totalVal = prop.scopeItems.reduce((s,i)=>s+i.hours*i.rate,0);
+  const totalHrs = prop.scopeItems.reduce((s,i)=>s+i.hours,0);
+  const team     = (prop.teamIds||[]).map(id=>roster.find(r=>r.id===id)).filter(Boolean);
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Proposal ${prop.number}</title>
+  <style>${PRINT_CSS}
+  .prop-header { background: #0369a1; color: #fff; padding: 24px 28px; display: flex; justify-content: space-between; }
+  .prop-title  { font-size: 22px; font-weight: 800; color: #fff; }
+  .prop-sub    { font-size: 12px; color: #bae6fd; margin-top: 2px; }
+  .scope-row   { display: grid; grid-template-columns: 1fr 60px 60px 90px; padding: 9px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
+  .scope-hdr   { display: grid; grid-template-columns: 1fr 60px 60px 90px; padding: 8px 12px; background: #f8fafc; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  .scope-total { display: grid; grid-template-columns: 1fr 60px 60px 90px; padding: 12px 12px; background: #eff6ff; border-top: 2px solid #0369a1; font-weight: 800; }
+  .team-card   { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; text-align: center; }
+  .team-avatar { width: 40px; height: 40px; border-radius: 50%; background: #0369a1; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; margin: 0 auto 8px; }
+  </style></head><body><div class="page">
+  <div class="prop-header">
+    <div><div class="prop-title">Ziksatech LLC</div><div class="prop-sub">SAP · Cloud · Analytics Consulting</div><div class="prop-sub" style="margin-top:8px">Frisco, TX · billing@ziksatech.com</div></div>
+    <div style="text-align:right"><div style="font-size:26px;font-weight:800">PROPOSAL</div><div style="font-size:14px;color:#bae6fd;margin-top:4px">${prop.number}</div><div style="margin-top:8px"><span class="badge badge-blue" style="background:rgba(255,255,255,0.2);color:#fff;border-radius:12px;padding:3px 10px;font-size:11px">${(prop.status||"draft").toUpperCase()}</span></div></div>
+  </div>
+
+  <div style="padding:24px 0">
+    <div class="section">
+      <div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:12px">${prop.title}</div>
+      <div class="grid-3">
+        <div class="kv"><span class="k">Prepared For</span><span class="v">${prop.client}</span></div>
+        <div class="kv"><span class="k">Contact</span><span class="v">${prop.contactName||"—"} · ${prop.contactEmail||"—"}</span></div>
+        <div class="kv"><span class="k">Valid Until</span><span class="v">${prop.validUntil?fmtDate(prop.validUntil):"—"}</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Executive Summary</div>
+      <p>${prop.executiveSummary||"—"}</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Scope of Work</div>
+      <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+        <div class="scope-hdr"><span>Description</span><span class="right">Hours</span><span class="right">Rate</span><span class="right">Amount</span></div>
+        ${prop.scopeItems.map((item,i)=>`<div class="scope-row" style="background:${i%2===0?"#fff":"#fafafa"}">
+          <div><strong>${item.title}</strong>${item.description?`<br><span style="font-size:10px;color:#94a3b8">${item.description}</span>`:""}</div>
+          <span class="right mono">${item.hours}h</span>
+          <span class="right mono">$${item.rate}</span>
+          <span class="right mono bold" style="color:#0369a1">$${(item.hours*item.rate).toLocaleString()}</span>
+        </div>`).join("")}
+        <div class="scope-total"><span style="grid-column:span 3;font-size:14px;color:#0369a1">Total Engagement Value — ${totalHrs}h · ${prop.billingType}</span><span class="right mono" style="font-size:16px;color:#0369a1">$${totalVal.toLocaleString()}</span></div>
+      </div>
+      <p class="muted" style="margin-top:8px;font-size:10px">Payment terms: ${prop.paymentTerms}</p>
+    </div>
+
+    ${team.length>0?`<div class="section">
+      <div class="section-title">Proposed Team</div>
+      <div style="display:grid;grid-template-columns:repeat(${Math.min(team.length,4)},1fr);gap:12px">
+        ${team.map(r=>`<div class="team-card">
+          <div class="team-avatar">${r.name.split(" ").map(w=>w[0]).slice(0,2).join("")}</div>
+          <div style="font-size:12px;font-weight:700;color:#0f172a">${r.name}</div>
+          <div style="font-size:10px;color:#64748b;margin-top:2px">${r.role||r.title||"Consultant"}</div>
+          <div style="font-size:10px;color:#0369a1;margin-top:2px;font-family:monospace">$${r.billRate}/hr</div>
+          ${r.skills?`<div style="font-size:9px;color:#94a3b8;margin-top:3px">${r.skills}</div>`:""}
+        </div>`).join("")}
+      </div>
+    </div>`:""}
+
+    ${prop.timeline?`<div class="section"><div class="section-title">Timeline</div><div class="highlight-box" style="font-size:13px;font-weight:600;color:#1e40af">${prop.timeline}</div></div>`:""}
+
+    <div class="section">
+      <div class="section-title">Terms & Conditions</div>
+      <p class="muted" style="font-size:11px;line-height:1.8">
+        1. This proposal is valid for 30 days from issue date unless otherwise specified.<br>
+        2. All work is performed on a ${prop.billingType} basis.<br>
+        3. Invoices are due ${prop.paymentTerms} from issue date. Work may be suspended for invoices 45+ days overdue.<br>
+        4. Travel expenses billed at cost with advance client approval.<br>
+        5. Either party may terminate with 30 days written notice.<br>
+        6. This proposal is subject to execution of a Master Services Agreement.
+      </p>
+    </div>
+
+    ${prop.notes?`<div class="section"><div class="section-title">Notes</div><p>${prop.notes}</p></div>`:""}
+
+    <div class="grid-2 section" style="margin-top:40px">
+      <div><div class="section-title">Ziksatech LLC</div><div style="margin-top:30px;border-top:1px solid #cbd5e1;padding-top:6px;font-size:11px;color:#64748b">Authorized Signature · Date</div></div>
+      <div><div class="section-title">${prop.client}</div><div style="margin-top:30px;border-top:1px solid #cbd5e1;padding-top:6px;font-size:11px;color:#64748b">Authorized Signature · Date</div></div>
+    </div>
+  </div>
+  ${ZT_FOOTER}</div></body></html>`;
+}
+
+// =============================================================================
+// EMAIL TEMPLATES MODULE
+// =============================================================================
+
+// ── Template definitions ──────────────────────────────────────────────────────
+const EMAIL_CATEGORIES = [
+  { id:"all",         label:"All",              icon:"📧" },
+  { id:"invoice",     label:"Invoicing",        icon:"🧾" },
+  { id:"proposal",    label:"Proposals",        icon:"📄" },
+  { id:"compliance",  label:"Compliance / HR",  icon:"🛡️" },
+  { id:"project",     label:"Project",          icon:"📊" },
+  { id:"recruiting",  label:"Recruiting",       icon:"👥" },
+  { id:"client",      label:"Client Relations", icon:"🤝" },
+];
+
+const EMAIL_TEMPLATES = [
+  // ── INVOICING ──────────────────────────────────────────────────────────────
+  {
+    id:"inv_send",       cat:"invoice",
+    title:"Invoice — New Invoice Sent",
+    desc:"Send when issuing a new invoice to a client.",
+    tags:["invoice","AR","billing"],
+    subject:"Invoice {{invoice_number}} from Ziksatech LLC — Due {{due_date}}",
+    body:`Hi {{contact_name}},
+
+Please find attached Invoice {{invoice_number}} for {{amount}} covering {{service_period}}.
+
+Payment Details:
+  • Invoice #: {{invoice_number}}
+  • Amount Due: {{amount}}
+  • Due Date: {{due_date}}
+  • Payment Terms: {{payment_terms}}
+
+ACH Payment Instructions:
+  Bank: JPMorgan Chase
+  Routing: 111000025
+  Account: 987654321
+  Reference: {{invoice_number}}
+
+If you have any questions or need a revised invoice, please don't hesitate to reach out.
+
+Thank you for your continued partnership.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC | billing@ziksatech.com | +1 (214) 555-0100`,
+    fields:["contact_name","invoice_number","amount","service_period","due_date","payment_terms","sender_name"],
+  },
+  {
+    id:"inv_reminder",   cat:"invoice",
+    title:"Invoice — Payment Reminder (Friendly)",
+    desc:"Send 5–7 days before the due date as a gentle reminder.",
+    tags:["invoice","AR","reminder"],
+    subject:"Friendly Reminder: Invoice {{invoice_number}} Due {{due_date}}",
+    body:`Hi {{contact_name}},
+
+This is a friendly reminder that Invoice {{invoice_number}} for {{amount}} is due on {{due_date}} — just {{days_until}} days away.
+
+If payment has already been sent, please disregard this message and thank you!
+
+Invoice Summary:
+  • Invoice #: {{invoice_number}}
+  • Amount: {{amount}}
+  • Due: {{due_date}}
+
+You can remit payment via ACH (routing 111000025 / acct 987654321, ref {{invoice_number}}) or reply to this email with any questions.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["contact_name","invoice_number","amount","due_date","days_until","sender_name"],
+  },
+  {
+    id:"inv_overdue",    cat:"invoice",
+    title:"Invoice — Overdue Notice",
+    desc:"Send when an invoice is 1–15 days past due.",
+    tags:["invoice","AR","overdue"],
+    subject:"OVERDUE: Invoice {{invoice_number}} — {{days_overdue}} Days Past Due",
+    body:`Hi {{contact_name}},
+
+I wanted to follow up on Invoice {{invoice_number}} for {{amount}}, which was due on {{due_date}} and is now {{days_overdue}} days past due.
+
+Could you please confirm when we can expect payment? If there are any issues with the invoice or if you need a different payment arrangement, I'm happy to discuss.
+
+Outstanding Balance: {{amount}}
+Original Due Date: {{due_date}}
+Days Overdue: {{days_overdue}}
+
+Please remit payment via ACH as noted on the invoice. If payment has already been processed, kindly share the confirmation number so we can reconcile our records.
+
+Thank you for your prompt attention.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC | billing@ziksatech.com`,
+    fields:["contact_name","invoice_number","amount","due_date","days_overdue","sender_name"],
+  },
+  {
+    id:"inv_escalation", cat:"invoice",
+    title:"Invoice — Escalation (30+ Days Overdue)",
+    desc:"Formal escalation for invoices 30+ days past due.",
+    tags:["invoice","AR","escalation","formal"],
+    subject:"Final Notice: Invoice {{invoice_number}} — {{days_overdue}} Days Overdue",
+    body:`Dear {{contact_name}},
+
+This is a formal notice regarding Invoice {{invoice_number}} for {{amount}}, which remains unpaid and is now {{days_overdue}} days past its due date of {{due_date}}.
+
+Per our Master Services Agreement, Ziksatech LLC reserves the right to suspend services for accounts with invoices exceeding 45 days past due. To avoid a service interruption, please remit the outstanding balance immediately.
+
+Outstanding Balance: {{amount}}
+
+If you have already arranged payment or if there is a dispute, please contact me directly at billing@ziksatech.com or +1 (214) 555-0100 within 5 business days.
+
+Thank you for your immediate attention to this matter.
+
+Sincerely,
+{{sender_name}}
+Ziksatech LLC
+billing@ziksatech.com`,
+    fields:["contact_name","invoice_number","amount","due_date","days_overdue","sender_name"],
+  },
+  {
+    id:"inv_paid",       cat:"invoice",
+    title:"Invoice — Payment Received / Thank You",
+    desc:"Send once payment is confirmed to close the loop.",
+    tags:["invoice","AR","receipt"],
+    subject:"Payment Received — Thank You! (Invoice {{invoice_number}})",
+    body:`Hi {{contact_name}},
+
+Great news — we've received your payment of {{amount}} for Invoice {{invoice_number}}. Thank you!
+
+Your account is now current. A receipt is attached for your records.
+
+If you have any questions or need anything for your accounting records, feel free to reach out.
+
+We appreciate your partnership and look forward to continuing our work together.
+
+Warm regards,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["contact_name","invoice_number","amount","sender_name"],
+  },
+
+  // ── PROPOSALS ─────────────────────────────────────────────────────────────
+  {
+    id:"prop_send",      cat:"proposal",
+    title:"Proposal — Sending Proposal",
+    desc:"Cover email when delivering a new proposal to a client.",
+    tags:["proposal","sales","CRM"],
+    subject:"Proposal: {{proposal_title}} — {{proposal_number}}",
+    body:`Hi {{contact_name}},
+
+Thank you for the opportunity to present our approach for {{project_description}}. Please find attached our proposal ({{proposal_number}}) outlining Ziksatech's recommended solution, team, and investment.
+
+Proposal Highlights:
+  • Scope: {{scope_summary}}
+  • Proposed Team: {{team_names}}
+  • Timeline: {{timeline}}
+  • Investment: {{total_value}}
+  • Valid Until: {{valid_until}}
+
+I'd love to schedule 30 minutes to walk you through the proposal and answer any questions. Please feel free to reply here or book time at your convenience.
+
+Looking forward to partnering with {{client_name}} on this initiative.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC | {{sender_email}} | +1 (214) 555-0100`,
+    fields:["contact_name","proposal_title","proposal_number","project_description","scope_summary","team_names","timeline","total_value","valid_until","client_name","sender_name","sender_email"],
+  },
+  {
+    id:"prop_followup",  cat:"proposal",
+    title:"Proposal — Follow-Up (No Response)",
+    desc:"Send 5–7 days after sending proposal with no reply.",
+    tags:["proposal","sales","follow-up"],
+    subject:"Following Up: {{proposal_number}} — {{proposal_title}}",
+    body:`Hi {{contact_name}},
+
+I wanted to follow up on the proposal I sent over on {{sent_date}} for {{proposal_title}} ({{proposal_number}}).
+
+I know things can get busy — just wanted to make sure it landed in the right place and to see if you have any questions or feedback.
+
+The proposal is valid through {{valid_until}}. I'm happy to jump on a quick call to walk through any details.
+
+Is there a good time this week for a 20-minute conversation?
+
+Best,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["contact_name","proposal_number","proposal_title","sent_date","valid_until","sender_name"],
+  },
+  {
+    id:"prop_accepted",  cat:"proposal",
+    title:"Proposal — Accepted — Next Steps",
+    desc:"Send when client verbally accepts to kick off contracting.",
+    tags:["proposal","sales","won"],
+    subject:"Great News — Let's Get Started! {{proposal_number}}",
+    body:`Hi {{contact_name}},
+
+This is fantastic news — we're thrilled to be partnering with {{client_name}} on {{proposal_title}}!
+
+Here are the next steps to get us started:
+
+1. SOW & MSA: We'll send over the Statement of Work and any MSA amendments for signature within 2 business days.
+2. Kickoff Call: Let's schedule a kickoff call for the week of {{kickoff_week}} to align on team introductions, access, and Day 1 priorities.
+3. Team Introductions: {{team_names}} will be your Ziksatech team — expect an introduction email shortly.
+
+Is there anything you need from our side in the meantime? Please don't hesitate to reach out.
+
+Looking forward to a great engagement!
+
+Warm regards,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["contact_name","client_name","proposal_title","proposal_number","kickoff_week","team_names","sender_name"],
+  },
+
+  // ── COMPLIANCE / HR ───────────────────────────────────────────────────────
+  {
+    id:"comp_visa_expiry", cat:"compliance",
+    title:"Compliance — Visa / Work Auth Expiry Warning",
+    desc:"Internal notice to consultant + manager about upcoming visa expiry.",
+    tags:["compliance","HR","visa","H-1B","OPT"],
+    subject:"[Action Required] Work Authorization Expiring — {{employee_name}} ({{visa_type}}, {{expiry_date}})",
+    body:`Hi {{employee_name}},
+
+This is an important reminder that your work authorization ({{visa_type}}) is set to expire on {{expiry_date}} — {{days_remaining}} days from today.
+
+Action Required:
+  • Contact our immigration attorney (Littler Mendelson) immediately to begin renewal: atty@littler.com
+  • Gather required documents: passport copy, I-94, current visa stamp, pay stubs (last 3 months)
+  • {{specific_action}} must be completed by {{action_deadline}}
+
+Failure to maintain valid work authorization will result in an involuntary leave of absence until the matter is resolved.
+
+If you have already initiated the renewal process, please forward the receipt notice (I-797) to hr@ziksatech.com so we can update our records.
+
+Please confirm receipt of this email by replying at your earliest convenience.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC HR`,
+    fields:["employee_name","visa_type","expiry_date","days_remaining","specific_action","action_deadline","sender_name"],
+  },
+  {
+    id:"comp_doc_request", cat:"compliance",
+    title:"Compliance — Missing Document Request",
+    desc:"Request a specific document from a team member.",
+    tags:["compliance","HR","documents"],
+    subject:"Document Required: {{document_type}} — {{employee_name}}",
+    body:`Hi {{employee_name}},
+
+Our HR records indicate we are missing the following document for your file:
+
+Document Required: {{document_type}}
+Deadline: {{deadline}}
+
+Please submit this document by {{deadline}} via one of the following:
+  • Email: hr@ziksatech.com (subject: "[Employee Name] — {{document_type}}")
+  • In person at the Frisco office
+
+This document is required for compliance purposes. If you have already submitted this or believe this is in error, please reply and we'll look into it.
+
+Thank you for your prompt attention.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC HR`,
+    fields:["employee_name","document_type","deadline","sender_name"],
+  },
+  {
+    id:"comp_pto_approved", cat:"compliance",
+    title:"PTO — Leave Request Approved",
+    desc:"Confirmation email when approving a PTO request.",
+    tags:["PTO","HR","leave"],
+    subject:"PTO Approved: {{leave_dates}} — {{employee_name}}",
+    body:`Hi {{employee_name}},
+
+Your leave request has been approved! Here are the details:
+
+Leave Type: {{leave_type}}
+Dates: {{leave_dates}} ({{days_count}} business day{{days_plural}})
+Remaining Balance After: {{remaining_balance}} days
+
+Please ensure your deliverables are covered and that you've briefed {{coverage_person}} on any outstanding items before your leave begins.
+
+Enjoy your time off!
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["employee_name","leave_type","leave_dates","days_count","days_plural","remaining_balance","coverage_person","sender_name"],
+  },
+
+  // ── PROJECT ───────────────────────────────────────────────────────────────
+  {
+    id:"proj_kickoff",   cat:"project",
+    title:"Project — Kickoff Invitation",
+    desc:"Send kickoff meeting invite and agenda to client + team.",
+    tags:["project","kickoff","delivery"],
+    subject:"Kickoff Meeting — {{project_name}} | {{kickoff_date}}",
+    body:`Hi {{contact_name}},
+
+We're excited to kick off {{project_name}} with your team! Please find the details below:
+
+Kickoff Meeting
+  Date/Time: {{kickoff_date}} at {{kickoff_time}} {{timezone}}
+  Location: {{meeting_link}} (or {{location}})
+  Duration: {{duration}}
+
+Proposed Agenda:
+  1. Introductions — Ziksatech team & client stakeholders (10 min)
+  2. Project scope review and objectives (15 min)
+  3. Timeline and milestone walkthrough (15 min)
+  4. Communication & escalation protocols (10 min)
+  5. Environment access and onboarding (10 min)
+  6. Q&A and next steps (10 min)
+
+Ziksatech Team: {{team_names}}
+Client Stakeholders: {{client_stakeholders}}
+
+Please reply with any agenda additions or adjustments. We look forward to a great project!
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["contact_name","project_name","kickoff_date","kickoff_time","timezone","meeting_link","location","duration","team_names","client_stakeholders","sender_name"],
+  },
+  {
+    id:"proj_status",    cat:"project",
+    title:"Project — Weekly Status Update",
+    desc:"Regular status email to client stakeholders.",
+    tags:["project","status","delivery"],
+    subject:"[{{project_name}}] Weekly Status — Week of {{week_of}}",
+    body:`Hi {{contact_name}},
+
+Here is the weekly status update for {{project_name}} for the week of {{week_of}}.
+
+Overall Status: {{status_color}} — {{status_summary}}
+
+Accomplishments This Week:
+{{accomplishments}}
+
+Planned for Next Week:
+{{next_week_plans}}
+
+Risks / Issues:
+{{risks_issues}}
+
+Budget:
+  Spent to Date: {{spent}} of {{budget}} ({{burn_pct}}%)
+  Hours This Week: {{weekly_hours}} hrs
+
+Upcoming Milestones:
+{{upcoming_milestones}}
+
+Please let me know if you have any questions or feedback. We'll touch base again next week!
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["contact_name","project_name","week_of","status_color","status_summary","accomplishments","next_week_plans","risks_issues","spent","budget","burn_pct","weekly_hours","upcoming_milestones","sender_name"],
+  },
+  {
+    id:"proj_goLive",    cat:"project",
+    title:"Project — Go-Live Announcement",
+    desc:"Client-facing go-live confirmation email.",
+    tags:["project","go-live","delivery"],
+    subject:"🎉 Go-Live Confirmation — {{project_name}} is Live!",
+    body:`Hi {{contact_name}},
+
+We are thrilled to announce that {{project_name}} has successfully gone live as of {{golive_date}}!
+
+This is a significant milestone and the result of tremendous collaboration between your team and ours. Congratulations to everyone involved.
+
+What's Live:
+{{golive_summary}}
+
+Hypercare Support:
+Our team will be in enhanced support mode through {{hypercare_end}}. During this period:
+  • Response time: < 2 hours for critical issues
+  • Daily check-ins at {{checkin_time}}
+  • Escalation: {{sender_name}} at {{sender_phone}}
+
+Known Open Items:
+{{open_items}}
+
+Thank you for being a fantastic client to work with. We look forward to supporting your continued success with {{project_name}}.
+
+Warm regards,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["contact_name","project_name","golive_date","golive_summary","hypercare_end","checkin_time","open_items","sender_name","sender_phone"],
+  },
+
+  // ── RECRUITING ───────────────────────────────────────────────────────────
+  {
+    id:"rec_outreach",   cat:"recruiting",
+    title:"Recruiting — Initial Outreach",
+    desc:"First contact to a potential candidate.",
+    tags:["recruiting","sourcing","outreach"],
+    subject:"Exciting SAP Consulting Opportunity — {{role_title}} | Ziksatech LLC",
+    body:`Hi {{candidate_name}},
+
+My name is {{sender_name}} from Ziksatech LLC, a boutique SAP and cloud consulting firm based in Frisco, TX.
+
+I came across your profile and was impressed by your background in {{candidate_skills}}. We have a {{role_type}} opportunity that I think could be a strong fit:
+
+Role: {{role_title}}
+Client: {{client_name}}
+Location: {{location}}
+Duration: {{duration}}
+Rate: {{rate_range}}
+Start: {{start_date}}
+
+Key Requirements:
+{{requirements}}
+
+Would you be open to a 15-minute conversation this week to explore further? Even if the timing isn't right, I'd love to connect for the future.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC | {{sender_phone}} | recruiting@ziksatech.com`,
+    fields:["candidate_name","candidate_skills","role_title","role_type","client_name","location","duration","rate_range","start_date","requirements","sender_name","sender_phone"],
+  },
+  {
+    id:"rec_offer",      cat:"recruiting",
+    title:"Recruiting — Offer Letter Email",
+    desc:"Deliver an offer to a candidate alongside the formal letter.",
+    tags:["recruiting","offer","hiring"],
+    subject:"Offer of Engagement — {{role_title}} at {{client_name}} | Ziksatech LLC",
+    body:`Hi {{candidate_name}},
+
+We are very pleased to extend an offer of engagement for the {{role_title}} position supporting {{client_name}}!
+
+Offer Summary:
+  • Role: {{role_title}}
+  • Client: {{client_name}}
+  • Location: {{location}}
+  • Bill Rate: {{bill_rate}}/hr
+  • Engagement Type: {{engagement_type}}
+  • Estimated Start Date: {{start_date}}
+  • Duration: {{duration}}
+
+The formal offer letter is attached. Please review, sign, and return by {{offer_expiry}}.
+
+Next Steps:
+  1. Sign and return the offer letter
+  2. Complete background check consent (link below)
+  3. Submit I-9 documents to hr@ziksatech.com
+  4. Confirm start date availability
+
+We're excited about the prospect of you joining the Ziksatech team! Please don't hesitate to call me with any questions: {{sender_phone}}.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC | recruiting@ziksatech.com`,
+    fields:["candidate_name","role_title","client_name","location","bill_rate","engagement_type","start_date","duration","offer_expiry","sender_name","sender_phone"],
+  },
+
+  // ── CLIENT RELATIONS ─────────────────────────────────────────────────────
+  {
+    id:"cl_renewal",     cat:"client",
+    title:"Client — Contract Renewal Notice",
+    desc:"Proactive renewal outreach 60–90 days before contract end.",
+    tags:["client","renewal","contracts"],
+    subject:"Contract Renewal — {{client_name}} | Engagement Through {{current_end}}",
+    body:`Hi {{contact_name}},
+
+I hope all is well! I'm reaching out because the current engagement agreement for {{project_name}} is set to expire on {{current_end}} — just {{days_remaining}} days away.
+
+We have truly valued our partnership with {{client_name}} and would love to continue supporting your team. 
+
+Proposed Renewal Options:
+  Option A: {{renewal_option_a}}
+  Option B: {{renewal_option_b}}
+
+I'd love to schedule 30 minutes to discuss the renewal and any evolving needs your team may have. We can also explore expanding the scope if there are new initiatives on the horizon.
+
+Please let me know your preferred time this week or next.
+
+Warm regards,
+{{sender_name}}
+Ziksatech LLC | {{sender_email}}`,
+    fields:["contact_name","client_name","project_name","current_end","days_remaining","renewal_option_a","renewal_option_b","sender_name","sender_email"],
+  },
+  {
+    id:"cl_intro",       cat:"client",
+    title:"Client — New Consultant Introduction",
+    desc:"Introduce a new consultant to the client team.",
+    tags:["client","onboarding","delivery"],
+    subject:"Team Update: Introducing {{consultant_name}} to the {{project_name}} Team",
+    body:`Hi {{contact_name}},
+
+I'm pleased to introduce {{consultant_name}}, who will be joining the {{project_name}} engagement effective {{start_date}}.
+
+About {{consultant_name}}:
+  • Role: {{role_title}}
+  • Background: {{background}}
+  • Key Skills: {{skills}}
+  • LinkedIn: {{linkedin_url}}
+
+{{consultant_name}} comes highly recommended and is excited to contribute to the {{client_name}} team. They will be reaching out directly to schedule introductory meetings with key stakeholders.
+
+Please feel free to reach out to me directly if you have any questions about the transition or staffing.
+
+Best regards,
+{{sender_name}}
+Ziksatech LLC`,
+    fields:["contact_name","consultant_name","project_name","start_date","role_title","background","skills","linkedin_url","client_name","sender_name"],
+  },
+];
+
+// ── Helper: replace {{tokens}} in template ────────────────────────────────────
+function applyFields(text, values) {
+  return text.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] !== undefined && values[key] !== "" ? values[key] : `{{${key}}}`);
+}
+
+// ── Main Email Templates component ────────────────────────────────────────────
+function EmailTemplates({ roster, finInvoices, proposals, crmContacts, clients }) {
+  const [selCat,     setSelCat]     = useState("all");
+  const [selId,      setSelId]      = useState(null);
+  const [search,     setSearch]     = useState("");
+  const [fieldVals,  setFieldVals]  = useState({});
+  const [copied,     setCopied]     = useState(null); // "subject"|"body"|"all"
+  const [view,       setView]       = useState("edit"); // "edit"|"preview"
+
+  const template = EMAIL_TEMPLATES.find(t=>t.id===selId);
+
+  // Auto-prefill sender
+  useEffect(()=>{
+    setFieldVals(v=>({sender_name:"Manju Ziksatech", sender_email:"manju@ziksatech.com", sender_phone:"+1 (214) 555-0100", ...v}));
+  }, []);
+
+  // Reset fields on template change
+  useEffect(()=>{
+    if (!template) return;
+    setFieldVals(v=>({ sender_name:v.sender_name||"Manju Ziksatech", sender_email:v.sender_email||"manju@ziksatech.com", sender_phone:v.sender_phone||"+1 (214) 555-0100" }));
+    setView("edit");
+  }, [selId]);
+
+  const filtered = EMAIL_TEMPLATES.filter(t=>
+    (selCat==="all"||t.cat===selCat) &&
+    (!search || t.title.toLowerCase().includes(search.toLowerCase()) || t.tags.some(tg=>tg.toLowerCase().includes(search.toLowerCase())))
+  );
+
+  const finalSubject = template ? applyFields(template.subject, fieldVals) : "";
+  const finalBody    = template ? applyFields(template.body,    fieldVals) : "";
+  const hasUnfilled  = (finalSubject+finalBody).includes("{{");
+
+  const copyText = (text, label) => {
+    navigator.clipboard.writeText(text).then(()=>{
+      setCopied(label);
+      setTimeout(()=>setCopied(null), 2000);
+    });
+  };
+
+  const openMailto = () => {
+    const to = fieldVals.contact_email||fieldVals.candidate_email||fieldVals.employee_email||"";
+    window.open(`mailto:${to}?subject=${encodeURIComponent(finalSubject)}&body=${encodeURIComponent(finalBody)}`);
+  };
+
+  // Smart prefill suggestions from live data
+  const prefillSuggestions = (tmpl) => {
+    if (!tmpl) return [];
+    const sugg = [];
+    if (tmpl.cat==="invoice") {
+      const openInvs = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided");
+      if (openInvs.length>0) sugg.push({ label:`Prefill from: ${openInvs[0].number}`, action:()=>setFieldVals(v=>({...v,
+        invoice_number: openInvs[0].number,
+        amount: `$${openInvs[0].amount?.toLocaleString()}`,
+        due_date: openInvs[0].dueDate||"",
+        contact_name: openInvs[0].client||"",
+        payment_terms: "Net 30",
+        service_period: "services rendered",
+      }))});
+    }
+    if (tmpl.cat==="proposal") {
+      const draftProps = proposals?.filter(p=>p.status==="sent"||p.status==="draft");
+      if (draftProps?.length>0) sugg.push({ label:`Prefill from: ${draftProps[0].number}`, action:()=>setFieldVals(v=>({...v,
+        proposal_number: draftProps[0].number,
+        proposal_title: draftProps[0].title,
+        client_name: draftProps[0].client,
+        contact_name: draftProps[0].contactName,
+        total_value: `$${draftProps[0].scopeItems.reduce((s,i)=>s+i.hours*i.rate,0).toLocaleString()}`,
+        valid_until: draftProps[0].validUntil||"",
+        timeline: draftProps[0].timeline||"",
+        sent_date: draftProps[0].sentDate||"",
+      }))});
+    }
+    return sugg;
+  };
+
+  const suggestions = prefillSuggestions(template);
+
+  return (
+    <div>
+      <PH title="Email Templates" sub="Professional email templates for invoicing, proposals, compliance, recruiting, and client relations"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"260px 1fr",gap:16,height:"calc(100vh - 200px)",minHeight:600}}>
+
+        {/* ── Left panel: template list ── */}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {/* Search */}
+          <input className="inp" placeholder="🔍  Search templates..." value={search} onChange={e=>setSearch(e.target.value)} style={{fontSize:12}}/>
+
+          {/* Category pills */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+            {EMAIL_CATEGORIES.map(c=>(
+              <button key={c.id} onClick={()=>setSelCat(c.id)}
+                style={{padding:"4px 10px",borderRadius:20,border:`1px solid ${selCat===c.id?"#0284c7":"#1a2d45"}`,fontSize:11,cursor:"pointer",
+                  background:selCat===c.id?"#0c2340":"transparent",color:selCat===c.id?"#38bdf8":"#475569"}}>
+                {c.icon} {c.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Template list */}
+          <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
+            {filtered.map(t=>{
+              const cat = EMAIL_CATEGORIES.find(c=>c.id===t.cat);
+              const isSelected = selId===t.id;
+              return (
+                <div key={t.id} onClick={()=>setSelId(t.id)}
+                  style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",border:`1px solid ${isSelected?"#0284c7":"#1a2d45"}`,
+                    background:isSelected?"#0c2340":"#060d1c",transition:"all 0.12s"}}>
+                  <div style={{fontSize:12,fontWeight:600,color:isSelected?"#38bdf8":"#cbd5e1",marginBottom:3}}>{cat?.icon} {t.title}</div>
+                  <div style={{fontSize:10,color:"#3d5a7a",lineHeight:1.3}}>{t.desc}</div>
+                  <div style={{marginTop:5,display:"flex",flexWrap:"wrap",gap:3}}>
+                    {t.tags.slice(0,3).map(tg=>(
+                      <span key={tg} style={{fontSize:9,padding:"1px 5px",borderRadius:10,background:"#070c18",color:"#1e3a5f",border:"1px solid #111d2d"}}>{tg}</span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {filtered.length===0&&<div style={{padding:16,fontSize:11,color:"#1e3a5f",textAlign:"center"}}>No templates match your search.</div>}
+          </div>
+        </div>
+
+        {/* ── Right panel: editor / preview ── */}
+        {!template
+          ? (
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,color:"#1e3a5f"}}>
+              <div style={{fontSize:48}}>📧</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#475569"}}>Select a Template</div>
+              <div style={{fontSize:12,color:"#3d5a7a",textAlign:"center",maxWidth:300}}>
+                Choose from {EMAIL_TEMPLATES.length} professional templates across {EMAIL_CATEGORIES.length-1} categories.
+              </div>
+              <div style={{marginTop:8,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,width:"100%",maxWidth:360}}>
+                {EMAIL_CATEGORIES.filter(c=>c.id!=="all").map(c=>{
+                  const count = EMAIL_TEMPLATES.filter(t=>t.cat===c.id).length;
+                  return (
+                    <div key={c.id} onClick={()=>setSelCat(c.id)} style={{padding:"10px 12px",borderRadius:8,border:"1px solid #1a2d45",cursor:"pointer",background:"#060d1c",textAlign:"center"}}>
+                      <div style={{fontSize:20,marginBottom:4}}>{c.icon}</div>
+                      <div style={{fontSize:11,fontWeight:600,color:"#64748b"}}>{c.label}</div>
+                      <div style={{fontSize:10,color:"#1e3a5f"}}>{count} template{count!==1?"s":""}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )
+          : (
+            <div style={{display:"flex",flexDirection:"column",gap:0,minHeight:0}}>
+              {/* Template header */}
+              <div style={{padding:"14px 18px",background:"#060d1c",borderRadius:"10px 10px 0 0",border:"1px solid #1a2d45",borderBottom:"none",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div>
+                  <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>{template.title}</div>
+                  <div style={{fontSize:11,color:"#3d5a7a",marginTop:2}}>{template.desc}</div>
+                  <div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {template.tags.map(tg=><span key={tg} style={{fontSize:9,padding:"2px 7px",borderRadius:10,background:"#0c2340",color:"#38bdf8",border:"1px solid #1a2d45"}}>{tg}</span>)}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:12}}>
+                  <button className="btn bg" style={{fontSize:11,padding:"5px 12px",borderColor:view==="edit"?"#0284c7":"#1a2d45",color:view==="edit"?"#38bdf8":"#475569"}} onClick={()=>setView("edit")}>✏ Edit</button>
+                  <button className="btn bg" style={{fontSize:11,padding:"5px 12px",borderColor:view==="preview"?"#0284c7":"#1a2d45",color:view==="preview"?"#38bdf8":"#475569"}} onClick={()=>setView("preview")}>👁 Preview</button>
+                </div>
+              </div>
+
+              {/* Smart prefill banner */}
+              {suggestions.length>0&&(
+                <div style={{padding:"8px 18px",background:"#021f14",border:"1px solid #34d39933",borderTop:"none",borderBottom:"none",display:"flex",gap:8,alignItems:"center"}}>
+                  <span style={{fontSize:10,color:"#34d399"}}>✦ Smart Prefill:</span>
+                  {suggestions.map((s,i)=>(
+                    <button key={i} className="btn bg" style={{fontSize:10,padding:"3px 10px",borderColor:"#34d39944",color:"#34d399"}} onClick={s.action}>{s.label}</button>
+                  ))}
+                </div>
+              )}
+
+              {/* Main content area */}
+              <div style={{flex:1,border:"1px solid #1a2d45",borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+
+                {view==="edit"&&(
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 260px",flex:1,minHeight:0}}>
+                    {/* Template text */}
+                    <div style={{padding:"18px",overflowY:"auto",borderRight:"1px solid #111d2d"}}>
+                      <div style={{marginBottom:14}}>
+                        <div className="lbl">Subject Line</div>
+                        <div style={{padding:"10px 12px",background:"#070c18",borderRadius:6,border:"1px solid #1a2d45",fontSize:12,color:"#94a3b8",fontFamily:"'DM Mono',monospace",lineHeight:1.5,wordBreak:"break-word"}}>
+                          {applyFields(template.subject, fieldVals).split(/(\{\{[^}]+\}\})/).map((part,i)=>
+                            part.startsWith("{{")
+                              ? <span key={i} style={{color:"#f59e0b",background:"#1a1000",borderRadius:3,padding:"0 2px"}}>{part}</span>
+                              : <span key={i}>{part}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="lbl">Body</div>
+                        <div style={{padding:"12px",background:"#070c18",borderRadius:6,border:"1px solid #1a2d45",fontSize:11,color:"#94a3b8",fontFamily:"'DM Mono',monospace",lineHeight:1.8,whiteSpace:"pre-wrap",wordBreak:"break-word",maxHeight:400,overflowY:"auto"}}>
+                          {applyFields(template.body, fieldVals).split(/(\{\{[^}]+\}\})/).map((part,i)=>
+                            part.startsWith("{{")
+                              ? <span key={i} style={{color:"#f59e0b",background:"#1a1000",borderRadius:3,padding:"0 2px"}}>{part}</span>
+                              : <span key={i}>{part}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Field editor */}
+                    <div style={{padding:"14px",overflowY:"auto",background:"#060d1c"}}>
+                      <div style={{fontSize:10,fontWeight:700,color:"#1e3a5f",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.5px"}}>Fill in Variables</div>
+                      {hasUnfilled&&<div style={{padding:"6px 8px",background:"#1a0f00",borderRadius:6,border:"1px solid #f59e0b33",fontSize:10,color:"#f59e0b",marginBottom:10}}>
+                        ⚠ {((finalSubject+finalBody).match(/\{\{[^}]+\}\}/g)||[]).length} field{((finalSubject+finalBody).match(/\{\{[^}]+\}\}/g)||[]).length!==1?"s":""} still unfilled
+                      </div>}
+                      {template.fields.map(field=>{
+                        const label = field.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+                        const isUsed = (template.subject+template.body).includes(`{{${field}}}`);
+                        const isFilled = fieldVals[field]&&fieldVals[field]!=="";
+                        if (!isUsed) return null;
+                        return (
+                          <div key={field} style={{marginBottom:8}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                              <span style={{fontSize:9,color:isFilled?"#34d399":"#f59e0b",fontFamily:"'DM Mono',monospace"}}>{`{{${field}}}`}</span>
+                              {isFilled&&<span style={{fontSize:8,color:"#34d399"}}>✓</span>}
+                            </div>
+                            <input className="inp" style={{fontSize:11,padding:"5px 8px"}}
+                              placeholder={label}
+                              value={fieldVals[field]||""}
+                              onChange={e=>setFieldVals(v=>({...v,[field]:e.target.value}))}/>
+                          </div>
+                        );
+                      })}
+                      <button className="btn bg" style={{width:"100%",justifyContent:"center",fontSize:10,marginTop:8,borderColor:"#f87171",color:"#f87171"}}
+                        onClick={()=>setFieldVals(v=>({sender_name:v.sender_name,sender_email:v.sender_email,sender_phone:v.sender_phone}))}>
+                        Clear Fields
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {view==="preview"&&(
+                  <div style={{flex:1,overflowY:"auto",padding:"24px",background:"#fff"}}>
+                    <div style={{maxWidth:600,margin:"0 auto"}}>
+                      <div style={{fontFamily:"Georgia,serif"}}>
+                        {/* Email client mock */}
+                        <div style={{background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",overflow:"hidden",marginBottom:20}}>
+                          <div style={{background:"#0369a1",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span style={{color:"#fff",fontSize:12,fontWeight:700}}>New Message</span>
+                            <div style={{display:"flex",gap:6}}>
+                              {["−","□","✕"].map(c=><span key={c} style={{color:"#bae6fd",fontSize:12,cursor:"pointer"}}>{c}</span>)}
+                            </div>
+                          </div>
+                          <div style={{padding:"12px 16px",borderBottom:"1px solid #e2e8f0"}}>
+                            <div style={{fontSize:11,color:"#64748b"}}>To: <span style={{color:"#0f172a"}}>{fieldVals.contact_email||fieldVals.candidate_email||"recipient@company.com"}</span></div>
+                            <div style={{fontSize:11,color:"#64748b",marginTop:2}}>From: <span style={{color:"#0f172a"}}>{fieldVals.sender_email||"manju@ziksatech.com"}</span></div>
+                            <div style={{fontSize:11,fontWeight:700,color:"#0f172a",marginTop:6,padding:"6px 0",borderTop:"1px solid #f1f5f9"}}>{finalSubject}</div>
+                          </div>
+                          <div style={{padding:"16px",fontSize:12,color:"#374151",lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"'Segoe UI',Arial,sans-serif",background:"#fff"}}>
+                            {hasUnfilled
+                              ? finalBody.split(/(\{\{[^}]+\}\})/).map((part,i)=>
+                                  part.startsWith("{{")
+                                    ? <mark key={i} style={{background:"#fef3c7",color:"#b45309",padding:"0 2px",borderRadius:2}}>{part}</mark>
+                                    : <span key={i}>{part}</span>
+                                )
+                              : finalBody
+                            }
+                          </div>
+                        </div>
+                        {hasUnfilled&&<div style={{padding:"10px 14px",background:"#fef3c7",borderRadius:8,border:"1px solid #d97706",fontSize:11,color:"#b45309"}}>
+                          ⚠ Highlighted fields above are still unfilled. Switch to Edit view to complete them.
+                        </div>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action bar */}
+                <div style={{padding:"12px 18px",background:"#060d1c",borderTop:"1px solid #111d2d",display:"flex",gap:8,alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{fontSize:10,color:"#1e3a5f"}}>
+                    {hasUnfilled ? `⚠ ${((finalSubject+finalBody).match(/\{\{[^}]+\}\}/g)||[]).length} field(s) unfilled` : "✓ Ready to send"}
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button className="btn bg" style={{fontSize:11,padding:"6px 14px"}}
+                      onClick={()=>copyText(finalSubject,"subject")}>
+                      {copied==="subject"?"✓ Copied!":"Copy Subject"}
+                    </button>
+                    <button className="btn bg" style={{fontSize:11,padding:"6px 14px"}}
+                      onClick={()=>copyText(finalBody,"body")}>
+                      {copied==="body"?"✓ Copied!":"Copy Body"}
+                    </button>
+                    <button className="btn bg" style={{fontSize:11,padding:"6px 14px",borderColor:"#a78bfa",color:"#a78bfa"}}
+                      onClick={()=>copyText(`Subject: ${finalSubject}\n\n${finalBody}`,"all")}>
+                      {copied==="all"?"✓ Copied!":"Copy All"}
+                    </button>
+                    <button className="btn bp" style={{fontSize:11,padding:"6px 14px"}}
+                      onClick={openMailto}>
+                      Open in Mail App ↗
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// TAX CALENDAR MODULE
+// =============================================================================
+
+// ── Tax deadline data ─────────────────────────────────────────────────────────
+const TAX_TYPES = {
+  payroll_deposit: { label:"Payroll Tax Deposit",   color:"#38bdf8", bg:"#0c2340" },
+  payroll_filing:  { label:"Payroll Filing",         color:"#a78bfa", bg:"#1a0f2e" },
+  estimated:       { label:"Estimated Tax (1040-ES)",color:"#f59e0b", bg:"#1a1000" },
+  information:     { label:"Information Return",     color:"#34d399", bg:"#021f14" },
+  state:           { label:"State / TX Franchise",   color:"#f87171", bg:"#1a0808" },
+  annual:          { label:"Annual Filing",          color:"#e2e8f0", bg:"#0a1626" },
+};
+
+// All 2026 deadlines relevant to Ziksatech LLC (TX-based S-Corp / consulting)
+const TAX_DEADLINES = [
+  // ── Q1 2026 ───────────────────────────────────────────────────────────────
+  { id:"td01",  date:"2026-01-15", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Jan 1–7",        desc:"EFTPS deposit for wages paid Jan 1–7. Form 941 lookback period applies.", federal:true,  amount:null,       status:"done"    },
+  { id:"td02",  date:"2026-01-15", type:"estimated",       title:"Q4 2025 Estimated Tax Payment Due (1040-ES)",  desc:"4th quarter 2025 estimated individual income tax payment due.", federal:true,  amount:10000,      status:"done"    },
+  { id:"td03",  date:"2026-01-31", type:"information",     title:"W-2s & 1099-NECs Due to Recipients",           desc:"Deliver W-2s to all employees and 1099-NECs to contractors paid $600+. Ziksatech has 4 contractors requiring 1099-NEC.", federal:true, amount:null, status:"done" },
+  { id:"td04",  date:"2026-01-31", type:"payroll_filing",  title:"Form 941 — Q4 2025 Payroll Tax Return",        desc:"File quarterly payroll tax return (or 944 if annual filer). Covers Oct–Dec 2025 wages.", federal:true, amount:null, status:"done" },
+  { id:"td05",  date:"2026-01-31", type:"payroll_filing",  title:"FUTA Annual Return — Form 940",                desc:"File annual Federal Unemployment Tax return. FUTA wage base $7,000 per employee.", federal:true, amount:840, status:"done" },
+  { id:"td06",  date:"2026-01-31", type:"information",     title:"1099-NEC E-File with IRS",                     desc:"Submit 1099-NEC information returns to IRS (same deadline as recipient delivery). 4 contractors: Rajesh, Priya, Kiran, Sanjay.", federal:true, amount:null, status:"done" },
+  { id:"td07",  date:"2026-02-28", type:"information",     title:"1099-MISC Paper Filing Deadline",              desc:"File paper 1099-MISC returns. Electronic filers have until March 31.", federal:true, amount:null, status:"done" },
+  { id:"td08",  date:"2026-03-15", type:"annual",          title:"S-Corp / Partnership Return Due (Form 1120-S / 1065)", desc:"Federal income tax return for S-corporations and partnerships. Ziksatech LLC files as S-Corp. Extend via Form 7004.", federal:true, amount:null, status:"upcoming" },
+  { id:"td09",  date:"2026-03-15", type:"annual",          title:"S-Corp K-1s to Shareholders",                  desc:"Deliver Schedule K-1s to all S-Corp shareholders by the return due date.", federal:true, amount:null, status:"upcoming" },
+  { id:"td10",  date:"2026-03-31", type:"information",     title:"1099-MISC / 1099-NEC E-File Deadline",         desc:"Electronic filing deadline for all remaining information returns (1099-MISC, 1096 transmittal).", federal:true, amount:null, status:"upcoming" },
+  // Bi-weekly payroll deposits (approximated semi-monthly for 2026)
+  { id:"td11",  date:"2026-01-22", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Jan 8–14",       desc:"EFTPS deposit for wages paid Jan 8–14.", federal:true, amount:15972, status:"done" },
+  { id:"td12",  date:"2026-02-05", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Jan 22–31",      desc:"EFTPS deposit for wages paid Jan 22–31.", federal:true, amount:15972, status:"done" },
+  { id:"td13",  date:"2026-02-19", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Feb 1–14",       desc:"EFTPS deposit for wages paid Feb 1–14.", federal:true, amount:15972, status:"done" },
+  { id:"td14",  date:"2026-03-05", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Feb 15–28",      desc:"EFTPS deposit for wages paid Feb 15–28.", federal:true, amount:15972, status:"upcoming" },
+  { id:"td15",  date:"2026-03-19", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Mar 1–14",       desc:"EFTPS deposit for wages paid Mar 1–14.", federal:true, amount:15972, status:"upcoming" },
+
+  // ── Q2 2026 ───────────────────────────────────────────────────────────────
+  { id:"td16",  date:"2026-04-01", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Mar 15–31",      desc:"EFTPS deposit for wages paid Mar 15–31.", federal:true, amount:15972, status:"upcoming" },
+  { id:"td17",  date:"2026-04-15", type:"estimated",       title:"Q1 2026 Estimated Tax Payment (1040-ES)",      desc:"First quarter 2026 individual estimated income tax. Cover S-Corp distributive share + self-employment.", federal:true, amount:12500, status:"upcoming" },
+  { id:"td18",  date:"2026-04-15", type:"annual",          title:"Individual / C-Corp Return Due (Form 1040 / 1120)", desc:"Personal income tax return deadline. File or extend (Form 4868). Includes K-1 income from Ziksatech S-Corp.", federal:true, amount:null, status:"upcoming" },
+  { id:"td19",  date:"2026-04-30", type:"payroll_filing",  title:"Form 941 — Q1 2026 Payroll Tax Return",        desc:"File quarterly payroll tax return for Jan–Mar 2026 wages.", federal:true, amount:null, status:"upcoming" },
+  { id:"td20",  date:"2026-05-15", type:"state",           title:"TX Annual Franchise Tax Report Due",           desc:"Texas Annual Franchise Tax Report and payment. No-tax-due threshold: $2.47M revenue. Ziksatech must verify threshold.", federal:false, amount:null, status:"upcoming" },
+  { id:"td21",  date:"2026-05-01", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Apr 15–30",      desc:"EFTPS deposit for wages paid Apr 15–30.", federal:true, amount:15972, status:"upcoming" },
+  { id:"td22",  date:"2026-06-15", type:"estimated",       title:"Q2 2026 Estimated Tax Payment (1040-ES)",      desc:"Second quarter 2026 estimated individual income tax payment.", federal:true, amount:12500, status:"upcoming" },
+  { id:"td23",  date:"2026-06-15", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — May 29–Jun 14",  desc:"EFTPS deposit for wages paid May 29–Jun 14.", federal:true, amount:15972, status:"upcoming" },
+
+  // ── Q3 2026 ───────────────────────────────────────────────────────────────
+  { id:"td24",  date:"2026-07-15", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Jul 1–14",       desc:"EFTPS deposit for wages paid Jul 1–14.", federal:true, amount:15972, status:"upcoming" },
+  { id:"td25",  date:"2026-07-31", type:"payroll_filing",  title:"Form 941 — Q2 2026 Payroll Tax Return",        desc:"File quarterly payroll tax return for Apr–Jun 2026 wages.", federal:true, amount:null, status:"upcoming" },
+  { id:"td26",  date:"2026-09-15", type:"estimated",       title:"Q3 2026 Estimated Tax Payment (1040-ES)",      desc:"Third quarter 2026 estimated individual income tax payment.", federal:true, amount:12500, status:"upcoming" },
+  { id:"td27",  date:"2026-09-15", type:"annual",          title:"S-Corp Extended Return Due (Form 1120-S)",     desc:"Extended S-Corp federal return deadline (if Form 7004 filed by Mar 15). Final deadline — no further extension.", federal:true, amount:null, status:"upcoming" },
+  { id:"td28",  date:"2026-09-15", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Sep 1–14",       desc:"EFTPS deposit for wages paid Sep 1–14.", federal:true, amount:15972, status:"upcoming" },
+
+  // ── Q4 2026 ───────────────────────────────────────────────────────────────
+  { id:"td29",  date:"2026-10-15", type:"annual",          title:"Individual Extended Return Due (Form 1040)",   desc:"Extended personal income tax return deadline (if Form 4868 filed by Apr 15). Final deadline.", federal:true, amount:null, status:"upcoming" },
+  { id:"td30",  date:"2026-10-31", type:"payroll_filing",  title:"Form 941 — Q3 2026 Payroll Tax Return",        desc:"File quarterly payroll tax return for Jul–Sep 2026 wages.", federal:true, amount:null, status:"upcoming" },
+  { id:"td31",  date:"2026-11-02", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Oct 15–31",      desc:"EFTPS deposit for wages paid Oct 15–31.", federal:true, amount:15972, status:"upcoming" },
+  { id:"td32",  date:"2026-12-15", type:"estimated",       title:"Year-End Bonus / Extra Withholding Deadline",  desc:"Last payroll to capture additional withholding or bonuses before year-end W-2 snapshot.", federal:true, amount:null, status:"upcoming" },
+  { id:"td33",  date:"2026-12-31", type:"payroll_deposit", title:"Semi-weekly Payroll Deposit — Dec 15–31",      desc:"Final payroll tax deposit of 2026.", federal:true, amount:15972, status:"upcoming" },
+
+  // ── Jan 2027 planning heads-up ─────────────────────────────────────────────
+  { id:"td34",  date:"2027-01-15", type:"estimated",       title:"Q4 2026 Estimated Tax Payment (1040-ES)",      desc:"4th quarter 2026 estimated tax — plan now for year-end income.", federal:true, amount:12500, status:"upcoming" },
+  { id:"td35",  date:"2027-01-31", type:"information",     title:"W-2s & 1099-NECs Due — Tax Year 2026",         desc:"Deliver W-2s and 1099-NECs for tax year 2026 to all recipients.", federal:true, amount:null, status:"upcoming" },
+];
+
+function taxDaysUntil(dateStr) {
+  const today = new Date(TODAY_STR);
+  const due   = new Date(dateStr);
+  return Math.round((due - today) / 86400000);
+}
+
+function TaxCalendar({ adpRuns, roster, vendors, apInvoices }) {
+  const [view,      setView]      = useState("calendar");  // calendar | list | checklist
+  const [selQuarter,setSelQuarter]= useState("Q1");
+  const [selType,   setSelType]   = useState("all");
+  const [selDeadline,setSelDeadline]=useState(null);
+  const [notes,     setNotes]     = useState({});          // id → string
+  const [checked,   setChecked]   = useState({});          // id → bool
+  const [editNote,  setEditNote]  = useState(null);
+
+  const quarters = {
+    Q1: { label:"Q1 2026", months:[0,1,2],   start:"2026-01-01", end:"2026-03-31" },
+    Q2: { label:"Q2 2026", months:[3,4,5],   start:"2026-04-01", end:"2026-06-30" },
+    Q3: { label:"Q3 2026", months:[6,7,8],   start:"2026-07-01", end:"2026-09-30" },
+    Q4: { label:"Q4 2026", months:[9,10,11], start:"2026-10-01", end:"2026-12-31" },
+    "2027": { label:"2027 Preview", months:[], start:"2027-01-01", end:"2027-03-31" },
+  };
+
+  // Deadlines in selected quarter
+  const qDef  = quarters[selQuarter];
+  const qDeadlines = TAX_DEADLINES.filter(d => d.date >= qDef.start && d.date <= qDef.end)
+    .filter(d => selType==="all" || d.type===selType)
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  // Upcoming (next 60 days)
+  const upcoming60 = TAX_DEADLINES
+    .filter(d=>{ const n=taxDaysUntil(d.date); return n>=0&&n<=60; })
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
+  // Total estimated payments this year
+  const estTotal = TAX_DEADLINES.filter(d=>d.type==="estimated"&&d.date.startsWith("2026")).reduce((s,d)=>s+(d.amount||0),0);
+  const depositTotal = TAX_DEADLINES.filter(d=>d.type==="payroll_deposit"&&d.date.startsWith("2026")).reduce((s,d)=>s+(d.amount||0),0);
+
+  // KPIs
+  const overdue  = TAX_DEADLINES.filter(d=>taxDaysUntil(d.date)<0&&d.status!=="done");
+  const dueIn30  = TAX_DEADLINES.filter(d=>{ const n=taxDaysUntil(d.date); return n>=0&&n<=30; });
+  const completed= TAX_DEADLINES.filter(d=>d.status==="done"||checked[d.id]);
+
+  const sel = TAX_DEADLINES.find(d=>d.id===selDeadline);
+
+  // Monthly grouping for calendar view
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  const monthsInQ = selQuarter==="2027"
+    ? [{ year:2027, month:0 }]
+    : qDef.months.map(m=>({ year:2026, month:m }));
+
+  return (
+    <div>
+      <PH title="Tax Calendar" sub="Federal & Texas tax deadlines — payroll deposits, estimated taxes, information returns, annual filings"/>
+
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Overdue / Missed",    v:overdue.length,     c:overdue.length>0?"#f87171":"#34d399" },
+          { l:"Due in 30 Days",      v:dueIn30.length,     c:dueIn30.length>0?"#f59e0b":"#34d399" },
+          { l:"Completed (2026)",    v:completed.length+"/"+TAX_DEADLINES.filter(d=>d.date.startsWith("2026")).length, c:"#34d399" },
+          { l:"2026 Est. Tax Total", v:fmt(estTotal),       c:"#a78bfa" },
+          { l:"2026 Payroll Deposits",v:fmt(depositTotal),  c:"#38bdf8" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Upcoming alert strip */}
+      {upcoming60.length>0&&(
+        <div style={{marginBottom:18,padding:"12px 18px",background:"#0a1a00",borderRadius:10,border:"1px solid #34d39933"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:8}}>⏰ Next 60 Days — {upcoming60.length} deadline{upcoming60.length!==1?"s":""}</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {upcoming60.slice(0,8).map(d=>{
+              const days = taxDaysUntil(d.date);
+              const tc   = TAX_TYPES[d.type];
+              return (
+                <div key={d.id} onClick={()=>setSelDeadline(d.id)}
+                  style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${tc.color}44`,background:tc.bg,cursor:"pointer",
+                    display:"flex",flexDirection:"column",gap:2,minWidth:0}}>
+                  <div style={{fontSize:10,fontWeight:700,color:tc.color}}>{d.date.slice(5).replace("-","/")}  <span style={{color:days<=7?"#f87171":days<=14?"#f59e0b":"#94a3b8"}}>({days}d)</span></div>
+                  <div style={{fontSize:10,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.title.replace(/Form \d+[A-Z-]* — /,"")}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Controls */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+        {/* View toggle */}
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45"}}>
+          {[["calendar","📅 Calendar"],["list","📋 List"],["checklist","✅ Checklist"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setView(v)}
+              style={{padding:"5px 14px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+                background:view===v?"#0369a1":"transparent",color:view===v?"#fff":"#475569"}}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {/* Quarter selector */}
+          <div style={{display:"flex",gap:3}}>
+            {Object.keys(quarters).map(q=>(
+              <button key={q} onClick={()=>setSelQuarter(q)}
+                style={{padding:"5px 12px",borderRadius:6,border:`1px solid ${selQuarter===q?"#0284c7":"#1a2d45"}`,cursor:"pointer",fontSize:11,fontWeight:600,
+                  background:selQuarter===q?"#0c2340":"transparent",color:selQuarter===q?"#38bdf8":"#475569"}}>
+                {q}
+              </button>
+            ))}
+          </div>
+
+          {/* Type filter */}
+          <select className="inp" style={{fontSize:11,padding:"5px 10px"}} value={selType} onChange={e=>setSelType(e.target.value)}>
+            <option value="all">All Types</option>
+            {Object.entries(TAX_TYPES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:sel?"1fr 340px":"1fr",gap:16}}>
+        <div>
+
+          {/* ── CALENDAR VIEW ── */}
+          {view==="calendar"&&(
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {monthsInQ.map(({year,month})=>{
+                const monthDeadlines = qDeadlines.filter(d=>{
+                  const dd = new Date(d.date);
+                  return dd.getFullYear()===year && dd.getMonth()===month;
+                });
+                if (monthDeadlines.length===0&&selType!=="all") return null;
+
+                // Build calendar grid
+                const firstDay = new Date(year,month,1).getDay();
+                const daysInMonth = new Date(year,month+1,0).getDate();
+                const cells = [];
+                for (let i=0;i<firstDay;i++) cells.push(null);
+                for (let d=1;d<=daysInMonth;d++) cells.push(d);
+
+                return (
+                  <div key={`${year}-${month}`} className="card" style={{padding:"16px 18px"}}>
+                    <div className="section-hdr">{MONTH_NAMES[month]} {year}</div>
+                    {/* Day headers */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}}>
+                      {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>(
+                        <div key={d} style={{textAlign:"center",fontSize:9,color:"#1e3a5f",fontWeight:700,padding:"4px 0"}}>{d}</div>
+                      ))}
+                    </div>
+                    {/* Cells */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+                      {cells.map((day,i)=>{
+                        if (!day) return <div key={i}/>;
+                        const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+                        const dayDeadlines = monthDeadlines.filter(d=>d.date===dateStr);
+                        const isToday = dateStr===TODAY_STR;
+                        const hasDone = dayDeadlines.some(d=>d.status==="done"||checked[d.id]);
+                        const hasUpcoming = dayDeadlines.some(d=>d.status!=="done"&&!checked[d.id]);
+                        const isSel = dayDeadlines.some(d=>d.id===selDeadline);
+
+                        return (
+                          <div key={i}
+                            onClick={()=>{ if (dayDeadlines.length>0) setSelDeadline(dayDeadlines[0].id); }}
+                            style={{minHeight:52,padding:"4px",borderRadius:6,position:"relative",cursor:dayDeadlines.length>0?"pointer":"default",
+                              border:`1px solid ${isSel?"#0284c7":isToday?"#38bdf822":dayDeadlines.length>0?"#1a2d45":"transparent"}`,
+                              background:isSel?"#0c2340":isToday?"#070c1a":dayDeadlines.length>0?"#070c18":"transparent"}}>
+                            <div style={{fontSize:10,fontWeight:isToday?800:400,color:isToday?"#38bdf8":"#475569",textAlign:"right",marginBottom:2}}>{day}</div>
+                            {dayDeadlines.slice(0,3).map(d=>{
+                              const tc = TAX_TYPES[d.type];
+                              const done = d.status==="done"||checked[d.id];
+                              return (
+                                <div key={d.id} style={{fontSize:8,padding:"1px 4px",borderRadius:3,marginBottom:1,lineHeight:1.3,
+                                  background:done?"#021f14":tc.bg,color:done?"#34d399":tc.color,
+                                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                                  textDecoration:done?"line-through":"none",opacity:done?0.6:1}}>
+                                  {d.title.split("—")[0].slice(0,22)}
+                                </div>
+                              );
+                            })}
+                            {dayDeadlines.length>3&&<div style={{fontSize:7,color:"#3d5a7a"}}>+{dayDeadlines.length-3} more</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Month legend */}
+                    {monthDeadlines.length>0&&(
+                      <div style={{marginTop:12,borderTop:"1px solid #111d2d",paddingTop:10}}>
+                        <div style={{fontSize:10,color:"#1e3a5f",marginBottom:6,fontWeight:700}}>{monthDeadlines.length} deadline{monthDeadlines.length!==1?"s":""} this month:</div>
+                        {monthDeadlines.map(d=>{
+                          const tc   = TAX_TYPES[d.type];
+                          const days = taxDaysUntil(d.date);
+                          const done = d.status==="done"||checked[d.id];
+                          return (
+                            <div key={d.id} onClick={()=>setSelDeadline(d.id)}
+                              style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #070b14",cursor:"pointer",opacity:done?0.5:1}}>
+                              <div style={{width:8,height:8,borderRadius:"50%",background:done?"#34d399":tc.color,flexShrink:0}}/>
+                              <span style={{fontSize:10,color:"#94a3b8",fontFamily:"'DM Mono',monospace",flexShrink:0,minWidth:32}}>{d.date.slice(5).replace("-","/")}</span>
+                              <span style={{fontSize:11,color:done?"#1e3a5f":"#cbd5e1",flex:1,textDecoration:done?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.title}</span>
+                              {!done&&<span style={{fontSize:10,color:days<0?"#f87171":days<=7?"#f59e0b":"#3d5a7a",flexShrink:0,fontFamily:"'DM Mono',monospace"}}>{days<0?`${Math.abs(days)}d late`:days===0?"TODAY":`${days}d`}</span>}
+                              {done&&<span style={{fontSize:10,color:"#34d399",flexShrink:0}}>✓</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── LIST VIEW ── */}
+          {view==="list"&&(
+            <div className="card">
+              <div className="tr" style={{gridTemplateColumns:"80px 1.8fr 120px 80px 80px 60px",padding:"8px 18px"}}>
+                {["Date","Deadline","Type","Amount","Status",""].map(h=><span key={h} className="th">{h}</span>)}
+              </div>
+              {qDeadlines.map(d=>{
+                const tc   = TAX_TYPES[d.type];
+                const days = taxDaysUntil(d.date);
+                const done = d.status==="done"||checked[d.id];
+                const isSelected = selDeadline===d.id;
+                return (
+                  <div key={d.id} className="tr"
+                    style={{gridTemplateColumns:"80px 1.8fr 120px 80px 80px 60px",cursor:"pointer",
+                      background:isSelected?"#0a1a2e":undefined,
+                      borderLeft:`3px solid ${done?"#34d39944":tc.color}`,
+                      opacity:done?0.6:1}}
+                    onClick={()=>setSelDeadline(isSelected?null:d.id)}>
+                    <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{d.date.slice(5).replace("-","/")}</span>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:600,color:done?"#1e3a5f":"#cbd5e1",textDecoration:done?"line-through":"none"}}>{d.title}</div>
+                      {notes[d.id]&&<div style={{fontSize:10,color:"#3d5a7a",marginTop:1}}>📝 {notes[d.id].slice(0,50)}</div>}
+                    </div>
+                    <span className="bdg" style={{background:tc.bg,color:tc.color,fontSize:9}}>{tc.label}</span>
+                    <span style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{d.amount?fmt(d.amount):"—"}</span>
+                    <span style={{fontSize:10,color:done?"#34d399":days<0?"#f87171":days<=7?"#f59e0b":"#475569",fontFamily:"'DM Mono',monospace"}}>
+                      {done?"✓ Done":days<0?`${Math.abs(days)}d late`:days===0?"TODAY":days<=7?`${days}d ⚠`:`${days}d`}
+                    </span>
+                    <button className="btn bg" style={{fontSize:9,padding:"2px 6px",borderColor:done?"#34d399":"#1a2d45",color:done?"#34d399":"#475569"}}
+                      onClick={e=>{e.stopPropagation();setChecked(c=>({...c,[d.id]:!c[d.id]}));}}>
+                      {done?"✓":"Mark"}
+                    </button>
+                  </div>
+                );
+              })}
+              {qDeadlines.length===0&&<div style={{padding:"18px",fontSize:11,color:"#1e3a5f",textAlign:"center"}}>No deadlines match current filters.</div>}
+            </div>
+          )}
+
+          {/* ── CHECKLIST VIEW ── */}
+          {view==="checklist"&&(
+            <div>
+              {Object.entries(TAX_TYPES).map(([typeKey, tc])=>{
+                const items = TAX_DEADLINES.filter(d=>d.type===typeKey&&d.date>=qDef.start&&d.date<=qDef.end&&(selType==="all"||selType===typeKey));
+                if (items.length===0) return null;
+                const doneCount = items.filter(d=>d.status==="done"||checked[d.id]).length;
+                return (
+                  <div key={typeKey} className="card" style={{marginBottom:12,padding:"14px 18px",borderLeft:`4px solid ${tc.color}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                      <div style={{fontSize:13,fontWeight:700,color:tc.color}}>{tc.label}</div>
+                      <div style={{fontSize:11,color:"#475569"}}>{doneCount}/{items.length} complete</div>
+                    </div>
+                    <div style={{background:"#070c18",borderRadius:6,overflow:"hidden",marginBottom:8}}>
+                      <div style={{height:4,background:"#1a2d45"}}>
+                        <div style={{height:4,background:tc.color,width:`${items.length>0?doneCount/items.length*100:0}%`,transition:"width 0.3s"}}/>
+                      </div>
+                    </div>
+                    {items.map(d=>{
+                      const done = d.status==="done"||checked[d.id];
+                      const days = taxDaysUntil(d.date);
+                      return (
+                        <div key={d.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:"1px solid #070b14"}}>
+                          <input type="checkbox" checked={done} onChange={()=>setChecked(c=>({...c,[d.id]:!c[d.id]}))}
+                            style={{marginTop:2,accentColor:tc.color,flexShrink:0,width:14,height:14,cursor:"pointer"}}/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                              <span style={{fontSize:12,fontWeight:600,color:done?"#1e3a5f":"#cbd5e1",textDecoration:done?"line-through":"none",lineHeight:1.4}}>{d.title}</span>
+                              <div style={{flexShrink:0,display:"flex",gap:6,alignItems:"center"}}>
+                                <span style={{fontSize:10,fontFamily:"'DM Mono',monospace",color:"#475569"}}>{d.date.slice(5).replace("-","/")}</span>
+                                {!done&&<span style={{fontSize:10,color:days<0?"#f87171":days<=7?"#f59e0b":"#3d5a7a",fontFamily:"'DM Mono',monospace"}}>{days<0?`${Math.abs(days)}d late`:days===0?"TODAY":`${days}d`}</span>}
+                              </div>
+                            </div>
+                            <div style={{fontSize:10,color:"#3d5a7a",marginTop:2,lineHeight:1.4}}>{d.desc}</div>
+                            {/* Note input */}
+                            {editNote===d.id
+                              ? <div style={{marginTop:6,display:"flex",gap:6}}>
+                                  <input className="inp" style={{fontSize:10,padding:"4px 8px",flex:1}} placeholder="Add note..." autoFocus
+                                    value={notes[d.id]||""} onChange={e=>setNotes(n=>({...n,[d.id]:e.target.value}))}
+                                    onKeyDown={e=>e.key==="Enter"&&setEditNote(null)}/>
+                                  <button className="btn bg" style={{fontSize:9,padding:"3px 8px"}} onClick={()=>setEditNote(null)}>Save</button>
+                                </div>
+                              : notes[d.id]
+                                ? <div style={{marginTop:4,fontSize:10,color:"#3d5a7a",cursor:"pointer"}} onClick={()=>setEditNote(d.id)}>📝 {notes[d.id]}</div>
+                                : <button style={{marginTop:4,background:"none",border:"none",cursor:"pointer",fontSize:9,color:"#1e3a5f",padding:0}} onClick={()=>setEditNote(d.id)}>+ add note</button>
+                            }
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Detail panel ── */}
+        {sel&&(
+          <div className="card" style={{height:"fit-content",position:"sticky",top:0,padding:0,overflow:"hidden"}}>
+            {/* Header band */}
+            <div style={{padding:"14px 18px",background:TAX_TYPES[sel.type].bg,borderBottom:"1px solid #111d2d"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <span className="bdg" style={{background:"transparent",border:`1px solid ${TAX_TYPES[sel.type].color}`,color:TAX_TYPES[sel.type].color,fontSize:9}}>
+                  {TAX_TYPES[sel.type].label}
+                </span>
+                <button className="btn bg" style={{padding:"2px 7px",fontSize:9}} onClick={()=>setSelDeadline(null)}>✕</button>
+              </div>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginTop:8,lineHeight:1.4}}>{sel.title}</div>
+            </div>
+
+            <div style={{padding:"14px 18px"}}>
+              {/* Date / status */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                {[
+                  ["Due Date",       sel.date.slice(5).replace("-","/")+" / "+sel.date.slice(0,4)],
+                  ["Days",           (()=>{ const d=taxDaysUntil(sel.date); return d<0?`${Math.abs(d)} days late`:d===0?"DUE TODAY":`${d} days`; })()],
+                  ["Jurisdiction",   sel.federal?"Federal (IRS)":"Texas (TX Comptroller)"],
+                  ["Est. Amount",    sel.amount?fmt(sel.amount):"See current payroll"],
+                ].map(([l,v])=>(
+                  <div key={l} style={{background:"#070c18",borderRadius:6,padding:"8px 10px"}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>{l}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:l==="Days"&&taxDaysUntil(sel.date)<0?"#f87171":l==="Days"&&taxDaysUntil(sel.date)<=7?"#f59e0b":"#e2e8f0"}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Description */}
+              <div style={{fontSize:11,color:"#64748b",lineHeight:1.6,marginBottom:14,background:"#070c18",borderRadius:8,padding:"10px 12px",border:"1px solid #111d2d"}}>
+                {sel.desc}
+              </div>
+
+              {/* Ziksatech-specific context */}
+              <div style={{marginBottom:14}}>
+                <div className="lbl" style={{marginBottom:6}}>Ziksatech Context</div>
+                {sel.type==="payroll_deposit"&&(
+                  <div style={{fontSize:11,color:"#3d5a7a",background:"#060d1c",borderRadius:8,padding:"10px 12px",border:"1px solid #111d2d",lineHeight:1.6}}>
+                    Based on current ADP payroll of ~$47,917/month gross for 6 FTE employees.<br/>
+                    FICA withholding: ~$3,665/deposit (employee share) + $3,665 employer share.<br/>
+                    Use EFTPS.gov for electronic deposits — must be initiated by 8pm ET on due date.
+                  </div>
+                )}
+                {sel.type==="information"&&sel.id==="td03"&&(
+                  <div style={{fontSize:11,color:"#3d5a7a",background:"#060d1c",borderRadius:8,padding:"10px 12px",border:"1px solid #111d2d",lineHeight:1.6}}>
+                    1099-NEC required for: Rajesh Kumar, Priya Nair, Kiran Patel, Sanjay Gupta (all paid $600+).<br/>
+                    ⚠ Sanjay Gupta — W-9 missing. Collect before filing or apply backup withholding (24%).
+                  </div>
+                )}
+                {sel.type==="estimated"&&(
+                  <div style={{fontSize:11,color:"#3d5a7a",background:"#060d1c",borderRadius:8,padding:"10px 12px",border:"1px solid #111d2d",lineHeight:1.6}}>
+                    Estimated tax covers distributive S-Corp income and self-employment.<br/>
+                    Base on prior year safe harbor (100% of prior year tax) or 90% of current year liability.<br/>
+                    Pay via EFTPS or IRS Direct Pay at irs.gov/payments.
+                  </div>
+                )}
+                {sel.type==="annual"&&sel.id==="td08"&&(
+                  <div style={{fontSize:11,color:"#3d5a7a",background:"#060d1c",borderRadius:8,padding:"10px 12px",border:"1px solid #111d2d",lineHeight:1.6}}>
+                    File Form 1120-S (S-Corp) or extend via Form 7004 by March 15.<br/>
+                    Extension gives 6 additional months (new deadline: Sept 15, 2026).<br/>
+                    Recommend engaging CPA by Feb 28 to allow adequate prep time.
+                  </div>
+                )}
+                {sel.type==="state"&&(
+                  <div style={{fontSize:11,color:"#3d5a7a",background:"#060d1c",borderRadius:8,padding:"10px 12px",border:"1px solid #111d2d",lineHeight:1.6}}>
+                    Texas Franchise Tax: No income tax, but franchise tax applies.<br/>
+                    No-tax-due threshold: $2.47M (2026). If revenue exceeds threshold, file Form 05-158.<br/>
+                    File at comptroller.texas.gov. EFT required if tax due &gt; $10,000.
+                  </div>
+                )}
+              </div>
+
+              {/* Mark done / notes */}
+              <div style={{display:"flex",gap:6,marginBottom:10}}>
+                <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11,
+                  borderColor:(sel.status==="done"||checked[sel.id])?"#34d399":"#1a2d45",
+                  color:(sel.status==="done"||checked[sel.id])?"#34d399":"#475569"}}
+                  onClick={()=>setChecked(c=>({...c,[sel.id]:!c[sel.id]}))}>
+                  {(sel.status==="done"||checked[sel.id]) ? "✓ Marked Complete" : "Mark Complete"}
+                </button>
+              </div>
+
+              {/* Note */}
+              <div>
+                <div className="lbl" style={{marginBottom:4}}>Notes</div>
+                <textarea className="inp" rows={3} style={{fontSize:11}} placeholder="Add filing notes, confirmation numbers, CPA contact..."
+                  value={notes[sel.id]||""} onChange={e=>setNotes(n=>({...n,[sel.id]:e.target.value}))}/>
+              </div>
+
+              {/* Quick links */}
+              <div style={{marginTop:12}}>
+                <div className="lbl" style={{marginBottom:6}}>Quick Links</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {[
+                    sel.federal && ["IRS EFTPS", "https://eftps.gov"],
+                    sel.federal && ["IRS Direct Pay", "https://directpay.irs.gov"],
+                    sel.type==="annual" && ["IRS Form 1120-S", "https://irs.gov/forms-pubs/about-form-1120-s"],
+                    sel.type==="state"  && ["TX Comptroller", "https://comptroller.texas.gov/taxes/franchise/"],
+                    sel.type==="information" && ["IRS 1099-NEC", "https://irs.gov/forms-pubs/about-form-1099-nec"],
+                  ].filter(Boolean).map(([label,url])=>(
+                    <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                      style={{fontSize:11,color:"#38bdf8",padding:"5px 10px",borderRadius:6,background:"#060d1c",border:"1px solid #1a2d45",textDecoration:"none",display:"block"}}>
+                      ↗ {label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// BENEFITS TRACKER MODULE
+// =============================================================================
+
+// ── Cost helpers ──────────────────────────────────────────────────────────────
+function monthlyHealthCost(b) {
+  const plan = HEALTH_PLANS.find(p=>p.id===b.healthPlan);
+  if (!plan) return 0;
+  const base = b.healthTier==="ee_only" ? plan.premium_ee
+    : b.healthTier==="ee_spouse"        ? plan.premium_ee + plan.premium_dep*0.5
+    : plan.premium_ee + plan.premium_dep; // family
+  return base;
+}
+function monthlyDentalCost(b) {
+  const plan = DENTAL_PLANS.find(p=>p.id===b.dentalPlan);
+  return plan ? (b.healthTier==="ee_only"?plan.premium_ee : b.healthTier==="ee_spouse"?plan.premium_ee+plan.premium_dep*0.5 : plan.premium_ee+plan.premium_dep) : 0;
+}
+function monthlyVisionCost(b) {
+  const plan = VISION_PLANS.find(p=>p.id===b.visionPlan);
+  return plan ? (b.healthTier==="ee_only"?plan.premium_ee : b.healthTier==="ee_spouse"?plan.premium_ee+plan.premium_dep*0.5 : plan.premium_ee+plan.premium_dep) : 0;
+}
+function monthlyLifeCost(b)   { return b.lifeInsured ? Math.round(b.salary * b.lifeMultiple / 1000 * 0.15) : 0; }
+function monthlySTDCost(b)    { return b.stdEnrolled  ? Math.round(b.salary * 0.004 / 12) : 0; }
+function monthlyLTDCost(b)    { return b.ltdEnrolled  ? Math.round(b.salary * 0.003 / 12) : 0; }
+function monthlyHSAContrib(b) { return (HEALTH_PLANS.find(p=>p.id===b.healthPlan)?.hsaEligible) ? ER_HSA_CONTRIB : 0; }
+function totalMonthlyCost(b)  {
+  return monthlyHealthCost(b)+monthlyDentalCost(b)+monthlyVisionCost(b)+
+         monthlyLifeCost(b)+monthlySTDCost(b)+monthlyLTDCost(b)+monthlyHSAContrib(b);
+}
+function annual401kMatchCost(b) { return b.k401_enrolled ? b.salary * b.k401_match_pct / 100 : 0; }
+
+// Tier labels
+const TIER_LABELS = { ee_only:"EE Only", ee_spouse:"EE + Spouse", family:"Family" };
+
+function BenefitsTracker({ benefits, setBenefits, roster }) {
+  const [sub,      setSub]      = useState("overview");   // overview | enrollment | 401k | costs
+  const [selId,    setSelId]    = useState(null);
+  const [editId,   setEditId]   = useState(null);
+  const [editForm, setEditForm] = useState(null);
+
+  const sel  = benefits.find(b=>b.id===selId);
+  const edit = benefits.find(b=>b.id===editId);
+
+  const totalMonthly    = benefits.reduce((s,b)=>s+totalMonthlyCost(b), 0);
+  const totalAnnual     = totalMonthly * 12;
+  const total401kMatch  = benefits.reduce((s,b)=>s+annual401kMatchCost(b), 0);
+  const enrolled401k    = benefits.filter(b=>b.k401_enrolled).length;
+  const missingBenef    = benefits.filter(b=>!b.beneficiaryOnFile);
+  const notEnrolled401k = benefits.filter(b=>!b.k401_enrolled);
+
+  const openEdit = (b) => { setEditId(b.id); setEditForm({...b}); setSub("enrollment"); };
+  const saveEdit = () => {
+    setBenefits(bs=>bs.map(b=>b.id===editForm.id?editForm:b));
+    setEditId(null); setEditForm(null);
+  };
+  const cancelEdit = () => { setEditId(null); setEditForm(null); };
+
+  const tabs = [
+    { id:"overview",   label:"Overview"     },
+    { id:"enrollment", label:"Enrollment"   },
+    { id:"401k",       label:"401(k)"       },
+    { id:"costs",      label:"Cost Analysis"},
+  ];
+
+  return (
+    <div>
+      <PH title="Benefits Tracker" sub="Health, dental, vision, 401(k), HSA/FSA, and insurance — full benefits administration"/>
+
+      {/* Action alerts */}
+      {(missingBenef.length>0||notEnrolled401k.length>0)&&(
+        <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:6}}>
+          {missingBenef.length>0&&(
+            <div style={{padding:"10px 16px",borderRadius:8,background:"#1a0808",border:"1px solid #f8717144",fontSize:11,color:"#f87171",display:"flex",justifyContent:"space-between"}}>
+              <span>⚠ <strong>{missingBenef.length}</strong> employee{missingBenef.length>1?"s":""} missing beneficiary designation: {missingBenef.map(b=>b.name).join(", ")}</span>
+              <button className="btn bg" style={{fontSize:10,borderColor:"#f87171",color:"#f87171"}} onClick={()=>setSub("enrollment")}>Review →</button>
+            </div>
+          )}
+          {notEnrolled401k.length>0&&(
+            <div style={{padding:"10px 16px",borderRadius:8,background:"#1a1000",border:"1px solid #f59e0b44",fontSize:11,color:"#f59e0b",display:"flex",justifyContent:"space-between"}}>
+              <span>⚠ <strong>{notEnrolled401k.length}</strong> employee{notEnrolled401k.length>1?"s":""} not enrolled in 401(k): {notEnrolled401k.map(b=>b.name).join(", ")}</span>
+              <button className="btn bg" style={{fontSize:10,borderColor:"#f59e0b",color:"#f59e0b"}} onClick={()=>setSub("401k")}>Review →</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Monthly Benefits Cost", v:fmt(totalMonthly),           c:"#38bdf8" },
+          { l:"Annual Benefits Cost",  v:fmt(totalAnnual),            c:"#a78bfa" },
+          { l:"Annual 401k Match",     v:fmt(total401kMatch),         c:"#34d399" },
+          { l:"401k Participation",    v:`${enrolled401k}/${benefits.length}`, c:enrolled401k===benefits.length?"#34d399":"#f59e0b" },
+          { l:"Total Benefits Burden", v:fmt((totalAnnual+total401kMatch)/benefits.length)+"/ee", c:"#f59e0b" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:k.v.length>8?16:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:18,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>{setSub(t.id);if(t.id!=="enrollment"){setEditId(null);setEditForm(null);}}}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── OVERVIEW ── */}
+      {sub==="overview"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          {/* Plan summary cards */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div className="section-hdr">Health Plan Enrollment</div>
+            {HEALTH_PLANS.map(plan=>{
+              const enrolled = benefits.filter(b=>b.healthPlan===plan.id);
+              if (enrolled.length===0) return null;
+              return (
+                <div key={plan.id} style={{marginBottom:12,padding:"10px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#cbd5e1"}}>{plan.name}</div>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      {plan.hsaEligible&&<span className="bdg" style={{background:"#021f14",color:"#34d399",fontSize:8}}>HSA</span>}
+                      <span style={{fontSize:11,color:"#475569"}}>{enrolled.length} enrolled</span>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,fontSize:10,marginBottom:8}}>
+                    <div style={{color:"#3d5a7a"}}>EE Premium: <span style={{color:"#94a3b8",fontFamily:"monospace"}}>${plan.premium_ee}/mo</span></div>
+                    <div style={{color:"#3d5a7a"}}>Deductible: <span style={{color:"#94a3b8",fontFamily:"monospace"}}>${plan.deductible.toLocaleString()}</span></div>
+                    <div style={{color:"#3d5a7a"}}>OOP Max: <span style={{color:"#94a3b8",fontFamily:"monospace"}}>${plan.oop_max.toLocaleString()}</span></div>
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {enrolled.map(b=>(
+                      <div key={b.id} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:12,background:"#0c2340",border:"1px solid #1a2d45"}}>
+                        <Avatar name={b.name} size={14}/>
+                        <span style={{fontSize:10,color:"#64748b"}}>{b.name.split(" ")[0]}</span>
+                        <span style={{fontSize:9,color:"#1e3a5f"}}>·{TIER_LABELS[b.healthTier]?.replace("EE ","")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Per-employee summary */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div className="section-hdr">Employee Benefits Summary</div>
+            {benefits.map(b=>{
+              const monthly = totalMonthlyCost(b);
+              const plan    = HEALTH_PLANS.find(p=>p.id===b.healthPlan);
+              const pctOf   = b.salary>0 ? (monthly*12/b.salary*100).toFixed(1) : 0;
+              return (
+                <div key={b.id}
+                  onClick={()=>setSelId(selId===b.id?null:b.id)}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #070b14",cursor:"pointer"}}>
+                  <Avatar name={b.name} size={32}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{b.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginTop:1}}>{plan?.name||"—"} · {TIER_LABELS[b.healthTier]}</div>
+                    {/* Mini bar */}
+                    <div style={{marginTop:4,height:3,background:"#1a2d45",borderRadius:2,overflow:"hidden"}}>
+                      <div style={{height:3,width:`${Math.min(100,parseFloat(pctOf))}%`,background:"#0369a1",borderRadius:2}}/>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:13,fontFamily:"'DM Mono',monospace",fontWeight:700,color:"#38bdf8"}}>{fmt(monthly)}<span style={{fontSize:9,color:"#3d5a7a"}}>/mo</span></div>
+                    <div style={{fontSize:9,color:"#1e3a5f",marginTop:1}}>{pctOf}% of salary</div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+                    {!b.beneficiaryOnFile&&<span style={{fontSize:8,padding:"1px 4px",borderRadius:4,background:"#1a0808",color:"#f87171"}}>No Benef.</span>}
+                    {!b.k401_enrolled&&<span style={{fontSize:8,padding:"1px 4px",borderRadius:4,background:"#1a1000",color:"#f59e0b"}}>No 401k</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Supplemental insurance summary */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div className="section-hdr">Supplemental Coverage</div>
+            <table style={{width:"100%",fontSize:11,borderCollapse:"collapse"}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                  {["Employee","Dental","Vision","Life","STD","LTD"].map(h=>(
+                    <th key={h} style={{padding:"6px 8px",textAlign:h==="Employee"?"left":"center",color:"#3d5a7a",fontSize:10,fontWeight:600}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {benefits.map(b=>{
+                  const dental = DENTAL_PLANS.find(p=>p.id===b.dentalPlan);
+                  const vision = VISION_PLANS.find(p=>p.id===b.visionPlan);
+                  return (
+                    <tr key={b.id} style={{borderBottom:"1px solid #070b14"}}>
+                      <td style={{padding:"7px 8px",color:"#94a3b8",fontWeight:500}}>{b.name.split(" ")[0]}</td>
+                      <td style={{padding:"7px 8px",textAlign:"center",fontSize:10,color:"#64748b"}}>{dental?.name.replace("Delta Dental ","")}</td>
+                      <td style={{padding:"7px 8px",textAlign:"center",fontSize:10,color:"#64748b"}}>{vision?.name.replace("VSP ","")}</td>
+                      <td style={{padding:"7px 8px",textAlign:"center"}}>{b.lifeInsured?<span style={{color:"#34d399",fontSize:11}}>✓ {b.lifeMultiple}x</span>:<span style={{color:"#f87171",fontSize:11}}>✗</span>}</td>
+                      <td style={{padding:"7px 8px",textAlign:"center"}}>{b.stdEnrolled?<span style={{color:"#34d399",fontSize:11}}>✓</span>:<span style={{color:"#f87171",fontSize:11}}>✗</span>}</td>
+                      <td style={{padding:"7px 8px",textAlign:"center"}}>{b.ltdEnrolled?<span style={{color:"#34d399",fontSize:11}}>✓</span>:<span style={{color:"#f87171",fontSize:11}}>✗</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* FSA / HSA balances */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div className="section-hdr">HSA / FSA Account Balances</div>
+            <div style={{marginBottom:12,padding:"10px 12px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45",fontSize:11,color:"#3d5a7a"}}>
+              2026 IRS Limits: HSA Single <span style={{color:"#38bdf8",fontFamily:"monospace"}}>${LIMIT_HSA_SINGLE.toLocaleString()}</span> · HSA Family <span style={{color:"#38bdf8",fontFamily:"monospace"}}>${LIMIT_HSA_FAMILY.toLocaleString()}</span> · FSA <span style={{color:"#38bdf8",fontFamily:"monospace"}}>${LIMIT_FSA.toLocaleString()}</span>
+            </div>
+            {benefits.map(b=>{
+              const hasHSA = b.hsa>0;
+              const hasFSA = b.fsaBalance>0;
+              const hsaLimit = b.healthTier==="family"?LIMIT_HSA_FAMILY:LIMIT_HSA_SINGLE;
+              if (!hasHSA&&!hasFSA) return (
+                <div key={b.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:"1px solid #070b14",opacity:0.4}}>
+                  <Avatar name={b.name} size={22}/>
+                  <span style={{fontSize:11,color:"#1e3a5f"}}>{b.name} — no HSA/FSA</span>
+                </div>
+              );
+              return (
+                <div key={b.id} style={{padding:"8px 0",borderBottom:"1px solid #070b14"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                    <Avatar name={b.name} size={22}/>
+                    <span style={{fontSize:12,fontWeight:600,color:"#94a3b8"}}>{b.name}</span>
+                  </div>
+                  {hasHSA&&(
+                    <div style={{marginLeft:30,marginBottom:4}}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:2}}>
+                        <span style={{color:"#34d399"}}>HSA Balance</span>
+                        <span style={{color:"#34d399",fontFamily:"monospace"}}>${b.hsa.toLocaleString()} / ${hsaLimit.toLocaleString()}</span>
+                      </div>
+                      <div style={{height:5,background:"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:5,width:`${Math.min(100,b.hsa/hsaLimit*100)}%`,background:"#34d399",borderRadius:3}}/>
+                      </div>
+                    </div>
+                  )}
+                  {hasFSA&&(
+                    <div style={{marginLeft:30}}>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:2}}>
+                        <span style={{color:"#f59e0b"}}>FSA Balance</span>
+                        <span style={{color:"#f59e0b",fontFamily:"monospace"}}>${b.fsaBalance.toLocaleString()} / ${LIMIT_FSA.toLocaleString()}</span>
+                      </div>
+                      <div style={{height:5,background:"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:5,width:`${Math.min(100,b.fsaBalance/LIMIT_FSA*100)}%`,background:"#f59e0b",borderRadius:3}}/>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── ENROLLMENT ── */}
+      {sub==="enrollment"&&(
+        <div>
+          {editId&&editForm ? (
+            // Edit form
+            <div className="card" style={{padding:"22px 24px",maxWidth:700}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                <div className="section-hdr" style={{margin:0}}>Edit Enrollment — {editForm.name}</div>
+                <div style={{display:"flex",gap:8}}>
+                  <button className="btn bg" style={{fontSize:11}} onClick={cancelEdit}>Cancel</button>
+                  <button className="btn bp" style={{fontSize:11}} onClick={saveEdit}>Save Changes</button>
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                <div>
+                  <div className="section-hdr" style={{fontSize:11}}>Health Insurance</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div>
+                      <div className="lbl">Health Plan</div>
+                      <select className="inp" value={editForm.healthPlan} onChange={e=>setEditForm(f=>({...f,healthPlan:e.target.value}))}>
+                        {HEALTH_PLANS.map(p=><option key={p.id} value={p.id}>{p.name} (${p.premium_ee}/mo EE)</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <div className="lbl">Coverage Tier</div>
+                      <select className="inp" value={editForm.healthTier} onChange={e=>setEditForm(f=>({...f,healthTier:e.target.value}))}>
+                        {Object.entries(TIER_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <div className="lbl">Dental Plan</div>
+                      <select className="inp" value={editForm.dentalPlan} onChange={e=>setEditForm(f=>({...f,dentalPlan:e.target.value}))}>
+                        {DENTAL_PLANS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <div className="lbl">Vision Plan</div>
+                      <select className="inp" value={editForm.visionPlan} onChange={e=>setEditForm(f=>({...f,visionPlan:e.target.value}))}>
+                        {VISION_PLANS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="section-hdr" style={{fontSize:11}}>Supplemental Insurance</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+                    {[
+                      ["Life Insurance", "lifeInsured"],
+                      ["STD (Short-Term Disability)", "stdEnrolled"],
+                      ["LTD (Long-Term Disability)", "ltdEnrolled"],
+                    ].map(([label,field])=>(
+                      <label key={field} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 10px",background:"#070c18",borderRadius:6,border:"1px solid #1a2d45"}}>
+                        <input type="checkbox" checked={!!editForm[field]} onChange={e=>setEditForm(f=>({...f,[field]:e.target.checked}))} style={{accentColor:"#0369a1"}}/>
+                        <span style={{fontSize:11,color:"#94a3b8"}}>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {editForm.lifeInsured&&(
+                    <div style={{marginTop:10}}>
+                      <div className="lbl">Life Coverage Multiple (x salary)</div>
+                      <select className="inp" style={{width:150}} value={editForm.lifeMultiple} onChange={e=>setEditForm(f=>({...f,lifeMultiple:+e.target.value}))}>
+                        {[1,2,3,4].map(n=><option key={n} value={n}>{n}x (${(editForm.salary*n).toLocaleString()})</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="section-hdr" style={{fontSize:11}}>HSA / FSA</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div>
+                      <div className="lbl">HSA Balance ($)</div>
+                      <input className="inp" type="number" value={editForm.hsa} onChange={e=>setEditForm(f=>({...f,hsa:+e.target.value}))} disabled={!HEALTH_PLANS.find(p=>p.id===editForm.healthPlan)?.hsaEligible}/>
+                      {!HEALTH_PLANS.find(p=>p.id===editForm.healthPlan)?.hsaEligible&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:2}}>HSA requires HDHP enrollment</div>}
+                    </div>
+                    <div>
+                      <div className="lbl">FSA Balance ($)</div>
+                      <input className="inp" type="number" value={editForm.fsaBalance} onChange={e=>setEditForm(f=>({...f,fsaBalance:+e.target.value}))}/>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="section-hdr" style={{fontSize:11}}>Administrative</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 10px",background:"#070c18",borderRadius:6,border:"1px solid #1a2d45"}}>
+                      <input type="checkbox" checked={!!editForm.beneficiaryOnFile} onChange={e=>setEditForm(f=>({...f,beneficiaryOnFile:e.target.checked}))} style={{accentColor:"#0369a1"}}/>
+                      <span style={{fontSize:11,color:"#94a3b8"}}>Beneficiary Form on File</span>
+                    </label>
+                    <div>
+                      <div className="lbl">Open Enrollment Date</div>
+                      <input className="inp" type="date" value={editForm.openEnrollment} onChange={e=>setEditForm(f=>({...f,openEnrollment:e.target.value}))}/>
+                    </div>
+                  </div>
+                  <div style={{marginTop:10}}>
+                    <div className="lbl">Notes</div>
+                    <textarea className="inp" rows={2} value={editForm.notes} onChange={e=>setEditForm(f=>({...f,notes:e.target.value}))}/>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Enrollment grid
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              {benefits.map(b=>{
+                const plan    = HEALTH_PLANS.find(p=>p.id===b.healthPlan);
+                const dental  = DENTAL_PLANS.find(p=>p.id===b.dentalPlan);
+                const vision  = VISION_PLANS.find(p=>p.id===b.visionPlan);
+                const monthly = totalMonthlyCost(b);
+                const alerts  = [];
+                if (!b.beneficiaryOnFile) alerts.push({msg:"Missing beneficiary form",c:"#f87171"});
+                if (!b.k401_enrolled)     alerts.push({msg:"Not enrolled in 401(k)",c:"#f59e0b"});
+                if (plan?.hsaEligible&&b.hsa===0) alerts.push({msg:"HSA eligible, $0 balance",c:"#f59e0b"});
+
+                return (
+                  <div key={b.id} className="card" style={{padding:"16px 18px",borderLeft:`3px solid ${alerts.length>0?"#f59e0b":"#34d399"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        <Avatar name={b.name} size={36}/>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{b.name}</div>
+                          <div style={{fontSize:10,color:"#3d5a7a"}}>{fmt(b.salary)}/yr salary</div>
+                        </div>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:16,fontWeight:800,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{fmt(monthly)}<span style={{fontSize:9,color:"#3d5a7a"}}>/mo</span></div>
+                        <button className="btn bg" style={{fontSize:10,padding:"3px 8px",marginTop:4}} onClick={()=>openEdit(b)}>Edit</button>
+                      </div>
+                    </div>
+
+                    {alerts.length>0&&(
+                      <div style={{marginBottom:10,display:"flex",flexDirection:"column",gap:3}}>
+                        {alerts.map(a=><div key={a.msg} style={{fontSize:10,color:a.c,padding:"3px 8px",background:a.c+"11",borderRadius:4,border:`1px solid ${a.c}33`}}>⚠ {a.msg}</div>)}
+                      </div>
+                    )}
+
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,fontSize:11}}>
+                      {[
+                        ["Health",   `${plan?.name||"—"} · ${TIER_LABELS[b.healthTier]}`,   fmt(monthlyHealthCost(b))+"/mo"],
+                        ["Dental",   dental?.name||"—",                                       fmt(monthlyDentalCost(b))+"/mo"],
+                        ["Vision",   vision?.name||"—",                                       fmt(monthlyVisionCost(b))+"/mo"],
+                        ["Life",     b.lifeInsured?`${b.lifeMultiple}x = ${fmt(b.salary*b.lifeMultiple)}`:"Not enrolled", b.lifeInsured?fmt(monthlyLifeCost(b))+"/mo":"—"],
+                        ["STD",      b.stdEnrolled?"Enrolled":"Not enrolled",                 b.stdEnrolled?fmt(monthlySTDCost(b))+"/mo":"—"],
+                        ["LTD",      b.ltdEnrolled?"Enrolled":"Not enrolled",                 b.ltdEnrolled?fmt(monthlyLTDCost(b))+"/mo":"—"],
+                      ].map(([l,v,cost])=>(
+                        <div key={l} style={{padding:"6px 8px",background:"#070c18",borderRadius:6,border:"1px solid #111d2d"}}>
+                          <div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{l}</div>
+                          <div style={{color:"#94a3b8",lineHeight:1.3,fontSize:10}}>{v}</div>
+                          {cost&&<div style={{fontSize:10,color:"#475569",fontFamily:"monospace",marginTop:2}}>{cost}</div>}
+                        </div>
+                      ))}
+                    </div>
+
+                    {b.notes&&<div style={{marginTop:10,fontSize:10,color:"#3d5a7a",fontStyle:"italic"}}>{b.notes}</div>}
+                    <div style={{marginTop:8,fontSize:9,color:"#1e3a5f"}}>Open Enrollment: {b.openEnrollment}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 401k ── */}
+      {sub==="401k"&&(
+        <div>
+          <div style={{marginBottom:14,padding:"12px 16px",background:"#0a1a00",borderRadius:8,border:"1px solid #34d39933",fontSize:11,color:"#34d399"}}>
+            2026 IRS Limits: Employee contribution <span style={{fontFamily:"monospace"}}>${LIMIT_401K_EE.toLocaleString()}</span> · Total (incl. employer) <span style={{fontFamily:"monospace"}}>${LIMIT_401K_TOTAL.toLocaleString()}</span>. Catch-up (+$7,500) for age 50+.
+          </div>
+          <div className="card">
+            <div className="tr" style={{gridTemplateColumns:"1.6fr 60px 60px 90px 90px 90px 90px 60px",padding:"8px 18px"}}>
+              {["Employee","% EE","Match%","EE YTD","Match YTD","EE Annual","Max Room","Enrolled"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {benefits.map(b=>{
+              const annEE       = b.salary * b.k401_pct / 100;
+              const limitRoom   = LIMIT_401K_EE - b.k401_ytd;
+              const pctUsed     = Math.min(100, b.k401_ytd / LIMIT_401K_EE * 100);
+              return (
+                <div key={b.id} className="tr"
+                  style={{gridTemplateColumns:"1.6fr 60px 60px 90px 90px 90px 90px 60px",
+                    borderLeft:`3px solid ${b.k401_enrolled?"#34d399":"#f87171"}`,
+                    background:!b.k401_enrolled?"#0a0500":undefined}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <Avatar name={b.name} size={24}/>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{b.name}</div>
+                      <div style={{width:80,height:3,background:"#1a2d45",borderRadius:2,marginTop:3,overflow:"hidden"}}>
+                        <div style={{height:3,width:`${pctUsed}%`,background:pctUsed>80?"#34d399":"#0369a1",borderRadius:2}}/>
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:b.k401_enrolled?"#94a3b8":"#f87171"}}>{b.k401_enrolled?b.k401_pct+"%":"—"}</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#34d399"}}>{b.k401_enrolled?b.k401_match_pct+"%":"—"}</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#38bdf8"}}>{b.k401_enrolled?fmt(b.k401_ytd):"—"}</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#34d399"}}>{b.k401_enrolled?fmt(b.k401_match_ytd):"—"}</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#94a3b8"}}>{b.k401_enrolled?fmt(annEE):"—"}</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:limitRoom<5000?"#f59e0b":"#475569"}}>{b.k401_enrolled?fmt(limitRoom):"—"}</span>
+                  <span style={{color:b.k401_enrolled?"#34d399":"#f87171",fontSize:13,fontWeight:700}}>{b.k401_enrolled?"✓":"✗"}</span>
+                </div>
+              );
+            })}
+            {/* Totals row */}
+            <div className="tr" style={{gridTemplateColumns:"1.6fr 60px 60px 90px 90px 90px 90px 60px",padding:"10px 18px",background:"#060d1c",borderTop:"2px solid #1a2d45"}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>Total</span>
+              <span/>
+              <span/>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:800,color:"#38bdf8"}}>{fmt(benefits.reduce((s,b)=>s+b.k401_ytd,0))}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:800,color:"#34d399"}}>{fmt(benefits.reduce((s,b)=>s+b.k401_match_ytd,0))}</span>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:800,color:"#94a3b8"}}>{fmt(benefits.reduce((s,b)=>s+b.salary*b.k401_pct/100,0))}</span>
+              <span/>
+              <span/>
+            </div>
+          </div>
+
+          {/* 401k bar chart */}
+          <div className="card" style={{padding:"18px 20px",marginTop:14}}>
+            <div className="section-hdr">Contribution vs. Limit</div>
+            {benefits.filter(b=>b.k401_enrolled).map(b=>{
+              const pct = Math.min(100, b.k401_ytd / LIMIT_401K_EE * 100);
+              return (
+                <div key={b.id} style={{marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}>
+                    <span style={{color:"#94a3b8"}}>{b.name}</span>
+                    <span style={{color:"#64748b",fontFamily:"monospace"}}>{fmt(b.k401_ytd)} / ${LIMIT_401K_EE.toLocaleString()} ({pct.toFixed(0)}%)</span>
+                  </div>
+                  <div style={{height:10,background:"#1a2d45",borderRadius:5,overflow:"hidden",display:"flex"}}>
+                    <div style={{height:10,width:`${pct}%`,background:pct>80?"#34d399":pct>50?"#0369a1":"#1d4ed8",borderRadius:5,transition:"width 0.3s"}}/>
+                    <div style={{height:10,width:`${Math.min(100,b.k401_match_ytd/LIMIT_401K_EE*100)}%`,background:"#34d39944"}}/>
+                  </div>
+                  <div style={{fontSize:9,color:"#1e3a5f",marginTop:2}}>
+                    EE: {fmt(b.k401_ytd)} · Employer match: {fmt(b.k401_match_ytd)} · Remaining: {fmt(LIMIT_401K_EE-b.k401_ytd)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── COST ANALYSIS ── */}
+      {sub==="costs"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          {/* Cost breakdown table */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div className="section-hdr">Monthly Cost per Employee</div>
+            <table style={{width:"100%",fontSize:11,borderCollapse:"collapse"}}>
+              <thead>
+                <tr style={{borderBottom:"2px solid #1a2d45"}}>
+                  {["Employee","Health","Dental","Vision","Life","STD","LTD","HSA","Total"].map(h=>(
+                    <th key={h} style={{padding:"6px 6px",textAlign:h==="Employee"?"left":"right",color:"#3d5a7a",fontSize:9,fontWeight:600}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {benefits.map(b=>{
+                  const costs = [monthlyHealthCost(b),monthlyDentalCost(b),monthlyVisionCost(b),monthlyLifeCost(b),monthlySTDCost(b),monthlyLTDCost(b),monthlyHSAContrib(b)];
+                  return (
+                    <tr key={b.id} style={{borderBottom:"1px solid #070b14"}}>
+                      <td style={{padding:"6px 6px",color:"#94a3b8",whiteSpace:"nowrap"}}>{b.name.split(" ")[0]}</td>
+                      {costs.map((c,i)=>(
+                        <td key={i} style={{padding:"6px 6px",textAlign:"right",fontFamily:"monospace",color:c>0?"#475569":"#1e3a5f",fontSize:10}}>{c>0?"$"+c:""}</td>
+                      ))}
+                      <td style={{padding:"6px 6px",textAlign:"right",fontFamily:"monospace",fontWeight:700,color:"#38bdf8",fontSize:11}}>${totalMonthlyCost(b).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{borderTop:"2px solid #1a2d45",background:"#060d1c"}}>
+                  <td style={{padding:"8px 6px",fontWeight:700,color:"#e2e8f0",fontSize:12}}>Total</td>
+                  {["Health","Dental","Vision","Life","STD","LTD","HSA"].map((_,i)=>{
+                    const fns=[monthlyHealthCost,monthlyDentalCost,monthlyVisionCost,monthlyLifeCost,monthlySTDCost,monthlyLTDCost,monthlyHSAContrib];
+                    const total=benefits.reduce((s,b)=>s+fns[i](b),0);
+                    return <td key={i} style={{padding:"8px 6px",textAlign:"right",fontFamily:"monospace",fontWeight:600,color:"#64748b",fontSize:10}}>${total}</td>;
+                  })}
+                  <td style={{padding:"8px 6px",textAlign:"right",fontFamily:"monospace",fontWeight:800,color:"#38bdf8",fontSize:13}}>{fmt(totalMonthly)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Annual totals + 401k */}
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div className="section-hdr">Annual Employer Cost Summary</div>
+              {[
+                ["Health Insurance",       fmt(benefits.reduce((s,b)=>s+monthlyHealthCost(b)*12,0)),   "#38bdf8"],
+                ["Dental Insurance",       fmt(benefits.reduce((s,b)=>s+monthlyDentalCost(b)*12,0)),   "#64748b"],
+                ["Vision Insurance",       fmt(benefits.reduce((s,b)=>s+monthlyVisionCost(b)*12,0)),   "#64748b"],
+                ["Life Insurance",         fmt(benefits.reduce((s,b)=>s+monthlyLifeCost(b)*12,0)),     "#64748b"],
+                ["STD / LTD",             fmt(benefits.reduce((s,b)=>s+(monthlySTDCost(b)+monthlyLTDCost(b))*12,0)), "#64748b"],
+                ["HSA Employer Contrib",   fmt(benefits.reduce((s,b)=>s+monthlyHSAContrib(b)*12,0)),   "#34d399"],
+                ["401(k) Match (annual)",  fmt(total401kMatch),                                        "#a78bfa"],
+              ].map(([l,v,c])=>(
+                <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #070b14"}}>
+                  <span style={{fontSize:11,color:"#64748b"}}>{l}</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:600,color:c}}>{v}</span>
+                </div>
+              ))}
+              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",borderTop:"2px solid #1a2d45",marginTop:6}}>
+                <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Total Annual Benefits Burden</span>
+                <span style={{fontSize:16,fontFamily:"'DM Mono',monospace",fontWeight:800,color:"#38bdf8"}}>{fmt(totalAnnual+total401kMatch)}</span>
+              </div>
+            </div>
+
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div className="section-hdr">Cost as % of Salary</div>
+              {benefits.map(b=>{
+                const total = totalMonthlyCost(b)*12 + annual401kMatchCost(b);
+                const pct   = b.salary>0?(total/b.salary*100).toFixed(1):0;
+                return (
+                  <div key={b.id} style={{marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}>
+                      <span style={{color:"#94a3b8"}}>{b.name}</span>
+                      <span style={{color:"#64748b",fontFamily:"monospace"}}>{fmt(total)} ({pct}%)</span>
+                    </div>
+                    <div style={{height:8,background:"#1a2d45",borderRadius:4,overflow:"hidden"}}>
+                      <div style={{height:8,width:`${Math.min(100,parseFloat(pct)/30*100)}%`,background:parseFloat(pct)>25?"#f59e0b":"#0369a1",borderRadius:4}}/>
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{marginTop:10,fontSize:10,color:"#1e3a5f",padding:"8px",background:"#070c18",borderRadius:6}}>
+                Industry benchmark: benefits typically represent 20–30% of base salary.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// CUSTOM REPORT BUILDER
+// =============================================================================
+
+// ── Report data sources — each maps to live shared state ─────────────────────
+function buildReportSources(shared) {
+  const { roster, clients, finInvoices, finPayments, finExpenses, projects, tasks, risks,
+          changeOrders, tsSubmissions, candidates, offers, crmDeals, crmAccounts,
+          vendors, apInvoices, ptoRequests, workAuth, compDocs, benefits } = shared;
+
+  // Enrich roster with calculated fields
+  const enrichedRoster = (roster||[]).map(r => {
+    const annRev  = (r.billRate||0) * (r.utilization||0)/100 * 1920;
+    const burden  = r.type==="FTE"
+      ? (r.salary||0)*(1+(7.65+0.6+2.7+0.5+3+1.5)/100)+7200
+      : (r.fixedRate||r.billRate*0.7||0)*1920*(r.revShare||70)/100*0 + (r.fixedRate||r.billRate*0.7)*1920;
+    return { ...r, annualRevenue: Math.round(annRev), annualCost: Math.round(burden),
+      margin: annRev>0?Math.round((annRev-burden)/annRev*100):0 };
+  });
+
+  const enrichedInvoices = (finInvoices||[]).map(inv => {
+    const paid = (finPayments||[]).filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0);
+    const overdueDays = inv.dueDate && inv.status!=="paid"
+      ? Math.max(0, Math.round((new Date(TODAY_STR)-new Date(inv.dueDate))/86400000)) : 0;
+    return { ...inv, amountPaid: paid, balance: inv.amount-paid, overdueDays };
+  });
+
+  return [
+    {
+      id: "roster", label: "Team Roster", icon: "👥", group: "People",
+      rows: enrichedRoster,
+      fields: [
+        { id:"name",          label:"Name",             type:"string"  },
+        { id:"type",          label:"Type",             type:"string"  },
+        { id:"role",          label:"Role / Title",     type:"string"  },
+        { id:"client",        label:"Current Client",   type:"string"  },
+        { id:"billRate",      label:"Bill Rate",        type:"currency"},
+        { id:"utilization",   label:"Utilization %",    type:"pct"     },
+        { id:"salary",        label:"Salary",           type:"currency"},
+        { id:"annualRevenue", label:"Annual Revenue",   type:"currency"},
+        { id:"annualCost",    label:"Annual Cost",      type:"currency"},
+        { id:"margin",        label:"Margin %",         type:"pct"     },
+        { id:"skills",        label:"Skills",           type:"string"  },
+      ],
+    },
+    {
+      id: "invoices", label: "Invoices (AR)", icon: "🧾", group: "Finance",
+      rows: enrichedInvoices,
+      fields: [
+        { id:"number",      label:"Invoice #",      type:"string"  },
+        { id:"client",      label:"Client",         type:"string"  },
+        { id:"issueDate",   label:"Issue Date",     type:"date"    },
+        { id:"dueDate",     label:"Due Date",       type:"date"    },
+        { id:"amount",      label:"Amount",         type:"currency"},
+        { id:"amountPaid",  label:"Paid",           type:"currency"},
+        { id:"balance",     label:"Balance Due",    type:"currency"},
+        { id:"status",      label:"Status",         type:"string"  },
+        { id:"overdueDays", label:"Days Overdue",   type:"number"  },
+        { id:"project",     label:"Project",        type:"string"  },
+      ],
+    },
+    {
+      id: "expenses", label: "Expenses", icon: "💸", group: "Finance",
+      rows: finExpenses||[],
+      fields: [
+        { id:"date",        label:"Date",           type:"date"    },
+        { id:"description", label:"Description",    type:"string"  },
+        { id:"category",    label:"Category",       type:"string"  },
+        { id:"amount",      label:"Amount",         type:"currency"},
+        { id:"vendor",      label:"Vendor",         type:"string"  },
+        { id:"status",      label:"Status",         type:"string"  },
+      ],
+    },
+    {
+      id: "projects", label: "Projects", icon: "📊", group: "Delivery",
+      rows: (projects||[]).map(p=>({
+        ...p,
+        burnPct: p.budget>0?Math.round((p.spent||0)/p.budget*100):0,
+        remaining: (p.budget||0)-(p.spent||0),
+      })),
+      fields: [
+        { id:"name",      label:"Project Name",   type:"string"  },
+        { id:"client",    label:"Client",         type:"string"  },
+        { id:"pm",        label:"PM",             type:"string"  },
+        { id:"status",    label:"Status",         type:"string"  },
+        { id:"health",    label:"Health",         type:"string"  },
+        { id:"budget",    label:"Budget",         type:"currency"},
+        { id:"spent",     label:"Spent",          type:"currency"},
+        { id:"remaining", label:"Remaining",      type:"currency"},
+        { id:"burnPct",   label:"Burn %",         type:"pct"     },
+        { id:"startDate", label:"Start Date",     type:"date"    },
+        { id:"endDate",   label:"End Date",       type:"date"    },
+      ],
+    },
+    {
+      id: "deals", label: "CRM Deals", icon: "🤝", group: "Sales",
+      rows: crmDeals||[],
+      fields: [
+        { id:"name",      label:"Deal Name",      type:"string"  },
+        { id:"account",   label:"Account",        type:"string"  },
+        { id:"stage",     label:"Stage",          type:"string"  },
+        { id:"value",     label:"Value",          type:"currency"},
+        { id:"prob",      label:"Probability %",  type:"pct"     },
+        { id:"closeDate", label:"Close Date",     type:"date"    },
+        { id:"owner",     label:"Owner",          type:"string"  },
+        { id:"source",    label:"Source",         type:"string"  },
+      ],
+    },
+    {
+      id: "timesheets", label: "Timesheets", icon: "⏱", group: "Delivery",
+      rows: (tsSubmissions||[]).map(ts=>({
+        ...ts,
+        revenue: (ts.hours||0)*(ts.billRate||0),
+      })),
+      fields: [
+        { id:"period",    label:"Period",         type:"string"  },
+        { id:"consultant",label:"Consultant",     type:"string"  },
+        { id:"client",    label:"Client",         type:"string"  },
+        { id:"hours",     label:"Hours",          type:"number"  },
+        { id:"billRate",  label:"Bill Rate",      type:"currency"},
+        { id:"revenue",   label:"Revenue",        type:"currency"},
+        { id:"status",    label:"Status",         type:"string"  },
+      ],
+    },
+    {
+      id: "pto", label: "PTO Requests", icon: "🏖", group: "People",
+      rows: ptoRequests||[],
+      fields: [
+        { id:"employee",  label:"Employee",       type:"string"  },
+        { id:"type",      label:"Leave Type",     type:"string"  },
+        { id:"startDate", label:"Start Date",     type:"date"    },
+        { id:"endDate",   label:"End Date",       type:"date"    },
+        { id:"days",      label:"Days",           type:"number"  },
+        { id:"status",    label:"Status",         type:"string"  },
+        { id:"notes",     label:"Notes",          type:"string"  },
+      ],
+    },
+    {
+      id: "workauth", label: "Work Authorization", icon: "🛡️", group: "People",
+      rows: (workAuth||[]).map(wa=>({
+        ...wa,
+        daysUntilExpiry: daysUntil(wa.expiry),
+        urgency: urgencyLevel(daysUntil(wa.expiry)),
+      })),
+      fields: [
+        { id:"memberId",        label:"Employee ID",    type:"string"  },
+        { id:"visaType",        label:"Visa Type",      type:"string"  },
+        { id:"expiry",          label:"Expiry Date",    type:"date"    },
+        { id:"daysUntilExpiry", label:"Days Until Exp", type:"number"  },
+        { id:"urgency",         label:"Urgency",        type:"string"  },
+        { id:"status",          label:"Status",         type:"string"  },
+      ],
+    },
+    {
+      id: "apinvoices", label: "AP Invoices", icon: "📥", group: "Finance",
+      rows: apInvoices||[],
+      fields: [
+        { id:"number",    label:"Invoice #",      type:"string"  },
+        { id:"vendor",    label:"Vendor",         type:"string"  },
+        { id:"amount",    label:"Amount",         type:"currency"},
+        { id:"dueDate",   label:"Due Date",       type:"date"    },
+        { id:"status",    label:"Status",         type:"string"  },
+        { id:"category",  label:"Category",       type:"string"  },
+      ],
+    },
+    {
+      id: "candidates", label: "Candidates", icon: "👤", group: "Hiring",
+      rows: candidates||[],
+      fields: [
+        { id:"name",      label:"Name",           type:"string"  },
+        { id:"role",      label:"Role",           type:"string"  },
+        { id:"stage",     label:"Stage",          type:"string"  },
+        { id:"source",    label:"Source",         type:"string"  },
+        { id:"rate",      label:"Rate",           type:"currency"},
+        { id:"status",    label:"Status",         type:"string"  },
+      ],
+    },
+  ];
+}
+
+// ── Saved report templates ────────────────────────────────────────────────────
+const REPORT_TEMPLATES = [
+  {
+    id:"tpl_ar_aging",   label:"AR Aging Report",      icon:"🧾",
+    sourceId:"invoices",
+    columns:["number","client","issueDate","dueDate","amount","balance","overdueDays","status"],
+    filters:[{ field:"status", op:"neq", value:"paid" }],
+    sortField:"overdueDays", sortDir:"desc",
+    groupBy:"",
+  },
+  {
+    id:"tpl_roster_margin", label:"Roster Margin Analysis", icon:"👥",
+    sourceId:"roster",
+    columns:["name","type","client","billRate","salary","annualRevenue","annualCost","margin"],
+    filters:[],
+    sortField:"margin", sortDir:"desc",
+    groupBy:"type",
+  },
+  {
+    id:"tpl_project_health", label:"Project Health Dashboard", icon:"📊",
+    sourceId:"projects",
+    columns:["name","client","pm","health","status","budget","spent","burnPct","endDate"],
+    filters:[],
+    sortField:"burnPct", sortDir:"desc",
+    groupBy:"health",
+  },
+  {
+    id:"tpl_deal_pipeline", label:"Sales Pipeline Summary", icon:"🤝",
+    sourceId:"deals",
+    columns:["name","account","stage","value","prob","closeDate","owner"],
+    filters:[{ field:"stage", op:"neq", value:"Closed Lost" }],
+    sortField:"value", sortDir:"desc",
+    groupBy:"stage",
+  },
+  {
+    id:"tpl_compliance", label:"Compliance Expiry Report", icon:"🛡️",
+    sourceId:"workauth",
+    columns:["memberId","visaType","expiry","daysUntilExpiry","urgency","status"],
+    filters:[{ field:"daysUntilExpiry", op:"lt", value:"180" }],
+    sortField:"daysUntilExpiry", sortDir:"asc",
+    groupBy:"urgency",
+  },
+  {
+    id:"tpl_timesheet_rev", label:"Timesheet Revenue by Consultant", icon:"⏱",
+    sourceId:"timesheets",
+    columns:["consultant","client","period","hours","billRate","revenue","status"],
+    filters:[],
+    sortField:"revenue", sortDir:"desc",
+    groupBy:"consultant",
+  },
+];
+
+const FILTER_OPS = [
+  { id:"eq",       label:"= equals"        },
+  { id:"neq",      label:"≠ not equals"    },
+  { id:"contains", label:"contains"        },
+  { id:"gt",       label:"> greater than"  },
+  { id:"lt",       label:"< less than"     },
+  { id:"gte",      label:"≥ ≥"             },
+  { id:"lte",      label:"≤ ≤"             },
+  { id:"empty",    label:"is empty"        },
+  { id:"notempty", label:"is not empty"    },
+];
+
+function applyFilter(row, filter) {
+  const raw = row[filter.field];
+  const v   = String(raw||"").toLowerCase();
+  const fv  = String(filter.value||"").toLowerCase();
+  switch(filter.op) {
+    case "eq":       return v === fv;
+    case "neq":      return v !== fv;
+    case "contains": return v.includes(fv);
+    case "gt":       return parseFloat(raw||0) > parseFloat(filter.value||0);
+    case "lt":       return parseFloat(raw||0) < parseFloat(filter.value||0);
+    case "gte":      return parseFloat(raw||0) >= parseFloat(filter.value||0);
+    case "lte":      return parseFloat(raw||0) <= parseFloat(filter.value||0);
+    case "empty":    return !raw || raw === "" || raw === 0;
+    case "notempty": return !!raw && raw !== "" && raw !== 0;
+    default:         return true;
+  }
+}
+
+function fmtCell(value, type) {
+  if (value === null || value === undefined || value === "") return "—";
+  switch(type) {
+    case "currency": return typeof value==="number" ? fmt(value) : value;
+    case "pct":      return typeof value==="number" ? value+"%" : value;
+    case "date":     return fmtDate(value);
+    case "number":   return typeof value==="number" ? value.toLocaleString() : value;
+    default:         return String(value);
+  }
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+function ReportBuilder(shared) {
+  const sources = buildReportSources(shared);
+
+  const blankReport = () => ({
+    id: uid(), name:"New Report", sourceId: sources[0].id,
+    columns: sources[0].fields.slice(0,5).map(f=>f.id),
+    filters: [], sortField:"", sortDir:"desc", groupBy:"",
+  });
+
+  const [reports,     setReports]     = useState(() => REPORT_TEMPLATES.map(t=>({...t})));
+  const [selReportId, setSelReportId] = useState(REPORT_TEMPLATES[0].id);
+  const [editMode,    setEditMode]    = useState(false);
+  const [draft,       setDraft]       = useState(null);
+  const [sub,         setSub]         = useState("results"); // results | configure
+  const [printMsg,    setPrintMsg]    = useState("");
+
+  const activeReport = editMode ? draft : reports.find(r=>r.id===selReportId);
+  const source       = sources.find(s=>s.id===activeReport?.sourceId);
+
+  // Compute result rows
+  const resultRows = useMemo(() => {
+    if (!activeReport||!source) return [];
+    let rows = [...source.rows];
+    // Apply filters
+    for (const f of (activeReport.filters||[])) {
+      if (f.field && f.op) rows = rows.filter(r=>applyFilter(r,f));
+    }
+    // Sort
+    if (activeReport.sortField) {
+      rows.sort((a,b)=>{
+        const av=a[activeReport.sortField], bv=b[activeReport.sortField];
+        const cmp = typeof av==="number"&&typeof bv==="number" ? av-bv : String(av||"").localeCompare(String(bv||""));
+        return activeReport.sortDir==="desc"?-cmp:cmp;
+      });
+    }
+    return rows;
+  }, [activeReport, source]);
+
+  // Group rows
+  const groupedRows = useMemo(() => {
+    if (!activeReport?.groupBy) return [{ key:"", rows: resultRows }];
+    const groups = {};
+    for (const row of resultRows) {
+      const key = String(row[activeReport.groupBy]||"Other");
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(row);
+    }
+    return Object.entries(groups).map(([key,rows])=>({ key, rows }));
+  }, [resultRows, activeReport]);
+
+  // Column metadata helper
+  const getField = (fieldId) => source?.fields.find(f=>f.id===fieldId);
+
+  // Group summary (sum/count currency & number fields)
+  const groupSummary = (rows) => {
+    if (!activeReport||!source) return {};
+    const sums = {};
+    for (const col of (activeReport.columns||[])) {
+      const field = getField(col);
+      if (field?.type==="currency"||field?.type==="number") {
+        sums[col] = rows.reduce((s,r)=>s+(parseFloat(r[col])||0),0);
+      }
+    }
+    return sums;
+  };
+
+  // Save draft
+  const saveDraft = () => {
+    setReports(rs=>rs.map(r=>r.id===draft.id?draft:r).concat(rs.find(r=>r.id===draft.id)?[]:[draft]));
+    setSelReportId(draft.id);
+    setEditMode(false);
+    setDraft(null);
+    setSub("results");
+  };
+
+  const deleteReport = (id) => {
+    if (REPORT_TEMPLATES.some(t=>t.id===id)) return; // protect templates
+    setReports(rs=>rs.filter(r=>r.id!==id));
+    setSelReportId(reports.find(r=>r.id!==id)?.id||"");
+  };
+
+  const startEdit = () => { setDraft({...(activeReport)}); setEditMode(true); setSub("configure"); };
+  const newReport = () => { const b=blankReport(); setDraft(b); setEditMode(true); setSub("configure"); };
+  const cancelEdit = () => { setEditMode(false); setDraft(null); setSub("results"); };
+
+  // CSV export
+  const exportCSV = () => {
+    if (!activeReport||!source) return;
+    const cols  = activeReport.columns||[];
+    const header= cols.map(c=>getField(c)?.label||c).join(",");
+    const rows   = resultRows.map(row=>cols.map(c=>{
+      const v = fmtCell(row[c], getField(c)?.type);
+      return `"${String(v).replace(/"/g,'""')}"`;
+    }).join(",")).join("\n");
+    downloadCSV(header+"\n"+rows, `${activeReport.name.replace(/\s+/g,"_")}_${TODAY_STR}.csv`);
+  };
+
+  // Print/PDF
+  const printReport = () => {
+    if (!activeReport||!source) return;
+    const cols = activeReport.columns||[];
+    const colLabels = cols.map(c=>getField(c)?.label||c);
+    const rows = resultRows.map(row=>cols.map(c=>fmtCell(row[c],getField(c)?.type)));
+
+    const tableRows = groupedRows.map(g=>{
+      const header = activeReport.groupBy ? `<tr><td colspan="${cols.length}" style="padding:10px 12px;background:#0369a1;color:#fff;font-weight:700;font-size:12px">${g.key} (${g.rows.length} records)</td></tr>` : "";
+      const dataRows = g.rows.map(row=>`<tr>${cols.map(c=>`<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-size:11px">${fmtCell(row[c],getField(c)?.type)}</td>`).join("")}</tr>`).join("");
+      const sums = groupSummary(g.rows);
+      const summaryRow = activeReport.groupBy ? `<tr style="background:#f8fafc;font-weight:700">${cols.map(c=>{const s=sums[c];return`<td style="padding:7px 10px;font-size:11px;border-top:2px solid #e2e8f0">${s!==undefined?fmtCell(s,getField(c)?.type):""}</td>`;}).join("")}</tr>` : "";
+      return header+dataRows+summaryRow;
+    }).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${activeReport.name}</title><style>${PRINT_CSS}</style></head><body><div class="page">
+    <div class="hdr">
+      <div class="logo-block"><div class="company-name">Ziksatech LLC</div><div class="company-sub">SAP · Cloud · Analytics Consulting</div></div>
+      <div><div class="doc-type">${activeReport.name.toUpperCase()}</div><div class="doc-meta">Source: ${source.label}</div><div class="doc-meta">${resultRows.length} records · ${TODAY_STR}</div></div>
+    </div>
+    ${activeReport.filters?.length>0?`<div class="highlight-box" style="font-size:10px"><strong>Filters:</strong> ${activeReport.filters.map(f=>`${f.field} ${f.op} "${f.value}"`).join(" AND ")}</div>`:""}
+    <table>
+      <thead><tr>${colLabels.map(l=>`<th>${l}</th>`).join("")}</tr></thead>
+      <tbody>${tableRows}</tbody>
+      <tfoot><tr style="background:#eff6ff;font-weight:800">${cols.map(c=>{const s=resultRows.reduce((a,r)=>a+(parseFloat(r[c])||0),0);const f=getField(c);return`<td style="padding:8px 10px;border-top:3px solid #0369a1">${f?.type==="currency"||f?.type==="number"?fmtCell(s,f.type):c===cols[0]?"TOTAL":""}</td>`;}).join("")}</tr></tfoot>
+    </table>
+    ${ZT_FOOTER}</div></body></html>`;
+    printHTML(html);
+    setPrintMsg("Print dialog opened");
+    setTimeout(()=>setPrintMsg(""),3000);
+  };
+
+  const d = draft||activeReport;
+
+  return (
+    <div>
+      <PH title="Report Builder" sub="Build custom reports from any module — filter, sort, group, export to CSV or PDF"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:16}}>
+
+        {/* ── Left: report list ── */}
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          <button className="btn bp" style={{justifyContent:"center",fontSize:12,marginBottom:4}} onClick={newReport}>
+            + New Report
+          </button>
+          {reports.map(r=>{
+            const src = sources.find(s=>s.id===r.sourceId);
+            const isBuiltIn = REPORT_TEMPLATES.some(t=>t.id===r.id);
+            return (
+              <div key={r.id}
+                onClick={()=>{if(!editMode){setSelReportId(r.id);setSub("results");}}}
+                style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",border:`1px solid ${selReportId===r.id&&!editMode?"#0284c7":"#1a2d45"}`,
+                  background:selReportId===r.id&&!editMode?"#0c2340":"#060d1c",transition:"all 0.12s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div style={{fontSize:12,fontWeight:600,color:selReportId===r.id&&!editMode?"#38bdf8":"#cbd5e1",lineHeight:1.3}}>{r.icon||"📋"} {r.name}</div>
+                  {!isBuiltIn&&(
+                    <button onClick={e=>{e.stopPropagation();deleteReport(r.id);}}
+                      style={{background:"none",border:"none",color:"#f87171",cursor:"pointer",fontSize:12,padding:"0 2px",flexShrink:0}}>✕</button>
+                  )}
+                </div>
+                <div style={{fontSize:10,color:"#3d5a7a",marginTop:3}}>{src?.icon} {src?.label}</div>
+                {isBuiltIn&&<div style={{fontSize:8,color:"#1e3a5f",marginTop:2}}>Built-in template</div>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Right: content ── */}
+        <div>
+          {!activeReport ? (
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:300,color:"#1e3a5f",fontSize:13}}>Select or create a report</div>
+          ) : (
+            <div>
+              {/* Report header */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontSize:18,fontWeight:800,color:"#e2e8f0"}}>{activeReport.icon||"📋"} {activeReport.name}</div>
+                  <div style={{fontSize:11,color:"#3d5a7a",marginTop:2}}>
+                    {source?.label} · {resultRows.length} record{resultRows.length!==1?"s":""}{activeReport.filters?.length>0?` · ${activeReport.filters.length} filter${activeReport.filters.length>1?"s":""}`:""}{activeReport.groupBy?` · grouped by ${activeReport.groupBy}`:""}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {printMsg&&<span style={{fontSize:11,color:"#34d399",padding:"6px 10px"}}>✓ {printMsg}</span>}
+                  {!editMode&&<>
+                    <button className="btn bg" style={{fontSize:11}} onClick={startEdit}>✏ Configure</button>
+                    <button className="btn bg" style={{fontSize:11}} onClick={exportCSV}>⬇ CSV</button>
+                    <button className="btn bg" style={{fontSize:11}} onClick={printReport}>🖨 PDF</button>
+                  </>}
+                  {editMode&&<>
+                    <button className="btn bg" style={{fontSize:11}} onClick={cancelEdit}>Cancel</button>
+                    <button className="btn bp" style={{fontSize:11}} onClick={saveDraft}><I d={ICONS.check} s={12}/>Save Report</button>
+                  </>}
+                </div>
+              </div>
+
+              {/* Sub-tab bar (only in edit mode) */}
+              {editMode&&(
+                <div style={{display:"flex",gap:4,marginBottom:14,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45",width:"fit-content"}}>
+                  {[["configure","⚙ Configure"],["results","👁 Preview"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>setSub(v)}
+                      style={{padding:"5px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+                        background:sub===v?"#0369a1":"transparent",color:sub===v?"#fff":"#475569"}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* ── CONFIGURE ── */}
+              {sub==="configure"&&editMode&&d&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                  {/* Left config */}
+                  <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                    <div className="card" style={{padding:"16px 18px"}}>
+                      <div className="section-hdr">Report Settings</div>
+                      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                        <div>
+                          <div className="lbl">Report Name</div>
+                          <input className="inp" value={d.name} onChange={e=>setDraft(x=>({...x,name:e.target.value}))}/>
+                        </div>
+                        <div>
+                          <div className="lbl">Data Source</div>
+                          <select className="inp" value={d.sourceId} onChange={e=>{
+                            const src=sources.find(s=>s.id===e.target.value);
+                            setDraft(x=>({...x,sourceId:e.target.value,columns:src.fields.slice(0,5).map(f=>f.id),filters:[],sortField:"",groupBy:""}));
+                          }}>
+                            {sources.map(s=><option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <div className="lbl">Sort By</div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:6}}>
+                            <select className="inp" value={d.sortField} onChange={e=>setDraft(x=>({...x,sortField:e.target.value}))}>
+                              <option value="">— No sort —</option>
+                              {(sources.find(s=>s.id===d.sourceId)?.fields||[]).map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                            </select>
+                            <select className="inp" style={{width:80}} value={d.sortDir} onChange={e=>setDraft(x=>({...x,sortDir:e.target.value}))}>
+                              <option value="asc">↑ ASC</option>
+                              <option value="desc">↓ DESC</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="lbl">Group By</div>
+                          <select className="inp" value={d.groupBy} onChange={e=>setDraft(x=>({...x,groupBy:e.target.value}))}>
+                            <option value="">— No grouping —</option>
+                            {(sources.find(s=>s.id===d.sourceId)?.fields||[]).filter(f=>f.type==="string").map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <div className="lbl">Report Icon</div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {["📋","📊","🧾","👥","🤝","📄","⏱","🛡️","💸","📈","🏆","🔍"].map(em=>(
+                              <span key={em} onClick={()=>setDraft(x=>({...x,icon:em}))}
+                                style={{fontSize:20,cursor:"pointer",padding:"4px",borderRadius:6,
+                                  border:`2px solid ${d.icon===em?"#0284c7":"transparent"}`,
+                                  background:d.icon===em?"#0c2340":"transparent"}}>
+                                {em}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="card" style={{padding:"16px 18px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                        <span className="section-hdr" style={{margin:0}}>Filters</span>
+                        <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}}
+                          onClick={()=>setDraft(x=>({...x,filters:[...(x.filters||[]),{id:uid(),field:"",op:"eq",value:""}]}))}>
+                          + Add Filter
+                        </button>
+                      </div>
+                      {(d.filters||[]).length===0&&<div style={{fontSize:11,color:"#1e3a5f",textAlign:"center",padding:"8px"}}>No filters — showing all records</div>}
+                      {(d.filters||[]).map((f,i)=>(
+                        <div key={f.id||i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+                          <select className="inp" style={{flex:1,fontSize:11}} value={f.field} onChange={e=>setDraft(x=>({...x,filters:x.filters.map((ff,ii)=>ii===i?{...ff,field:e.target.value}:ff)}))}>
+                            <option value="">Field…</option>
+                            {(sources.find(s=>s.id===d.sourceId)?.fields||[]).map(fld=><option key={fld.id} value={fld.id}>{fld.label}</option>)}
+                          </select>
+                          <select className="inp" style={{width:110,fontSize:11}} value={f.op} onChange={e=>setDraft(x=>({...x,filters:x.filters.map((ff,ii)=>ii===i?{...ff,op:e.target.value}:ff)}))}>
+                            {FILTER_OPS.map(op=><option key={op.id} value={op.id}>{op.label}</option>)}
+                          </select>
+                          {f.op!=="empty"&&f.op!=="notempty"&&(
+                            <input className="inp" style={{width:90,fontSize:11}} value={f.value||""} placeholder="value"
+                              onChange={e=>setDraft(x=>({...x,filters:x.filters.map((ff,ii)=>ii===i?{...ff,value:e.target.value}:ff)}))}/>
+                          )}
+                          <button onClick={()=>setDraft(x=>({...x,filters:x.filters.filter((_,ii)=>ii!==i)}))}
+                            style={{background:"none",border:"none",color:"#f87171",cursor:"pointer",fontSize:14,flexShrink:0}}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right: column picker */}
+                  <div className="card" style={{padding:"16px 18px"}}>
+                    <div className="section-hdr">Columns ({d.columns?.length||0} selected)</div>
+                    <div style={{fontSize:11,color:"#3d5a7a",marginBottom:10}}>Click to toggle. Drag to reorder.</div>
+                    {/* Available fields */}
+                    <div style={{marginBottom:12}}>
+                      <div className="lbl" style={{marginBottom:6}}>Available Fields</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                        {(sources.find(s=>s.id===d.sourceId)?.fields||[]).map(f=>{
+                          const active = (d.columns||[]).includes(f.id);
+                          return (
+                            <div key={f.id}
+                              onClick={()=>setDraft(x=>({...x,columns:active?x.columns.filter(c=>c!==f.id):[...x.columns,f.id]}))}
+                              style={{padding:"5px 10px",borderRadius:20,border:`1px solid ${active?"#0284c7":"#1a2d45"}`,cursor:"pointer",fontSize:11,
+                                background:active?"#0c2340":"#070c18",color:active?"#38bdf8":"#3d5a7a",
+                                display:"flex",alignItems:"center",gap:4}}>
+                              {active&&<span style={{fontSize:9,color:"#38bdf8"}}>✓</span>}
+                              {f.label}
+                              <span style={{fontSize:9,color:"#1e3a5f"}}>[{f.type}]</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Selected columns in order */}
+                    <div>
+                      <div className="lbl" style={{marginBottom:6}}>Column Order (click ↑↓ to reorder)</div>
+                      {(d.columns||[]).map((col,i)=>{
+                        const field = sources.find(s=>s.id===d.sourceId)?.fields.find(f=>f.id===col);
+                        return (
+                          <div key={col} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",marginBottom:4,background:"#070c18",borderRadius:6,border:"1px solid #1a2d45"}}>
+                            <div style={{display:"flex",flexDirection:"column",gap:1}}>
+                              <button onClick={()=>{if(i>0)setDraft(x=>{const c=[...x.columns];[c[i-1],c[i]]=[c[i],c[i-1]];return{...x,columns:c};})}}
+                                style={{background:"none",border:"none",color:i>0?"#475569":"#1e3a5f",cursor:i>0?"pointer":"default",fontSize:10,lineHeight:1,padding:"1px 3px"}}>▲</button>
+                              <button onClick={()=>{if(i<d.columns.length-1)setDraft(x=>{const c=[...x.columns];[c[i],c[i+1]]=[c[i+1],c[i]];return{...x,columns:c};})}}
+                                style={{background:"none",border:"none",color:i<d.columns.length-1?"#475569":"#1e3a5f",cursor:i<d.columns.length-1?"pointer":"default",fontSize:10,lineHeight:1,padding:"1px 3px"}}>▼</button>
+                            </div>
+                            <span style={{fontSize:11,color:"#94a3b8",flex:1}}>{field?.label||col}</span>
+                            <span style={{fontSize:9,color:"#1e3a5f"}}>{field?.type}</span>
+                            <button onClick={()=>setDraft(x=>({...x,columns:x.columns.filter(c=>c!==col)}))}
+                              style={{background:"none",border:"none",color:"#f87171",cursor:"pointer",fontSize:11,padding:"0 2px"}}>✕</button>
+                          </div>
+                        );
+                      })}
+                      {(d.columns||[]).length===0&&<div style={{fontSize:11,color:"#1e3a5f",textAlign:"center",padding:"12px"}}>No columns selected</div>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── RESULTS ── */}
+              {(sub==="results"||!editMode)&&(
+                <div>
+                  {/* Summary bar */}
+                  {activeReport.columns&&activeReport.columns.length>0&&(()=>{
+                    const totals = {};
+                    for (const col of activeReport.columns) {
+                      const field = getField(col);
+                      if (field?.type==="currency"||field?.type==="number") {
+                        totals[col] = resultRows.reduce((s,r)=>s+(parseFloat(r[col])||0),0);
+                      }
+                    }
+                    const summaryItems = Object.entries(totals).filter(([,v])=>v!==0);
+                    if (summaryItems.length===0) return null;
+                    return (
+                      <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+                        {summaryItems.map(([col,val])=>{
+                          const field = getField(col);
+                          return (
+                            <div key={col} style={{padding:"8px 14px",borderRadius:8,background:"#060d1c",border:"1px solid #1a2d45",textAlign:"center"}}>
+                              <div style={{fontSize:16,fontWeight:800,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{fmtCell(val,field?.type)}</div>
+                              <div style={{fontSize:9,color:"#3d5a7a",marginTop:1}}>Total {field?.label}</div>
+                            </div>
+                          );
+                        })}
+                        <div style={{padding:"8px 14px",borderRadius:8,background:"#060d1c",border:"1px solid #1a2d45",textAlign:"center"}}>
+                          <div style={{fontSize:16,fontWeight:800,color:"#475569",fontFamily:"'DM Mono',monospace"}}>{resultRows.length}</div>
+                          <div style={{fontSize:9,color:"#3d5a7a",marginTop:1}}>Records</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Table */}
+                  {resultRows.length===0
+                    ? <div style={{padding:"32px",textAlign:"center",fontSize:12,color:"#1e3a5f",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No records match the current filters.</div>
+                    : (
+                      <div className="card" style={{overflow:"hidden"}}>
+                        {/* Header */}
+                        <div style={{display:"grid",gridTemplateColumns:`repeat(${activeReport.columns.length},1fr)`,padding:"8px 18px",borderBottom:"2px solid #1a2d45",background:"#060d1c"}}>
+                          {activeReport.columns.map(col=>{
+                            const field=getField(col);
+                            const isSorted=activeReport.sortField===col;
+                            return (
+                              <span key={col} className="th" style={{cursor:"pointer",color:isSorted?"#38bdf8":"#3d5a7a",userSelect:"none",fontSize:10}}
+                                onClick={()=>{
+                                  if(!editMode) return;
+                                  setDraft(x=>x?({...x,sortField:col,sortDir:x.sortField===col&&x.sortDir==="desc"?"asc":"desc"}):null);
+                                }}>
+                                {field?.label||col} {isSorted?(activeReport.sortDir==="desc"?"↓":"↑"):""}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        {/* Grouped rows */}
+                        {groupedRows.map(g=>(
+                          <div key={g.key}>
+                            {activeReport.groupBy&&(
+                              <div style={{padding:"6px 18px",background:"#0c1a2e",borderBottom:"1px solid #111d2d",display:"flex",justifyContent:"space-between"}}>
+                                <span style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>{g.key}</span>
+                                <span style={{fontSize:10,color:"#3d5a7a"}}>{g.rows.length} records</span>
+                              </div>
+                            )}
+                            {g.rows.map((row,ri)=>{
+                              const rowStyle = {
+                                display:"grid",
+                                gridTemplateColumns:`repeat(${activeReport.columns.length},1fr)`,
+                                padding:"7px 18px",
+                                borderBottom:"1px solid #070b14",
+                                background:ri%2===0?"transparent":"#06090f",
+                              };
+                              return (
+                                <div key={ri} style={rowStyle}>
+                                  {activeReport.columns.map(col=>{
+                                    const field=getField(col);
+                                    const val=row[col];
+                                    const display=fmtCell(val,field?.type);
+                                    // Color coding
+                                    let color="#94a3b8";
+                                    if(field?.type==="currency"&&typeof val==="number") color=val<0?"#f87171":val>0?"#38bdf8":"#475569";
+                                    if(field?.type==="pct"&&typeof val==="number") color=val<0?"#f87171":val>50?"#34d399":val>20?"#38bdf8":"#f59e0b";
+                                    if(col==="status"||col==="health"||col==="urgency") {
+                                      const lv=String(val||"").toLowerCase();
+                                      color=lv==="paid"||lv==="done"||lv==="green"||lv==="active"?"#34d399":
+                                            lv==="overdue"||lv==="red"||lv==="critical"?"#f87171":
+                                            lv==="amber"||lv==="warning"||lv==="pending"?"#f59e0b":"#94a3b8";
+                                    }
+                                    return <span key={col} style={{fontSize:11,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:field?.type==="currency"||field?.type==="number"?"'DM Mono',monospace":"inherit"}}>{display}</span>;
+                                  })}
+                                </div>
+                              );
+                            })}
+                            {/* Group subtotal */}
+                            {activeReport.groupBy&&(()=>{
+                              const sums=groupSummary(g.rows);
+                              const hasSums=Object.values(sums).some(v=>v!==0);
+                              if(!hasSums) return null;
+                              return (
+                                <div style={{display:"grid",gridTemplateColumns:`repeat(${activeReport.columns.length},1fr)`,padding:"6px 18px",background:"#060d1c",borderBottom:"2px solid #1a2d45"}}>
+                                  {activeReport.columns.map((col,ci)=>{
+                                    const field=getField(col);
+                                    const sum=sums[col];
+                                    return <span key={col} style={{fontSize:10,fontFamily:"'DM Mono',monospace",fontWeight:700,color:sum!==undefined?"#38bdf8":"#1e3a5f"}}>
+                                      {ci===0?"Subtotal":sum!==undefined?fmtCell(sum,field?.type):""}
+                                    </span>;
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        ))}
+                        {/* Grand total row */}
+                        {(()=>{
+                          const sums={};
+                          for(const col of activeReport.columns){const f=getField(col);if(f?.type==="currency"||f?.type==="number")sums[col]=resultRows.reduce((s,r)=>s+(parseFloat(r[col])||0),0);}
+                          const hasSums=Object.values(sums).some(v=>v!==0);
+                          if(!hasSums) return null;
+                          return (
+                            <div style={{display:"grid",gridTemplateColumns:`repeat(${activeReport.columns.length},1fr)`,padding:"10px 18px",background:"#060d1c",borderTop:"3px solid #0369a1"}}>
+                              {activeReport.columns.map((col,ci)=>{
+                                const field=getField(col);const sum=sums[col];
+                                return <span key={col} style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:800,color:sum!==undefined?"#38bdf8":"#1e3a5f"}}>
+                                  {ci===0?"GRAND TOTAL":sum!==undefined?fmtCell(sum,field?.type):""}
+                                </span>;
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )
+                  }
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// E-SIGNATURE MODULE
+// =============================================================================
+
+const ESIGN_STATUS_COLOR = {
+  signed:  "#34d399", pending: "#f59e0b",
+  draft:   "#64748b", expired: "#f87171",
+};
+const ESIGN_DOC_ICONS = { SOW:"📄", Contract:"📑", HR:"👤", NDA:"🔏" };
+
+function ESignature({ esignRequests, setEsignRequests, contracts, sows, roster }) {
+  const [sub,       setSub]       = useState("all");
+  const [selId,     setSelId]     = useState(null);
+  const [showNew,   setShowNew]   = useState(false);
+  const [signModal, setSignModal] = useState(null); // { reqId, signerId }
+  const [signMethod,setSignMethod]= useState("type");
+  const [typedName, setTypedName] = useState("");
+  const [drawDone,  setDrawDone]  = useState(false);
+
+  const sel = esignRequests.find(r=>r.id===selId);
+
+  const subTabs = [
+    { id:"all",     label:"All Documents" },
+    { id:"pending", label:"Awaiting Signature" },
+    { id:"signed",  label:"Fully Executed" },
+    { id:"draft",   label:"Drafts" },
+  ];
+
+  const filtered = esignRequests.filter(r => sub==="all" || r.status===sub);
+
+  // Status counts
+  const counts = { all:esignRequests.length, pending:0, signed:0, draft:0, expired:0 };
+  for (const r of esignRequests) counts[r.status]=(counts[r.status]||0)+1;
+
+  // Create new signature request
+  const blankReq = () => ({
+    id: uid(), title:"", docType:"SOW", contractId:"",
+    status:"draft", createdDate: TODAY_STR, sentDate: null,
+    signers:[
+      { id:uid(), name:"Manju Ziksatech", role:"Ziksatech CEO", email:"manju@ziksatech.com", status:"pending", signedDate:null, method:null },
+      { id:uid(), name:"", role:"Client Signatory", email:"", status:"pending", signedDate:null, method:null },
+    ],
+    auditTrail:[{ ts: new Date().toISOString(), event:"Document created", actor:"Manju" }],
+    value: null, expiryDays: 30, notes:"",
+  });
+
+  const [newForm, setNewForm] = useState(blankReq());
+
+  const saveNew = () => {
+    setEsignRequests(rs=>[...rs,{...newForm}]);
+    setShowNew(false); setNewForm(blankReq()); setSub("all");
+  };
+
+  // Send for signature
+  const sendReq = (id) => {
+    setEsignRequests(rs=>rs.map(r=>r.id!==id?r:{
+      ...r, status:"pending", sentDate:TODAY_STR,
+      auditTrail:[...r.auditTrail,{ts:new Date().toISOString(),event:"Sent for signature",actor:"Manju"}]
+    }));
+    addAudit&&addAudit("E-Sign","Document Sent","E-Signature",`Sent for signature: ${id}`);
+  };
+
+  // Apply signature from modal
+  const applySign = () => {
+    if (!signModal) return;
+    const { reqId, signerId } = signModal;
+    const method = signMethod;
+    const label = method==="type" ? typedName : "drawn signature";
+    setEsignRequests(rs=>rs.map(r=>{
+      if (r.id!==reqId) return r;
+      const updatedSigners = r.signers.map(s=>s.id!==signerId?s:{
+        ...s, status:"signed", signedDate:TODAY_STR, method
+      });
+      const allSigned = updatedSigners.every(s=>s.status==="signed");
+      return {
+        ...r,
+        signers: updatedSigners,
+        status: allSigned?"signed":"pending",
+        auditTrail:[...r.auditTrail,
+          {ts:new Date().toISOString(), event:`Signed by ${r.signers.find(s=>s.id===signerId)?.name} (${method})`, actor:r.signers.find(s=>s.id===signerId)?.name||""},
+          ...(allSigned?[{ts:new Date().toISOString(),event:"Document fully executed",actor:"System"}]:[])
+        ]
+      };
+    }));
+    setSignModal(null); setTypedName(""); setDrawDone(false);
+  };
+
+  // Void / delete
+  const voidReq = (id) => setEsignRequests(rs=>rs.filter(r=>r.id!==id));
+
+  // Print signed document
+  const printDoc = (req) => {
+    const signatureBlock = req.signers.map(s=>`
+      <div style="margin-top:30px;border-top:1px solid #ccc;padding-top:12px;display:inline-block;min-width:220px;margin-right:40px">
+        <div style="font-size:22px;font-family:Georgia,serif;color:#1e3a5f;margin-bottom:6px">${s.status==="signed"?s.name:"[Awaiting Signature]"}</div>
+        <div style="font-size:11px;color:#64748b">${s.role}</div>
+        <div style="font-size:10px;color:#94a3b8">${s.status==="signed"?("Signed: "+s.signedDate+" via "+s.method):"Not yet signed"}</div>
+      </div>`).join("");
+    const auditRows = req.auditTrail.map(e=>`<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-size:10px;color:#64748b">${e.ts.slice(0,16).replace("T"," ")}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-size:10px">${e.event}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-size:10px;color:#64748b">${e.actor}</td></tr>`).join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${req.title}</title><style>${PRINT_CSS}</style></head><body><div class="page">
+      <div class="hdr">
+        <div class="logo-block"><div class="company-name">Ziksatech LLC</div><div class="company-sub">SAP · Cloud · Analytics Consulting</div></div>
+        <div><div class="doc-type">EXECUTED DOCUMENT</div><div class="doc-meta">Doc ID: ${req.id}</div><div class="doc-meta">Created: ${req.createdDate}</div></div>
+      </div>
+      <h2 style="font-size:18px;color:#0c1a2e;margin-bottom:6px">${req.title}</h2>
+      <div style="font-size:12px;color:#64748b;margin-bottom:20px">Type: ${req.docType} · Value: ${req.value?("$"+req.value.toLocaleString()):"N/A"} · Status: ${req.status.toUpperCase()}</div>
+      ${req.notes?`<div class="highlight-box"><strong>Notes:</strong> ${req.notes}</div>`:""}
+      <h3 style="font-size:13px;color:#0369a1;margin:24px 0 12px">Signatures</h3>
+      <div>${signatureBlock}</div>
+      <h3 style="font-size:13px;color:#0369a1;margin:32px 0 12px">Audit Trail</h3>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#eff6ff"><th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#1e40af">Timestamp</th><th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#1e40af">Event</th><th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#1e40af">Actor</th></tr></thead>
+        <tbody>${auditRows}</tbody>
+      </table>
+      ${ZT_FOOTER}</div></body></html>`;
+    printHTML(html);
+  };
+
+  return (
+    <div>
+      <PH title="E-Signature" sub="Contract and document signature workflow — track, sign, and archive executed agreements"/>
+
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Total Documents", v:counts.all,     c:"#38bdf8" },
+          { l:"Fully Signed",    v:counts.signed||0,  c:"#34d399" },
+          { l:"Awaiting Sign",   v:counts.pending||0, c:"#f59e0b" },
+          { l:"Drafts",          v:counts.draft||0,   c:"#64748b" },
+          { l:"Expired",         v:counts.expired||0, c:"#f87171" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45"}}>
+          {subTabs.map(t=>(
+            <button key={t.id} onClick={()=>{setSub(t.id);setSelId(null);}}
+              style={{padding:"5px 14px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+                background:sub===t.id?"#0369a1":"transparent",color:sub===t.id?"#fff":"#475569"}}>
+              {t.label} {t.id!=="all"&&counts[t.id]>0?`(${counts[t.id]})`:""}
+            </button>
+          ))}
+        </div>
+        <button className="btn bp" style={{fontSize:12}} onClick={()=>{setShowNew(true);setNewForm(blankReq());}}>
+          + New Request
+        </button>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:sel?"1fr 380px":"1fr",gap:16}}>
+        {/* Document list */}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {filtered.length===0&&<div style={{padding:"32px",textAlign:"center",fontSize:12,color:"#1e3a5f",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No documents in this category.</div>}
+          {filtered.map(req=>{
+            const allSigned   = req.signers.every(s=>s.status==="signed");
+            const pendingCount= req.signers.filter(s=>s.status==="pending").length;
+            const isSelected  = selId===req.id;
+            const sc          = ESIGN_STATUS_COLOR[req.status]||"#64748b";
+            const expiryDate  = req.sentDate ? new Date(new Date(req.sentDate).getTime()+(req.expiryDays||30)*86400000).toISOString().slice(0,10) : null;
+            const daysToExp   = expiryDate ? Math.round((new Date(expiryDate)-new Date(TODAY_STR))/86400000) : null;
+
+            return (
+              <div key={req.id}
+                onClick={()=>setSelId(isSelected?null:req.id)}
+                style={{padding:"16px 18px",borderRadius:10,border:`1px solid ${isSelected?"#0284c7":"#1a2d45"}`,
+                  background:isSelected?"#0a1a2e":"#060d1c",cursor:"pointer",
+                  borderLeft:`4px solid ${sc}`,transition:"all 0.12s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:22}}>{ESIGN_DOC_ICONS[req.docType]||"📋"}</span>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{req.title||"Untitled Document"}</div>
+                      <div style={{fontSize:10,color:"#3d5a7a",marginTop:2}}>
+                        {req.docType} · Created {req.createdDate}
+                        {req.value&&<span style={{color:"#38bdf8",marginLeft:8}}>· {fmt(req.value)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    {daysToExp!==null&&daysToExp<14&&daysToExp>0&&(
+                      <span style={{fontSize:10,color:"#f59e0b",background:"#1a1000",padding:"2px 8px",borderRadius:12,border:"1px solid #f59e0b44"}}>⏰ {daysToExp}d</span>
+                    )}
+                    <span className="bdg" style={{background:sc+"22",color:sc,border:`1px solid ${sc}44`,fontSize:10}}>
+                      {req.status.charAt(0).toUpperCase()+req.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Signers progress */}
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                  {req.signers.map(s=>(
+                    <div key={s.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,
+                      background:s.status==="signed"?"#021f14":"#0a0500",border:`1px solid ${s.status==="signed"?"#34d39944":"#f59e0b44"}`}}>
+                      <div style={{width:7,height:7,borderRadius:"50%",background:s.status==="signed"?"#34d399":"#f59e0b",flexShrink:0}}/>
+                      <span style={{fontSize:10,color:"#94a3b8"}}>{s.name||"TBD"}</span>
+                      <span style={{fontSize:9,color:"#3d5a7a"}}>· {s.role}</span>
+                      {s.status==="signed"&&<span style={{fontSize:9,color:"#34d399"}}>✓ {s.signedDate}</span>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress bar */}
+                <div style={{height:4,background:"#1a2d45",borderRadius:2,overflow:"hidden"}}>
+                  <div style={{height:4,width:`${req.signers.length>0?(req.signers.filter(s=>s.status==="signed").length/req.signers.length)*100:0}%`,
+                    background:"#34d399",borderRadius:2,transition:"width 0.3s"}}/>
+                </div>
+
+                {/* Actions */}
+                <div style={{display:"flex",gap:6,marginTop:10}} onClick={e=>e.stopPropagation()}>
+                  {req.status==="draft"&&(
+                    <button className="btn bp" style={{fontSize:10,padding:"4px 10px"}} onClick={()=>sendReq(req.id)}>📤 Send for Signature</button>
+                  )}
+                  {req.status==="pending"&&req.signers.filter(s=>s.status==="pending").map(s=>(
+                    <button key={s.id} className="btn bg" style={{fontSize:10,padding:"4px 10px",borderColor:"#f59e0b",color:"#f59e0b"}}
+                      onClick={()=>{setSignModal({reqId:req.id,signerId:s.id});setTypedName(s.name);}}>
+                      ✍ Sign as {s.name.split(" ")[0]}
+                    </button>
+                  ))}
+                  {(req.status==="signed")&&(
+                    <button className="btn bg" style={{fontSize:10,padding:"4px 10px",borderColor:"#34d399",color:"#34d399"}}
+                      onClick={()=>printDoc(req)}>🖨 Download PDF</button>
+                  )}
+                  <button className="btn bg" style={{fontSize:10,padding:"4px 10px",marginLeft:"auto",borderColor:"#f87171",color:"#f87171"}}
+                    onClick={()=>voidReq(req.id)}>✕ Void</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Detail panel */}
+        {sel&&(
+          <div className="card" style={{height:"fit-content",position:"sticky",top:0,padding:0,overflow:"hidden"}}>
+            <div style={{padding:"14px 18px",background:"#0c1a2e",borderBottom:"1px solid #1a2d45"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{sel.title||"Untitled"}</div>
+                <button className="btn bg" style={{fontSize:10,padding:"2px 7px"}} onClick={()=>setSelId(null)}>✕</button>
+              </div>
+              <div style={{fontSize:10,color:"#3d5a7a",marginTop:4}}>{sel.docType} · {sel.id}</div>
+            </div>
+            <div style={{padding:"16px 18px",maxHeight:"70vh",overflowY:"auto"}}>
+              {/* Details grid */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+                {[
+                  ["Status",   sel.status],
+                  ["Created",  sel.createdDate],
+                  ["Sent",     sel.sentDate||"Not sent"],
+                  ["Expires",  sel.expiryDays>0&&sel.sentDate
+                    ? new Date(new Date(sel.sentDate).getTime()+sel.expiryDays*86400000).toISOString().slice(0,10)
+                    : "—"],
+                  ["Value",    sel.value?fmt(sel.value):"N/A"],
+                  ["Signers",  `${sel.signers.filter(s=>s.status==="signed").length}/${sel.signers.length} signed`],
+                ].map(([l,v])=>(
+                  <div key={l} style={{padding:"7px 10px",background:"#070c18",borderRadius:6}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{l}</div>
+                    <div style={{fontSize:12,color:"#cbd5e1",fontWeight:600}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {sel.notes&&<div style={{padding:"8px 12px",background:"#070c18",borderRadius:6,fontSize:11,color:"#3d5a7a",marginBottom:14,border:"1px solid #1a2d45"}}>{sel.notes}</div>}
+
+              {/* Signers */}
+              <div className="lbl" style={{marginBottom:8}}>Signers</div>
+              {sel.signers.map(s=>(
+                <div key={s.id} style={{padding:"10px 12px",background:"#070c18",borderRadius:8,border:`1px solid ${s.status==="signed"?"#34d39944":"#f59e0b44"}`,marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between"}}>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:700,color:"#cbd5e1"}}>{s.name||"TBD"}</div>
+                      <div style={{fontSize:10,color:"#3d5a7a"}}>{s.role} · {s.email||"—"}</div>
+                    </div>
+                    <span className="bdg" style={{background:s.status==="signed"?"#021f14":"#1a1000",color:s.status==="signed"?"#34d399":"#f59e0b",fontSize:9}}>
+                      {s.status==="signed"?"✓ Signed":"Pending"}
+                    </span>
+                  </div>
+                  {s.status==="signed"&&(
+                    <div style={{marginTop:6,fontSize:10,color:"#1e3a5f"}}>Signed {s.signedDate} via {s.method}</div>
+                  )}
+                </div>
+              ))}
+
+              {/* Audit trail */}
+              <div className="lbl" style={{marginBottom:8,marginTop:14}}>Audit Trail</div>
+              <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                {(sel.auditTrail||[]).map((entry,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"7px 0",borderBottom:"1px solid #070b14",position:"relative"}}>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0,width:20}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:"#0369a1",marginTop:4,flexShrink:0}}/>
+                      {i<(sel.auditTrail.length-1)&&<div style={{width:1,flex:1,background:"#1a2d45",marginTop:2}}/>}
+                    </div>
+                    <div>
+                      <div style={{fontSize:11,color:"#94a3b8"}}>{entry.event}</div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginTop:1}}>{entry.ts?.slice(0,16).replace("T"," ")} · {entry.actor}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── New Request Modal ── */}
+      {showNew&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#0c1422",borderRadius:14,border:"1px solid #1a2d45",padding:"24px",width:540,maxHeight:"80vh",overflowY:"auto"}}>
+            <MH title="New Signature Request" onClose={()=>setShowNew(false)}/>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <FF label="Document Title"><input className="inp" value={newForm.title} onChange={e=>setNewForm(f=>({...f,title:e.target.value}))} placeholder="e.g. AT&T BRIM Phase 4 SOW"/></FF>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <FF label="Document Type">
+                  <select className="inp" value={newForm.docType} onChange={e=>setNewForm(f=>({...f,docType:e.target.value}))}>
+                    {["SOW","Contract","HR","NDA"].map(t=><option key={t}>{t}</option>)}
+                  </select>
+                </FF>
+                <FF label="Contract Value ($)"><input className="inp" type="number" value={newForm.value||""} onChange={e=>setNewForm(f=>({...f,value:+e.target.value||null}))} placeholder="optional"/></FF>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <FF label="Expiry (days)"><input className="inp" type="number" value={newForm.expiryDays} onChange={e=>setNewForm(f=>({...f,expiryDays:+e.target.value}))}/></FF>
+                <FF label="Notes"><input className="inp" value={newForm.notes} onChange={e=>setNewForm(f=>({...f,notes:e.target.value}))}/></FF>
+              </div>
+              <div>
+                <div className="lbl" style={{marginBottom:8}}>Signers</div>
+                {newForm.signers.map((s,i)=>(
+                  <div key={s.id} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+                    <input className="inp" style={{fontSize:11}} placeholder="Full name" value={s.name} onChange={e=>setNewForm(f=>({...f,signers:f.signers.map((ss,ii)=>ii===i?{...ss,name:e.target.value}:ss)}))}/>
+                    <input className="inp" style={{fontSize:11}} placeholder="Role" value={s.role} onChange={e=>setNewForm(f=>({...f,signers:f.signers.map((ss,ii)=>ii===i?{...ss,role:e.target.value}:ss)}))}/>
+                    <input className="inp" style={{fontSize:11}} placeholder="Email" value={s.email} onChange={e=>setNewForm(f=>({...f,signers:f.signers.map((ss,ii)=>ii===i?{...ss,email:e.target.value}:ss)}))}/>
+                  </div>
+                ))}
+                <button className="btn bg" style={{fontSize:11}} onClick={()=>setNewForm(f=>({...f,signers:[...f.signers,{id:uid(),name:"",role:"",email:"",status:"pending",signedDate:null,method:null}]}))}>+ Add Signer</button>
+              </div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}}>
+                <button className="btn bg" onClick={()=>setShowNew(false)}>Cancel</button>
+                <button className="btn bg" style={{borderColor:"#64748b",color:"#64748b"}} onClick={()=>{saveNew();}}>Save Draft</button>
+                <button className="btn bp" onClick={()=>{const saved={...newForm};setEsignRequests(rs=>[...rs,saved]);sendReq(saved.id);setShowNew(false);setNewForm(blankReq());}}>Save &amp; Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Sign Modal ── */}
+      {signModal&&(()=>{
+        const req = esignRequests.find(r=>r.id===signModal.reqId);
+        const signer = req?.signers.find(s=>s.id===signModal.signerId);
+        if (!req||!signer) return null;
+        return (
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{background:"#0c1422",borderRadius:14,border:"1px solid #1a2d45",padding:"24px",width:480}}>
+              <MH title={`Sign: ${req.title}`} onClose={()=>{setSignModal(null);setTypedName("");setDrawDone(false);}}/>
+              <div style={{marginBottom:14,padding:"10px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45",fontSize:11,color:"#94a3b8"}}>
+                Signing as: <strong style={{color:"#e2e8f0"}}>{signer.name}</strong> · {signer.role}
+              </div>
+              {/* Method toggle */}
+              <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45",width:"fit-content"}}>
+                {[["type","⌨ Type Name"],["draw","✍ Draw"]].map(([v,l])=>(
+                  <button key={v} onClick={()=>setSignMethod(v)}
+                    style={{padding:"5px 14px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+                      background:signMethod===v?"#0369a1":"transparent",color:signMethod===v?"#fff":"#475569"}}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+
+              {signMethod==="type"&&(
+                <div style={{marginBottom:16}}>
+                  <div className="lbl" style={{marginBottom:6}}>Type your full legal name</div>
+                  <input className="inp" value={typedName} onChange={e=>setTypedName(e.target.value)}
+                    placeholder={signer.name} style={{fontSize:18,fontFamily:"Georgia,serif",color:"#38bdf8",height:52}}/>
+                  {typedName&&(
+                    <div style={{marginTop:10,padding:"12px 18px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45",textAlign:"center"}}>
+                      <div style={{fontSize:26,fontFamily:"Georgia,serif",color:"#1e3a5f",letterSpacing:"-0.02em"}}>{typedName}</div>
+                      <div style={{fontSize:9,color:"#1e3a5f",marginTop:4}}>Electronic Signature</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {signMethod==="draw"&&(
+                <div style={{marginBottom:16}}>
+                  <div className="lbl" style={{marginBottom:6}}>Signature pad (simulated)</div>
+                  <div style={{height:100,background:"#070c18",borderRadius:8,border:"2px dashed #1a2d45",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative"}}
+                    onClick={()=>setDrawDone(true)}>
+                    {drawDone
+                      ? <div style={{fontSize:32,fontFamily:"'Brush Script MT',cursive,Georgia,serif",color:"#1e3a5f",letterSpacing:"0.05em"}}>{signer.name}</div>
+                      : <div style={{fontSize:12,color:"#1e3a5f"}}>Click to apply signature</div>
+                    }
+                  </div>
+                  {drawDone&&<div style={{fontSize:10,color:"#34d399",marginTop:4}}>✓ Signature captured</div>}
+                </div>
+              )}
+
+              <div style={{padding:"10px 14px",background:"#050e1c",borderRadius:8,fontSize:10,color:"#3d5a7a",marginBottom:16,border:"1px solid #1a2d45"}}>
+                By signing, you agree this electronic signature is legally binding under the Electronic Signatures in Global and National Commerce Act (E-SIGN) and UETA.
+              </div>
+
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                <button className="btn bg" onClick={()=>{setSignModal(null);setTypedName("");setDrawDone(false);}}>Cancel</button>
+                <button className="btn bp"
+                  disabled={signMethod==="type"?!typedName:!drawDone}
+                  style={{opacity:(signMethod==="type"?!typedName:!drawDone)?0.4:1}}
+                  onClick={applySign}>✓ Apply Signature</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// =============================================================================
+// CLIENT PORTAL
+// =============================================================================
+function ClientPortal({ clients, finInvoices, finPayments, projects, sows, changeOrders, tsSubmissions, roster }) {
+
+  const [selClientId, setSelClientId] = useState(clients[0]?.id||"");
+  const [portalTab,   setPortalTab]   = useState("overview");
+  const [copyMsg,     setCopyMsg]     = useState("");
+  const [previewMode, setPreviewMode] = useState(false);
+
+  const client = clients.find(c=>c.id===selClientId);
+
+  // Derive client-scoped data
+  const clientInvoices = (finInvoices||[]).filter(inv=>inv.clientId===selClientId||inv.client===client?.name);
+  const clientProjects = (projects||[]).filter(p=>p.client===client?.name);
+  const clientSOWs     = (sows||[]).filter(s=>s.clientId===selClientId||s.client===client?.name||(client&&s.title?.toLowerCase().includes(client.name.toLowerCase().split(" ")[0])));
+  const clientCOs      = (changeOrders||[]).filter(co=>clientProjects.some(p=>p.id===co.projectId));
+  const clientRoster   = (roster||[]).filter(r=>r.client===client?.name||r.client?.includes(client?.name?.split(" ")[0]||"XXXX"));
+
+  const totalBilled  = clientInvoices.reduce((s,i)=>s+i.lines?.reduce((x,l)=>x+l.amount,0)||i.amount||0, 0);
+  const totalPaid    = clientInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.lines?.reduce((x,l)=>x+l.amount,0)||i.amount||0, 0);
+  const openAR       = totalBilled - totalPaid;
+  const overdueInvs  = clientInvoices.filter(i=>i.status==="overdue");
+
+  // Simulate portal share link
+  const portalLink = `https://ops.ziksatech.com/portal/${selClientId}?token=${btoa(selClientId+"-2026").slice(0,12)}`;
+
+  const copyLink = () => {
+    navigator.clipboard?.writeText(portalLink).catch(()=>{});
+    setCopyMsg("Link copied!");
+    setTimeout(()=>setCopyMsg(""),2500);
+  };
+
+  const portalTabs = [
+    { id:"overview",  label:"Overview"   },
+    { id:"invoices",  label:"Invoices"   },
+    { id:"projects",  label:"Projects"   },
+    { id:"sows",      label:"SOW / Scope"},
+    { id:"team",      label:"Your Team"  },
+  ];
+
+  // Portal preview wrapper — renders in a "client-facing" light theme card
+  const PortalShell = ({ children }) => previewMode ? (
+    <div style={{background:"#fff",borderRadius:14,border:"2px solid #0369a1",overflow:"hidden",color:"#0c1a2e"}}>
+      {/* Portal header */}
+      <div style={{background:"linear-gradient(135deg,#0369a1,#0284c7)",padding:"20px 28px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:"#fff",letterSpacing:"-0.02em"}}>⬡ ZIKSATECH</div>
+          <div style={{fontSize:11,color:"#bae6fd",marginTop:2}}>Client Portal — {client?.name}</div>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <div style={{fontSize:12,color:"#bae6fd"}}>Secure Client View</div>
+          <div style={{fontSize:11,color:"#7dd3fc",marginTop:1}}>{new Date().toLocaleDateString("en-US",{month:"long",year:"numeric"})}</div>
+        </div>
+      </div>
+      <div style={{padding:"20px 24px"}}>{children}</div>
+    </div>
+  ) : <>{children}</>;
+
+  return (
+    <div>
+      <PH title="Client Portal" sub="Shareable read-only view for each client — invoices, project status, SOW milestones, team"/>
+
+      {/* Client selector + share controls */}
+      <div style={{display:"flex",gap:12,marginBottom:18,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <div>
+          <div className="lbl" style={{marginBottom:4}}>Select Client</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {clients.map(cl=>(
+              <button key={cl.id} onClick={()=>setSelClientId(cl.id)}
+                style={{padding:"8px 16px",borderRadius:8,border:`1px solid ${selClientId===cl.id?"#0284c7":"#1a2d45"}`,cursor:"pointer",
+                  background:selClientId===cl.id?"#0c2340":"#060d1c",color:selClientId===cl.id?"#38bdf8":"#475569",
+                  fontSize:12,fontWeight:600}}>
+                {cl.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          {copyMsg&&<span style={{fontSize:11,color:"#34d399"}}>✓ {copyMsg}</span>}
+          <button className="btn bg" style={{fontSize:11}} onClick={()=>setPreviewMode(p=>!p)}>
+            {previewMode?"← Internal View":"👁 Client Preview"}
+          </button>
+          <button className="btn bg" style={{fontSize:11}} onClick={copyLink}>🔗 Copy Portal Link</button>
+          <button className="btn bp" style={{fontSize:11}} onClick={()=>{
+            const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${client?.name} — Ziksatech Portal</title><style>${PRINT_CSS}body{font-family:sans-serif}</style></head><body><div class="page">
+            <div class="hdr"><div class="logo-block"><div class="company-name">Ziksatech LLC</div><div class="company-sub">SAP · Cloud · Analytics Consulting</div></div>
+            <div><div class="doc-type">CLIENT STATEMENT</div><div class="doc-meta">${client?.name}</div><div class="doc-meta">${new Date().toISOString().slice(0,10)}</div></div></div>
+            <h2>${client?.name} — Account Summary</h2>
+            <table><thead><tr><th>Invoice</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead><tbody>
+            ${clientInvoices.map(inv=>`<tr><td>${inv.number||inv.id}</td><td>${inv.issueDate||inv.date||""}</td><td>$${(inv.lines?.reduce((s,l)=>s+l.amount,0)||inv.amount||0).toLocaleString()}</td><td>${inv.status}</td></tr>`).join("")}
+            </tbody><tfoot><tr><td colspan="2"><strong>Total Outstanding</strong></td><td><strong>$${openAR.toLocaleString()}</strong></td><td></td></tr></tfoot></table>
+            ${ZT_FOOTER}</div></body></html>`;
+            printHTML(html);
+          }}>🖨 Print Statement</button>
+        </div>
+      </div>
+
+      {/* Portal link display */}
+      <div style={{marginBottom:16,padding:"10px 16px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+        <span style={{fontSize:10,color:"#3d5a7a",fontWeight:700,flexShrink:0}}>PORTAL LINK</span>
+        <span style={{fontSize:11,color:"#38bdf8",fontFamily:"monospace",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{portalLink}</span>
+        <span style={{fontSize:10,color:"#1e3a5f"}}>🔒 Read-only · Token expires in 30 days</span>
+      </div>
+
+      {/* KPI summary strip */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Total Billed",    v:fmt(totalBilled),         c:"#38bdf8" },
+          { l:"Collected",       v:fmt(totalPaid),            c:"#34d399" },
+          { l:"Open A/R",        v:fmt(openAR),               c:openAR>0?"#f59e0b":"#34d399" },
+          { l:"Active Projects", v:clientProjects.filter(p=>p.status==="active").length, c:"#a78bfa" },
+          { l:"Team Members",    v:clientRoster.length,       c:"#64748b" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:18,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {portalTabs.map(t=>(
+          <button key={t.id} onClick={()=>setPortalTab(t.id)}
+            style={{padding:"6px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:portalTab===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:portalTab===t.id?"#fff":"#475569"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <PortalShell>
+
+        {/* ── OVERVIEW ── */}
+        {portalTab==="overview"&&(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+
+            {/* Account health */}
+            <div className="card" style={{padding:"18px 20px",background:previewMode?"#f8fafc":undefined,color:previewMode?"#0c1a2e":undefined}}>
+              <div className="section-hdr" style={{color:previewMode?"#0369a1":undefined}}>Account Health</div>
+              <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
+                {[
+                  ["Client Since",    "2024-01-01",                   "#94a3b8"],
+                  ["Health Status",   client?.health||"—",             client?.health==="Green"?"#34d399":client?.health==="Amber"?"#f59e0b":"#f87171"],
+                  ["Annual Contract", fmt(client?.annualRev||0),       "#38bdf8"],
+                  ["Next Renewal",    client?.renewal||"—",            "#a78bfa"],
+                  ["Outstanding A/R", fmt(openAR),                     openAR>0?"#f59e0b":"#34d399"],
+                  ["Overdue Invoices",overdueInvs.length>0?`${overdueInvs.length} overdue`:"All current", overdueInvs.length>0?"#f87171":"#34d399"],
+                ].map(([l,v,color])=>(
+                  <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${previewMode?"#e2e8f0":"#070b14"}`}}>
+                    <span style={{fontSize:12,color:previewMode?"#64748b":"#64748b"}}>{l}</span>
+                    <span style={{fontSize:12,fontWeight:700,color,fontFamily:l.includes("$")||l.includes("A/R")||l.includes("Annual")?"monospace":"inherit"}}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent invoices */}
+            <div className="card" style={{padding:"18px 20px",background:previewMode?"#f8fafc":undefined}}>
+              <div className="section-hdr" style={{color:previewMode?"#0369a1":undefined}}>Recent Invoices</div>
+              {clientInvoices.length===0&&<div style={{padding:"16px",textAlign:"center",fontSize:12,color:"#3d5a7a"}}>No invoices on record.</div>}
+              {clientInvoices.slice(0,5).map(inv=>{
+                const amt = inv.lines?.reduce((s,l)=>s+l.amount,0)||inv.amount||0;
+                const paid = finPayments?.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0)||0;
+                const bal  = amt-paid;
+                const sc   = inv.status==="paid"?"#34d399":inv.status==="overdue"?"#f87171":"#f59e0b";
+                return (
+                  <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${previewMode?"#e2e8f0":"#070b14"}`}}>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:600,color:previewMode?"#0c1a2e":"#cbd5e1"}}>{inv.number}</div>
+                      <div style={{fontSize:10,color:"#64748b",marginTop:1}}>{inv.issueDate||inv.date} · Due {inv.dueDate}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:13,fontFamily:"monospace",fontWeight:700,color:previewMode?"#0369a1":"#38bdf8"}}>{fmt(amt)}</div>
+                      <span style={{fontSize:9,padding:"1px 6px",borderRadius:10,background:sc+"22",color:sc,border:`1px solid ${sc}44`}}>{inv.status}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Active projects */}
+            <div className="card" style={{padding:"18px 20px",background:previewMode?"#f8fafc":undefined}}>
+              <div className="section-hdr" style={{color:previewMode?"#0369a1":undefined}}>Active Projects</div>
+              {clientProjects.length===0&&<div style={{padding:"16px",textAlign:"center",fontSize:12,color:"#3d5a7a"}}>No active projects.</div>}
+              {clientProjects.map(p=>{
+                const burn = p.budget>0?Math.round((p.spent||0)/p.budget*100):0;
+                const hc   = p.health==="Green"?"#34d399":p.health==="Amber"?"#f59e0b":"#f87171";
+                return (
+                  <div key={p.id} style={{padding:"10px 0",borderBottom:`1px solid ${previewMode?"#e2e8f0":"#070b14"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                      <span style={{fontSize:12,fontWeight:700,color:previewMode?"#0c1a2e":"#cbd5e1"}}>{p.name}</span>
+                      <span className="bdg" style={{background:hc+"22",color:hc,border:`1px solid ${hc}44`,fontSize:9}}>{p.health}</span>
+                    </div>
+                    <div style={{fontSize:10,color:"#64748b",marginBottom:6}}>PM: {p.pm} · {p.startDate} → {p.endDate}</div>
+                    <div style={{height:6,background:previewMode?"#e2e8f0":"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:6,width:`${Math.min(100,burn)}%`,background:burn>85?"#f87171":burn>60?"#f59e0b":"#0369a1",borderRadius:3}}/>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#64748b",marginTop:3}}>
+                      <span>Budget: {fmt(p.budget||0)}</span>
+                      <span>Spent: {fmt(p.spent||0)} ({burn}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Your team */}
+            <div className="card" style={{padding:"18px 20px",background:previewMode?"#f8fafc":undefined}}>
+              <div className="section-hdr" style={{color:previewMode?"#0369a1":undefined}}>Your Ziksatech Team</div>
+              {clientRoster.length===0&&<div style={{padding:"16px",textAlign:"center",fontSize:12,color:"#3d5a7a"}}>No consultants assigned.</div>}
+              {clientRoster.map(r=>(
+                <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderBottom:`1px solid ${previewMode?"#e2e8f0":"#070b14"}`}}>
+                  <Avatar name={r.name} size={34}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:12,fontWeight:700,color:previewMode?"#0c1a2e":"#cbd5e1"}}>{r.name}</div>
+                    <div style={{fontSize:10,color:"#64748b",marginTop:1}}>{r.role} · {r.utilization}% allocated</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:11,fontFamily:"monospace",color:previewMode?"#0369a1":"#38bdf8"}}>${r.billRate}/hr</div>
+                    <span className="bdg" style={{background:r.type==="FTE"?"#0c2340":"#1a1a2e",color:r.type==="FTE"?"#38bdf8":"#a78bfa",fontSize:8}}>{r.type}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── INVOICES ── */}
+        {portalTab==="invoices"&&(
+          <div className="card" style={{background:previewMode?"#f8fafc":undefined}}>
+            {overdueInvs.length>0&&(
+              <div style={{margin:"12px 18px",padding:"10px 14px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:8,fontSize:11,color:"#dc2626"}}>
+                ⚠ {overdueInvs.length} overdue invoice{overdueInvs.length>1?"s":""} — please contact billing@ziksatech.com
+              </div>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"100px 1fr 100px 90px 90px 80px",padding:"8px 18px",borderBottom:"2px solid #1a2d45",background:previewMode?"#eff6ff":undefined}}>
+              {["Invoice","Description","Date","Amount","Balance","Status"].map(h=><span key={h} className="th" style={{color:previewMode?"#1e40af":undefined}}>{h}</span>)}
+            </div>
+            {clientInvoices.length===0&&<div style={{padding:"24px",textAlign:"center",fontSize:12,color:"#3d5a7a"}}>No invoices for this client yet.</div>}
+            {clientInvoices.map(inv=>{
+              const amt  = inv.lines?.reduce((s,l)=>s+l.amount,0)||inv.amount||0;
+              const paid = finPayments?.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0)||0;
+              const bal  = amt-paid;
+              const sc   = inv.status==="paid"?"#34d399":inv.status==="overdue"?"#f87171":"#f59e0b";
+              return (
+                <div key={inv.id} style={{display:"grid",gridTemplateColumns:"100px 1fr 100px 90px 90px 80px",padding:"10px 18px",borderBottom:`1px solid ${previewMode?"#e2e8f0":"#111d2d"}`}}>
+                  <span style={{fontSize:11,fontFamily:"monospace",color:previewMode?"#0369a1":"#38bdf8",fontWeight:700}}>{inv.number}</span>
+                  <span style={{fontSize:11,color:previewMode?"#374151":"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inv.description||inv.lines?.[0]?.description||"Consulting Services"}</span>
+                  <span style={{fontSize:11,color:previewMode?"#64748b":"#475569",fontFamily:"monospace"}}>{inv.issueDate||inv.date}</span>
+                  <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:previewMode?"#0369a1":"#38bdf8"}}>{fmt(amt)}</span>
+                  <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:bal>0?sc:"#34d399"}}>{fmt(bal)}</span>
+                  <span className="bdg" style={{background:sc+"22",color:sc,border:`1px solid ${sc}44`,fontSize:9}}>{inv.status}</span>
+                </div>
+              );
+            })}
+            {/* Totals */}
+            <div style={{display:"grid",gridTemplateColumns:"100px 1fr 100px 90px 90px 80px",padding:"10px 18px",background:previewMode?"#eff6ff":"#060d1c",borderTop:`3px solid ${previewMode?"#0369a1":"#0369a1"}`}}>
+              <span style={{fontSize:11,fontWeight:800,color:previewMode?"#1e40af":"#e2e8f0",gridColumn:"1/4"}}>TOTAL</span>
+              <span style={{fontSize:13,fontFamily:"monospace",fontWeight:800,color:previewMode?"#0369a1":"#38bdf8"}}>{fmt(totalBilled)}</span>
+              <span style={{fontSize:13,fontFamily:"monospace",fontWeight:800,color:openAR>0?"#f59e0b":"#34d399"}}>{fmt(openAR)}</span>
+              <span/>
+            </div>
+          </div>
+        )}
+
+        {/* ── PROJECTS ── */}
+        {portalTab==="projects"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {clientProjects.length===0&&<div style={{padding:"32px",textAlign:"center",fontSize:12,color:"#3d5a7a",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No projects for this client.</div>}
+            {clientProjects.map(p=>{
+              const burn = p.budget>0?Math.round((p.spent||0)/p.budget*100):0;
+              const hc   = p.health==="Green"?"#34d399":p.health==="Amber"?"#f59e0b":"#f87171";
+              const projCOs = clientCOs.filter(co=>co.projectId===p.id);
+              return (
+                <div key={p.id} className="card" style={{padding:"18px 20px",background:previewMode?"#f8fafc":undefined,borderLeft:`4px solid ${hc}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                    <div>
+                      <div style={{fontSize:15,fontWeight:800,color:previewMode?"#0c1a2e":"#e2e8f0"}}>{p.name}</div>
+                      <div style={{fontSize:11,color:"#64748b",marginTop:3}}>PM: {p.pm} · {p.startDate} → {p.endDate}</div>
+                    </div>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <span className="bdg" style={{background:hc+"22",color:hc,border:`1px solid ${hc}44`}}>{p.health}</span>
+                      <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",border:"1px solid #1a3a5c"}}>{p.status}</span>
+                    </div>
+                  </div>
+                  {/* Budget bar */}
+                  <div style={{marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:4}}>
+                      <span style={{color:"#64748b"}}>Budget utilization</span>
+                      <span style={{color:burn>85?"#f87171":burn>60?"#f59e0b":"#64748b",fontFamily:"monospace"}}>{fmt(p.spent||0)} / {fmt(p.budget||0)} ({burn}%)</span>
+                    </div>
+                    <div style={{height:8,background:previewMode?"#e2e8f0":"#1a2d45",borderRadius:4,overflow:"hidden"}}>
+                      <div style={{height:8,width:`${Math.min(100,burn)}%`,background:burn>85?"#f87171":burn>60?"#f59e0b":"#0369a1",borderRadius:4,transition:"width 0.3s"}}/>
+                    </div>
+                  </div>
+                  {/* Change orders */}
+                  {projCOs.length>0&&(
+                    <div style={{fontSize:11,color:"#64748b",padding:"8px 12px",background:previewMode?"#eff6ff":"#060d1c",borderRadius:6,border:`1px solid ${previewMode?"#bfdbfe":"#1a2d45"}`}}>
+                      {projCOs.length} Change Order{projCOs.length>1?"s":""} · Total impact: {fmt(projCOs.reduce((s,co)=>s+co.changeAmount,0))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── SOW / SCOPE ── */}
+        {portalTab==="sows"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {clientSOWs.length===0&&<div style={{padding:"32px",textAlign:"center",fontSize:12,color:"#3d5a7a",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No SOWs on record for this client.</div>}
+            {clientSOWs.map(s=>(
+              <div key={s.id} className="card" style={{padding:"18px 20px",background:previewMode?"#f8fafc":undefined}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0"}}>{s.title}</div>
+                    <div style={{fontSize:10,color:"#64748b",marginTop:3}}>{s.startDate} → {s.endDate} · {fmt(s.value||0)} total value</div>
+                  </div>
+                  <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",border:"1px solid #1a3a5c"}}>{s.status||"active"}</span>
+                </div>
+                {/* Milestones */}
+                {(s.milestones||[]).length>0&&(
+                  <div>
+                    <div className="lbl" style={{marginBottom:6,color:previewMode?"#1e40af":undefined}}>Milestones</div>
+                    {s.milestones.map(m=>{
+                      const mc = m.status==="completed"?"#34d399":m.status==="in_progress"?"#38bdf8":"#475569";
+                      return (
+                        <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:`1px solid ${previewMode?"#e2e8f0":"#070b14"}`}}>
+                          <div style={{width:8,height:8,borderRadius:"50%",background:mc,flexShrink:0}}/>
+                          <span style={{fontSize:11,flex:1,color:previewMode?"#374151":"#94a3b8"}}>{m.name}</span>
+                          <span style={{fontSize:10,fontFamily:"monospace",color:previewMode?"#64748b":"#475569"}}>{m.dueDate}</span>
+                          {m.value&&<span style={{fontSize:11,fontFamily:"monospace",fontWeight:700,color:previewMode?"#0369a1":"#38bdf8"}}>{fmt(m.value)}</span>}
+                          <span className="bdg" style={{background:mc+"22",color:mc,border:`1px solid ${mc}44`,fontSize:8}}>{m.status||"pending"}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── TEAM ── */}
+        {portalTab==="team"&&(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+            {clientRoster.length===0&&<div style={{gridColumn:"1/-1",padding:"32px",textAlign:"center",fontSize:12,color:"#3d5a7a",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No consultants assigned to this client.</div>}
+            {clientRoster.map(r=>(
+              <div key={r.id} className="card" style={{padding:"18px",textAlign:"center",background:previewMode?"#f8fafc":undefined}}>
+                <Avatar name={r.name} size={52}/>
+                <div style={{marginTop:10,fontSize:14,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0"}}>{r.name}</div>
+                <div style={{fontSize:11,color:"#64748b",marginTop:4}}>{r.role}</div>
+                <div style={{display:"flex",gap:6,justifyContent:"center",marginTop:10,flexWrap:"wrap"}}>
+                  <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",border:"1px solid #1a3a5c",fontSize:9}}>{r.type}</span>
+                  <span className="bdg" style={{background:"#021f14",color:"#34d399",border:"1px solid #063d28",fontSize:9}}>{r.utilization}% allocated</span>
+                </div>
+                <div style={{marginTop:10,fontSize:11,fontFamily:"monospace",color:previewMode?"#0369a1":"#38bdf8",fontWeight:700}}>${r.billRate}/hr</div>
+                {(r.skills||[]).length>0&&(
+                  <div style={{marginTop:8,fontSize:9,color:"#3d5a7a"}}>{r.skills.slice(0,3).join(" · ")}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+      </PortalShell>
+    </div>
+  );
+}
+
+// =============================================================================
+// SEED — ONBOARDING
+// =============================================================================
+const OB_TEMPLATE_FTE = [
+  { id:"ob_t1",  cat:"HR & Legal",      title:"Collect signed offer letter",          days:0  },
+  { id:"ob_t2",  cat:"HR & Legal",      title:"Complete I-9 employment eligibility",  days:1  },
+  { id:"ob_t3",  cat:"HR & Legal",      title:"W-4 federal withholding form",         days:1  },
+  { id:"ob_t4",  cat:"HR & Legal",      title:"Direct deposit setup (ADP)",           days:2  },
+  { id:"ob_t5",  cat:"Benefits",        title:"Benefits enrollment (health/dental/vision)", days:3 },
+  { id:"ob_t6",  cat:"Benefits",        title:"401k enrollment",                      days:5  },
+  { id:"ob_t7",  cat:"Benefits",        title:"Beneficiary designations",             days:5  },
+  { id:"ob_t8",  cat:"IT & Access",     title:"Laptop / equipment issued",            days:0  },
+  { id:"ob_t9",  cat:"IT & Access",     title:"Email & Slack account created",        days:0  },
+  { id:"ob_t10", cat:"IT & Access",     title:"VPN & systems access granted",         days:1  },
+  { id:"ob_t11", cat:"IT & Access",     title:"SAP dev environment access",           days:3  },
+  { id:"ob_t12", cat:"Compliance",      title:"Work authorization verified (I-9)",    days:1  },
+  { id:"ob_t13", cat:"Compliance",      title:"Background check completed",           days:5  },
+  { id:"ob_t14", cat:"Compliance",      title:"NDA / confidentiality agreement",      days:1  },
+  { id:"ob_t15", cat:"Project Ramp",    title:"Client intro call scheduled",          days:3  },
+  { id:"ob_t16", cat:"Project Ramp",    title:"First timesheet submitted",            days:7  },
+  { id:"ob_t17", cat:"Project Ramp",    title:"30-day check-in completed",            days:30 },
+];
+const OB_TEMPLATE_CONTRACTOR = [
+  { id:"ob_c1",  cat:"HR & Legal",      title:"Signed contractor agreement / SOW",   days:0  },
+  { id:"ob_c2",  cat:"HR & Legal",      title:"W-9 tax form collected",              days:1  },
+  { id:"ob_c3",  cat:"HR & Legal",      title:"COI (Certificate of Insurance) on file", days:3 },
+  { id:"ob_c4",  cat:"Compliance",      title:"Work authorization verified",         days:1  },
+  { id:"ob_c5",  cat:"IT & Access",     title:"Email / collaboration access",        days:1  },
+  { id:"ob_c6",  cat:"IT & Access",     title:"VPN & project system access",         days:2  },
+  { id:"ob_c7",  cat:"Project Ramp",    title:"Client intro & project kickoff",      days:3  },
+  { id:"ob_c8",  cat:"Project Ramp",    title:"First invoice / timesheet submitted", days:14 },
+  { id:"ob_c9",  cat:"Finance",         title:"AP vendor record created",            days:2  },
+  { id:"ob_c10", cat:"Finance",         title:"Net-30 payment terms confirmed",      days:3  },
+];
+
+const ONBOARDING_SEED = [
+  {
+    id:"onb1", memberId:"r1", name:"Suresh Menon", type:"FTE", startDate:"2024-01-15", status:"completed",
+    tasks: OB_TEMPLATE_FTE.map(t=>({...t, status:"done", completedDate:"2024-01-"+String(15+t.days).padStart(2,"0"), assignee:"Manju", notes:"" }))
+  },
+  {
+    id:"onb2", memberId:"r7", name:"Rajesh Kumar", type:"Contractor", startDate:"2024-03-01", status:"completed",
+    tasks: OB_TEMPLATE_CONTRACTOR.map(t=>({...t, status:t.id==="ob_c3"?"pending":"done", completedDate:t.id==="ob_c3"?null:"2024-03-"+String(1+t.days).padStart(2,"0"), assignee:"Manju", notes:t.id==="ob_c3"?"COI requested — follow up":""  }))
+  },
+  {
+    id:"onb3", memberId:"new1", name:"Priya Sharma (New Hire)", type:"FTE", startDate:"2026-04-01", status:"in_progress",
+    tasks: OB_TEMPLATE_FTE.map(t=>({...t, status:t.days===0?"done":"pending", completedDate:t.days===0?"2026-04-01":null, assignee:t.cat==="IT & Access"?"IT Team":"Manju", notes:"" }))
+  },
+];
+
+// =============================================================================
+// RESOURCE CAPACITY PLANNER  (#3)
+// =============================================================================
+function CapacityPlanner({ roster, projects, sows, clients, tsHours }) {
+  const WEEKS = 12;
+  const TODAY = new Date();
+  const weeks = Array.from({length:WEEKS},(_,i)=>{
+    const d = new Date(TODAY); d.setDate(d.getDate() + i*7 - d.getDay() + 1);
+    return { label: d.toLocaleDateString("en-US",{month:"short",day:"numeric"}), date: d.toISOString().slice(0,10) };
+  });
+
+  const [view,    setView]    = useState("grid");   // grid | person | project
+  const [hovered, setHovered] = useState(null);
+  const [selPerson, setSelPerson] = useState(null);
+
+  const rData = roster.map(r => ({ ...r, ...calcRoster(r) }));
+
+  // Capacity model: each person has utilization → booked hours/week
+  // Project assignments derived from roster.client + projects
+  const WORK_HRS = 40;
+  const personCapacity = rData.map(r => {
+    const bookedPct  = r.util;
+    const bookedHrs  = Math.round(WORK_HRS * bookedPct);
+    const freeHrs    = WORK_HRS - bookedHrs;
+    const assignments = projects.filter(p => p.team?.includes(r.id) || p.pm===r.name || r.client===p.client);
+    return { ...r, bookedHrs, freeHrs, bookedPct, assignments };
+  });
+
+  // Project demand vs capacity
+  const projDemand = projects.filter(p=>p.status==="active").map(p=>{
+    const teamMembers = personCapacity.filter(r=>r.client===p.client||p.team?.includes(r.id));
+    const totalBooked = teamMembers.reduce((s,r)=>s+r.bookedHrs,0);
+    const budget = p.budget||0;
+    const spent  = p.spent||0;
+    const burnPct= budget>0?Math.round(spent/budget*100):0;
+    return { ...p, teamSize:teamMembers.length, totalBooked, budget, spent, burnPct };
+  });
+
+  // Capacity colour helper
+  const capColor = (pct) => pct>=0.9?"#f87171":pct>=0.7?"#f59e0b":pct>=0.3?"#34d399":"#38bdf8";
+  const capBg    = (pct) => pct>=0.9?"#1a0808":pct>=0.7?"#1a1000":pct>=0.3?"#021f14":"#020d1c";
+
+  return (
+    <div>
+      <PH title="Resource Capacity Planner" sub="12-week forward view · utilization, bench time, and project demand"/>
+
+      {/* Summary KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Total Headcount",  v:rData.length,                                              c:"#38bdf8" },
+          { l:"Fully Booked",     v:rData.filter(r=>r.util>=0.9).length,                       c:"#f87171" },
+          { l:"High Util (≥70%)", v:rData.filter(r=>r.util>=0.7&&r.util<0.9).length,          c:"#f59e0b" },
+          { l:"On Bench",         v:rData.filter(r=>r.util===0).length,                        c:"#64748b" },
+          { l:"Available Hours/wk",v:personCapacity.reduce((s,r)=>s+r.freeHrs,0)+"h",         c:"#34d399" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* View toggle */}
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {[["grid","Capacity Grid"],["person","By Person"],["project","By Project"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)}
+            style={{padding:"5px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+              background:view===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:view===v?"#fff":"#475569"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* ── CAPACITY GRID ── */}
+      {view==="grid"&&(
+        <div className="card" style={{overflow:"auto"}}>
+          {/* Header row — weeks */}
+          <div style={{display:"grid",gridTemplateColumns:`180px repeat(${WEEKS},1fr)`,padding:"8px 12px",background:"#060d1c",borderBottom:"2px solid #1a2d45",minWidth:800}}>
+            <span className="th">Consultant</span>
+            {weeks.map(w=><span key={w.date} className="th" style={{textAlign:"center",fontSize:9}}>{w.label}</span>)}
+          </div>
+          {personCapacity.map(r=>(
+            <div key={r.id} onClick={()=>setSelPerson(selPerson===r.id?null:r.id)}
+              style={{display:"grid",gridTemplateColumns:`180px repeat(${WEEKS},1fr)`,padding:"6px 12px",
+                borderBottom:"1px solid #070b14",cursor:"pointer",background:selPerson===r.id?"#0a1a2e":"transparent",
+                minWidth:800}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <Avatar name={r.name} size={24}/>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:130}}>{r.name}</div>
+                  <div style={{fontSize:9,color:"#3d5a7a"}}>{r.client}</div>
+                </div>
+              </div>
+              {weeks.map(w=>{
+                // Simulate slight variation per week based on util
+                const variation = r.util>0 ? (Math.sin(w.date.charCodeAt(8)+r.id.charCodeAt(1))*0.08) : 0;
+                const wPct = Math.max(0,Math.min(1,r.util+variation));
+                const col  = capColor(wPct);
+                const bg   = capBg(wPct);
+                const isHov = hovered===`${r.id}-${w.date}`;
+                return (
+                  <div key={w.date}
+                    onMouseEnter={()=>setHovered(`${r.id}-${w.date}`)}
+                    onMouseLeave={()=>setHovered(null)}
+                    title={`${r.name} · ${w.label}: ${Math.round(wPct*100)}% (${Math.round(wPct*WORK_HRS)}h booked, ${Math.round((1-wPct)*WORK_HRS)}h free)`}
+                    style={{margin:"1px 2px",borderRadius:4,height:26,background:bg,border:`1px solid ${col}44`,
+                      display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.1s",
+                      transform:isHov?"scale(1.1)":"none",zIndex:isHov?1:0,position:"relative",cursor:"default"}}>
+                    <div style={{height:18,width:`${wPct*100}%`,background:col,borderRadius:3,opacity:0.85,maxWidth:"92%",minWidth:wPct>0?3:0}}/>
+                    {isHov&&(
+                      <div style={{position:"absolute",bottom:"110%",left:"50%",transform:"translateX(-50%)",
+                        background:"#0c1a2e",border:"1px solid #1a2d45",borderRadius:6,padding:"4px 8px",
+                        fontSize:9,color:"#e2e8f0",whiteSpace:"nowrap",zIndex:10,pointerEvents:"none"}}>
+                        {Math.round(wPct*100)}% · {Math.round(wPct*WORK_HRS)}h
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+          {/* Legend */}
+          <div style={{display:"flex",gap:16,padding:"10px 12px",borderTop:"1px solid #1a2d45",flexWrap:"wrap"}}>
+            {[["#f87171","≥90% — At capacity"],["#f59e0b","70–89% — High"],["#34d399","30–69% — Healthy"],["#38bdf8","<30% — Available"]].map(([c,l])=>(
+              <div key={l} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#475569"}}>
+                <div style={{width:12,height:12,borderRadius:3,background:c}}/>
+                {l}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── BY PERSON ── */}
+      {view==="person"&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+          {personCapacity.map(r=>{
+            const col = capColor(r.bookedPct);
+            return (
+              <div key={r.id} className="card" style={{padding:"16px 18px",borderLeft:`4px solid ${col}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                  <Avatar name={r.name} size={40}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role} · {r.type} · {r.client}</div>
+                  </div>
+                  <span className="bdg" style={{background:capBg(r.bookedPct),color:col,border:`1px solid ${col}44`}}>{Math.round(r.bookedPct*100)}%</span>
+                </div>
+                {/* Utilization bar */}
+                <div style={{height:8,background:"#1a2d45",borderRadius:4,overflow:"hidden",marginBottom:8}}>
+                  <div style={{height:8,width:`${r.bookedPct*100}%`,background:col,borderRadius:4,transition:"width 0.4s"}}/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                  {[
+                    ["Booked",  `${r.bookedHrs}h/wk`, col],
+                    ["Free",    `${r.freeHrs}h/wk`,   "#34d399"],
+                    ["Bill Rate",`$${r.billRate}/hr`,  "#38bdf8"],
+                  ].map(([l,v,c2])=>(
+                    <div key={l} style={{textAlign:"center",padding:"6px",background:"#070c18",borderRadius:6}}>
+                      <div style={{fontSize:13,fontWeight:800,color:c2,fontFamily:"monospace"}}>{v}</div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginTop:1}}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Available capacity value */}
+                {r.freeHrs>0&&(
+                  <div style={{fontSize:10,color:"#34d399",padding:"5px 8px",background:"#021f14",borderRadius:6,border:"1px solid #063d28"}}>
+                    💡 Available: {r.freeHrs}h/wk = {fmt(r.freeHrs*r.billRate*4)}/mo potential revenue
+                  </div>
+                )}
+                {r.freeHrs===0&&(
+                  <div style={{fontSize:10,color:"#f87171",padding:"5px 8px",background:"#1a0808",borderRadius:6,border:"1px solid #3d1010"}}>
+                    ⚠ Fully booked — no capacity for new work
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── BY PROJECT ── */}
+      {view==="project"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {projDemand.length===0&&<div style={{padding:"32px",textAlign:"center",fontSize:12,color:"#1e3a5f",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No active projects found.</div>}
+          {projDemand.map(p=>{
+            const hc = p.health==="Green"?"#34d399":p.health==="Amber"?"#f59e0b":"#f87171";
+            const teamMembers = personCapacity.filter(r=>r.client===p.client||p.team?.includes(r.id));
+            return (
+              <div key={p.id} className="card" style={{padding:"18px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{p.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginTop:2}}>{p.client} · PM: {p.pm} · {p.startDate} → {p.endDate}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <span className="bdg" style={{background:hc+"22",color:hc,border:`1px solid ${hc}44`}}>{p.health||"—"}</span>
+                    <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",border:"1px solid #1a3a5c"}}>{p.teamSize} people</span>
+                  </div>
+                </div>
+                {/* Budget bar */}
+                <div style={{marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:4}}>
+                    <span style={{color:"#475569"}}>Budget consumed</span>
+                    <span style={{color:p.burnPct>85?"#f87171":p.burnPct>60?"#f59e0b":"#64748b",fontFamily:"monospace"}}>{fmt(p.spent)} / {fmt(p.budget)} ({p.burnPct}%)</span>
+                  </div>
+                  <div style={{height:6,background:"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:6,width:`${Math.min(100,p.burnPct)}%`,background:p.burnPct>85?"#f87171":p.burnPct>60?"#f59e0b":"#0369a1",borderRadius:3,transition:"width 0.3s"}}/>
+                  </div>
+                </div>
+                {/* Team breakdown */}
+                {teamMembers.length>0&&(
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {teamMembers.map(r=>{
+                      const tc = capColor(r.bookedPct);
+                      return (
+                        <div key={r.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,background:capBg(r.bookedPct),border:`1px solid ${tc}44`}}>
+                          <div style={{width:6,height:6,borderRadius:"50%",background:tc}}/>
+                          <span style={{fontSize:10,color:"#94a3b8"}}>{r.name.split(" ")[0]}</span>
+                          <span style={{fontSize:9,color:"#3d5a7a"}}>{r.bookedHrs}h/wk</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {/* Bench — available for project assignment */}
+          {personCapacity.filter(r=>r.util===0).length>0&&(
+            <div className="card" style={{padding:"16px 20px",border:"1px solid #063d28"}}>
+              <div className="section-hdr" style={{color:"#34d399"}}>🟢 On Bench — Available for Assignment</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",padding:"10px 0"}}>
+                {personCapacity.filter(r=>r.util===0).map(r=>(
+                  <div key={r.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",background:"#021f14",borderRadius:8,border:"1px solid #063d28"}}>
+                    <Avatar name={r.name} size={28}/>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#34d399"}}>{r.name}</div>
+                      <div style={{fontSize:9,color:"#1e3a5f"}}>{r.role} · {fmt(r.rev/52)}/wk revenue potential</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// BUDGET VS. ACTUAL  (#4)
+// =============================================================================
+function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses, plIncome, plExpense, clients, adpRuns }) {
+  const [level, setLevel] = useState("company"); // company | project
+  const [selProj, setSelProj] = useState(null);
+  const [year, setYear] = useState("2026");
+
+  const rData = roster.map(r=>({...r,...calcRoster(r)}));
+
+  // ── Company-level budget model ──────────────────────────────────────────────
+  const COMPANY_BUDGET = {
+    revenue:   2_400_000,
+    cogs:        960_000,
+    payroll:     720_000,
+    contractors: 240_000,
+    opex:        180_000,
+    marketing:    36_000,
+    travel:       24_000,
+    software:     48_000,
+    legal:        24_000,
+    misc:         24_000,
+  };
+
+  // Actual revenue: from finInvoices YTD
+  const ytdRevActual = (finInvoices||[])
+    .filter(i=>i.issueDate?.startsWith(year)||(i.date?.startsWith(year)))
+    .reduce((s,i)=>s+i.lines?.reduce((x,l)=>x+l.amount,0)||i.amount||0, 0);
+
+  // Actual expenses by category
+  const expByCategory = {};
+  for (const e of (finExpenses||[])) {
+    if (!(e.date||"").startsWith(year)) continue;
+    const cat = e.category||"misc";
+    expByCategory[cat] = (expByCategory[cat]||0) + (e.amount||0);
+  }
+
+  // ADP payroll actual (YTD processed runs)
+  const ytdPayrollActual = (adpRuns||[])
+    .filter(r=>r.status==="processed"&&(r.date||"").startsWith(year))
+    .reduce((s,r)=>s+(r.grossPayroll||0),0);
+
+  // Annualize YTD (3 months in → ×4)
+  const MONTHS_ELAPSED = 3;
+  const annualizeRun = (v) => Math.round(v/MONTHS_ELAPSED*12);
+
+  const companyRows = [
+    { label:"Revenue",        budget:COMPANY_BUDGET.revenue,    actual:ytdRevActual,             annualRun:annualizeRun(ytdRevActual),     type:"income" },
+    { label:"Payroll (FTE)",  budget:COMPANY_BUDGET.payroll,    actual:ytdPayrollActual||Math.round(rData.filter(r=>r.type==="FTE").reduce((s,r)=>s+r.baseSalary,0)/4*MONTHS_ELAPSED), annualRun:0, type:"expense" },
+    { label:"Contractor Pay", budget:COMPANY_BUDGET.contractors,actual:Math.round(rData.filter(r=>r.type==="Contractor").reduce((s,r)=>s+r.totalCost,0)/12*MONTHS_ELAPSED), annualRun:0, type:"expense" },
+    { label:"Operating Exp.", budget:COMPANY_BUDGET.opex,       actual:(expByCategory["office"]||0)+(expByCategory["admin"]||0)+(expByCategory["general"]||0), annualRun:0, type:"expense" },
+    { label:"Software/SaaS",  budget:COMPANY_BUDGET.software,   actual:expByCategory["software"]||0, annualRun:0, type:"expense" },
+    { label:"Travel & Meals", budget:COMPANY_BUDGET.travel,     actual:expByCategory["travel"]||0,   annualRun:0, type:"expense" },
+    { label:"Legal & Prof.",  budget:COMPANY_BUDGET.legal,      actual:expByCategory["legal"]||0,    annualRun:0, type:"expense" },
+    { label:"Marketing",      budget:COMPANY_BUDGET.marketing,  actual:expByCategory["marketing"]||0,annualRun:0, type:"expense" },
+  ].map(r=>{
+    const ytdBudget = Math.round(r.budget/12*MONTHS_ELAPSED);
+    const variance  = r.actual - ytdBudget;
+    const variancePct = ytdBudget>0 ? variance/ytdBudget : 0;
+    const status = r.type==="income"
+      ? (variance>=0?"favorable":"unfavorable")
+      : (variance<=0?"favorable":"unfavorable");
+    return {...r, ytdBudget, variance, variancePct, status};
+  });
+
+  // EBITDA calc
+  const totalRevRow   = companyRows.find(r=>r.label==="Revenue");
+  const totalExpRows  = companyRows.filter(r=>r.type==="expense");
+  const budgetEBITDA  = COMPANY_BUDGET.revenue - Object.entries(COMPANY_BUDGET).filter(([k])=>k!=="revenue").reduce((s,[,v])=>s+v,0);
+  const actualExpTotal= totalExpRows.reduce((s,r)=>s+r.actual,0);
+  const actualEBITDA  = ytdRevActual - actualExpTotal;
+  const ytdBudgetEBITDA = (totalRevRow?.ytdBudget||0) - totalExpRows.reduce((s,r)=>s+r.ytdBudget,0);
+
+  // Project-level
+  const activeProjects = (projects||[]).filter(p=>p.status==="active"||p.status==="on_track");
+
+  const varColor = (status) => status==="favorable"?"#34d399":"#f87171";
+  const varBg    = (status) => status==="favorable"?"#021f14":"#1a0808";
+
+  return (
+    <div>
+      <PH title="Budget vs. Actual" sub={`${year} fiscal year · YTD through March · ${MONTHS_ELAPSED} months elapsed`}/>
+
+      {/* Level toggle */}
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {[["company","Company P&L"],["project","By Project"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setLevel(v)}
+            style={{padding:"5px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+              background:level===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:level===v?"#fff":"#475569"}}>
+            {l}
+          </button>
+        ))}
+        <select className="inp" style={{fontSize:11,padding:"4px 10px",width:"auto",marginLeft:8}} value={year} onChange={e=>setYear(e.target.value)}>
+          {["2025","2026"].map(y=><option key={y}>{y}</option>)}
+        </select>
+      </div>
+
+      {/* ── COMPANY P&L ── */}
+      {level==="company"&&(
+        <>
+          {/* EBITDA summary cards */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+            {[
+              { l:"Budget Revenue",    v:fmt(COMPANY_BUDGET.revenue),  c:"#38bdf8" },
+              { l:"Actual YTD Rev",    v:fmt(ytdRevActual),             c:ytdRevActual>=(COMPANY_BUDGET.revenue/12*MONTHS_ELAPSED)?"#34d399":"#f87171" },
+              { l:"Budget EBITDA",     v:fmt(budgetEBITDA),             c:"#a78bfa" },
+              { l:"Actual EBITDA YTD", v:fmt(actualEBITDA),             c:actualEBITDA>0?"#34d399":"#f87171" },
+            ].map(k=>(
+              <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+                <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+                <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Variance table */}
+          <div className="card">
+            <div style={{display:"grid",gridTemplateColumns:"1.4fr 100px 100px 100px 90px 80px",padding:"8px 18px",background:"#060d1c",borderBottom:"2px solid #1a2d45"}}>
+              {["Category","Annual Budget","YTD Budget","YTD Actual","Variance","Status"].map(h=>(
+                <span key={h} className="th" style={{fontSize:10}}>{h}</span>
+              ))}
+            </div>
+            {companyRows.map((r,i)=>{
+              const vc = varColor(r.status);
+              const vb = varBg(r.status);
+              return (
+                <div key={i} style={{display:"grid",gridTemplateColumns:"1.4fr 100px 100px 100px 90px 80px",padding:"10px 18px",
+                  borderBottom:"1px solid #070b14",background:i%2===0?"transparent":"#06090f"}}>
+                  <span style={{fontSize:12,color:"#cbd5e1",fontWeight:600}}>{r.label}</span>
+                  <span style={{fontSize:12,fontFamily:"monospace",color:"#475569"}}>{fmt(r.budget)}</span>
+                  <span style={{fontSize:12,fontFamily:"monospace",color:"#3d5a7a"}}>{fmt(r.ytdBudget)}</span>
+                  <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8",fontWeight:600}}>{fmt(r.actual)}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
+                    <span style={{fontSize:11,fontFamily:"monospace",fontWeight:700,color:vc}}>
+                      {r.variance>=0?"+":""}{fmt(Math.abs(r.variance))}
+                    </span>
+                  </div>
+                  <span className="bdg" style={{background:vb,color:vc,border:`1px solid ${vc}44`,fontSize:9,width:"fit-content"}}>
+                    {r.status==="favorable"?"✓ On":"⚠ Over"}
+                  </span>
+                </div>
+              );
+            })}
+            {/* EBITDA row */}
+            <div style={{display:"grid",gridTemplateColumns:"1.4fr 100px 100px 100px 90px 80px",padding:"12px 18px",background:"#060d1c",borderTop:"3px solid #0369a1"}}>
+              <span style={{fontSize:13,fontWeight:800,color:"#e2e8f0"}}>EBITDA</span>
+              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#a78bfa"}}>{fmt(budgetEBITDA)}</span>
+              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#7dd3fc"}}>{fmt(ytdBudgetEBITDA)}</span>
+              <span style={{fontSize:13,fontFamily:"monospace",fontWeight:800,color:actualEBITDA>0?"#34d399":"#f87171"}}>{fmt(actualEBITDA)}</span>
+              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:800,color:actualEBITDA>ytdBudgetEBITDA?"#34d399":"#f87171"}}>
+                {actualEBITDA-ytdBudgetEBITDA>=0?"+":""}{fmt(actualEBITDA-ytdBudgetEBITDA)}
+              </span>
+              <span className="bdg" style={{background:actualEBITDA>ytdBudgetEBITDA?"#021f14":"#1a0808",color:actualEBITDA>ytdBudgetEBITDA?"#34d399":"#f87171",border:"1px solid",borderColor:actualEBITDA>ytdBudgetEBITDA?"#063d28":"#3d1010",fontSize:9}}>
+                {actualEBITDA>ytdBudgetEBITDA?"✓ Ahead":"⚠ Behind"}
+              </span>
+            </div>
+          </div>
+
+          {/* Variance waterfall chart */}
+          <div className="card" style={{padding:"18px 20px",marginTop:14}}>
+            <div className="section-hdr">Variance by Category</div>
+            <div style={{padding:"12px 0",display:"flex",flexDirection:"column",gap:8}}>
+              {companyRows.map((r,i)=>{
+                const maxBudget = Math.max(...companyRows.map(rr=>rr.budget));
+                const barW = Math.round(Math.abs(r.variance)/maxBudget*260);
+                const vc   = varColor(r.status);
+                return (
+                  <div key={i} style={{display:"grid",gridTemplateColumns:"140px 1fr 100px",gap:8,alignItems:"center"}}>
+                    <span style={{fontSize:11,color:"#64748b",textAlign:"right",paddingRight:8}}>{r.label}</span>
+                    <div style={{height:18,background:"#0a1626",borderRadius:4,overflow:"hidden",position:"relative"}}>
+                      <div style={{height:18,width:`${Math.min(100,Math.abs(r.variance)/5000)}%`,background:vc,borderRadius:4,maxWidth:"100%",opacity:0.85}}/>
+                    </div>
+                    <span style={{fontSize:11,fontFamily:"monospace",color:vc,fontWeight:700}}>
+                      {r.variance>=0?"+":"-"}{fmt(Math.abs(r.variance))}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── BY PROJECT ── */}
+      {level==="project"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {activeProjects.length===0&&<div style={{padding:"32px",textAlign:"center",fontSize:12,color:"#1e3a5f",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No active projects.</div>}
+          {activeProjects.map(p=>{
+            const budget    = p.budget||0;
+            const actual    = p.spent||0;
+            const variance  = actual-budget;
+            const burnPct   = budget>0?Math.round(actual/budget*100):0;
+            const daysTotal = p.startDate&&p.endDate ? Math.round((new Date(p.endDate)-new Date(p.startDate))/86400000) : 0;
+            const daysGone  = p.startDate ? Math.round((new Date()-new Date(p.startDate))/86400000) : 0;
+            const timePct   = daysTotal>0?Math.min(100,Math.round(daysGone/daysTotal*100)):0;
+            const isSel     = selProj===p.id;
+            const hc        = p.health==="Green"?"#34d399":p.health==="Amber"?"#f59e0b":"#f87171";
+            const overBudget= actual>budget && budget>0;
+
+            // Estimate at Completion (EAC)
+            const eac = timePct>0&&timePct<100 ? Math.round(actual/(timePct/100)) : actual;
+            const eacVariance = eac - budget;
+
+            return (
+              <div key={p.id} className="card" style={{padding:"18px 20px",borderLeft:`4px solid ${hc}`,cursor:"pointer"}}
+                onClick={()=>setSelProj(isSel?null:p.id)}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{p.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginTop:2}}>{p.client} · {p.startDate} → {p.endDate}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    {overBudget&&<span className="bdg" style={{background:"#1a0808",color:"#f87171",border:"1px solid #3d1010"}}>Over Budget</span>}
+                    <span className="bdg" style={{background:hc+"22",color:hc,border:`1px solid ${hc}44`}}>{p.health}</span>
+                  </div>
+                </div>
+                {/* Dual progress bars: budget + time */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}>
+                      <span style={{color:"#475569"}}>Budget spent</span>
+                      <span style={{color:burnPct>100?"#f87171":burnPct>80?"#f59e0b":"#34d399",fontFamily:"monospace"}}>{burnPct}%</span>
+                    </div>
+                    <div style={{height:6,background:"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:6,width:`${Math.min(100,burnPct)}%`,background:burnPct>100?"#f87171":burnPct>80?"#f59e0b":"#0369a1",borderRadius:3}}/>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}>
+                      <span style={{color:"#475569"}}>Time elapsed</span>
+                      <span style={{color:"#38bdf8",fontFamily:"monospace"}}>{timePct}%</span>
+                    </div>
+                    <div style={{height:6,background:"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:6,width:`${timePct}%`,background:"#0369a1",borderRadius:3}}/>
+                    </div>
+                  </div>
+                </div>
+                {/* Numbers */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                  {[
+                    ["Budget",       fmt(budget),              "#475569"],
+                    ["Actual YTD",   fmt(actual),              "#94a3b8"],
+                    ["Variance",     (variance>=0?"+":"")+fmt(variance), variance>0?"#f87171":"#34d399"],
+                    ["Est. at Comp.",fmt(eac),                 eac>budget?"#f59e0b":"#34d399"],
+                  ].map(([l,v,c])=>(
+                    <div key={l} style={{textAlign:"center",padding:"6px",background:"#070c18",borderRadius:6}}>
+                      <div style={{fontSize:12,fontFamily:"monospace",fontWeight:800,color:c}}>{v}</div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginTop:1}}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Expanded detail */}
+                {isSel&&(
+                  <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #1a2d45"}}>
+                    <div style={{fontSize:11,color:"#3d5a7a",marginBottom:8,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>Forecast Analysis</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                      <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+                        <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>Burn rate vs. time</div>
+                        <div style={{fontSize:13,fontWeight:700,color:burnPct>timePct+10?"#f87171":burnPct<timePct-10?"#34d399":"#f59e0b"}}>
+                          {burnPct>timePct+10?"⚠ Burning faster than timeline"
+                          :burnPct<timePct-10?"✓ Under budget vs. timeline"
+                          :"~ Tracking to plan"}
+                        </div>
+                      </div>
+                      <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+                        <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>EAC vs. Budget</div>
+                        <div style={{fontSize:13,fontWeight:700,color:eacVariance>0?"#f87171":"#34d399"}}>
+                          {eacVariance>0?`⚠ ${fmt(eacVariance)} over at completion`:`✓ ${fmt(Math.abs(eacVariance))} under at completion`}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// ONBOARDING MODULE  (#5)
+// =============================================================================
+function OnboardingModule({ onboardings, setOnboardings, roster, workAuth, addAudit }) {
+  const [selId,    setSelId]    = useState(onboardings[0]?.id||null);
+  const [showNew,  setShowNew]  = useState(false);
+  const [newForm,  setNewForm]  = useState({ name:"", type:"FTE", startDate:"", memberId:"" });
+
+  const sel = onboardings.find(o=>o.id===selId);
+
+  // Progress calc
+  const progress = (ob) => {
+    const total = ob.tasks.length;
+    const done  = ob.tasks.filter(t=>t.status==="done").length;
+    return { total, done, pct: total>0?Math.round(done/total*100):0 };
+  };
+
+  // Toggle task
+  const toggleTask = (obId, taskId) => {
+    setOnboardings(obs => {
+      const updated = obs.map(o => o.id!==obId ? o : {
+        ...o,
+        tasks: o.tasks.map(t => t.id!==taskId ? t : {
+          ...t,
+          status: t.status==="done" ? "pending" : "done",
+          completedDate: t.status==="done" ? null : TODAY_STR,
+        }),
+        status: (() => {
+          const upd = o.tasks.map(t=>t.id===taskId?{...t,status:t.status==="done"?"pending":"done"}:t);
+          const pct = Math.round(upd.filter(t=>t.status==="done").length/upd.length*100);
+          return pct===100?"completed":pct>0?"in_progress":"not_started";
+        })(),
+      });
+      // Fire completion audit when all tasks done
+      const ob = updated.find(o => o.id===obId);
+      if (ob && ob.status==="completed") {
+        const wasComplete = obs.find(o=>o.id===obId)?.status==="completed";
+        if (!wasComplete) {
+          addAudit && addAudit("Onboarding","Onboarding Complete","Onboarding",
+            `${ob.name} (${ob.type}) completed all ${ob.tasks.length} onboarding tasks`,
+            { completedAt: TODAY_STR });
+        }
+      }
+      return updated;
+    });
+  };
+
+  // Update task note
+  const setTaskNote = (obId, taskId, note) => {
+    setOnboardings(obs=>obs.map(o=>o.id!==obId?o:{
+      ...o, tasks:o.tasks.map(t=>t.id!==taskId?t:{...t,notes:note})
+    }));
+  };
+
+  // Assign task
+  const setTaskAssignee = (obId, taskId, assignee) => {
+    setOnboardings(obs=>obs.map(o=>o.id!==obId?o:{
+      ...o, tasks:o.tasks.map(t=>t.id!==taskId?t:{...t,assignee})
+    }));
+  };
+
+  // Create new onboarding
+  const createOnboarding = () => {
+    if (!newForm.name||!newForm.startDate) return;
+    const template = newForm.type==="FTE" ? OB_TEMPLATE_FTE : OB_TEMPLATE_CONTRACTOR;
+    const ob = {
+      id: "onb"+uid(), memberId: newForm.memberId||"new"+uid(),
+      name: newForm.name, type: newForm.type, startDate: newForm.startDate,
+      status: "not_started",
+      tasks: template.map(t=>({...t, status:"pending", completedDate:null, assignee:"Manju", notes:""}))
+    };
+    setOnboardings(obs=>[...obs, ob]);
+    addAudit&&addAudit("Onboarding","New Onboarding Created","Onboarding",`Started onboarding for ${newForm.name}`);
+    setSelId(ob.id);
+    setShowNew(false);
+    setNewForm({ name:"", type:"FTE", startDate:"", memberId:"" });
+  };
+
+  // Category grouping
+  const categories = sel ? [...new Set(sel.tasks.map(t=>t.cat))] : [];
+
+  const statusColor = { completed:"#34d399", in_progress:"#38bdf8", not_started:"#64748b", pending:"#f59e0b" };
+
+  return (
+    <div>
+      <PH title="Onboarding" sub="New hire & contractor onboarding checklists — track every step from day 0 to 30-day check-in"/>
+
+      {/* People list + New button */}
+      <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+        {onboardings.map(ob=>{
+          const p   = progress(ob);
+          const sc  = statusColor[ob.status]||"#64748b";
+          const isSel = selId===ob.id;
+          return (
+            <button key={ob.id} onClick={()=>setSelId(ob.id)}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",borderRadius:10,cursor:"pointer",
+                border:`1px solid ${isSel?"#0284c7":"#1a2d45"}`,
+                background:isSel?"#0c1a2e":"#060d1c",transition:"all 0.15s"}}>
+              <Avatar name={ob.name} size={28}/>
+              <div style={{textAlign:"left"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#cbd5e1"}}>{ob.name}</div>
+                <div style={{fontSize:9,color:"#3d5a7a"}}>{ob.type} · starts {ob.startDate}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                <div style={{fontSize:12,fontWeight:800,color:sc,fontFamily:"monospace"}}>{p.pct}%</div>
+                <div style={{width:40,height:3,background:"#1a2d45",borderRadius:2,overflow:"hidden"}}>
+                  <div style={{height:3,width:`${p.pct}%`,background:sc,borderRadius:2}}/>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>setShowNew(true)}>+ New Onboarding</button>
+      </div>
+
+      {/* ── CHECKLIST DETAIL ── */}
+      {sel&&(()=>{
+        const p   = progress(sel);
+        const sc  = statusColor[sel.status]||"#64748b";
+        const overdue = sel.tasks.filter(t=>t.status==="pending"&&t.days<=3&&sel.startDate&&
+          new Date(sel.startDate)<=new Date());
+
+        return (
+          <div>
+            {/* Header */}
+            <div className="card" style={{padding:"18px 20px",marginBottom:14,borderLeft:`4px solid ${sc}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+                <div style={{display:"flex",gap:14,alignItems:"center"}}>
+                  <Avatar name={sel.name} size={48}/>
+                  <div>
+                    <div style={{fontSize:18,fontWeight:800,color:"#e2e8f0"}}>{sel.name}</div>
+                    <div style={{fontSize:11,color:"#3d5a7a",marginTop:2}}>{sel.type} · Start date: {sel.startDate}</div>
+                  </div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:28,fontWeight:900,color:sc,fontFamily:"'DM Mono',monospace"}}>{p.pct}%</div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{p.done}/{p.total} tasks complete</div>
+                  <span className="bdg" style={{background:statusColor[sel.status]+"22",color:statusColor[sel.status],border:`1px solid ${statusColor[sel.status]}44`,marginTop:4,display:"inline-block"}}>
+                    {sel.status.replace("_"," ")}
+                  </span>
+                </div>
+              </div>
+              {/* Master progress bar */}
+              <div style={{height:10,background:"#1a2d45",borderRadius:5,overflow:"hidden"}}>
+                <div style={{height:10,width:`${p.pct}%`,background:p.pct===100?"#34d399":"linear-gradient(90deg,#0369a1,#0284c7)",borderRadius:5,transition:"width 0.4s"}}/>
+              </div>
+              {overdue.length>0&&(
+                <div style={{marginTop:10,padding:"8px 12px",background:"#1a0808",borderRadius:6,border:"1px solid #3d1010",fontSize:11,color:"#f87171"}}>
+                  ⚠ {overdue.length} task{overdue.length>1?"s":""} overdue: {overdue.map(t=>t.title).join(", ")}
+                </div>
+              )}
+            </div>
+
+            {/* Task groups by category */}
+            {categories.map(cat=>{
+              const catTasks = sel.tasks.filter(t=>t.cat===cat);
+              const catDone  = catTasks.filter(t=>t.status==="done").length;
+              return (
+                <div key={cat} className="card" style={{marginBottom:12,overflow:"hidden"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 18px",background:"#060d1c",borderBottom:"1px solid #1a2d45"}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#7dd3fc"}}>{cat}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:11,color:"#3d5a7a"}}>{catDone}/{catTasks.length}</span>
+                      <div style={{width:60,height:4,background:"#1a2d45",borderRadius:2,overflow:"hidden"}}>
+                        <div style={{height:4,width:`${catTasks.length>0?catDone/catTasks.length*100:0}%`,background:"#0369a1",borderRadius:2}}/>
+                      </div>
+                    </div>
+                  </div>
+                  {catTasks.map(task=>{
+                    const isDone   = task.status==="done";
+                    const dueLabel = task.days===0?"Day 0":task.days===1?"Day 1":`Day ${task.days}`;
+                    return (
+                      <div key={task.id} style={{padding:"11px 18px",borderBottom:"1px solid #070b14",
+                        display:"grid",gridTemplateColumns:"24px 1fr 70px 120px auto",gap:10,alignItems:"center",
+                        background:isDone?"#060d1c":"transparent",opacity:isDone?0.75:1}}>
+                        {/* Checkbox */}
+                        <div onClick={()=>toggleTask(sel.id,task.id)}
+                          style={{width:20,height:20,borderRadius:5,border:`2px solid ${isDone?"#0369a1":"#2d4a63"}`,
+                            background:isDone?"#0369a1":"transparent",display:"flex",alignItems:"center",justifyContent:"center",
+                            cursor:"pointer",flexShrink:0,transition:"all 0.15s"}}>
+                          {isDone&&<span style={{color:"#fff",fontSize:11,fontWeight:800}}>✓</span>}
+                        </div>
+                        {/* Title + notes */}
+                        <div>
+                          <div style={{fontSize:12,color:isDone?"#3d5a7a":"#cbd5e1",fontWeight:isDone?400:600,
+                            textDecoration:isDone?"line-through":"none"}}>{task.title}</div>
+                          {task.notes&&<div style={{fontSize:10,color:"#1e3a5f",marginTop:1}}>{task.notes}</div>}
+                          {isDone&&task.completedDate&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:1}}>✓ {task.completedDate}</div>}
+                        </div>
+                        {/* Day label */}
+                        <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",border:"1px solid #1a3a5c",fontSize:9,width:"fit-content"}}>{dueLabel}</span>
+                        {/* Assignee */}
+                        <select className="inp" style={{fontSize:10,padding:"3px 6px"}}
+                          value={task.assignee||"Manju"}
+                          onChange={e=>setTaskAssignee(sel.id,task.id,e.target.value)}>
+                          {["Manju","IT Team","HR","Finance","Manager"].map(a=><option key={a}>{a}</option>)}
+                        </select>
+                        {/* Note input */}
+                        <input className="inp" style={{fontSize:10,padding:"3px 8px",width:140}}
+                          placeholder="Add note…" value={task.notes||""}
+                          onChange={e=>setTaskNote(sel.id,task.id,e.target.value)}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            {/* Print checklist */}
+            <button className="btn bg" style={{fontSize:11,marginTop:4}} onClick={()=>{
+              const rows = sel.tasks.map(t=>`<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">${t.cat}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">${t.title}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">Day ${t.days}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">${t.assignee}</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;color:${t.status==="done"?"#059669":"#d97706"}">${t.status==="done"?"✓ Done":"Pending"}</td></tr>`).join("");
+              printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Onboarding — ${sel.name}</title><style>${PRINT_CSS}</style></head><body><div class="page">
+              <div class="hdr"><div class="logo-block"><div class="company-name">Ziksatech LLC</div></div><div><div class="doc-type">ONBOARDING CHECKLIST</div><div class="doc-meta">${sel.name} · ${sel.type} · Start: ${sel.startDate}</div></div></div>
+              <table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eff6ff"><th style="padding:6px 8px;text-align:left;font-size:10px">Category</th><th style="padding:6px 8px;text-align:left;font-size:10px">Task</th><th style="padding:6px 8px;text-align:left;font-size:10px">Due</th><th style="padding:6px 8px;text-align:left;font-size:10px">Owner</th><th style="padding:6px 8px;text-align:left;font-size:10px">Status</th></tr></thead><tbody>${rows}</tbody></table>
+              ${ZT_FOOTER}</div></body></html>`);
+            }}>🖨 Print Checklist</button>
+          </div>
+        );
+      })()}
+
+      {/* ── NEW ONBOARDING MODAL ── */}
+      {showNew&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#0c1422",borderRadius:14,border:"1px solid #1a2d45",padding:"24px",width:440}}>
+            <MH title="New Onboarding Checklist" onClose={()=>setShowNew(false)}/>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <FF label="Full Name"><input className="inp" value={newForm.name} onChange={e=>setNewForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Jane Smith"/></FF>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <FF label="Employee Type">
+                  <select className="inp" value={newForm.type} onChange={e=>setNewForm(f=>({...f,type:e.target.value}))}>
+                    <option>FTE</option><option>Contractor</option>
+                  </select>
+                </FF>
+                <FF label="Start Date"><input className="inp" type="date" value={newForm.startDate} onChange={e=>setNewForm(f=>({...f,startDate:e.target.value}))}/></FF>
+              </div>
+              <FF label="Link to Roster (optional)">
+                <select className="inp" value={newForm.memberId} onChange={e=>setNewForm(f=>({...f,memberId:e.target.value}))}>
+                  <option value="">— Not linked —</option>
+                  {roster.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </FF>
+              <div style={{padding:"10px 12px",background:"#060d1c",borderRadius:8,fontSize:11,color:"#3d5a7a",border:"1px solid #1a2d45"}}>
+                Template: <strong style={{color:"#38bdf8"}}>{newForm.type==="FTE"?`${OB_TEMPLATE_FTE.length} tasks (FTE)`:`${OB_TEMPLATE_CONTRACTOR.length} tasks (Contractor)`}</strong> will be pre-loaded.
+              </div>
+              <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:4}}>
+                <button className="btn bg" onClick={()=>setShowNew(false)}>Cancel</button>
+                <button className="btn bp" onClick={createOnboarding} disabled={!newForm.name||!newForm.startDate}>Create Checklist</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
