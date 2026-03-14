@@ -21636,7 +21636,44 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
     ]
   };
 
-  const tileClick = (tile) => { tile.id === "ops" ? goToOps() : goCRM(); };
+  const TILE_GRIDMIND = {
+    id:"gridmind", label:"Gridmind", emoji:"🧠",
+    tagline:"AI-powered energy grid intelligence platform",
+    desc:"Real-time grid analytics · Predictive fault detection · Load forecasting · SCADA integration",
+    color:"#059669", glow:"rgba(5,150,105,0.18)",
+    border:"rgba(52,211,153,0.3)",
+    badge:"Naxon Product",
+    url:"https://gridmind.naxonsystems.com",
+    kpis:[
+      {l:"Grid Nodes Monitored",v:"12,400", dim:"real-time"},
+      {l:"Fault Predictions",   v:"99.2%",  dim:"accuracy YTD"},
+      {l:"Avg Response Time",   v:"<80ms",  dim:"live telemetry"},
+      {l:"Energy Saved",        v:"$2.1M",  dim:"optimization YTD"},
+    ]
+  };
+
+  const TILE_ARIA = {
+    id:"aria", label:"Aria", emoji:"✦",
+    tagline:"AI conversation intelligence for enterprise",
+    desc:"Voice · Chat · Workflow automation · 20–25M interactions scale",
+    color:"#d97706", glow:"rgba(217,119,6,0.18)",
+    border:"rgba(251,191,36,0.3)",
+    badge:"Naxon Product",
+    url:"https://aria.naxonsystems.com",
+    kpis:[
+      {l:"Interactions/Month",  v:"2.4M",   dim:"scaling to 25M"},
+      {l:"Avg Resolution Rate", v:"94.1%",  dim:"AI-first"},
+      {l:"Enterprise Clients",  v:"18",     dim:"active"},
+      {l:"Avg Handle Time",     v:"−61%",   dim:"vs human baseline"},
+    ]
+  };
+
+  const tileClick = (tile) => {
+    if (tile.id === "ops") { goToOps(); return; }
+    if (tile.id === "crm") { goCRM(); return; }
+    // External Naxon products — open in new tab
+    if (tile.url) { window.open(tile.url, "_blank", "noopener"); }
+  };
 
   return (
     <div style={{minHeight:"100vh",background:"#040810",fontFamily:"'DM Sans','Segoe UI',sans-serif",color:"#e2e8f0",display:"flex",flexDirection:"column"}}>
@@ -21679,7 +21716,8 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
         </div>
 
         {/* Tiles */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,maxWidth:900,width:"100%"}}>
+        {/* Ziksatech product tiles */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,maxWidth:960,width:"100%",marginBottom:16}}>
           {[TILE_CRM, TILE_OPS].filter(tile => {
             const allowedTiles = ROLE_HUB_TILES[authProfile?.role] || ["ops"];
             return allowedTiles.includes(tile.id);
@@ -21738,10 +21776,75 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
           ))}
         </div>
 
+        {/* Naxon flagship products */}
+        <div style={{width:"100%",maxWidth:960,marginTop:4}}>
+          <div style={{fontSize:10,color:"#1e3a5f",textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:12,paddingLeft:4}}>
+            ◈ Naxon Systems — Flagship Products
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+            {[TILE_GRIDMIND, TILE_ARIA].map(tile => (
+              <div key={tile.id}
+                onClick={()=>tileClick(tile)}
+                style={{
+                  background:"#050c18",
+                  border:`1px solid ${tile.border}`,
+                  borderRadius:16,
+                  padding:"24px 24px",
+                  cursor:"pointer",
+                  transition:"all 0.2s cubic-bezier(0.4,0,0.2,1)",
+                  position:"relative",overflow:"hidden"
+                }}
+                onMouseEnter={e=>{
+                  e.currentTarget.style.transform="translateY(-3px)";
+                  e.currentTarget.style.boxShadow=`0 16px 32px ${tile.glow},0 0 0 1px ${tile.border}`;
+                  e.currentTarget.style.borderColor=tile.color;
+                }}
+                onMouseLeave={e=>{
+                  e.currentTarget.style.transform="translateY(0)";
+                  e.currentTarget.style.boxShadow="none";
+                  e.currentTarget.style.borderColor=tile.border;
+                }}>
+                {/* Glow orb */}
+                <div style={{position:"absolute",top:-50,right:-50,width:160,height:160,borderRadius:"50%",background:tile.glow,pointerEvents:"none",filter:"blur(30px)"}}/>
+                {/* Header */}
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:14}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{fontSize:26,lineHeight:1}}>{tile.emoji}</div>
+                    <div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{fontSize:18,fontWeight:800,color:"#e2e8f0",letterSpacing:"-0.02em"}}>{tile.label}</div>
+                        <span style={{fontSize:9,fontWeight:700,color:tile.color,background:tile.color+"22",border:`1px solid ${tile.color}44`,borderRadius:4,padding:"2px 7px",textTransform:"uppercase",letterSpacing:"0.08em"}}>{tile.badge}</span>
+                      </div>
+                      <div style={{fontSize:11,color:"#334155",marginTop:2}}>{tile.tagline}</div>
+                    </div>
+                  </div>
+                  <div style={{background:tile.color+"22",border:`1px solid ${tile.color}44`,borderRadius:8,padding:"5px 12px",fontSize:11,fontWeight:700,color:tile.color,flexShrink:0}}>
+                    Open ↗
+                  </div>
+                </div>
+                {/* Description */}
+                <div style={{fontSize:11,color:"#1e3a5f",marginBottom:14,lineHeight:1.5}}>{tile.desc}</div>
+                {/* KPIs */}
+                {isAdmin && (
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,borderTop:"1px solid #0a1828",paddingTop:14}}>
+                    {tile.kpis.map(k=>(
+                      <div key={k.l} style={{background:"#040810",borderRadius:8,padding:"10px 12px",border:"1px solid #0a1828"}}>
+                        <div style={{fontSize:10,color:"#1e3a5f",marginBottom:3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{k.l}</div>
+                        <div style={{fontSize:16,fontWeight:800,color:"#e2e8f0",fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+                        <div style={{fontSize:9,color:"#334155",marginTop:2}}>{k.dim}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Super admin note */}
         {isAdmin && (
-          <div style={{marginTop:24,fontSize:11,color:"#1e3a5f",textAlign:"center"}}>
-            ⭐ Super Admin — live KPIs shown on both tiles · Data syncs from Supabase
+          <div style={{marginTop:20,fontSize:11,color:"#1e3a5f",textAlign:"center"}}>
+            ⭐ Super Admin — live KPIs · Ziksatech tiles sync from Supabase · Naxon tiles link to respective apps
           </div>
         )}
 
