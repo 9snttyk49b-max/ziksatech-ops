@@ -1443,20 +1443,11 @@ function PendingScreen({ email, onGoLogin }) {
 
 export default function ZiksatechOps() {
   const [tab, setTab] = useState(() => {
-    // Stored tab from last session
     try { const s = localStorage.getItem("zt-last-tab"); if(s) return s; } catch {}
     return "dashboard";
   });
-  // On auth profile load, redirect to role-appropriate home if on a tab they can't access
-  useEffect(() => {
-    if (authProfile?.role && !canAccess(tab, authProfile.role)) {
-      const home = ROLE_HOME[authProfile.role] || "dashboard";
-      setTab(home);
-    }
-  }, [authProfile?.role]);
-  // Persist last tab
-  const setTabSafe = (t) => {
-    if (canAccess(t, authProfile?.role)) {
+  const setTabSafe = (t, role) => {
+    if (canAccess(t, role)) {
       localStorage.setItem("zt-last-tab", t);
       setTab(t);
     }
@@ -1583,6 +1574,14 @@ export default function ZiksatechOps() {
   const [authView, setAuthView] = useState("login"); // login | register | pending
   const [authSession, setAuthSession] = useState(() => supaAuth ? supaAuth.loadSession() : null);
   const [authProfile, setAuthProfile] = useState(null);
+
+  // Redirect to role home if current tab is inaccessible
+  useEffect(() => {
+    if (authProfile?.role && !canAccess(tab, authProfile.role)) {
+      const home = ROLE_HOME[authProfile.role] || "dashboard";
+      setTab(home);
+    }
+  }, [authProfile?.role]);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   useEffect(()=>{
@@ -2013,7 +2012,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                 <span style={{fontSize:8,color:"#1e3a5f",transition:"transform 0.2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>
               </button>
               {!isCollapsed && items.map(n => (
-                <button key={n.id} className={`navi${tab===n.id?" on":""}`} onClick={()=>setTabSafe(n.id)}>
+                <button key={n.id} className={`navi${tab===n.id?" on":""}`} onClick={()=>setTabSafe(n.id, authProfile?.role)}>
                   <I d={n.icon} s={14}/>{n.label}
                 </button>
               ))}
