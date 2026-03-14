@@ -1568,6 +1568,7 @@ export default function ZiksatechOps() {
     { id:"budget",       label:"Budget vs. Actual",     icon:ICONS.pl,       group:"Finance"  },
     { id:"onboarding",   label:"Onboarding",            icon:ICONS.dash,     group:"Hiring"   },
     { id:"org",          label:"Org & Access",         icon:ICONS.roster,   group:"Overview" },
+    { id:"myprofile",     label:"My Profile",            icon:ICONS.roster,   group:"Overview" },
     { id:"roster",      label:"Team Roster",          icon:ICONS.roster,   group:"Delivery" },
     { id:"timesheet",   label:"Timesheet",            icon:ICONS.ts,       group:"Delivery" },
     { id:"clients",     label:"Client Portfolio",     icon:ICONS.clients,  group:"Delivery" },
@@ -1972,6 +1973,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="vendors"    && <VendorAPModule {...shared}/>}
         {tab==="adp"        && <ADPPayroll {...shared}/>}
         {tab==="org"          && <OrgAccessModule {...shared}/>}
+        {tab==="myprofile"     && <MyProfilePage authProfile={authProfile} authSession={authSession} />}
         {tab==="contracts"   && <ContractsModule {...shared}/> }
         {tab==="projects"    && <ProjectTracker {...shared}/>}
         {tab==="profitability"&& <ProjectProfitability {...shared}/>}
@@ -8049,6 +8051,182 @@ const PERM_LEVELS  = ["full","view","none"];
 const PERM_COLOR   = { full:"#34d399", view:"#7dd3fc", none:"#1e3a5f" };
 const PERM_BG      = { full:"#021f14", view:"#0c2340", none:"#070b14" };
 const PERM_LABEL   = { full:"Full",    view:"View",    none:"—"       };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MY PROFILE — Team member personal info form
+// ═══════════════════════════════════════════════════════════════════════════════
+function MyProfilePage({ authProfile, authSession }) {
+  const PROFILE_KEY = authProfile?.id ? `zt-profile-${authProfile.id}` : null;
+
+  const blank = {
+    firstName:"", lastName:"",
+    cellPhone:"", altPhone:"", workPhone:"",
+    currentAddress:"", currentCity:"", currentState:"", currentZip:"",
+    intlAddress:"", intlCity:"", intlCountry:"", intlPhone:"",
+    emergencyName:"", emergencyRelation:"", emergencyPhone:"", emergencyAltPhone:"",
+    updatedAt:""
+  };
+
+  const [form, setForm] = useState(blank);
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load existing profile data from Supabase
+  useEffect(() => {
+    if (!PROFILE_KEY || !supaAuth) { setLoading(false); return; }
+    const sess = authSession || supaAuth.loadSession();
+    if (!sess?.access_token) { setLoading(false); return; }
+    const SUPA_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_URL;
+    const SUPA_ANON = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_ANON;
+    if (!SUPA_URL) { setLoading(false); return; }
+    fetch(`${SUPA_URL}/rest/v1/ops_store?key=eq.${PROFILE_KEY}&select=value`, {
+      headers: { "apikey": SUPA_ANON, "Authorization": `Bearer ${sess.access_token}` }
+    }).then(r => r.json()).then(rows => {
+      if (rows?.[0]?.value) setForm({ ...blank, ...JSON.parse(rows[0].value) });
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [PROFILE_KEY]);
+
+  const saveProfile = async () => {
+    if (!PROFILE_KEY || !supaAuth) return;
+    const sess = authSession || supaAuth.loadSession();
+    if (!sess?.access_token) return;
+    const SUPA_URL = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_URL;
+    const SUPA_ANON = typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_ANON;
+    if (!SUPA_URL) return;
+    const payload = { ...form, updatedAt: new Date().toISOString() };
+    await fetch(`${SUPA_URL}/rest/v1/ops_store?on_conflict=key`, {
+      method: "POST",
+      headers: { "Content-Type":"application/json", "apikey":SUPA_ANON, "Authorization":`Bearer ${sess.access_token}`, "Prefer":"return=minimal,resolution=merge-duplicates" },
+      body: JSON.stringify({ key: PROFILE_KEY, value: JSON.stringify(payload), updated_at: new Date().toISOString() })
+    });
+    setForm(payload);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  const f = (k) => (e) => setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  const Section = ({ title, children }) => (
+    <div className="card" style={{ padding:"20px 22px", marginBottom:16 }}>
+      <div style={{ fontSize:12, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:16, paddingBottom:10, borderBottom:"1px solid #0f1e30" }}>{title}</div>
+      {children}
+    </div>
+  );
+
+  const Row = ({ children }) => (
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>{children}</div>
+  );
+
+  const Field = ({ label, value, onChange, type="text", placeholder="" }) => (
+    <div>
+      <div style={{ fontSize:11, fontWeight:600, color:"#64748b", marginBottom:5, letterSpacing:"0.04em" }}>{label}</div>
+      <input className="inp" type={type} value={value} onChange={onChange} placeholder={placeholder}
+        style={{ width:"100%", boxSizing:"border-box" }} />
+    </div>
+  );
+
+  const FullField = ({ label, value, onChange, placeholder="" }) => (
+    <div style={{ marginBottom:12 }}>
+      <div style={{ fontSize:11, fontWeight:600, color:"#64748b", marginBottom:5, letterSpacing:"0.04em" }}>{label}</div>
+      <input className="inp" value={value} onChange={onChange} placeholder={placeholder}
+        style={{ width:"100%", boxSizing:"border-box" }} />
+    </div>
+  );
+
+  if (loading) return <div style={{ padding:40, textAlign:"center", color:"#64748b" }}>Loading your profile…</div>;
+
+  return (
+    <div style={{ maxWidth:860 }}>
+      <PH title="My Profile" sub="Personal info · Emergency contact · Contact details"/>
+
+      {/* Name & Role banner */}
+      <div style={{ display:"flex", alignItems:"center", gap:16, padding:"16px 20px", background:"#0a1120", border:"1px solid #1a2d45", borderRadius:12, marginBottom:20 }}>
+        <Avatar name={(form.firstName||authProfile?.full_name||"?")} size={48}/>
+        <div>
+          <div style={{ fontSize:16, fontWeight:700, color:"#e2e8f0" }}>
+            {form.firstName || form.lastName ? `${form.firstName} ${form.lastName}`.trim() : (authProfile?.full_name || "Your Name")}
+          </div>
+          <div style={{ fontSize:12, color:"#475569", marginTop:2, textTransform:"capitalize" }}>
+            {authProfile?.role?.replace("_"," ")} · {authProfile?.email}
+          </div>
+        </div>
+        {form.updatedAt && (
+          <div style={{ marginLeft:"auto", fontSize:10, color:"#334155" }}>
+            Last updated {new Date(form.updatedAt).toLocaleDateString()}
+          </div>
+        )}
+      </div>
+
+      {/* Personal Info */}
+      <Section title="👤 Personal Information">
+        <Row>
+          <Field label="First Name *" value={form.firstName} onChange={f("firstName")} placeholder="Manju" />
+          <Field label="Last Name *" value={form.lastName} onChange={f("lastName")} placeholder="Murthy" />
+        </Row>
+        <Row>
+          <Field label="Cell Phone *" value={form.cellPhone} onChange={f("cellPhone")} type="tel" placeholder="+1 (555) 000-0000" />
+          <Field label="Alternative Phone" value={form.altPhone} onChange={f("altPhone")} type="tel" placeholder="+1 (555) 000-0001" />
+        </Row>
+        <Row>
+          <Field label="Work / Office Phone" value={form.workPhone} onChange={f("workPhone")} type="tel" placeholder="+1 (555) 000-0002" />
+        </Row>
+      </Section>
+
+      {/* Current US Address */}
+      <Section title="🏠 Current Address (US)">
+        <FullField label="Street Address" value={form.currentAddress} onChange={f("currentAddress")} placeholder="123 Main Street, Apt 4B" />
+        <Row>
+          <Field label="City" value={form.currentCity} onChange={f("currentCity")} placeholder="Frisco" />
+          <Field label="State" value={form.currentState} onChange={f("currentState")} placeholder="TX" />
+        </Row>
+        <Row>
+          <Field label="ZIP Code" value={form.currentZip} onChange={f("currentZip")} placeholder="75034" />
+        </Row>
+      </Section>
+
+      {/* Address Outside US */}
+      <Section title="✈️ Address Outside US (Home Country)">
+        <FullField label="Street Address" value={form.intlAddress} onChange={f("intlAddress")} placeholder="123 Street Name" />
+        <Row>
+          <Field label="City" value={form.intlCity} onChange={f("intlCity")} placeholder="Hyderabad" />
+          <Field label="Country" value={form.intlCountry} onChange={f("intlCountry")} placeholder="India" />
+        </Row>
+        <Row>
+          <Field label="Phone Number (International)" value={form.intlPhone} onChange={f("intlPhone")} type="tel" placeholder="+91 98765 43210" />
+        </Row>
+      </Section>
+
+      {/* Emergency Contact */}
+      <Section title="🚨 Emergency Contact">
+        <Row>
+          <Field label="Contact Name *" value={form.emergencyName} onChange={f("emergencyName")} placeholder="Spouse / Parent name" />
+          <Field label="Relationship" value={form.emergencyRelation} onChange={f("emergencyRelation")} placeholder="Spouse, Parent, Sibling…" />
+        </Row>
+        <Row>
+          <Field label="Primary Phone *" value={form.emergencyPhone} onChange={f("emergencyPhone")} type="tel" placeholder="+1 (555) 000-0000" />
+          <Field label="Alternative Phone" value={form.emergencyAltPhone} onChange={f("emergencyAltPhone")} type="tel" placeholder="+1 (555) 000-0001" />
+        </Row>
+      </Section>
+
+      {/* Save */}
+      <div style={{ display:"flex", alignItems:"center", gap:14, marginTop:4 }}>
+        <button className="btn bp" style={{ padding:"11px 32px", fontSize:14, fontWeight:700 }} onClick={saveProfile}>
+          Save Profile
+        </button>
+        {saved && (
+          <span style={{ fontSize:13, color:"#34d399", fontWeight:600, display:"flex", alignItems:"center", gap:6 }}>
+            ✓ Profile saved successfully
+          </span>
+        )}
+      </div>
+
+      <div style={{ marginTop:16, padding:"10px 14px", background:"#060d1c", borderRadius:8, border:"1px solid #0f1e30", fontSize:11, color:"#334155", lineHeight:1.6 }}>
+        🔒 Your profile data is stored securely in our database. Only HR and admins can view your emergency contact details.
+      </div>
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // USER APPROVALS PANEL — Admin approves / rejects access requests
