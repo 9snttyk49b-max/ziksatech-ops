@@ -21250,9 +21250,9 @@ function ReconcileReport({ roster, finInvoices, finPayments, adpRuns, fbInvoices
   const month = period;
 
   const adpForPeriod = (adpRuns||[]).filter(r=>r.payPeriod?.startsWith(month));
-  const adpTotal = adpForPeriod.reduce((s,r)=>(r.rows||[]).reduce((ss,row)=>ss+(+row.gross||0),ss),0);
+  const adpTotal = adpForPeriod.reduce((s,r)=>s+(r.rows||[]).reduce((ss,row)=>ss+(+row.gross||0),0),0);
   const invForPeriod = (finInvoices||[]).filter(i=>i.issueDate?.startsWith(month));
-  const invTotal = invForPeriod.reduce((s,i)=>(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),ss),0);
+  const invTotal = invForPeriod.reduce((s,i)=>s+(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0),0);
   const pymtForPeriod = (finPayments||[]).filter(p=>p.date?.startsWith(month));
   const pymtTotal = pymtForPeriod.reduce((s,p)=>s+(+p.amount||0),0);
   const fbForPeriod = (fbInvoices||[]).filter(i=>i.date?.startsWith(month));
@@ -21449,7 +21449,7 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
   const activeConsultants = (roster||[]).filter(r=>(r.util||0)>0).length;
   const openPipeline = (crmDeals||[]).filter(d=>d.stage==="open"||d.stage==="qualified"||d.stage==="proposal"||d.stage==="negotiation").reduce((s,d)=>s+(+d.value||0),0);
   const collected = (finPayments||[]).reduce((s,p)=>s+(+p.amount||0),0);
-  const invTotal = (finInvoices||[]).reduce((s,i)=>(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),ss),0);
+  const invTotal = (finInvoices||[]).reduce((s,i)=>s+(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0),0);
   const collectionRate = invTotal>0 ? Math.round(collected/invTotal*100) : 0;
   const expiringCompliance = (compliance||[]).filter(c=>{
     if(!c.expiryDate) return false;
