@@ -2581,7 +2581,7 @@ function Roster({ roster, setRoster, addAudit }) {
         <div className="tr" style={{gridTemplateColumns:"22px 28px 200px 1fr 90px 80px 70px 80px 90px 90px 90px 80px 80px",background:"#0a1626",minWidth:960}}>
           <span/><span/>
           <span style={{fontSize:11,fontWeight:800,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.07em"}}>TOTALS</span>
-          <span/><span/><span/><span/><span/><span/>
+          <span/><span/><span/><span/><span/>
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#38bdf8"}}>{fmt(totals.rev)}</span>
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#f87171"}}>{fmt(totals.cost)}</span>
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#34d399"}}>{fmt(totals.keeps)}</span>
