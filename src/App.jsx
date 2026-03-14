@@ -20856,9 +20856,8 @@ async function callClaude(systemPrompt, userPrompt, onChunk) {
 function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
   const topClient = clients?.[0]?.name || "";
   const [form, setForm] = useState({
-    client: topClient,
-    project: topClient ? topClient + " SAP Implementation" : "",
-    scope: topClient ? "Implement SAP BRIM billing engine, configure rate plans, and integrate with existing systems." : "",
+    client: "", project: "",
+    scope: "Implement SAP BRIM billing engine, configure rate plans, and integrate with existing systems.",
     deliverables: "BRIM configuration, testing documentation, go-live support, and knowledge transfer.",
     timeline:"6 months",
     budget:"450000", consultants:"2 FTE SAP consultants", paymentTerms:"Net 30",
@@ -20867,6 +20866,14 @@ function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [validErr, setValidErr] = useState("");
+
+  // Populate client/project once clients load from Supabase
+  useEffect(() => {
+    if (clients?.length && !form.client) {
+      const name = clients[0].name;
+      setForm(p => ({ ...p, client: name, project: name + " SAP Implementation" }));
+    }
+  }, [clients]);
 
   const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
