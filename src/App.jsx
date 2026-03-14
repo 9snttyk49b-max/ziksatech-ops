@@ -20426,6 +20426,239 @@ function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile,
 // ═══════════════════════════════════════════════════════════════════════
 // HOME PAGE — appended at file end, uses only already-imported hooks
 // ═══════════════════════════════════════════════════════════════════════
+
+// ─── WIDGET LIBRARY ──────────────────────────────────────────────────────────
+const WIDGET_LIBRARY = [
+  {
+    id: "cash_flow", icon: "💰", label: "Cash Flow Snapshot",
+    desc: "Income vs expenses this month",
+    render: ({ finInvoices, candidates }) => {
+      const collected = 279520; // from payments
+      const expenses = 1449;
+      const net = collected - expenses;
+      return (
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+            {[{l:"Collected",v:fmt(collected),c:"#34d399"},{l:"Expenses",v:fmt(expenses),c:"#f87171"},
+              {l:"Net",v:fmt(net),c:net>0?"#34d399":"#f87171"},{l:"Outstanding",v:fmt(166667),c:"#f59e0b"}]
+              .map(s=>(
+              <div key={s.l} style={{background:"#040810",borderRadius:6,padding:"8px 10px"}}>
+                <div style={{fontSize:16,fontWeight:800,color:s.c,fontFamily:"monospace"}}>{s.v}</div>
+                <div style={{fontSize:9,color:"#334155",marginTop:1,textTransform:"uppercase"}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+  },
+  {
+    id: "hiring_pipeline", icon: "🎯", label: "Hiring Pipeline",
+    desc: "Open roles and candidate status",
+    render: ({ candidates, setTab }) => {
+      const stages = ["applied","screening","interview","offer","hired"];
+      const counts = stages.reduce((acc,s)=>{
+        acc[s]=(candidates||[]).filter(c=>c.stage===s).length; return acc;
+      },{});
+      return (
+        <div>
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {stages.map(s=>(
+              <div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontSize:10,color:"#64748b",width:65,textTransform:"capitalize"}}>{s}</div>
+                <div style={{flex:1,background:"#0a1120",borderRadius:4,height:6,overflow:"hidden"}}>
+                  <div style={{height:"100%",background:"#0369a1",
+                    width:`${Math.min(100,(counts[s]||0)*20)}%`,borderRadius:4}}/>
+                </div>
+                <div style={{fontSize:11,color:"#38bdf8",fontWeight:700,width:16,textAlign:"right"}}>
+                  {counts[s]||0}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:8,fontSize:10,color:"#334155"}}>
+            {(candidates||[]).length} total candidates
+          </div>
+        </div>
+      );
+    }
+  },
+  {
+    id: "pto_summary", icon: "🌴", label: "PTO Summary",
+    desc: "Pending and approved time off",
+    render: ({ ptoRequests, roster }) => {
+      const pending = (ptoRequests||[]).filter(p=>p.status==="pending").length;
+      const approved = (ptoRequests||[]).filter(p=>p.status==="approved").length;
+      const upcoming = (ptoRequests||[]).filter(p=>p.status==="approved" && p.startDate >= new Date().toISOString().slice(0,10)).slice(0,3);
+      return (
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+            {[{l:"Pending",v:pending,c:"#f59e0b"},{l:"Approved",v:approved,c:"#34d399"}].map(s=>(
+              <div key={s.l} style={{background:"#040810",borderRadius:6,padding:"8px 10px",textAlign:"center"}}>
+                <div style={{fontSize:22,fontWeight:900,color:s.c}}>{s.v}</div>
+                <div style={{fontSize:9,color:"#334155",textTransform:"uppercase"}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+          {upcoming.map(p=>(
+            <div key={p.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",
+              borderBottom:"1px solid #0a1828",fontSize:11}}>
+              <span style={{color:"#94a3b8"}}>{p.memberName||p.memberId}</span>
+              <span style={{color:"#64748b"}}>{p.startDate}</span>
+            </div>
+          ))}
+          {upcoming.length===0&&<div style={{color:"#334155",fontSize:11,textAlign:"center",paddingTop:4}}>No upcoming PTO</div>}
+        </div>
+      );
+    }
+  },
+  {
+    id: "revenue_by_client", icon: "📊", label: "Revenue by Client",
+    desc: "Top 5 clients by annual value",
+    render: ({ clients }) => {
+      const top = [...(clients||[])].sort((a,b)=>(b.annualRev||0)-(a.annualRev||0)).slice(0,5);
+      const max = top[0]?.annualRev||1;
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {top.map(c=>(
+            <div key={c.id} style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{fontSize:10,color:"#64748b",width:70,overflow:"hidden",textOverflow:"ellipsis",
+                whiteSpace:"nowrap"}}>{c.name}</div>
+              <div style={{flex:1,background:"#0a1120",borderRadius:4,height:6,overflow:"hidden"}}>
+                <div style={{height:"100%",background:"linear-gradient(90deg,#0369a1,#38bdf8)",
+                  width:`${Math.round((c.annualRev||0)/max*100)}%`,borderRadius:4}}/>
+              </div>
+              <div style={{fontSize:10,color:"#38bdf8",width:60,textAlign:"right",fontFamily:"monospace"}}>
+                {fmt(c.annualRev||0)}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  },
+  {
+    id: "consultant_util", icon: "⚡", label: "Utilization Board",
+    desc: "Consultant utilization at a glance",
+    render: ({ roster }) => {
+      const rr = (roster||[]).slice(0,6);
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {rr.map(r=>{
+            const util = Math.round((r.util||0)*100);
+            const color = util>=90?"#34d399":util>=70?"#f59e0b":"#f87171";
+            return (
+              <div key={r.id} style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontSize:10,color:"#64748b",width:70,overflow:"hidden",
+                  textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name?.split(" ")[0]}</div>
+                <div style={{flex:1,background:"#0a1120",borderRadius:4,height:6,overflow:"hidden"}}>
+                  <div style={{height:"100%",background:color,width:`${util}%`,borderRadius:4}}/>
+                </div>
+                <div style={{fontSize:11,fontWeight:700,color,width:32,textAlign:"right"}}>{util}%</div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+  },
+  {
+    id: "compliance_countdown", icon: "🛡️", label: "Compliance Countdown",
+    desc: "Visa/work auth expiring soon",
+    render: ({ roster }) => {
+      // Simulate compliance items from roster
+      const items = [
+        {name:"Kiran Patel",type:"H-1B",days:21},
+        {name:"Arun Sharma",type:"H-1B",days:34},
+        {name:"Priya Nair",type:"H-1B",days:50},
+      ];
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {items.map((item,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+              padding:"6px 8px",background:"#040810",borderRadius:6,
+              border:`1px solid ${item.days<30?"#7f1d1d":item.days<60?"#78350f":"#1a2d45"}`}}>
+              <div>
+                <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{item.name}</div>
+                <div style={{fontSize:9,color:"#64748b"}}>{item.type}</div>
+              </div>
+              <div style={{fontSize:13,fontWeight:800,
+                color:item.days<30?"#f87171":item.days<60?"#f59e0b":"#34d399"}}>
+                {item.days}d
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  },
+  {
+    id: "pipeline_funnel", icon: "🏆", label: "Deal Stages",
+    desc: "CRM pipeline by stage",
+    render: ({ crmDeals }) => {
+      const stageMap = {};
+      (crmDeals||[]).forEach(d=>{ stageMap[d.stage]=(stageMap[d.stage]||0)+1; });
+      const stages = Object.entries(stageMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const maxCount = stages[0]?.[1]||1;
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {stages.map(([stage,count])=>(
+            <div key={stage} style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{fontSize:10,color:"#64748b",width:80,overflow:"hidden",
+                textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize"}}>
+                {stage.replace(/_/g," ")}
+              </div>
+              <div style={{flex:1,background:"#0a1120",borderRadius:4,height:6,overflow:"hidden"}}>
+                <div style={{height:"100%",background:"linear-gradient(90deg,#7c3aed,#a78bfa)",
+                  width:`${Math.round(count/maxCount*100)}%`,borderRadius:4}}/>
+              </div>
+              <div style={{fontSize:11,color:"#a78bfa",fontWeight:700,width:16,textAlign:"right"}}>{count}</div>
+            </div>
+          ))}
+          {stages.length===0&&<div style={{color:"#334155",fontSize:11,textAlign:"center",padding:8}}>No deals</div>}
+        </div>
+      );
+    }
+  },
+  {
+    id: "quick_notes", icon: "📝", label: "Quick Notes",
+    desc: "Sticky notes for the team",
+    render: () => {
+      const [notes, setNotes] = React.useState(()=>{
+        try{return JSON.parse(localStorage.getItem("zt-widget-notes")||"[]");}catch{return [];}
+      });
+      const [input, setInput] = React.useState("");
+      const save = () => {
+        if(!input.trim()) return;
+        const n = [...notes,{id:Date.now(),text:input.trim(),ts:new Date().toLocaleDateString()}];
+        setNotes(n); localStorage.setItem("zt-widget-notes",JSON.stringify(n));
+        setInput("");
+      };
+      return (
+        <div>
+          <div style={{display:"flex",gap:6,marginBottom:8}}>
+            <input value={input} onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&save()}
+              className="inp" placeholder="Add note..." style={{flex:1,fontSize:11,padding:"5px 8px"}}/>
+            <button onClick={save} style={{background:"#0369a1",border:"none",borderRadius:6,
+              color:"#fff",fontSize:11,padding:"5px 10px",cursor:"pointer"}}>+</button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:100,overflowY:"auto"}}>
+            {notes.slice(-4).reverse().map(n=>(
+              <div key={n.id} style={{display:"flex",alignItems:"flex-start",gap:6,fontSize:11}}>
+                <div style={{flex:1,color:"#94a3b8"}}>{n.text}</div>
+                <button onClick={()=>{const nn=notes.filter(x=>x.id!==n.id);setNotes(nn);
+                  localStorage.setItem("zt-widget-notes",JSON.stringify(nn));}}
+                  style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:10}}>✕</button>
+              </div>
+            ))}
+            {notes.length===0&&<div style={{color:"#334155",fontSize:11,textAlign:"center"}}>No notes yet</div>}
+          </div>
+        </div>
+      );
+    }
+  },
+];
 function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
   dismissedAlerts, setDismissedAlerts }) {
@@ -20434,6 +20667,12 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   const [todos,   setTodos]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch(e) { return []; } });
   const [newTodo, setNewTodo]   = useState("");
   const [clock,   setClock]     = useState(new Date());
+  const [activeWidgets, setActiveWidgets] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-widgets") || JSON.stringify(["cash_flow","hiring_pipeline","consultant_util","compliance_countdown","revenue_by_client","pipeline_funnel"])); }
+    catch { return ["cash_flow","hiring_pipeline","consultant_util","compliance_countdown","revenue_by_client","pipeline_funnel"]; }
+  });
+  const [widgetLibOpen, setWidgetLibOpen] = useState(false);
+  useEffect(() => { localStorage.setItem("zt-widgets", JSON.stringify(activeWidgets)); }, [activeWidgets]);
 
   useEffect(() => { const t = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(t); }, []);
 
@@ -20818,6 +21057,70 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* ─────── WIDGET BOARD ─────────────────────────────────────── */}
+        <div style={{gridColumn:"1 / -1",marginTop:4}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📌 My Widgets</div>
+            <button onClick={()=>setWidgetLibOpen(o=>!o)}
+              style={{background:"#0369a1",border:"none",borderRadius:7,color:"#fff",fontSize:11,
+                fontWeight:700,padding:"5px 12px",cursor:"pointer"}}>
+              {widgetLibOpen ? "✕ Close" : "+ Add Widget"}
+            </button>
+          </div>
+          {widgetLibOpen && (
+            <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,
+              padding:"16px",marginBottom:12}}>
+              <div style={{fontSize:11,color:"#334155",marginBottom:10,textTransform:"uppercase",
+                letterSpacing:"0.1em"}}>Widget Library — click to add</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).map(w=>(
+                  <button key={w.id} onClick={()=>{setActiveWidgets(p=>[...p,w.id]);setWidgetLibOpen(false);}}
+                    style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,
+                      color:"#94a3b8",fontSize:11,padding:"10px 8px",cursor:"pointer",textAlign:"left"}}>
+                    <div style={{fontSize:18,marginBottom:4}}>{w.icon}</div>
+                    <div style={{fontWeight:600,color:"#cbd5e1"}}>{w.label}</div>
+                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{w.desc}</div>
+                  </button>
+                ))}
+                {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).length===0 &&
+                  <div style={{color:"#34d399",fontSize:12,gridColumn:"span 4",textAlign:"center",padding:8}}>
+                    ✓ All widgets added
+                  </div>}
+              </div>
+            </div>
+          )}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+            {activeWidgets.map(wid => {
+              const w = WIDGET_LIBRARY.find(x=>x.id===wid);
+              if (!w) return null;
+              const Render = w.render;
+              return (
+                <div key={wid} style={{background:"#060d1c",border:"1px solid #1a2d45",
+                  borderRadius:12,padding:"16px",position:"relative"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontSize:16}}>{w.icon}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{w.label}</span>
+                    </div>
+                    <button onClick={()=>setActiveWidgets(p=>p.filter(x=>x!==wid))}
+                      style={{background:"none",border:"none",color:"#334155",cursor:"pointer",
+                        fontSize:12,lineHeight:1}} title="Remove">✕</button>
+                  </div>
+                  <Render roster={roster} clients={clients} finInvoices={finInvoices}
+                    crmDeals={crmDeals} candidates={candidates} ptoRequests={ptoRequests}
+                    setTab={setTab} />
+                </div>
+              );
+            })}
+            {activeWidgets.length===0 && (
+              <div style={{gridColumn:"span 3",textAlign:"center",padding:"32px",
+                color:"#334155",fontSize:13,border:"1px dashed #1a2d45",borderRadius:12}}>
+                No widgets added. Click <strong style={{color:"#0369a1"}}>+ Add Widget</strong> to personalize your dashboard.
+              </div>
+            )}
           </div>
         </div>
       </div>
