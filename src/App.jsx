@@ -1701,7 +1701,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             transform:sideOpen&&i===0?"rotate(45deg) translate(4px,4px)":sideOpen&&i===2?"rotate(-45deg) translate(4px,-4px)":"none",
             opacity:sideOpen&&i===1?0:1}}/>)}
         </button>
-        <div style={{fontSize:15,fontWeight:800,color:"#38bdf8"}}>⬡ ZIKSATECH</div>
+        <div onClick={()=>setTab("home")} style={{fontSize:15,fontWeight:800,color:"#38bdf8",cursor:"pointer"}} title="Home">⬡ ZIKSATECH</div>
         <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
           <div style={{width:7,height:7,borderRadius:"50%",background:saveStatus==="saved"?"#34d399":saveStatus==="saving"?"#f59e0b":"#1e3a5f"}}/>
           <span style={{fontSize:10,color:"#3d5a7a"}}>{saveStatus==="saved"?"Saved":saveStatus==="saving"?"Saving…":"Auto-save"}</span>
@@ -1721,7 +1721,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         boxShadow: isMobile && sideOpen ? "4px 0 24px rgba(0,0,0,0.5)" : "none",
       }}>
         <div style={{padding:"8px 14px 18px",borderBottom:"1px solid #0f1e30",marginBottom:6}}>
-          <div onClick={()=>setTab("dashboard")} title="Go to Dashboard" style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer"}}>⬡ ZIKSATECH</div>
+          <div onClick={()=>setTab("home")} title="Home" style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer"}}>⬡ ZIKSATECH</div>
           <div style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ops Center</div>
           {supaAuth && authProfile && (
             <div style={{marginTop:10,padding:"8px 10px",background:"#0a1120",borderRadius:8,border:"1px solid #0f1e30"}}>
@@ -1945,6 +1945,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       </nav>
 
       <main className="main-content" style={{flex:1,overflowY:"auto",padding:isMobile?"68px 14px 72px":"28px 32px",minWidth:0}}>
+        {tab==="home"       && <HomePage   {...shared} authProfile={authProfile} />}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
         {tab==="auditlog"      && <AuditLog {...shared}/>}
@@ -19733,5 +19734,228 @@ function OnboardingModule({ onboardings, setOnboardings, roster, workAuth, addAu
         </div>
       )}
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HOME PAGE  —  appended last so all module constants are already defined
+// Uses only props, React hooks, and inline JSX — zero external const deps
+// ═══════════════════════════════════════════════════════════════════════════
+function HomePage(props) {
+  var roster       = props.roster       || [];
+  var clients      = props.clients      || [];
+  var finInvoices  = props.finInvoices  || [];
+  var crmDeals     = props.crmDeals     || [];
+  var candidates   = props.candidates   || [];
+  var workAuth     = props.workAuth     || [];
+  var ptoRequests  = props.ptoRequests  || [];
+  var auditLog     = props.auditLog     || [];
+  var authProfile  = props.authProfile;
+  var setTab       = props.setTab;
+  var dismissedAlerts    = props.dismissedAlerts    || [];
+  var setDismissedAlerts = props.setDismissedAlerts;
+
+  var _s1 = useState(null);      var weather  = _s1[0]; var setWeather  = _s1[1];
+  var _s2 = useState(function(){ try{return JSON.parse(localStorage.getItem("zt-todos")||"[]");}catch(e){return[];} });
+  var todos    = _s2[0]; var setTodos    = _s2[1];
+  var _s3 = useState(""); var newTodo = _s3[0]; var setNewTodo = _s3[1];
+  var _s4 = useState(new Date()); var time = _s4[0]; var setTime = _s4[1];
+
+  useEffect(function(){ var t=setInterval(function(){setTime(new Date());},1000); return function(){clearInterval(t);}; },[]);
+
+  useEffect(function(){
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=33.1507&longitude=-96.8236&current=temperature_2m,weathercode,windspeed_10m,relative_humidity_2m&temperature_unit=fahrenheit&timezone=America%2FChicago")
+      .then(function(r){return r.json();}).then(function(d){
+        var cur=d.current;
+        var codes={0:"☀️ Clear",1:"🌤 Mostly Clear",2:"⛅ Partly Cloudy",3:"☁️ Overcast",51:"🌦 Drizzle",61:"🌧 Rain",63:"🌧 Rain",80:"🌦 Showers",95:"⛈ Thunderstorm"};
+        setWeather({temp:Math.round(cur.temperature_2m),condition:codes[cur.weathercode]||"🌡",humidity:cur.relative_humidity_2m,wind:Math.round(cur.windspeed_10m)});
+      }).catch(function(){});
+  },[]);
+
+  function saveTodos(t){ setTodos(t); localStorage.setItem("zt-todos",JSON.stringify(t)); }
+  function addTodo(){ if(!newTodo.trim())return; saveTodos(todos.concat([{id:Date.now(),text:newTodo.trim(),done:false}])); setNewTodo(""); }
+  function toggleTodo(id){ saveTodos(todos.map(function(t){return t.id===id?Object.assign({},t,{done:!t.done}):t;})); }
+  function deleteTodo(id){ saveTodos(todos.filter(function(t){return t.id!==id;})); }
+
+  var now=new Date(), hr=now.getHours();
+  var greeting = hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
+  var dayStr = now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  function fv(v){ return v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1000?"$"+(v/1000).toFixed(0)+"k":"$"+v; }
+
+  var totalRev    = clients.reduce(function(s,c){return s+(c.annualRev||0);},0);
+  var overdueInv  = finInvoices.filter(function(i){return i.status==="overdue";});
+  var openDeals   = crmDeals.filter(function(d){return ["closed_won","closed_lost"].indexOf(d.stage)<0;});
+  var expDocs     = workAuth.filter(function(w){if(!w.expiryDate)return false;var days=(new Date(w.expiryDate)-now)/86400000;return days>=0&&days<=60;});
+  var pendPTO     = ptoRequests.filter(function(p){return p.status==="pending";}).length;
+  var actCands    = candidates.filter(function(c){return ["rejected","hired"].indexOf(c.stage)<0;}).length;
+  var activeConsultants = roster.filter(function(r){return r.util>0;}).length;
+  var activeClients     = clients.filter(function(c){return c.health!=="Red";}).length;
+
+  var rawAlerts = [
+    overdueInv.length>0 && {id:"inv",type:"red",icon:"⚠️",title:overdueInv.length+" Overdue Invoice"+(overdueInv.length>1?"s":""),sub:fv(overdueInv.reduce(function(s,i){return s+(i.amount||0);},0))+" needs collection",tab:"finance"},
+    expDocs.length>0    && {id:"docs",type:"amber",icon:"📋",title:expDocs.length+" Work Auth Expiring",sub:"Within 60 days — action required",tab:"hr"},
+    pendPTO>0           && {id:"pto",type:"blue",icon:"🏖",title:pendPTO+" PTO Request"+(pendPTO>1?"s":""),sub:"Awaiting your approval",tab:"pto"},
+    actCands>0          && {id:"hiring",type:"green",icon:"👤",title:actCands+" Active Candidate"+(actCands>1?"s":""),sub:"In hiring pipeline",tab:"recruiting"},
+    openDeals.length>0  && {id:"deals",type:"blue",icon:"💼",title:openDeals.length+" Open Deal"+(openDeals.length>1?"s":""),sub:fv(openDeals.reduce(function(s,d){return s+(d.value||0);},0))+" pipeline",tab:"crm"},
+  ].filter(Boolean).filter(function(a){return dismissedAlerts.indexOf(a.id)<0;});
+
+  var alertCols={red:{bg:"#2d0a0a",br:"#7f1d1d",tx:"#fca5a5",dot:"#ef4444"},amber:{bg:"#2d1f00",br:"#92400e",tx:"#fcd34d",dot:"#f59e0b"},blue:{bg:"#0c1a2e",br:"#1e3a5f",tx:"#7dd3fc",dot:"#38bdf8"},green:{bg:"#022c22",br:"#065f46",tx:"#6ee7b7",dot:"#34d399"}};
+
+  var tiles1 = [
+    {icon:"💰",label:"Annual Revenue",   value:fv(totalRev),              sub:"All clients",             color:"#34d399", tab:"dashboard"},
+    {icon:"👥",label:"Active Consultants",value:activeConsultants,         sub:"of "+roster.length+" total",color:"#38bdf8",tab:"roster"},
+    {icon:"💼",label:"Open Pipeline",    value:fv(openDeals.reduce(function(s,d){return s+(d.value||0);},0)), sub:openDeals.length+" deals", color:"#a78bfa", tab:"crm"},
+    {icon:"⚠️",label:"Overdue A/R",      value:overdueInv.length>0?fv(overdueInv.reduce(function(s,i){return s+(i.amount||0);},0)):"$0", sub:overdueInv.length>0?overdueInv.length+" invoices":"All clear", color:overdueInv.length>0?"#f87171":"#34d399", tab:"finance"},
+  ];
+  var tiles2 = [
+    {icon:"📋",label:"Expiring Docs",    value:expDocs.length,  sub:"Work auth ≤60d",    color:expDocs.length>0?"#f59e0b":"#34d399", tab:"hr"},
+    {icon:"🏖",label:"Pending PTO",      value:pendPTO,         sub:"Awaiting approval", color:pendPTO>0?"#f59e0b":"#34d399",         tab:"pto"},
+    {icon:"🎯",label:"Hiring Pipeline",  value:actCands,        sub:"Active candidates", color:"#60a5fa",                             tab:"recruiting"},
+    {icon:"🏢",label:"Active Clients",   value:activeClients,   sub:"of "+clients.length+" total", color:"#34d399",                  tab:"clients"},
+  ];
+
+  var quickLinks = [{i:"👥",l:"Team Roster",t:"roster"},{i:"🧾",l:"Invoices",t:"finance"},{i:"📊",l:"Dashboard",t:"dashboard"},{i:"🎯",l:"CRM",t:"crm"},{i:"⏱",l:"Timesheets",t:"timesheet"},{i:"📋",l:"Reports",t:"reports"}];
+
+  return React.createElement("div", null,
+    /* Header */
+    React.createElement("div", {style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:22,flexWrap:"wrap",gap:12}},
+      React.createElement("div", null,
+        React.createElement("div", {style:{fontSize:24,fontWeight:800,color:"#e2e8f0"}}, greeting+", "+(authProfile&&authProfile.full_name?authProfile.full_name.split(" ")[0]:"Manju")+" 👋"),
+        React.createElement("div", {style:{fontSize:13,color:"#475569",marginTop:3}}, dayStr)
+      ),
+      React.createElement("div", {style:{fontSize:26,fontWeight:700,color:"#38bdf8",fontFamily:"'DM Mono',monospace",letterSpacing:2}},
+        time.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",second:"2-digit"})
+      )
+    ),
+    React.createElement("div", {style:{display:"grid",gridTemplateColumns:"1fr 310px",gap:18,alignItems:"start"}},
+      /* LEFT */
+      React.createElement("div", null,
+        /* Tiles row 1 */
+        React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:12}},
+          tiles1.map(function(t){
+            return React.createElement("div", {key:t.tab, onClick:function(){setTab(t.tab);}, style:{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px",cursor:"pointer"},
+              onMouseEnter:function(e){e.currentTarget.style.borderColor="#2a4d75";}, onMouseLeave:function(e){e.currentTarget.style.borderColor="#1a2d45";}},
+              React.createElement("div",{style:{fontSize:22,marginBottom:6}},t.icon),
+              React.createElement("div",{style:{fontSize:22,fontWeight:800,color:t.color,fontFamily:"'DM Mono',monospace",lineHeight:1}},t.value),
+              React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"#cbd5e1",marginTop:4}},t.label),
+              React.createElement("div",{style:{fontSize:10,color:"#475569",marginTop:3}},t.sub)
+            );
+          })
+        ),
+        /* Tiles row 2 */
+        React.createElement("div", {style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}},
+          tiles2.map(function(t){
+            return React.createElement("div", {key:t.tab, onClick:function(){setTab(t.tab);}, style:{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px",cursor:"pointer"},
+              onMouseEnter:function(e){e.currentTarget.style.borderColor="#2a4d75";}, onMouseLeave:function(e){e.currentTarget.style.borderColor="#1a2d45";}},
+              React.createElement("div",{style:{fontSize:22,marginBottom:6}},t.icon),
+              React.createElement("div",{style:{fontSize:22,fontWeight:800,color:t.color,fontFamily:"'DM Mono',monospace",lineHeight:1}},t.value),
+              React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"#cbd5e1",marginTop:4}},t.label),
+              React.createElement("div",{style:{fontSize:10,color:"#475569",marginTop:3}},t.sub)
+            );
+          })
+        ),
+        /* Alerts */
+        React.createElement("div", {style:{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px",marginBottom:16}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:12}},
+            React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#e2e8f0"}},"🔔 Notifications & Alerts"),
+            rawAlerts.length>0 && React.createElement("span",{style:{background:"#ef4444",color:"#fff",fontSize:10,fontWeight:700,borderRadius:10,padding:"1px 7px"}},rawAlerts.length)
+          ),
+          rawAlerts.length===0
+            ? React.createElement("div",{style:{textAlign:"center",padding:"14px 0",color:"#334155",fontSize:13}},"✅ All clear — no pending alerts")
+            : rawAlerts.map(function(a){
+                var col=alertCols[a.type]||alertCols.blue;
+                return React.createElement("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:12,background:col.bg,border:"1px solid "+col.br,borderRadius:8,padding:"10px 14px",cursor:"pointer",marginBottom:6},
+                  onClick:function(){setTab(a.tab);}},
+                  React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:col.dot,flexShrink:0}}),
+                  React.createElement("div",{style:{flex:1}},
+                    React.createElement("div",{style:{fontSize:12,fontWeight:600,color:col.tx}},a.icon+" "+a.title),
+                    React.createElement("div",{style:{fontSize:10,color:"#475569",marginTop:2}},a.sub)
+                  ),
+                  React.createElement("span",{style:{fontSize:11,color:"#3d5a7a"}},"View →"),
+                  React.createElement("button",{onClick:function(e){e.stopPropagation();setDismissedAlerts(function(p){return(p||[]).concat([a.id]);});},
+                    style:{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:16,padding:"0 2px"}},"×")
+                );
+              })
+        ),
+        /* Recent activity */
+        React.createElement("div",{style:{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px"}},
+          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}},"📜 Recent Activity"),
+          auditLog.length===0
+            ? React.createElement("div",{style:{color:"#334155",fontSize:12,textAlign:"center",padding:"10px 0"}},"No recent activity")
+            : auditLog.slice(0,6).map(function(log,i){
+                return React.createElement("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",borderBottom:i<5?"1px solid #0a1420":"none"}},
+                  React.createElement("div",{style:{width:26,height:26,borderRadius:7,background:"#0f1e30",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}},
+                    log.module==="Timesheet"?"⏱":log.module==="Invoice"?"🧾":log.module==="Settings"?"⚙️":"📝"
+                  ),
+                  React.createElement("div",{style:{flex:1}},
+                    React.createElement("div",{style:{fontSize:12,color:"#cbd5e1",fontWeight:500}},log.action),
+                    React.createElement("div",{style:{fontSize:10,color:"#334155",marginTop:1}},log.module+" · "+log.user)
+                  )
+                );
+              })
+        )
+      ),
+      /* RIGHT */
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+        /* Weather */
+        React.createElement("div",{style:{background:"linear-gradient(135deg,#0c1e3d,#0a1829)",border:"1px solid #1e3a5f",borderRadius:12,padding:"18px 20px"}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}},"🌍 Weather · Frisco, TX"),
+          weather===null
+            ? React.createElement("div",{style:{color:"#334155",fontSize:13,textAlign:"center",padding:"20px 0"}},"Loading weather…")
+            : React.createElement("div",null,
+                React.createElement("div",{style:{display:"flex",alignItems:"flex-end",gap:6,marginBottom:6}},
+                  React.createElement("div",{style:{fontSize:46,fontWeight:800,color:"#e2e8f0",lineHeight:1}},weather.temp+"°"),
+                  React.createElement("div",{style:{fontSize:13,color:"#94a3b8",marginBottom:6}},"F")
+                ),
+                React.createElement("div",{style:{fontSize:14,color:"#7dd3fc",fontWeight:600,marginBottom:12}},weather.condition),
+                React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+                  React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"8px 10px"}},
+                    React.createElement("div",{style:{fontSize:10,color:"#475569"}},"💧 Humidity"),
+                    React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#cbd5e1",marginTop:2}},weather.humidity+"%")
+                  ),
+                  React.createElement("div",{style:{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"8px 10px"}},
+                    React.createElement("div",{style:{fontSize:10,color:"#475569"}},"💨 Wind"),
+                    React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#cbd5e1",marginTop:2}},weather.wind+" mph")
+                  )
+                )
+              )
+        ),
+        /* To-Do */
+        React.createElement("div",{style:{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px"}},
+          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:10}},
+            "✅ My To-Do ",
+            React.createElement("span",{style:{fontSize:10,color:"#334155",fontWeight:400,marginLeft:6}},todos.filter(function(t){return!t.done;}).length+" remaining")
+          ),
+          React.createElement("div",{style:{display:"flex",gap:8,marginBottom:10}},
+            React.createElement("input",{className:"inp",value:newTodo,onChange:function(e){setNewTodo(e.target.value);},onKeyDown:function(e){if(e.key==="Enter")addTodo();},placeholder:"Add a task…",style:{flex:1,fontSize:12,padding:"7px 10px"}}),
+            React.createElement("button",{onClick:addTodo,style:{background:"#0369a1",border:"none",borderRadius:7,color:"#fff",padding:"0 12px",cursor:"pointer",fontSize:16,fontWeight:700}},"+")
+          ),
+          React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:4,maxHeight:200,overflowY:"auto"}},
+            todos.length===0 && React.createElement("div",{style:{color:"#334155",fontSize:12,textAlign:"center",padding:"8px 0"}},"No tasks yet"),
+            todos.map(function(t){
+              return React.createElement("div",{key:t.id,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"#0a1120",borderRadius:7,border:"1px solid #1a2d45"}},
+                React.createElement("input",{type:"checkbox",checked:t.done,onChange:function(){toggleTodo(t.id);},style:{accentColor:"#0369a1",cursor:"pointer",flexShrink:0}}),
+                React.createElement("span",{style:{flex:1,fontSize:12,color:t.done?"#334155":"#cbd5e1",textDecoration:t.done?"line-through":"none"}},t.text),
+                React.createElement("button",{onClick:function(){deleteTodo(t.id);},style:{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:14,padding:"0 2px"}},"×")
+              );
+            })
+          )
+        ),
+        /* Quick Actions */
+        React.createElement("div",{style:{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 18px"}},
+          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}},"⚡ Quick Actions"),
+          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+            quickLinks.map(function(q){
+              return React.createElement("button",{key:q.t,onClick:function(){setTab(q.t);},
+                style:{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:11,fontWeight:600,padding:"8px 10px",cursor:"pointer",textAlign:"left"},
+                onMouseEnter:function(e){e.currentTarget.style.background="#0f1e30";e.currentTarget.style.color="#e2e8f0";},
+                onMouseLeave:function(e){e.currentTarget.style.background="#0a1120";e.currentTarget.style.color="#94a3b8";}},
+                q.i+" "+q.l
+              );
+            })
+          )
+        )
+      )
+    )
   );
 }
