@@ -22053,11 +22053,11 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
       {/* AI Agent — always visible on hub */}
       <AIAgent
         authProfile={authProfile}
-        roster={[]}
-        clients={[]}
-        finInvoices={[]}
-        finPayments={[]}
-        crmDeals={[]}
+        roster={roster}
+        clients={clients}
+        finInvoices={finInvoices}
+        finPayments={finPayments}
+        crmDeals={crmDeals}
         portalView="hub"
       />
     </div>
