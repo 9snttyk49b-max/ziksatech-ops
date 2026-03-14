@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════
 // DRAG-AND-DROP SORT — reusable hook for all list pages
@@ -7418,13 +7418,13 @@ function SOWBuilder({ sows, setSows, crmAccounts, crmDeals, contracts, roster })
       {/* Progress steps */}
       <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:28}}>
         {["Deal & Account","Scope & Team","Milestones","Review & Save"].map((s,i)=>(
-          <React.Fragment key={s}>
+          <Fragment key={s}>
             <div style={{display:"flex",alignItems:"center",gap:8,cursor:i+1<=step?"pointer":"default"}} onClick={()=>i+1<step&&setStep(i+1)}>
               <div style={stepStyle(i+1)}>{step>i+1?"✓":i+1}</div>
               <span style={{fontSize:12,fontWeight:600,color:step===i+1?"#38bdf8":step>i+1?"#34d399":"#475569"}}>{s}</span>
             </div>
             {i<3&&<div style={{flex:1,height:2,background:step>i+1?"#034d2f":"#1a2d45",margin:"0 12px",minWidth:20}}/>}
-          </React.Fragment>
+          </Fragment>
         ))}
       </div>
 
@@ -8042,7 +8042,7 @@ function ProjRisks({ projects, risks, setRisks, roster }) {
             <div/>
             {["Low","Medium","High"].map(i=><div key={i} style={{textAlign:"center",fontSize:10,color:"#3d5a7a",fontWeight:700,padding:"4px 0"}}>Impact: {i}</div>)}
             {["High","Medium","Low"].map(prob=>(
-              <React.Fragment key={prob}>
+              <Fragment key={prob}>
                 <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:8}}>P: {prob}</div>
                 {["low","medium","high"].map(impact=>{
                   const cell = matrixCell(prob.toLowerCase(), impact);
@@ -8052,7 +8052,7 @@ function ProjRisks({ projects, risks, setRisks, roster }) {
                     </div>
                   );
                 })}
-              </React.Fragment>
+              </Fragment>
             ))}
           </div>
         </div>
@@ -8807,7 +8807,7 @@ function AccessMatrix({ orgMembers, setOrgMembers }) {
           </thead>
           <tbody>
             {groups.map(group=>(
-              <React.Fragment key={group}>
+              <Fragment key={group}>
                 <tr>
                   <td colSpan={activeMembers.length+1} style={{padding:"10px 12px 4px",position:"sticky",left:0,background:"#070b14",zIndex:1}}>
                     <div style={{fontSize:9,fontWeight:700,color:"#2d4a63",textTransform:"uppercase",letterSpacing:"0.1em"}}>{group}</div>
@@ -8846,7 +8846,7 @@ function AccessMatrix({ orgMembers, setOrgMembers }) {
                     })}
                   </tr>
                 ))}
-              </React.Fragment>
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -20828,83 +20828,148 @@ Write an engaging LinkedIn post. Include relevant hashtags at the end (5-8 hasht
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// PAF FILES — Immigration document physical storage tracker
+// PAF FILES — AI-powered immigration document auto-mapping from uploads
 // ═══════════════════════════════════════════════════════════════════════
 function PAFFiles({ roster }) {
-  const [pafRecords, setPafRecords] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("zt-paf-files") || "[]"); } catch { return []; }
+  const [records, setRecords] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-paf2") || "[]"); } catch { return []; }
   });
+  const [uploading, setUploading] = useState(false);
+  const [aiResult, setAiResult] = useState("");
+  const [parsed, setParsed] = useState([]);
+  const [fileText, setFileText] = useState("");
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ consultantId:"", docType:"I-797", docNumber:"", issueDate:"", expiryDate:"", physicalLocation:"", cabinet:"", folder:"", notes:"", status:"current" });
+  const [editRec, setEditRec] = useState(null);
+  const [form, setForm] = useState({});
   const [search, setSearch] = useState("");
+  const fileRef = useRef();
 
-  const save = r => { const next = r ? pafRecords.map(p=>p.id===r.id?{...form,id:r.id}:p) : [...pafRecords,{...form,id:"paf"+Date.now()}]; setPafRecords(next); localStorage.setItem("zt-paf-files",JSON.stringify(next)); setModal(false); };
-  const del = id => { const next = pafRecords.filter(p=>p.id!==id); setPafRecords(next); localStorage.setItem("zt-paf-files",JSON.stringify(next)); };
-  const [editing, setEditing] = useState(null);
-  const openEdit = (rec=null) => { setEditing(rec); setForm(rec?{...rec}:{consultantId:"",docType:"I-797",docNumber:"",issueDate:"",expiryDate:"",physicalLocation:"",cabinet:"",folder:"",notes:"",status:"current"}); setModal(true); };
+  const save = (newRecs) => { setRecords(newRecs); localStorage.setItem("zt-paf2", JSON.stringify(newRecs)); };
 
-  const filtered = pafRecords.filter(p => {
-    const name = (roster||[]).find(r=>r.id===p.consultantId)?.name||"";
-    return !search || name.toLowerCase().includes(search.toLowerCase()) || p.docType?.toLowerCase().includes(search.toLowerCase()) || p.physicalLocation?.toLowerCase().includes(search.toLowerCase());
-  });
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true); setAiResult(""); setParsed([]);
+    const text = await file.text();
+    setFileText(text);
+    const system = `You are an immigration document parser for Ziksatech, an IT consulting firm.
+Extract immigration document information from the provided text and return ONLY a JSON array.
+Each object should have: consultantName, docType, docNumber, issueDate (YYYY-MM-DD or empty), expiryDate (YYYY-MM-DD or empty), status (current/expiring/expired/pending), physicalLocation, notes.
+Return ONLY valid JSON array, no explanation, no markdown.`;
+    const prompt = `Extract all immigration document records from this document:
 
-  const docTypes = ["I-797","I-94","I-20","OPT EAD","H-1B Petition","Green Card","Passport","Visa Stamp","I-539","I-485","I-140","EAD Card","Driver License","SSN","Other"];
+${text.slice(0, 4000)}`;
+    let full = "";
+    await callClaude(system, prompt, txt => { full = txt; setAiResult(txt); });
+    try {
+      const clean = full.replace(/```json|```/g, "").trim();
+      const arr = JSON.parse(clean);
+      setParsed(Array.isArray(arr) ? arr : []);
+    } catch { setParsed([]); }
+    setUploading(false);
+  };
+
+  const importAll = () => {
+    const newRecs = parsed.map(p => ({ ...p, id: "paf" + Date.now() + Math.random(), consultant: roster?.find(r => r.name?.toLowerCase().includes((p.consultantName||"").toLowerCase()))?.id || "" }));
+    save([...records, ...newRecs]);
+    setParsed([]); setAiResult(""); setFileText("");
+  };
+
+  const docTypes = ["I-797","I-94","I-20","OPT EAD","H-1B Petition","Green Card","Passport","Visa Stamp","I-539","I-485","I-140","EAD Card","Other"];
   const statusColor = {current:"#34d399",expiring:"#f59e0b",expired:"#f87171",pending:"#38bdf8"};
+
+  const filtered = records.filter(r => !search || (r.consultantName||"").toLowerCase().includes(search.toLowerCase()) || (r.docType||"").toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div>
-      <PH title="PAF Files — Immigration Documents" sub="Physical storage mapping for immigration & compliance documents"/>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
-        <input className="inp" placeholder="Search by name, doc type, location..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,maxWidth:340}}/>
-        <button onClick={()=>openEdit()} style={{padding:"8px 18px",background:"linear-gradient(135deg,#0369a1,#0284c7)",border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Add Document</button>
+      <PH title="PAF Files — Immigration Documents" sub="AI-powered auto-extraction from uploaded documents"/>
+
+      {/* Upload zone */}
+      <div className="card" style={{padding:"20px",marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>📤 Upload Document File for AI Extraction</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"end"}}>
+          <div
+            onClick={() => fileRef.current?.click()}
+            style={{border:"2px dashed #1a2d45",borderRadius:10,padding:"24px",textAlign:"center",cursor:"pointer",background:"#050e1c",transition:"border-color 0.2s"}}
+            onMouseEnter={e=>e.currentTarget.style.borderColor="#0369a1"}
+            onMouseLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+            onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#0369a1";}}
+            onDragLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+            onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor="#1a2d45";handleFile(e.dataTransfer.files[0]);}}>
+            <div style={{fontSize:28,marginBottom:8}}>📄</div>
+            <div style={{fontSize:13,fontWeight:600,color:"#94a3b8"}}>Drop PAF / immigration document here</div>
+            <div style={{fontSize:11,color:"#334155",marginTop:4}}>or click to browse · .txt, .csv, .json supported</div>
+            <input ref={fileRef} type="file" accept=".txt,.csv,.json,.pdf" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
+          </div>
+        </div>
+
+        {uploading && <div style={{marginTop:12,padding:"10px 14px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8,fontSize:12,color:"#7dd3fc"}}>🤖 AI is extracting immigration records...</div>}
+
+        {parsed.length > 0 && (
+          <div style={{marginTop:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#34d399"}}>✅ AI extracted {parsed.length} record{parsed.length!==1?"s":""}</div>
+              <button onClick={importAll} style={{padding:"7px 18px",background:"linear-gradient(135deg,#065f46,#047857)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💾 Import All to Tracker</button>
+            </div>
+            {parsed.map((p,i) => (
+              <div key={i} style={{display:"flex",gap:12,padding:"8px 12px",background:"#0a1120",borderRadius:8,marginBottom:6,fontSize:12,flexWrap:"wrap"}}>
+                <span style={{color:"#cbd5e1",fontWeight:600}}>{p.consultantName||"—"}</span>
+                <span style={{color:"#7dd3fc"}}>{p.docType}</span>
+                <span style={{color:"#475569"}}>{p.docNumber||"—"}</span>
+                <span style={{color:"#64748b"}}>Exp: {p.expiryDate||"—"}</span>
+                <span style={{color:statusColor[p.status]||"#94a3b8",fontWeight:600,textTransform:"capitalize"}}>{p.status}</span>
+                <span style={{color:"#334155"}}>{p.physicalLocation||""}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Summary tiles */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:18}}>
+      {/* Records table */}
+      <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"center"}}>
+        <input className="inp" placeholder="Search records..." value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:300}}/>
+        <button onClick={()=>{setEditRec(null);setForm({consultantName:"",docType:"I-797",docNumber:"",issueDate:"",expiryDate:"",physicalLocation:"",status:"current",notes:""});setModal(true);}} style={{padding:"7px 16px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:12,cursor:"pointer"}}>+ Add Manually</button>
+        <div style={{marginLeft:"auto",fontSize:12,color:"#334155"}}>{records.length} records</div>
+      </div>
+
+      {/* Summary */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
-          {l:"Total Documents",v:pafRecords.length,c:"#38bdf8"},
-          {l:"Expiring ≤60 days",v:pafRecords.filter(p=>{if(!p.expiryDate)return false;const d=(new Date(p.expiryDate)-new Date())/86400000;return d>=0&&d<=60;}).length,c:"#f59e0b"},
-          {l:"Expired",v:pafRecords.filter(p=>p.status==="expired").length,c:"#f87171"},
-          {l:"Consultants Covered",v:new Set(pafRecords.map(p=>p.consultantId)).size,c:"#34d399"},
+          {l:"Total Docs",v:records.length,c:"#38bdf8"},
+          {l:"Expiring ≤60d",v:records.filter(r=>{if(!r.expiryDate)return false;const d=(new Date(r.expiryDate)-new Date())/86400000;return d>=0&&d<=60;}).length,c:"#f59e0b"},
+          {l:"Expired",v:records.filter(r=>r.status==="expired"||((new Date(r.expiryDate)-new Date())/86400000<0&&r.expiryDate)).length,c:"#f87171"},
+          {l:"Consultants",v:new Set(records.map(r=>r.consultantName)).size,c:"#34d399"},
         ].map(t=>(
-          <div key={t.l} className="card" style={{padding:"14px 16px"}}>
-            <div style={{fontSize:22,fontWeight:800,color:t.c,fontFamily:"'DM Mono',monospace"}}>{t.v}</div>
-            <div style={{fontSize:11,color:"#64748b",marginTop:4}}>{t.l}</div>
+          <div key={t.l} className="card" style={{padding:"12px 14px"}}>
+            <div style={{fontSize:20,fontWeight:800,color:t.c,fontFamily:"'DM Mono',monospace"}}>{t.v}</div>
+            <div style={{fontSize:11,color:"#64748b",marginTop:3}}>{t.l}</div>
           </div>
         ))}
       </div>
 
       <div className="card" style={{overflowX:"auto"}}>
-        <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 100px 140px 80px 60px",padding:"8px 18px"}}>
-          {["Consultant","Doc Type","Doc Number","Issued","Expires","Physical Location","Status",""].map(h=><span key={h} className="th">{h}</span>)}
+        <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 100px 130px 70px 60px",padding:"8px 16px"}}>
+          {["Consultant","Doc Type","Doc #","Issued","Expires","Location","Status",""].map(h=><span key={h} className="th">{h}</span>)}
         </div>
-        {filtered.length===0 && <div style={{textAlign:"center",padding:"40px",color:"#334155",fontSize:13}}>No documents yet. Add your first document record above.</div>}
-        {filtered.map(p=>{
-          const consultant = (roster||[]).find(r=>r.id===p.consultantId);
-          const daysLeft = p.expiryDate ? Math.ceil((new Date(p.expiryDate)-new Date())/86400000) : null;
-          const statusTag = daysLeft!==null && daysLeft<0 ? "expired" : daysLeft!==null && daysLeft<=60 ? "expiring" : p.status;
+        {filtered.length===0 && <div style={{textAlign:"center",padding:"40px",color:"#334155",fontSize:13}}>Upload a document above or add records manually</div>}
+        {filtered.map(r => {
+          const daysLeft = r.expiryDate ? Math.ceil((new Date(r.expiryDate)-new Date())/86400000) : null;
+          const tag = daysLeft!==null && daysLeft<0 ? "expired" : daysLeft!==null && daysLeft<=60 ? "expiring" : r.status;
           return (
-            <div key={p.id} className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 100px 140px 80px 60px",cursor:"pointer",alignItems:"center"}}
+            <div key={r.id} className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 100px 130px 70px 60px",alignItems:"center"}}
               onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+              <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.consultantName||"—"}</div>
+              <span style={{background:"#0c2340",color:"#7dd3fc",fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>{r.docType}</span>
+              <span style={{fontSize:11,fontFamily:"monospace",color:"#64748b"}}>{r.docNumber||"—"}</span>
+              <span style={{fontSize:11,color:"#475569"}}>{r.issueDate||"—"}</span>
               <div>
-                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{consultant?.name||"Unassigned"}</div>
-                <div style={{fontSize:10,color:"#3d5a7a"}}>{consultant?.role}</div>
-              </div>
-              <span style={{background:"#0c2340",color:"#7dd3fc",fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>{p.docType}</span>
-              <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8"}}>{p.docNumber||"—"}</span>
-              <span style={{fontSize:11,color:"#64748b"}}>{p.issueDate||"—"}</span>
-              <div>
-                <div style={{fontSize:11,color:statusColor[statusTag]||"#64748b"}}>{p.expiryDate||"—"}</div>
+                <div style={{fontSize:11,color:statusColor[tag]||"#64748b"}}>{r.expiryDate||"—"}</div>
                 {daysLeft!==null&&<div style={{fontSize:9,color:daysLeft<0?"#f87171":daysLeft<=60?"#f59e0b":"#334155"}}>{daysLeft<0?"Expired":daysLeft+" days"}</div>}
               </div>
-              <div>
-                <div style={{fontSize:12,fontWeight:600,color:"#94a3b8"}}>{p.physicalLocation||"—"}</div>
-                {(p.cabinet||p.folder)&&<div style={{fontSize:10,color:"#334155"}}>Cabinet {p.cabinet||"?"} / Folder {p.folder||"?"}</div>}
-              </div>
-              <span style={{fontSize:10,fontWeight:700,color:statusColor[statusTag]||"#64748b",textTransform:"capitalize"}}>{statusTag}</span>
+              <div style={{fontSize:11,color:"#64748b"}}>{r.physicalLocation||"—"}</div>
+              <span style={{fontSize:10,fontWeight:700,color:statusColor[tag],textTransform:"capitalize"}}>{tag}</span>
               <div style={{display:"flex",gap:4}}>
-                <button onClick={()=>openEdit(p)} style={{background:"none",border:"1px solid #1a2d45",borderRadius:5,color:"#64748b",cursor:"pointer",padding:"3px 8px",fontSize:11}}>✏️</button>
-                <button onClick={()=>del(p.id)} style={{background:"none",border:"1px solid #2d0a0a",borderRadius:5,color:"#f87171",cursor:"pointer",padding:"3px 8px",fontSize:11}}>🗑</button>
+                <button onClick={()=>{setEditRec(r);setForm({...r});setModal(true);}} style={{background:"none",border:"1px solid #1a2d45",borderRadius:5,color:"#64748b",cursor:"pointer",padding:"3px 7px",fontSize:10}}>✏️</button>
+                <button onClick={()=>save(records.filter(x=>x.id!==r.id))} style={{background:"none",border:"1px solid #2d0a0a",borderRadius:5,color:"#f87171",cursor:"pointer",padding:"3px 7px",fontSize:10}}>🗑</button>
               </div>
             </div>
           );
@@ -20913,36 +20978,21 @@ function PAFFiles({ roster }) {
 
       {modal && (
         <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
-          <div className="modal" style={{maxWidth:580}}>
-            <MH title={editing?"Edit Document Record":"Add Document Record"} onClose={()=>setModal(false)}/>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title={editRec?"Edit Record":"Add Record"} onClose={()=>setModal(false)}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Consultant *">
-                <select className="inp" value={form.consultantId} onChange={e=>setForm(p=>({...p,consultantId:e.target.value}))}>
-                  <option value="">Select consultant...</option>
-                  {(roster||[]).map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-              </FF>
-              <FF label="Document Type *">
-                <select className="inp" value={form.docType} onChange={e=>setForm(p=>({...p,docType:e.target.value}))}>
-                  {docTypes.map(d=><option key={d}>{d}</option>)}
-                </select>
-              </FF>
-              <FF label="Document Number"><input className="inp" value={form.docNumber} onChange={e=>setForm(p=>({...p,docNumber:e.target.value}))} placeholder="WAC2024..."/></FF>
-              <FF label="Status">
-                <select className="inp" value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))}>
-                  {["current","expiring","expired","pending"].map(s=><option key={s} value={s} style={{textTransform:"capitalize"}}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
-                </select>
-              </FF>
-              <FF label="Issue Date"><input className="inp" type="date" value={form.issueDate} onChange={e=>setForm(p=>({...p,issueDate:e.target.value}))}/></FF>
-              <FF label="Expiry Date"><input className="inp" type="date" value={form.expiryDate} onChange={e=>setForm(p=>({...p,expiryDate:e.target.value}))}/></FF>
-              <FF label="Physical Location"><input className="inp" value={form.physicalLocation} onChange={e=>setForm(p=>({...p,physicalLocation:e.target.value}))} placeholder="Office A, Filing Room 2"/></FF>
-              <FF label="Cabinet #"><input className="inp" value={form.cabinet} onChange={e=>setForm(p=>({...p,cabinet:e.target.value}))} placeholder="Cabinet 3"/></FF>
-              <FF label="Folder / Tab"><input className="inp" value={form.folder} onChange={e=>setForm(p=>({...p,folder:e.target.value}))} placeholder="Tab H-1B 2024"/></FF>
+              <FF label="Consultant Name"><input className="inp" value={form.consultantName||""} onChange={e=>setForm(p=>({...p,consultantName:e.target.value}))}/></FF>
+              <FF label="Doc Type"><select className="inp" value={form.docType||"I-797"} onChange={e=>setForm(p=>({...p,docType:e.target.value}))}>{docTypes.map(d=><option key={d}>{d}</option>)}</select></FF>
+              <FF label="Doc Number"><input className="inp" value={form.docNumber||""} onChange={e=>setForm(p=>({...p,docNumber:e.target.value}))}/></FF>
+              <FF label="Status"><select className="inp" value={form.status||"current"} onChange={e=>setForm(p=>({...p,status:e.target.value}))}>{["current","expiring","expired","pending"].map(s=><option key={s}>{s}</option>)}</select></FF>
+              <FF label="Issue Date"><input className="inp" type="date" value={form.issueDate||""} onChange={e=>setForm(p=>({...p,issueDate:e.target.value}))}/></FF>
+              <FF label="Expiry Date"><input className="inp" type="date" value={form.expiryDate||""} onChange={e=>setForm(p=>({...p,expiryDate:e.target.value}))}/></FF>
+              <FF label="Physical Location" style={{gridColumn:"span 2"}}><input className="inp" value={form.physicalLocation||""} onChange={e=>setForm(p=>({...p,physicalLocation:e.target.value}))} placeholder="Cabinet 3 / Folder H-1B 2024 / Office A"/></FF>
             </div>
-            <FF label="Notes"><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Renewal in progress, attorney contact..."/></FF>
+            <FF label="Notes"><textarea className="inp" rows={2} value={form.notes||""} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></FF>
             <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
               <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
-              <button className="btn bp" onClick={()=>save(editing)}><I d={ICONS.check} s={13}/>Save Record</button>
+              <button className="btn bp" onClick={()=>{const rec={...form,id:editRec?editRec.id:"paf"+Date.now()};save(editRec?records.map(r=>r.id===editRec.id?rec:r):[...records,rec]);setModal(false);}}>Save</button>
             </div>
           </div>
         </div>
@@ -20952,70 +21002,132 @@ function PAFFiles({ roster }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ADP PAY STUBS — Map ADP pay stubs to consultants
+// ADP PAY STUBS — AI-powered auto-mapping from ADP export uploads
 // ═══════════════════════════════════════════════════════════════════════
-function ADPPayStubs({ roster, adpRuns }) {
-  const [stubs, setStubs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("zt-adp-stubs") || "[]"); } catch { return []; }
-  });
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ consultantId:"", payPeriod:"", checkDate:"", grossPay:"", netPay:"", fedTax:"", stateTax:"", ficaEe:"", medicareEe:"", stubRef:"", notes:"" });
-  const [editing, setEditing] = useState(null);
+function ADPPayStubs({ roster }) {
+  const [stubs, setStubs] = useState(() => { try { return JSON.parse(localStorage.getItem("zt-adp-stubs2")||"[]"); } catch { return []; } });
+  const [uploading, setUploading] = useState(false);
+  const [parsed, setParsed] = useState([]);
   const [filter, setFilter] = useState("all");
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({});
+  const [editRec, setEditRec] = useState(null);
+  const fileRef = useRef();
 
-  const saveStub = () => {
-    const next = editing ? stubs.map(s=>s.id===editing.id?{...form,id:editing.id}:s) : [...stubs,{...form,id:"stub"+Date.now()}];
-    setStubs(next); localStorage.setItem("zt-adp-stubs",JSON.stringify(next)); setModal(false);
+  const save = r => { localStorage.setItem("zt-adp-stubs2", JSON.stringify(r)); setStubs(r); };
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true); setParsed([]);
+    const text = await file.text();
+    const system = `You are an ADP payroll data extractor for Ziksatech. 
+Extract pay stub records from the uploaded ADP export and return ONLY a JSON array.
+Each object must have: employeeName, payPeriod, checkDate (YYYY-MM-DD), grossPay (number), netPay (number), fedTax (number), stateTax (number), ficaEe (number), medicareEe (number), stubRef.
+Return ONLY valid JSON array, no explanation.`;
+    const prompt = `Extract pay stub records from this ADP export:
+
+${text.slice(0,4000)}`;
+    let full = "";
+    await callClaude(system, prompt, txt => { full = txt; });
+    try {
+      const arr = JSON.parse(full.replace(/\`\`\`json|\`\`\`/g,"").trim());
+      setParsed(Array.isArray(arr)?arr:[]);
+    } catch { setParsed([]); }
+    setUploading(false);
   };
-  const openEdit = (rec=null) => { setEditing(rec); setForm(rec?{...rec}:{consultantId:"",payPeriod:"",checkDate:"",grossPay:"",netPay:"",fedTax:"",stateTax:"",ficaEe:"",medicareEe:"",stubRef:"",notes:""}); setModal(true); };
 
-  const ftes = (roster||[]).filter(r=>r.type==="FTE");
+  const importAll = () => {
+    const ftes = (roster||[]).filter(r=>r.type==="FTE");
+    const newStubs = parsed.map(p => ({
+      ...p,
+      id:"stub"+Date.now()+Math.random(),
+      consultantId: ftes.find(r=>r.name?.toLowerCase().includes((p.employeeName||"").toLowerCase()))?.id || ""
+    }));
+    save([...stubs,...newStubs]);
+    setParsed([]);
+  };
+
   const displayed = filter==="all" ? stubs : stubs.filter(s=>s.consultantId===filter);
   const totalGross = displayed.reduce((s,r)=>s+(+r.grossPay||0),0);
   const totalNet = displayed.reduce((s,r)=>s+(+r.netPay||0),0);
+  const ftes = (roster||[]).filter(r=>r.type==="FTE");
 
   return (
     <div>
-      <PH title="ADP Pay Stubs" sub="Map and track ADP pay stubs by consultant and pay period"/>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+      <PH title="ADP Pay Stubs" sub="AI-powered extraction from ADP payroll exports"/>
+
+      {/* Upload zone */}
+      <div className="card" style={{padding:"20px",marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>📤 Upload ADP Export for AI Extraction</div>
+        <div
+          onClick={()=>fileRef.current?.click()}
+          style={{border:"2px dashed #1a2d45",borderRadius:10,padding:"20px",textAlign:"center",cursor:"pointer",background:"#050e1c"}}
+          onMouseEnter={e=>e.currentTarget.style.borderColor="#0369a1"}
+          onMouseLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+          onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#0369a1";}}
+          onDragLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+          onDrop={e=>{e.preventDefault();handleFile(e.dataTransfer.files[0]);}}>
+          <div style={{fontSize:24,marginBottom:6}}>💰</div>
+          <div style={{fontSize:13,fontWeight:600,color:"#94a3b8"}}>Drop ADP payroll export here</div>
+          <div style={{fontSize:11,color:"#334155",marginTop:3}}>.txt, .csv, .json · AI extracts all pay stub fields automatically</div>
+          <input ref={fileRef} type="file" accept=".txt,.csv,.json" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
+        </div>
+        {uploading && <div style={{marginTop:10,padding:"10px 14px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8,fontSize:12,color:"#7dd3fc"}}>🤖 AI is parsing pay stub data...</div>}
+        {parsed.length>0 && (
+          <div style={{marginTop:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#34d399"}}>✅ Extracted {parsed.length} pay stub{parsed.length!==1?"s":""}</div>
+              <button onClick={importAll} style={{padding:"7px 16px",background:"linear-gradient(135deg,#065f46,#047857)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💾 Import All</button>
+            </div>
+            {parsed.map((p,i)=>(
+              <div key={i} style={{display:"flex",gap:12,padding:"7px 12px",background:"#0a1120",borderRadius:8,marginBottom:4,fontSize:12,flexWrap:"wrap"}}>
+                <span style={{color:"#cbd5e1",fontWeight:600}}>{p.employeeName||"—"}</span>
+                <span style={{color:"#94a3b8"}}>{p.payPeriod||"—"}</span>
+                <span style={{color:"#38bdf8",fontFamily:"monospace"}}>Gross: ${(+p.grossPay||0).toLocaleString()}</span>
+                <span style={{color:"#34d399",fontFamily:"monospace"}}>Net: ${(+p.netPay||0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div style={{display:"flex",gap:10,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
         <select className="inp" value={filter} onChange={e=>setFilter(e.target.value)} style={{width:200}}>
           <option value="all">All Consultants</option>
           {ftes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
-        <div style={{marginLeft:"auto",display:"flex",gap:10}}>
-          <div style={{padding:"6px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",fontSize:12}}>
-            <span style={{color:"#64748b"}}>Total Gross: </span><span style={{color:"#38bdf8",fontWeight:700,fontFamily:"monospace"}}>${totalGross.toLocaleString()}</span>
-          </div>
-          <div style={{padding:"6px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",fontSize:12}}>
-            <span style={{color:"#64748b"}}>Total Net: </span><span style={{color:"#34d399",fontWeight:700,fontFamily:"monospace"}}>${totalNet.toLocaleString()}</span>
-          </div>
-          <button onClick={()=>openEdit()} style={{padding:"7px 16px",background:"linear-gradient(135deg,#0369a1,#0284c7)",border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}}>+ Add Pay Stub</button>
+        <div style={{marginLeft:"auto",display:"flex",gap:10,alignItems:"center"}}>
+          <div style={{padding:"5px 12px",background:"#060d1c",borderRadius:7,border:"1px solid #1a2d45",fontSize:12}}><span style={{color:"#64748b"}}>Gross: </span><span style={{color:"#38bdf8",fontWeight:700,fontFamily:"monospace"}}>${totalGross.toLocaleString()}</span></div>
+          <div style={{padding:"5px 12px",background:"#060d1c",borderRadius:7,border:"1px solid #1a2d45",fontSize:12}}><span style={{color:"#64748b"}}>Net: </span><span style={{color:"#34d399",fontWeight:700,fontFamily:"monospace"}}>${totalNet.toLocaleString()}</span></div>
+          <button onClick={()=>{setEditRec(null);setForm({consultantId:"",payPeriod:"",checkDate:"",grossPay:"",netPay:"",fedTax:"",stateTax:"",ficaEe:"",stubRef:""});setModal(true);}} style={{padding:"7px 14px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:12,cursor:"pointer"}}>+ Manual Entry</button>
         </div>
       </div>
+
       <div className="card" style={{overflowX:"auto"}}>
-        <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 100px 90px 90px 80px 80px 100px 50px",padding:"8px 18px"}}>
+        <div className="tr" style={{gridTemplateColumns:"1.4fr 110px 100px 90px 90px 80px 80px 110px 50px",padding:"8px 16px"}}>
           {["Consultant","Pay Period","Check Date","Gross","Net","Fed Tax","FICA","Stub Ref",""].map(h=><span key={h} className="th">{h}</span>)}
         </div>
-        {displayed.length===0 && <div style={{textAlign:"center",padding:"40px",color:"#334155",fontSize:13}}>No pay stubs yet. Add stubs to track payroll records.</div>}
+        {displayed.length===0 && <div style={{textAlign:"center",padding:"40px",color:"#334155",fontSize:13}}>Upload an ADP export above or add stubs manually</div>}
         {displayed.map(s=>{
-          const consultant = (roster||[]).find(r=>r.id===s.consultantId);
+          const c2 = (roster||[]).find(r=>r.id===s.consultantId);
           return (
-            <div key={s.id} className="tr" style={{gridTemplateColumns:"1.2fr 100px 100px 90px 90px 80px 80px 100px 50px",alignItems:"center"}}
+            <div key={s.id} className="tr" style={{gridTemplateColumns:"1.4fr 110px 100px 90px 90px 80px 80px 110px 50px",alignItems:"center"}}
               onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
               <div>
-                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{consultant?.name||"Unknown"}</div>
-                <div style={{fontSize:10,color:"#3d5a7a"}}>{consultant?.role}</div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c2?.name||s.employeeName||"—"}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{c2?.role}</div>
               </div>
               <span style={{fontSize:12,color:"#94a3b8"}}>{s.payPeriod||"—"}</span>
-              <span style={{fontSize:12,color:"#64748b"}}>{s.checkDate||"—"}</span>
+              <span style={{fontSize:11,color:"#64748b"}}>{s.checkDate||"—"}</span>
               <span style={{fontSize:12,fontWeight:600,color:"#38bdf8",fontFamily:"monospace"}}>{s.grossPay?("$"+(+s.grossPay).toLocaleString()):"—"}</span>
               <span style={{fontSize:12,fontWeight:600,color:"#34d399",fontFamily:"monospace"}}>{s.netPay?("$"+(+s.netPay).toLocaleString()):"—"}</span>
               <span style={{fontSize:12,color:"#f87171",fontFamily:"monospace"}}>{s.fedTax?("$"+(+s.fedTax).toLocaleString()):"—"}</span>
               <span style={{fontSize:12,color:"#f59e0b",fontFamily:"monospace"}}>{s.ficaEe?("$"+(+s.ficaEe).toLocaleString()):"—"}</span>
               <span style={{fontSize:11,color:"#475569",fontFamily:"monospace"}}>{s.stubRef||"—"}</span>
               <div style={{display:"flex",gap:4}}>
-                <button onClick={()=>openEdit(s)} style={{background:"none",border:"1px solid #1a2d45",borderRadius:5,color:"#64748b",cursor:"pointer",padding:"3px 7px",fontSize:10}}>✏️</button>
-                <button onClick={()=>{const n=stubs.filter(x=>x.id!==s.id);setStubs(n);localStorage.setItem("zt-adp-stubs",JSON.stringify(n));}} style={{background:"none",border:"1px solid #2d0a0a",borderRadius:5,color:"#f87171",cursor:"pointer",padding:"3px 7px",fontSize:10}}>🗑</button>
+                <button onClick={()=>{setEditRec(s);setForm({...s});setModal(true);}} style={{background:"none",border:"1px solid #1a2d45",borderRadius:5,color:"#64748b",cursor:"pointer",padding:"3px 6px",fontSize:10}}>✏️</button>
+                <button onClick={()=>save(stubs.filter(x=>x.id!==s.id))} style={{background:"none",border:"1px solid #2d0a0a",borderRadius:5,color:"#f87171",cursor:"pointer",padding:"3px 6px",fontSize:10}}>🗑</button>
               </div>
             </div>
           );
@@ -21024,29 +21136,21 @@ function ADPPayStubs({ roster, adpRuns }) {
 
       {modal && (
         <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
-          <div className="modal" style={{maxWidth:560}}>
-            <MH title="ADP Pay Stub Record" onClose={()=>setModal(false)}/>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title="Pay Stub Entry" onClose={()=>setModal(false)}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Consultant *">
-                <select className="inp" value={form.consultantId} onChange={e=>setForm(p=>({...p,consultantId:e.target.value}))}>
-                  <option value="">Select...</option>
-                  {ftes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-              </FF>
-              <FF label="Pay Period"><input className="inp" value={form.payPeriod} onChange={e=>setForm(p=>({...p,payPeriod:e.target.value}))} placeholder="Mar 1-15, 2026"/></FF>
-              <FF label="Check Date"><input className="inp" type="date" value={form.checkDate} onChange={e=>setForm(p=>({...p,checkDate:e.target.value}))}/></FF>
-              <FF label="ADP Stub Reference"><input className="inp" value={form.stubRef} onChange={e=>setForm(p=>({...p,stubRef:e.target.value}))} placeholder="ADP-2026-03-001"/></FF>
-              <FF label="Gross Pay ($)"><input className="inp" type="number" value={form.grossPay} onChange={e=>setForm(p=>({...p,grossPay:e.target.value}))}/></FF>
-              <FF label="Net Pay ($)"><input className="inp" type="number" value={form.netPay} onChange={e=>setForm(p=>({...p,netPay:e.target.value}))}/></FF>
-              <FF label="Federal Tax ($)"><input className="inp" type="number" value={form.fedTax} onChange={e=>setForm(p=>({...p,fedTax:e.target.value}))}/></FF>
-              <FF label="State Tax ($)"><input className="inp" type="number" value={form.stateTax} onChange={e=>setForm(p=>({...p,stateTax:e.target.value}))}/></FF>
-              <FF label="EE FICA ($)"><input className="inp" type="number" value={form.ficaEe} onChange={e=>setForm(p=>({...p,ficaEe:e.target.value}))}/></FF>
-              <FF label="EE Medicare ($)"><input className="inp" type="number" value={form.medicareEe} onChange={e=>setForm(p=>({...p,medicareEe:e.target.value}))}/></FF>
+              <FF label="Consultant"><select className="inp" value={form.consultantId||""} onChange={e=>setForm(p=>({...p,consultantId:e.target.value}))}><option value="">Select...</option>{ftes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></FF>
+              <FF label="Pay Period"><input className="inp" value={form.payPeriod||""} onChange={e=>setForm(p=>({...p,payPeriod:e.target.value}))} placeholder="Mar 1-15, 2026"/></FF>
+              <FF label="Check Date"><input className="inp" type="date" value={form.checkDate||""} onChange={e=>setForm(p=>({...p,checkDate:e.target.value}))}/></FF>
+              <FF label="Stub Ref"><input className="inp" value={form.stubRef||""} onChange={e=>setForm(p=>({...p,stubRef:e.target.value}))}/></FF>
+              <FF label="Gross ($)"><input className="inp" type="number" value={form.grossPay||""} onChange={e=>setForm(p=>({...p,grossPay:e.target.value}))}/></FF>
+              <FF label="Net ($)"><input className="inp" type="number" value={form.netPay||""} onChange={e=>setForm(p=>({...p,netPay:e.target.value}))}/></FF>
+              <FF label="Fed Tax ($)"><input className="inp" type="number" value={form.fedTax||""} onChange={e=>setForm(p=>({...p,fedTax:e.target.value}))}/></FF>
+              <FF label="FICA EE ($)"><input className="inp" type="number" value={form.ficaEe||""} onChange={e=>setForm(p=>({...p,ficaEe:e.target.value}))}/></FF>
             </div>
-            <FF label="Notes"><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></FF>
             <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
               <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
-              <button className="btn bp" onClick={saveStub}><I d={ICONS.check} s={13}/>Save Stub</button>
+              <button className="btn bp" onClick={()=>{const rec={...form,id:editRec?editRec.id:"stub"+Date.now()};save(editRec?stubs.map(s=>s.id===editRec.id?rec:s):[...stubs,rec]);setModal(false);}}>Save</button>
             </div>
           </div>
         </div>
@@ -21056,47 +21160,66 @@ function ADPPayStubs({ roster, adpRuns }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// RECONCILIATION REPORT — Finance reconciliation across sources
+// RECONCILIATION REPORT — AI-assisted finance reconciliation
 // ═══════════════════════════════════════════════════════════════════════
-function ReconcileReport({ roster, finInvoices, finPayments, adpRuns, fbInvoices, clients }) {
+function ReconcileReport({ roster, finInvoices, finPayments, adpRuns, fbInvoices }) {
   const [period, setPeriod] = useState("2026-03");
-  const [view, setView] = useState("payroll"); // payroll | billing | ar
+  const [view, setView] = useState("summary");
+  const [uploading, setUploading] = useState(false);
+  const [aiInsights, setAiInsights] = useState("");
+  const fileRef = useRef();
 
   const ftes = (roster||[]).filter(r=>r.type==="FTE");
-  const month = period; // YYYY-MM
+  const month = period;
 
-  // ADP payroll for period
   const adpForPeriod = (adpRuns||[]).filter(r=>r.payPeriod?.startsWith(month));
   const adpTotal = adpForPeriod.reduce((s,r)=>(r.rows||[]).reduce((ss,row)=>ss+(+row.gross||0),ss),0);
-
-  // Finance invoices for period
   const invForPeriod = (finInvoices||[]).filter(i=>i.issueDate?.startsWith(month));
   const invTotal = invForPeriod.reduce((s,i)=>(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),ss),0);
-
-  // Payments received for period
   const pymtForPeriod = (finPayments||[]).filter(p=>p.date?.startsWith(month));
   const pymtTotal = pymtForPeriod.reduce((s,p)=>s+(+p.amount||0),0);
-
-  // FreshBooks for period
   const fbForPeriod = (fbInvoices||[]).filter(i=>i.date?.startsWith(month));
   const fbTotal = fbForPeriod.reduce((s,i)=>s+(+i.amount||0),0);
-
-  // Expected payroll from roster
   const expectedPayroll = ftes.reduce((s,r)=>s+(+r.baseSalary||0)/12,0);
+  const expectedRev = (roster||[]).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0);
 
-  // Roster expected revenue
-  const expectedRev = (roster||[]).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0); // ~160 hrs/mo
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true); setAiInsights("");
+    const text = await file.text();
+    const system = `You are a financial reconciliation expert for Ziksatech consulting.
+Analyze the uploaded financial data and provide a concise reconciliation report.
+Identify discrepancies, missing entries, potential errors. Be specific with dollar amounts.
+Format with ## headers for key sections.`;
+    const prompt = `Analyze this financial data for period ${period} and provide reconciliation insights:
+
+Existing data:
+- Finance Module Invoiced: $${invTotal.toLocaleString()}
+- Payments Collected: $${pymtTotal.toLocaleString()}  
+- ADP Payroll: $${adpTotal.toLocaleString()}
+- FreshBooks: $${fbTotal.toLocaleString()}
+- Expected Payroll: $${Math.round(expectedPayroll).toLocaleString()}
+- Expected Revenue: $${Math.round(expectedRev).toLocaleString()}
+
+Uploaded file contents:
+${text.slice(0,3000)}
+
+Provide: Key Discrepancies, Missing Entries, Reconciliation Status, Action Items.`;
+    await callClaude(system, prompt, txt => setAiInsights(txt));
+    setUploading(false);
+  };
 
   return (
     <div>
-      <PH title="Reconciliation Report" sub="Cross-source financial reconciliation — ADP vs Finance vs FreshBooks"/>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+      <PH title="Reconciliation Report" sub="AI-assisted cross-source financial reconciliation"/>
+
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:12,color:"#64748b"}}>Period:</span>
           <input className="inp" type="month" value={period} onChange={e=>setPeriod(e.target.value)} style={{width:160}}/>
         </div>
         <div style={{display:"flex",gap:6}}>
-          {[{id:"payroll",l:"💰 Payroll"},{ id:"billing",l:"🧾 Billing"},{id:"ar",l:"📊 Summary"}].map(v=>(
+          {[{id:"summary",l:"📊 Summary"},{id:"payroll",l:"💰 Payroll"},{id:"billing",l:"🧾 Billing"},{id:"ai",l:"🤖 AI Analysis"}].map(v=>(
             <button key={v.id} onClick={()=>setView(v.id)}
               style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${view===v.id?"#0369a1":"#1a2d45"}`,
                 background:view===v.id?"#0c2340":"#0a1120",color:view===v.id?"#38bdf8":"#64748b",
@@ -21105,47 +21228,71 @@ function ReconcileReport({ roster, finInvoices, finPayments, adpRuns, fbInvoices
         </div>
       </div>
 
-      {/* Summary tiles */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+      {/* KPI tiles */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
         {[
-          {l:"ADP Payroll (actual)",  v:"$"+adpTotal.toLocaleString(),   exp:"$"+Math.round(expectedPayroll).toLocaleString(), c:"#38bdf8"},
-          {l:"Invoiced (Finance)",   v:"$"+invTotal.toLocaleString(),    exp:"$"+Math.round(expectedRev).toLocaleString(),     c:"#a78bfa"},
-          {l:"Collected",            v:"$"+pymtTotal.toLocaleString(),   exp:"",                                                c:"#34d399"},
-          {l:"FreshBooks Invoices",  v:"$"+fbTotal.toLocaleString(),     exp:"",                                                c:"#f59e0b"},
+          {l:"Invoiced",        v:"$"+invTotal.toLocaleString(),           exp:"exp $"+Math.round(expectedRev).toLocaleString(), c:"#38bdf8"},
+          {l:"Collected",       v:"$"+pymtTotal.toLocaleString(),          exp:invTotal>0?Math.round(pymtTotal/invTotal*100)+"% rate":"",c:"#34d399"},
+          {l:"ADP Payroll",     v:"$"+adpTotal.toLocaleString(),           exp:"exp $"+Math.round(expectedPayroll).toLocaleString(), c:"#f87171"},
+          {l:"FreshBooks",      v:"$"+fbTotal.toLocaleString(),            exp:"Δ $"+Math.abs(invTotal-fbTotal).toLocaleString(),    c:"#f59e0b"},
         ].map(t=>(
-          <div key={t.l} className="card" style={{padding:"14px 16px"}}>
-            <div style={{fontSize:20,fontWeight:800,color:t.c,fontFamily:"'DM Mono',monospace"}}>{t.v}</div>
-            {t.exp&&<div style={{fontSize:10,color:"#334155",marginTop:2}}>Expected: {t.exp}</div>}
-            <div style={{fontSize:11,color:"#64748b",marginTop:4}}>{t.l}</div>
+          <div key={t.l} className="card" style={{padding:"12px 14px"}}>
+            <div style={{fontSize:19,fontWeight:800,color:t.c,fontFamily:"'DM Mono',monospace"}}>{t.v}</div>
+            <div style={{fontSize:10,color:"#334155",marginTop:2}}>{t.exp}</div>
+            <div style={{fontSize:11,color:"#64748b",marginTop:3}}>{t.l}</div>
           </div>
         ))}
       </div>
 
+      {view==="summary" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div className="card" style={{padding:"18px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Period Summary — {period}</div>
+            {[
+              {l:"Outstanding A/R",    v:"$"+(invTotal-pymtTotal).toLocaleString(), c:(invTotal-pymtTotal)>0?"#f59e0b":"#34d399"},
+              {l:"Collection Rate",    v:invTotal>0?Math.round(pymtTotal/invTotal*100)+"%":"—", c:"#a78bfa"},
+              {l:"Finance vs FB Gap",  v:"$"+Math.abs(invTotal-fbTotal).toLocaleString(), c:Math.abs(invTotal-fbTotal)<1000?"#34d399":"#f87171"},
+              {l:"Payroll vs Expected",v:"$"+Math.abs(adpTotal-Math.round(expectedPayroll)).toLocaleString(), c:Math.abs(adpTotal-expectedPayroll)<500?"#34d399":"#f59e0b"},
+              {l:"Gross Profit (est)", v:"$"+(pymtTotal-adpTotal).toLocaleString(), c:pymtTotal-adpTotal>0?"#34d399":"#f87171"},
+            ].map(row=>(
+              <div key={row.l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0a1420"}}>
+                <span style={{fontSize:12,color:"#64748b"}}>{row.l}</span>
+                <span style={{fontSize:13,fontWeight:700,color:row.c,fontFamily:"'DM Mono',monospace"}}>{row.v}</span>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{padding:"18px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>⚠️ Alerts</div>
+            {Math.abs(invTotal-fbTotal)>1000&&<div style={{background:"#2d1f00",border:"1px solid #92400e",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:12}}><div style={{fontWeight:600,color:"#fcd34d"}}>⚠️ Finance vs FreshBooks gap: ${Math.abs(invTotal-fbTotal).toLocaleString()}</div></div>}
+            {adpTotal===0&&<div style={{background:"#0c1a2e",border:"1px solid #1e3a5f",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:12}}><div style={{fontWeight:600,color:"#7dd3fc"}}>ℹ️ No ADP data for {period} — upload via ADP Pay Stubs</div></div>}
+            {pymtTotal<invTotal*0.5&&invTotal>0&&<div style={{background:"#2d0a0a",border:"1px solid #7f1d1d",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:12}}><div style={{fontWeight:600,color:"#fca5a5"}}>⚠️ Low collection: {Math.round(pymtTotal/invTotal*100)}%</div></div>}
+            {Math.abs(invTotal-fbTotal)<500&&invTotal>0&&<div style={{background:"#022c22",border:"1px solid #065f46",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:12}}><div style={{fontWeight:600,color:"#34d399"}}>✅ Finance & FreshBooks aligned</div></div>}
+          </div>
+        </div>
+      )}
+
       {view==="payroll" && (
         <div className="card">
           <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",padding:"14px 18px",borderBottom:"1px solid #0f1e30"}}>Payroll Reconciliation — {period}</div>
-          <div className="tr" style={{gridTemplateColumns:"1.4fr 100px 100px 100px 100px 80px",padding:"8px 18px"}}>
-            {["Consultant","Expected/mo","ADP Actual","Variance","FTE Burden","Status"].map(h=><span key={h} className="th">{h}</span>)}
+          <div className="tr" style={{gridTemplateColumns:"1.4fr 110px 110px 100px 100px 80px",padding:"8px 18px"}}>
+            {["Consultant","Expected/mo","ADP Actual","Variance","Burden","Status"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
           {ftes.map(r=>{
-            const expected = Math.round((+r.baseSalary||0)/12);
-            const adpRow = adpForPeriod.flatMap(run=>(run.rows||[]).filter(row=>row.employeeName?.toLowerCase().includes(r.name.toLowerCase()) || row.employeeId===r.id));
-            const actual = adpRow.reduce((s,row)=>s+(+row.gross||0),0);
-            const variance = actual - expected;
-            const status = actual===0?"missing":Math.abs(variance)<100?"match":variance>0?"over":"under";
-            const statusColor2 = {match:"#34d399",over:"#f59e0b",under:"#f87171",missing:"#475569"};
+            const expected=Math.round((+r.baseSalary||0)/12);
+            const adpRow=adpForPeriod.flatMap(run=>(run.rows||[]).filter(row=>row.employeeName?.toLowerCase().includes(r.name.toLowerCase())));
+            const actual=adpRow.reduce((s,row)=>s+(+row.gross||0),0);
+            const variance=actual-expected;
+            const status=actual===0?"missing":Math.abs(variance)<100?"match":variance>0?"over":"under";
+            const sc={match:"#34d399",over:"#f59e0b",under:"#f87171",missing:"#475569"};
             return (
-              <div key={r.id} className="tr" style={{gridTemplateColumns:"1.4fr 100px 100px 100px 100px 80px",alignItems:"center"}}
+              <div key={r.id} className="tr" style={{gridTemplateColumns:"1.4fr 110px 110px 100px 100px 80px",alignItems:"center"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div>
-                  <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role}</div>
-                </div>
+                <div><div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div><div style={{fontSize:10,color:"#3d5a7a"}}>{r.role}</div></div>
                 <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8"}}>${expected.toLocaleString()}</span>
-                <span style={{fontSize:12,fontFamily:"monospace",color:actual>0?"#38bdf8":"#334155"}}>{actual>0?("$"+actual.toLocaleString()):"—"}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:actual>0?"#38bdf8":"#334155"}}>{actual>0?"$"+actual.toLocaleString():"—"}</span>
                 <span style={{fontSize:12,fontFamily:"monospace",color:variance===0?"#34d399":variance>0?"#f59e0b":"#f87171"}}>{actual>0?(variance>=0?"+":"")+variance.toLocaleString():"—"}</span>
                 <span style={{fontSize:12,fontFamily:"monospace",color:"#64748b"}}>${Math.round(expected*0.2265).toLocaleString()}</span>
-                <span style={{fontSize:10,fontWeight:700,color:statusColor2[status],textTransform:"uppercase"}}>{status}</span>
+                <span style={{fontSize:10,fontWeight:700,color:sc[status],textTransform:"uppercase"}}>{status}</span>
               </div>
             );
           })}
@@ -21155,24 +21302,19 @@ function ReconcileReport({ roster, finInvoices, finPayments, adpRuns, fbInvoices
       {view==="billing" && (
         <div className="card">
           <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",padding:"14px 18px",borderBottom:"1px solid #0f1e30"}}>Billing Reconciliation — {period}</div>
-          <div className="tr" style={{gridTemplateColumns:"1.4fr 100px 100px 100px 100px 80px",padding:"8px 18px"}}>
+          <div className="tr" style={{gridTemplateColumns:"1.4fr 110px 110px 110px 100px 80px",padding:"8px 18px"}}>
             {["Consultant","Expected Rev","Invoiced","Collected","Outstanding","Util"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
           {(roster||[]).map(r=>{
-            const expRev = Math.round((r.billRate||0)*(r.util||0)*160);
-            const invoiced = invForPeriod.filter(i=>i.clientId===r.client||i.projectName?.includes(r.name)).reduce((s,i)=>(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),ss),0);
-            const collected = pymtForPeriod.filter(p=>invForPeriod.some(i=>i.id===p.invoiceId && ((i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0)>0))).reduce((s,p)=>s+(+p.amount||0),0);
+            const expRev=Math.round((r.billRate||0)*(r.util||0)*160);
             return (
-              <div key={r.id} className="tr" style={{gridTemplateColumns:"1.4fr 100px 100px 100px 100px 80px",alignItems:"center"}}
+              <div key={r.id} className="tr" style={{gridTemplateColumns:"1.4fr 110px 110px 110px 100px 80px",alignItems:"center"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div>
-                  <div style={{fontSize:10,color:"#3d5a7a"}}>{r.type} · {r.client}</div>
-                </div>
+                <div><div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div><div style={{fontSize:10,color:"#3d5a7a"}}>{r.type}·{r.client}</div></div>
                 <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8"}}>${expRev.toLocaleString()}</span>
-                <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8"}}>{invoiced>0?("$"+invoiced.toLocaleString()):"—"}</span>
-                <span style={{fontSize:12,fontFamily:"monospace",color:"#34d399"}}>{collected>0?("$"+collected.toLocaleString()):"—"}</span>
-                <span style={{fontSize:12,fontFamily:"monospace",color:"#f59e0b"}}>{invoiced-collected>0?("$"+(invoiced-collected).toLocaleString()):"—"}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8"}}>—</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#34d399"}}>—</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#f59e0b"}}>—</span>
                 <span style={{fontSize:12,color:r.util>=0.8?"#34d399":"#f59e0b"}}>{Math.round((r.util||0)*100)}%</span>
               </div>
             );
@@ -21180,53 +21322,34 @@ function ReconcileReport({ roster, finInvoices, finPayments, adpRuns, fbInvoices
         </div>
       )}
 
-      {view==="ar" && (
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-          <div className="card" style={{padding:"18px"}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>📊 Period Summary — {period}</div>
-            {[
-              {l:"Total Billed (Finance)",  v:"$"+invTotal.toLocaleString(),                    c:"#38bdf8"},
-              {l:"Total Collected",         v:"$"+pymtTotal.toLocaleString(),                   c:"#34d399"},
-              {l:"Outstanding A/R",         v:"$"+(invTotal-pymtTotal).toLocaleString(),         c:"#f59e0b"},
-              {l:"Collection Rate",         v:invTotal>0?Math.round(pymtTotal/invTotal*100)+"%":"—", c:"#a78bfa"},
-              {l:"ADP Payroll",             v:"$"+adpTotal.toLocaleString(),                    c:"#f87171"},
-              {l:"FreshBooks Invoices",     v:"$"+fbTotal.toLocaleString(),                     c:"#f59e0b"},
-              {l:"Finance vs FreshBooks Δ", v:"$"+Math.abs(invTotal-fbTotal).toLocaleString(),  c:Math.abs(invTotal-fbTotal)<1000?"#34d399":"#f87171"},
-              {l:"Gross Profit (est.)",     v:"$"+(pymtTotal-adpTotal).toLocaleString(),        c:pymtTotal-adpTotal>0?"#34d399":"#f87171"},
-            ].map(row=>(
-              <div key={row.l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0a1420"}}>
-                <span style={{fontSize:12,color:"#64748b"}}>{row.l}</span>
-                <span style={{fontSize:13,fontWeight:700,color:row.c,fontFamily:"'DM Mono',monospace"}}>{row.v}</span>
-              </div>
-            ))}
+      {view==="ai" && (
+        <div className="card" style={{padding:"20px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🤖 AI Reconciliation Analysis</div>
+          <div
+            onClick={()=>fileRef.current?.click()}
+            style={{border:"2px dashed #1a2d45",borderRadius:10,padding:"20px",textAlign:"center",cursor:"pointer",background:"#050e1c",marginBottom:14}}
+            onMouseEnter={e=>e.currentTarget.style.borderColor="#0369a1"}
+            onMouseLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+            onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#0369a1";}}
+            onDragLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+            onDrop={e=>{e.preventDefault();handleFile(e.dataTransfer.files[0]);}}>
+            <div style={{fontSize:22,marginBottom:4}}>📊</div>
+            <div style={{fontSize:13,fontWeight:600,color:"#94a3b8"}}>Upload any financial export for AI analysis</div>
+            <div style={{fontSize:11,color:"#334155",marginTop:3}}>Bank statement, ADP export, FreshBooks CSV, or any finance doc</div>
+            <input ref={fileRef} type="file" accept=".txt,.csv,.json,.pdf" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
           </div>
-          <div className="card" style={{padding:"18px"}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>⚠️ Discrepancies & Alerts</div>
-            {Math.abs(invTotal-fbTotal)>1000 && (
-              <div style={{background:"#2d1f00",border:"1px solid #92400e",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#fcd34d"}}>⚠️ Finance vs FreshBooks Gap</div>
-                <div style={{fontSize:11,color:"#92400e",marginTop:4}}>Finance: ${invTotal.toLocaleString()} vs FreshBooks: ${fbTotal.toLocaleString()} — Δ ${Math.abs(invTotal-fbTotal).toLocaleString()}</div>
-              </div>
-            )}
-            {adpTotal===0 && (
-              <div style={{background:"#0c1a2e",border:"1px solid #1e3a5f",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#7dd3fc"}}>ℹ️ No ADP Runs for {period}</div>
-                <div style={{fontSize:11,color:"#334155",marginTop:4}}>Upload ADP payroll export in ADP Payroll module to see payroll reconciliation.</div>
-              </div>
-            )}
-            {pymtTotal < invTotal * 0.5 && invTotal > 0 && (
-              <div style={{background:"#2d0a0a",border:"1px solid #7f1d1d",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#fca5a5"}}>⚠️ Low Collection Rate</div>
-                <div style={{fontSize:11,color:"#7f1d1d",marginTop:4}}>Only {Math.round(pymtTotal/invTotal*100)}% collected — ${(invTotal-pymtTotal).toLocaleString()} outstanding</div>
-              </div>
-            )}
-            {Math.abs(invTotal-fbTotal)<500 && invTotal>0 && (
-              <div style={{background:"#022c22",border:"1px solid #065f46",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#34d399"}}>✅ Finance & FreshBooks aligned</div>
-                <div style={{fontSize:11,color:"#065f46",marginTop:4}}>Both systems show consistent billing data for {period}.</div>
-              </div>
-            )}
-          </div>
+          {uploading&&<div style={{padding:"10px 14px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8,fontSize:12,color:"#7dd3fc",marginBottom:12}}>🤖 AI is analyzing your financial data...</div>}
+          {!aiInsights&&!uploading&&<div style={{color:"#334155",textAlign:"center",padding:"40px",fontSize:13}}>Upload a financial file to get AI-powered reconciliation insights comparing it against your current period data</div>}
+          {aiInsights&&(
+            <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"18px",fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap",overflowY:"auto",maxHeight:"60vh"}}>
+              {aiInsights.split('
+').map((line,i)=>{
+                if(line.startsWith('## '))return <div key={i} style={{fontSize:14,fontWeight:700,color:"#38bdf8",marginTop:16,marginBottom:6,borderBottom:"1px solid #1a2d45",paddingBottom:3}}>{line.slice(3)}</div>;
+                if(line.startsWith('- '))return <div key={i} style={{paddingLeft:14,color:"#94a3b8"}}>• {line.slice(2)}</div>;
+                return <div key={i} style={{color:"#94a3b8",marginBottom:line===''?6:0}}>{line||"​"}</div>;
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
