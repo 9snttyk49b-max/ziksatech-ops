@@ -13419,6 +13419,16 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
 }
 
 
+// SettingsField — defined OUTSIDE SettingsPage to prevent remounting on every keystroke
+function SettingsField({label, children}) {
+  return (
+    <div style={{marginBottom:16}}>
+      <div className="lbl" style={{marginBottom:6}}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
 function SettingsPage({ appSettings, setAppSettings, addAudit }) {
   const [form, setForm] = useState({...appSettings});
   const [saved, setSaved] = useState(false);
@@ -13430,12 +13440,7 @@ function SettingsPage({ appSettings, setAppSettings, addAudit }) {
     setTimeout(()=>setSaved(false),2500);
   };
 
-  const F = ({label,children}) => (
-    <div style={{marginBottom:16}}>
-      <div className="lbl" style={{marginBottom:6}}>{label}</div>
-      {children}
-    </div>
-  );
+  const F = SettingsField;
 
   return (
     <div>
