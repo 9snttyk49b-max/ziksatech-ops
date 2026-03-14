@@ -6474,7 +6474,14 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
 // ── Deals ─────────────────────────────────────────────────────────────────────
 function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, addAudit }) {
   const [modal, setModal]   = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [stageFilter, setStageFilter] = useState("open");
+  const [editing, setEditing]   = useState(null);
+  const [form, setForm]         = useState({});
   const { dragProps: _dp } = useDragSort(crmDeals, setCrmDeals);
+  const filtered = stageFilter==="all" ? crmDeals : crmDeals.filter(d=>d.stage===stageFilter);
+  const openDeal = (d=null) => { setEditing(d?.id||null); setForm(d?{...d}:{name:"",accountId:"",stage:"open",type:"New",value:"",probability:50,closeDate:"",owner:"",notes:""}); setModal(true); };
+  const saveDeal = () => { const f={...form,value:+form.value,probability:+form.probability}; if(editing) setCrmDeals(ds=>ds.map(d=>d.id===editing?{...d,...f}:d)); else setCrmDeals(ds=>[...ds,{...f,id:"deal"+uid(),createdAt:TODAY_STR}]); addAudit&&addAudit("CRM","Deal Saved","CRM",f.name); setModal(false); };
   const selDeal   = crmDeals.find(d=>d.id===selected);
   const selAcc    = selDeal ? crmAccounts.find(a=>a.id===selDeal.accountId) : null;
   const selDealActs = selected ? [...crmActivities].filter(a=>a.dealId===selected).sort((a,b)=>b.date.localeCompare(a.date)) : [];
