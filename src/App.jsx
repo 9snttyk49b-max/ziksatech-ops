@@ -20411,7 +20411,8 @@ function MiniCalculator() {
 // AI GENERATORS — shared Claude API helper
 // ═══════════════════════════════════════════════════════════════════════
 async function callClaude(systemPrompt, userPrompt, onChunk) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  // Route through Vercel serverless proxy to avoid CORS
+  const res = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -20422,6 +20423,11 @@ async function callClaude(systemPrompt, userPrompt, onChunk) {
       messages: [{ role: "user", content: userPrompt }],
     }),
   });
+  if (!res.ok) {
+    const err = await res.text();
+    onChunk && onChunk("⚠️ Error: " + err);
+    return "Error: " + err;
+  }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let full = "";
