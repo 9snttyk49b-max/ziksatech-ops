@@ -20962,7 +20962,9 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
 function RFPGenerator({ clients, roster }) {
   const [form, setForm] = useState({
     company:"Ziksatech", clientName:"", projectType:"SAP Implementation",
-    requirements:"", budget:"", deadline:"", evaluation:"", contact:""
+    requirements:"SAP S/4HANA migration, BRIM billing configuration, system integration with legacy ERP, user training, and go-live support.",
+    budget:"$300,000 - $500,000", deadline:"", evaluation:"Technical expertise, SAP certifications, prior BRIM experience, project methodology, references.",
+    contact:"procurement@ziksatech.com"
   });
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21043,8 +21045,8 @@ Timeline, Budget Guidelines, Terms & Conditions, Submission Instructions.`;
 // ═══════════════════════════════════════════════════════════════════════
 function ResourcePlanAI({ roster, clients, projects, crmDeals }) {
   const [form, setForm] = useState({
-    project:"", duration:"", skills:"", headcount:"", budget:"",
-    startDate:"", priority:"high", notes:""
+    project:"SAP S/4HANA Migration", duration:"9 months", skills:"SAP ABAP, BRIM, Finance module, integration", headcount:"4", budget:"800000",
+    startDate:"", priority:"high", notes:"Client prefers FTE consultants with SAP certification"
   });
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21138,8 +21140,8 @@ Timeline & Ramp-up Plan, Risk Factors, Cost Estimate, Recommendations.`;
 // ═══════════════════════════════════════════════════════════════════════
 function LinkedInGen({ clients, roster, crmDeals, authProfile }) {
   const [form, setForm] = useState({
-    postType:"win", topic:"", highlights:"", tone:"professional",
-    includeStats:true, callToAction:""
+    postType:"win", topic:"Ziksatech SAP BRIM Implementation Success", highlights:"Delivered SAP BRIM billing engine on time, $2M+ annual savings, 10 consultants, 99.9% uptime since go-live.", tone:"professional",
+    includeStats:true, callToAction:"Learn how we can transform your billing operations — reach out to discuss your SAP journey."
   });
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
