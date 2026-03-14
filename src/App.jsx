@@ -1363,6 +1363,8 @@ export default function ZiksatechOps() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | saved | error
   const [backupModal, setBackupModal] = useState(false);
+  // Prevent auto-save from overwriting Supabase data on initial load
+  const skipSaveRef = useRef(true); // true = skip, set to false after first load completes
   const [restoreError, setRestoreError] = useState("");
   const [restoreSuccess, setRestoreSuccess] = useState("");
 
@@ -1433,12 +1435,15 @@ export default function ZiksatechOps() {
       const meta = await store.get("zt-meta");
       if (meta?.lastSaved) setLastSaved(new Date(meta.lastSaved));
       setLoaded(true);
+      // Allow auto-saves AFTER initial load is complete
+      setTimeout(() => { skipSaveRef.current = false; }, 500);
     })();
   },[]);
 
   // ── auto-save to window.storage on every change ──
   useEffect(() => {
     if (!loaded) return;
+    if (skipSaveRef.current) return; // Skip save during initial load — prevents seed data overwriting real DB data
     setSaveStatus("saving");
     const t = setTimeout(async () => {
       try {
