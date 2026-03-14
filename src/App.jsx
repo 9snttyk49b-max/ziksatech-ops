@@ -1341,6 +1341,10 @@ function PendingScreen({ email, onGoLogin }) {
 
 export default function ZiksatechOps() {
   const [tab, setTab] = useState("dashboard");
+  const [portalView, setPortalView] = useState(() => {
+    try { return localStorage.getItem("zt-portal-view") || "hub"; } catch { return "hub"; }
+  });
+  const goToView = (v) => { localStorage.setItem("zt-portal-view", v); setPortalView(v); };
   const [roster, setRoster] = useState(ROSTER_SEED);
   const [pipeline, setPipeline] = useState(PIPELINE_SEED);
   const [clients, setClients] = useState(CLIENTS_SEED);
@@ -1681,7 +1685,23 @@ export default function ZiksatechOps() {
     }
   }
 
-  return (
+  // ── Portal Hub intercept ────────────────────────────────────────────────
+  if (portalView === "hub") {
+    return <PortalHub
+      goToOps={()=>goToView("ops")}
+      goCRM={()=>goToView("crm")}
+      authProfile={authProfile}
+      roster={shared.roster}
+      clients={shared.clients}
+      finInvoices={shared.finInvoices}
+      finPayments={shared.finPayments}
+      crmDeals={shared.crmDeals}
+      compliance={shared.compliance}
+      onSignOut={async()=>{ if(supaAuth){await supaAuth.signOut(authSession?.access_token);supaAuth.clearSession();} setAuthSession(null);setAuthProfile(null); }}
+    />;
+  }
+
+    return (
     <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",background:"#070b14",minHeight:"100vh",color:"#e2e8f0",display:"flex"}}>
       <style>{`
 /* ── Light mode override ───────────────────────────────────── */
@@ -1795,6 +1815,15 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         boxShadow: isMobile && sideOpen ? "4px 0 24px rgba(0,0,0,0.5)" : "none",
       }}>
         <div style={{padding:"8px 14px 18px",borderBottom:"1px solid #0f1e30",marginBottom:6}}>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
+            <button onClick={()=>goToView("hub")} title="Back to Portal Hub"
+              style={{background:"none",border:"1px solid #0f1e30",borderRadius:6,color:"#1e3a5f",
+                fontSize:10,padding:"3px 8px",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",gap:4,width:"100%",textAlign:"left"}}
+              onMouseEnter={e=>e.currentTarget.style.borderColor="#1a4a6b"}
+              onMouseLeave={e=>e.currentTarget.style.borderColor="#0f1e30"}>
+              ← Portal Hub
+            </button>
+          </div>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
             <div>
               <div onClick={()=>setTab("home")} title="Home" style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer"}}>⬡ ZIKSATECH</div>
@@ -13746,6 +13775,37 @@ function SettingsPage({ appSettings, setAppSettings, addAudit }) {
         </button>
         {saved&&<span style={{fontSize:12,color:"#34d399",fontWeight:600}}>✓ Settings saved</span>}
       </div>
+
+      {/* AI API Key */}
+      <div className="card" style={{padding:"20px",maxWidth:600,marginTop:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🤖 Anthropic API Key</div>
+        <div style={{fontSize:11,color:"#475569",marginBottom:14}}>Required for SOW Generator, RFP Generator, Resource Planner AI, and LinkedIn Posts. Stored locally in your browser only — never sent to any server except Anthropic.</div>
+        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+          <input
+            className="inp"
+            type="password"
+            defaultValue={typeof localStorage!=="undefined"?localStorage.getItem("zt-anthropic-key")||"":""}
+            placeholder="sk-ant-..."
+            id="anthropic-key-input"
+            style={{flex:1,fontFamily:"monospace"}}
+          />
+          <button className="btn bp" onClick={()=>{
+            const val=document.getElementById("anthropic-key-input")?.value||"";
+            if(val.startsWith("sk-ant-")||val.startsWith("sk-")){
+              localStorage.setItem("zt-anthropic-key",val);
+              alert("✓ API key saved. AI generators will now work.");
+            } else if(val===""){
+              localStorage.removeItem("zt-anthropic-key");
+              alert("API key cleared.");
+            } else {
+              alert("Invalid key format. Should start with sk-ant-");
+            }
+          }}>Save Key</button>
+        </div>
+        <div style={{fontSize:10,color:"#1e3a5f",marginTop:8}}>
+          Get your key at console.anthropic.com · Alternatively, ask your system admin to set ANTHROPIC_API_KEY in Vercel environment variables.
+        </div>
+      </div>
     </div>
   );
 }
@@ -20412,9 +20472,10 @@ function MiniCalculator() {
 // ═══════════════════════════════════════════════════════════════════════
 async function callClaude(systemPrompt, userPrompt, onChunk) {
   // Route through Vercel serverless proxy to avoid CORS
+  const storedKey = typeof localStorage !== "undefined" ? localStorage.getItem("zt-anthropic-key") : null;
   const res = await fetch("/api/claude", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(storedKey ? {"x-api-key-override": storedKey} : {}) },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
@@ -20454,9 +20515,12 @@ async function callClaude(systemPrompt, userPrompt, onChunk) {
 // SOW GENERATOR — AI-powered Statement of Work
 // ═══════════════════════════════════════════════════════════════════════
 function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
+  const topClient = clients?.[0]?.name || "";
   const [form, setForm] = useState({
-    client:"", project:"", scope:"", deliverables:"", timeline:"",
-    budget:"", consultants:"", paymentTerms:"Net 30", assumptions:""
+    client: topClient,
+    project: topClient ? topClient + " SAP Implementation" : "",
+    scope:"", deliverables:"", timeline:"6 months",
+    budget:"450000", consultants:"2 FTE SAP consultants", paymentTerms:"Net 30", assumptions:""
   });
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21364,6 +21428,193 @@ Provide: Key Discrepancies, Missing Entries, Reconciliation Status, Action Items
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PORTAL HUB — Ziksatech Launcher Page
+// ═══════════════════════════════════════════════════════════════════════
+function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, finPayments, crmDeals, compliance, onSignOut }) {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
+
+  const fmt = v => "$" + Math.round(v).toLocaleString();
+  const isAdmin = ["admin","super_admin"].includes(authProfile?.role);
+  const initials = (authProfile?.full_name||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const greeting = time.getHours()<12?"Good morning":time.getHours()<17?"Good afternoon":"Good evening";
+
+  // Live KPIs from shared state
+  const totalRev = (roster||[]).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*1920,0);
+  const activeConsultants = (roster||[]).filter(r=>(r.util||0)>0).length;
+  const openPipeline = (crmDeals||[]).filter(d=>d.stage==="open"||d.stage==="qualified"||d.stage==="proposal"||d.stage==="negotiation").reduce((s,d)=>s+(+d.value||0),0);
+  const collected = (finPayments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+  const invTotal = (finInvoices||[]).reduce((s,i)=>(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),ss),0);
+  const collectionRate = invTotal>0 ? Math.round(collected/invTotal*100) : 0;
+  const expiringCompliance = (compliance||[]).filter(c=>{
+    if(!c.expiryDate) return false;
+    const d=(new Date(c.expiryDate)-new Date())/86400000;
+    return d>=0&&d<=60;
+  }).length;
+  const openDeals = (crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage)).length;
+  const activeClients = (clients||[]).filter(c=>c.health!=="Red").length;
+
+  // CRM KPIs
+  const wonYTD = (crmDeals||[]).filter(d=>d.stage==="closed_won").reduce((s,d)=>s+(+d.value||0),0);
+  const avgDealSize = openDeals>0 ? Math.round(openPipeline/openDeals) : 0;
+
+  const TILE_OPS = {
+    id:"ops", label:"Ziksatech OPS", emoji:"⚙️",
+    tagline:"Finance · People · Compliance · Operations",
+    color:"#0369a1", glow:"rgba(3,105,161,0.15)",
+    border:"rgba(56,189,248,0.3)",
+    kpis: [
+      {l:"Annual Revenue",    v:fmt(totalRev),          dim:"YTD"},
+      {l:"Active Consultants",v:activeConsultants+"",   dim:"of "+(roster||[]).length},
+      {l:"Collection Rate",   v:collectionRate+"%",     dim:fmt(collected)+" collected"},
+      {l:"Compliance Alerts", v:expiringCompliance+"",  dim:"expiring ≤60 days", warn:expiringCompliance>0},
+    ]
+  };
+
+  const TILE_CRM = {
+    id:"crm", label:"CRM Sales", emoji:"💼",
+    tagline:"Pipeline · Deals · SOW · RFP · Proposals",
+    color:"#7c3aed", glow:"rgba(124,58,237,0.15)",
+    border:"rgba(167,139,250,0.3)",
+    kpis: [
+      {l:"Open Pipeline",   v:fmt(openPipeline),  dim:openDeals+" open deals"},
+      {l:"Active Clients",  v:activeClients+"",   dim:"of "+(clients||[]).length+" total"},
+      {l:"Won YTD",         v:fmt(wonYTD),        dim:"closed won"},
+      {l:"Avg Deal Size",   v:fmt(avgDealSize),   dim:"per open deal"},
+    ]
+  };
+
+  const tileClick = (tile) => { tile.id === "ops" ? goToOps() : goCRM(); };
+
+  return (
+    <div style={{minHeight:"100vh",background:"#040810",fontFamily:"'DM Sans','Segoe UI',sans-serif",color:"#e2e8f0",display:"flex",flexDirection:"column"}}>
+
+      {/* Top bar */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 32px",borderBottom:"1px solid #0f1e30",background:"#060a10"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{fontSize:22,fontWeight:900,color:"#38bdf8",letterSpacing:"-0.04em"}}>⬡ ZIKSATECH</div>
+          <div style={{fontSize:11,color:"#1e3a5f",letterSpacing:"0.12em",textTransform:"uppercase",borderLeft:"1px solid #0f1e30",paddingLeft:12}}>Portal</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:16}}>
+          <div style={{fontSize:13,color:"#334155",fontFamily:"'DM Mono',monospace"}}>
+            {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+            <span style={{marginLeft:8,color:"#1e3a5f"}}>{time.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"})}</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8,background:"#0a1120",border:"1px solid #1a2d45",borderRadius:20,padding:"5px 14px 5px 6px"}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff"}}>{initials}</div>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#cbd5e1"}}>{authProfile?.full_name?.split(" ")[0]||"User"}</div>
+              <div style={{fontSize:9,color:authProfile?.role==="super_admin"?"#f59e0b":"#475569",textTransform:"capitalize"}}>{authProfile?.role==="super_admin"?"⭐ Super Admin":authProfile?.role}</div>
+            </div>
+          </div>
+          <button onClick={onSignOut} style={{background:"none",border:"1px solid #1a2d45",borderRadius:8,color:"#64748b",fontSize:12,padding:"6px 14px",cursor:"pointer"}}
+            onMouseEnter={e=>{e.currentTarget.style.color="#f87171";e.currentTarget.style.borderColor="#7f1d1d";}}
+            onMouseLeave={e=>{e.currentTarget.style.color="#64748b";e.currentTarget.style.borderColor="#1a2d45";}}>
+            Sign out
+          </button>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"48px 24px"}}>
+
+        {/* Greeting */}
+        <div style={{textAlign:"center",marginBottom:56}}>
+          <div style={{fontSize:28,fontWeight:800,color:"#e2e8f0",letterSpacing:"-0.02em",marginBottom:6}}>
+            {greeting}, {authProfile?.full_name?.split(" ")[0]||"Manju"} 👋
+          </div>
+          <div style={{fontSize:14,color:"#334155"}}>Where would you like to go today?</div>
+        </div>
+
+        {/* Tiles */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,maxWidth:900,width:"100%"}}>
+          {[TILE_CRM, TILE_OPS].map(tile => (
+            <div key={tile.id}
+              onClick={()=>tileClick(tile)}
+              style={{
+                background:"#060d1c",
+                border:`1px solid ${tile.border}`,
+                borderRadius:20,
+                padding:"32px 28px",
+                cursor:"pointer",
+                transition:"all 0.2s cubic-bezier(0.4,0,0.2,1)",
+                boxShadow:`0 0 0 0 ${tile.glow}`,
+                position:"relative",overflow:"hidden"
+              }}
+              onMouseEnter={e=>{
+                e.currentTarget.style.transform="translateY(-4px)";
+                e.currentTarget.style.boxShadow=`0 20px 40px ${tile.glow},0 0 0 1px ${tile.border}`;
+                e.currentTarget.style.borderColor=tile.color;
+              }}
+              onMouseLeave={e=>{
+                e.currentTarget.style.transform="translateY(0)";
+                e.currentTarget.style.boxShadow=`0 0 0 0 ${tile.glow}`;
+                e.currentTarget.style.borderColor=tile.border;
+              }}>
+
+              {/* Glow orb */}
+              <div style={{position:"absolute",top:-60,right:-60,width:200,height:200,borderRadius:"50%",background:tile.glow,pointerEvents:"none",filter:"blur(40px)"}}/>
+
+              {/* Header */}
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
+                <div>
+                  <div style={{fontSize:32,marginBottom:8,lineHeight:1}}>{tile.emoji}</div>
+                  <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0",letterSpacing:"-0.02em"}}>{tile.label}</div>
+                  <div style={{fontSize:12,color:"#334155",marginTop:4}}>{tile.tagline}</div>
+                </div>
+                <div style={{background:tile.color+"22",border:`1px solid ${tile.color}44`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:700,color:tile.color,flexShrink:0,marginTop:4}}>
+                  Open →
+                </div>
+              </div>
+
+              {/* KPI grid */}
+              {isAdmin && (
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,borderTop:"1px solid #0f1e30",paddingTop:20}}>
+                  {tile.kpis.map(k => (
+                    <div key={k.l} style={{background:"#040810",borderRadius:10,padding:"12px 14px",border:"1px solid #0a1828"}}>
+                      <div style={{fontSize:11,color:"#334155",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.07em"}}>{k.l}</div>
+                      <div style={{fontSize:18,fontWeight:800,color:k.warn?"#f59e0b":"#e2e8f0",fontFamily:"'DM Mono',monospace",letterSpacing:"-0.02em"}}>{k.v}</div>
+                      <div style={{fontSize:10,color:k.warn?"#92400e":"#1e3a5f",marginTop:3}}>{k.dim}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Super admin note */}
+        {isAdmin && (
+          <div style={{marginTop:24,fontSize:11,color:"#1e3a5f",textAlign:"center"}}>
+            ⭐ Super Admin — live KPIs shown on both tiles · Data syncs from Supabase
+          </div>
+        )}
+
+        {/* Quick stats strip */}
+        <div style={{marginTop:40,display:"flex",gap:32,justifyContent:"center",flexWrap:"wrap"}}>
+          {[
+            {l:"Plano, TX HQ", v:"⬡ Ziksatech"},
+            {l:"Total Revenue",v:fmt(totalRev)},
+            {l:"Team Size",    v:(roster||[]).length+" consultants"},
+            {l:"Active Clients",v:activeClients+" clients"},
+          ].map(s=>(
+            <div key={s.l} style={{textAlign:"center"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#475569"}}>{s.v}</div>
+              <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{textAlign:"center",padding:"16px",borderTop:"1px solid #0a1420",fontSize:11,color:"#1e3a5f"}}>
+        Ziksatech Ops Center · Plano, TX · v2.5
+      </div>
     </div>
   );
 }

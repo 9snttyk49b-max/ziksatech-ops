@@ -8,9 +8,9 @@ export default async function handler(req, res) {
   
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+  const ANTHROPIC_API_KEY = req.headers['x-api-key-override'] || process.env.ANTHROPIC_API_KEY;
   if (!ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    return res.status(500).json({ error: 'No API key — add ANTHROPIC_API_KEY in Vercel env vars, or enter it in Settings.' });
   }
 
   const { messages, system, model = 'claude-sonnet-4-20250514', max_tokens = 1500, stream = false } = req.body;
