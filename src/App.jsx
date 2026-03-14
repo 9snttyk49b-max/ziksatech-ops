@@ -2000,7 +2000,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
   const totalCost = rData.reduce((s,r) => s+r.totalCost, 0);
   const coKeeps = rData.reduce((s,r) => s+r.coKeeps, 0);
   const thirdParty = rData.reduce((s,r) => s+r.thirdParty, 0);
-  const netMargin = totalRev > 0 ? (coKeeps - (totalCost - rData.filter(r=>r.type==="FTE").reduce((s,r)=>s+r.baseSalary,0))) / totalRev : 0;
+  const netMargin = totalRev > 0 ? (totalRev - totalCost) / totalRev : 0;
   const clientRevTotal = clients.reduce((s,c)=>s+c.annualRev,0);
   const exitVal7x = Math.round(clientRevTotal * 0.08 * 7);
 
@@ -2442,7 +2442,7 @@ function Roster({ roster, setRoster, addAudit }) {
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#38bdf8"}}>{fmt(totals.rev)}</span>
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#f87171"}}>{fmt(totals.cost)}</span>
           <span className="mono" style={{fontSize:13,fontWeight:700,color:"#34d399"}}>{fmt(totals.keeps)}</span>
-          <span className="mono" style={{fontSize:12,color:"#f87171"}}>{pct(totals.rev>0?(totals.cost-totals.rev)/totals.rev:0)}</span>
+          <span className="mono" style={{fontSize:12,color:(totals.rev-totals.cost)>=0?"#34d399":"#f87171"}}>{pct(totals.rev>0?(totals.rev-totals.cost)/totals.rev:0)}</span>
           <span/>
         </div>
       </div>
