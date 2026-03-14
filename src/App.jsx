@@ -1140,8 +1140,7 @@ function calcRoster(r) {
     const wc = r.baseSalary * BURDEN.wc;
     const ret = r.baseSalary * BURDEN.retire;
     const oth = r.baseSalary * BURDEN.other;
-    const k401 = r.contrib401k ? +r.contrib401k : 0;
-    totalCost = r.baseSalary + fica + futa + suta + wc + BURDEN.health + k401 + oth + bonus;
+    totalCost = r.baseSalary + fica + futa + suta + wc + BURDEN.health + ret + oth + bonus;
   } else {
     totalCost = r.fixedRate * hrs + thirdParty + (r.insurance || 0);
   }
@@ -2630,13 +2629,15 @@ function Roster({ roster, setRoster, addAudit }) {
                   <FF label="3rd Party Split (0–1)"><input className="inp" type="number" step="0.1" min="0" max="1" value={form.thirdPartySplit} onChange={e=>setForm({...form,thirdPartySplit:e.target.value})} placeholder="0.5"/></FF>
                 </>}
                 <FF label="Insurance/yr ($)"><input className="inp" type="number" value={form.insurance} onChange={e=>setForm({...form,insurance:e.target.value})} placeholder="7200"/></FF>
-                <FF label="401(k) Contribution/yr ($) — optional">
-                  <input className="inp" type="number" value={form.contrib401k||""} onChange={e=>setForm({...form,contrib401k:e.target.value})} placeholder="Optional"/>
-                </FF>
+                {form.type==="FTE" && (
+                  <FF label="401(k) Employer Contribution/yr ($) — optional">
+                    <input className="inp" type="number" value={form.contrib401k||""} onChange={e=>setForm({...form,contrib401k:e.target.value})} placeholder="Optional — e.g. 3600"/>
+                  </FF>
+                )}
               </div>
             </div>
 
-            {/* Benefits — Employer Tax Breakdown (FTE only, auto-calculated) */}
+            {/* Benefits — Employer Tax Breakdown (FTE only, live calculation) */}
             {form.type==="FTE" && (()=>{
               const sal = +form.baseSalary || 0;
               const fica = Math.round(sal * BURDEN.fica);
@@ -2647,11 +2648,11 @@ function Roster({ roster, setRoster, addAudit }) {
               const total = fica + futa + suta + wc + hlth;
               const k401  = +form.contrib401k || 0;
               const rows = [
-                { label:"FICA (Social Security + Medicare)", rate:"7.65%",            amt:fica },
-                { label:"FUTA (Federal Unemployment)",       rate:"0.60% on first $7k", amt:futa },
-                { label:"SUTA (State Unemployment, TX)",     rate:"2.70% on first $9k", amt:suta },
-                { label:"Workers' Compensation",             rate:"0.50%",            amt:wc   },
-                { label:"Health Insurance (employer share)", rate:"flat",             amt:hlth  },
+                { label:"FICA — Social Security + Medicare", rate:"7.65%",              amt:fica },
+                { label:"FUTA — Federal Unemployment",       rate:"0.60% on first $7k", amt:futa },
+                { label:"SUTA — State Unemployment (TX)",    rate:"2.70% on first $9k", amt:suta },
+                { label:"Workers' Compensation",             rate:"0.50%",              amt:wc   },
+                { label:"Health Insurance (employer share)", rate:"flat $7,200",         amt:hlth },
               ];
               return (
                 <div style={{background:"#050e1c",border:"1px solid #1a2d45",borderRadius:10,padding:"14px 16px",marginBottom:14}}>
@@ -2661,32 +2662,32 @@ function Roster({ roster, setRoster, addAudit }) {
                     </div>
                     <div style={{textAlign:"right"}}>
                       <div style={{fontSize:18,fontWeight:800,color:"#34d399",fontFamily:"'DM Mono',monospace"}}>${total.toLocaleString()}<span style={{fontSize:9,color:"#334155",fontWeight:400,marginLeft:3}}>/yr</span></div>
-                      <div style={{fontSize:9,color:"#334155"}}>${Math.round(total/12).toLocaleString()}/mo · excludes 401k</div>
+                      <div style={{fontSize:9,color:"#475569"}}>${Math.round(total/12).toLocaleString()}/mo · excludes 401k</div>
                     </div>
                   </div>
                   {sal===0
-                    ? <div style={{fontSize:11,color:"#334155",textAlign:"center",padding:"6px 0"}}>Enter base salary above to see breakdown</div>
-                    : <>
+                    ? <div style={{fontSize:11,color:"#334155",textAlign:"center",padding:"8px 0"}}>Enter base salary above to see breakdown</div>
+                    : <div>
                         {rows.map(row=>(
                           <div key={row.label} style={{display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:11,padding:"5px 0",borderBottom:"1px solid #0a1420"}}>
                             <span style={{color:"#64748b"}}>{row.label}</span>
                             <div style={{display:"flex",gap:14,alignItems:"center"}}>
-                              <span style={{color:"#1e3a5f",fontSize:10,minWidth:110,textAlign:"right"}}>{row.rate}</span>
-                              <span style={{color:"#94a3b8",fontFamily:"'DM Mono',monospace",minWidth:64,textAlign:"right"}}>${row.amt.toLocaleString()}</span>
+                              <span style={{color:"#1e3a5f",fontSize:10,minWidth:120,textAlign:"right"}}>{row.rate}</span>
+                              <span style={{color:"#94a3b8",fontFamily:"'DM Mono',monospace",minWidth:60,textAlign:"right"}}>${row.amt.toLocaleString()}</span>
                             </div>
                           </div>
                         ))}
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700,paddingTop:7,marginTop:2}}>
-                          <span style={{color:"#cbd5e1"}}>Total Benefits</span>
-                          <span style={{color:"#34d399",fontFamily:"'DM Mono',monospace"}}>${total.toLocaleString()}/yr</span>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700,paddingTop:8,marginTop:2}}>
+                          <span style={{color:"#cbd5e1"}}>Total Benefits (excl. 401k)</span>
+                          <span style={{color:"#34d399",fontFamily:"'DM Mono',monospace"}}>${total.toLocaleString()}/yr · ${Math.round(total/12).toLocaleString()}/mo</span>
                         </div>
                         {k401>0 && (
                           <div style={{display:"flex",justifyContent:"space-between",fontSize:11,paddingTop:5,marginTop:2,borderTop:"1px dashed #0a1420"}}>
-                            <span style={{color:"#64748b"}}>401(k) Contribution (optional — not in benefits)</span>
+                            <span style={{color:"#64748b"}}>401(k) Employer Contribution (optional — not in benefits)</span>
                             <span style={{color:"#f59e0b",fontFamily:"'DM Mono',monospace"}}>${k401.toLocaleString()}/yr</span>
                           </div>
                         )}
-                      </>
+                      </div>
                   }
                 </div>
               );
