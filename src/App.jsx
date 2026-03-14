@@ -2742,10 +2742,6 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
   const [modal, setModal] = useState(false);
   const { dragProps: dragP_c } = useDragSort(clients, setClients);
-  const [clientSort, setClientSort] = useState({ col: null, dir: "asc" });
-  const clientSortCycle = (col) => setClientSort(s => s.col === col ? { col, dir: s.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
-  const sortedClients = clientSort.col ? [...clients].sort((a, b) => {
-    const v = clientSort.col;
     const av = v === "annualRev" ? (a.annualRev||0) : v === "name" ? (a.name||"") : v === "health" ? (a.health||"") : 0;
     const bv = v === "annualRev" ? (b.annualRev||0) : v === "name" ? (b.name||"") : v === "health" ? (b.health||"") : 0;
     const r = typeof av === "string" ? av.localeCompare(bv) : av - bv;
@@ -2790,13 +2786,9 @@ function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
       </div>
       <div className="card">
         <div className="tr" style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto",padding:"8px 18px"}}>
-          {[
-              {l:"Client",sk:"name"},{l:"Vertical",sk:null},{l:"Engagement",sk:null},
-              {l:"Revenue",sk:"annualRev"},{l:"Cslt.",sk:null},{l:"Margin",sk:null},
-              {l:"Health",sk:"health"},{l:"Renewal",sk:null},{l:"",sk:null}
-            ].map(({l:h,sk:col})=><span key={h} className="th" onClick={col?()=>clientSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:clientSort.col===col?"#38bdf8":"inherit"}}>{h}{clientSort.col===col?(clientSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
+          {["Client","Vertical","Engagement","Revenue","Cslt.","Margin","Health","Renewal",""].map(h=><span key={h} className="th">{h}</span>)}
         </div>
-        {sortedClients.map((c, _di_)=>(
+        {clients.map((c, _di_)=>(
           <div key={c.id} className="tr" {...dragP_c(_di_)} style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto"}}>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c.name}</div>
@@ -4303,8 +4295,6 @@ function FinOverview({ roster, clients, finInvoices, finPayments, finExpenses })
 function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFinPayments, addAudit }) {
   const [filter, setFilter]   = useState("all");
   const { dragProps: _dp } = useDragSort(finInvoices, setFinInvoices);
-  const [invColSort, setInvColSort] = useState({ col: null, dir: "asc" });
-  const invSortCycle = (col) => setInvColSort(s => s.col === col ? { col, dir: s.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
   const [selected, setSelected] = useState(null);
   const [newModal, setNewModal] = useState(false);
   const [payModal, setPayModal] = useState(null); // invoiceId being paid
@@ -4400,7 +4390,7 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
         <div className="card" style={{overflowX:"auto"}}>
           <div className="tr" style={{gridTemplateColumns:"28px 110px 1fr 120px 110px 90px 90px 100px 100px",padding:"8px 18px",minWidth:900}}>
             <input type="checkbox" checked={selAR.size===filtered.length&&filtered.length>0} onChange={()=>setSelAR(s=>s.size===filtered.length?new Set():new Set(filtered.map(i=>i.id)))} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
-            {[{l:"Invoice",sk:null},{l:"Client / Project",sk:"clientId"},{l:"Period",sk:"period"},{l:"Issue Date",sk:"issueDate"},{l:"Total",sk:"total"},{l:"Balance",sk:"balance"},{l:"Status",sk:"status"},{l:"Actions",sk:null}].map(({l:h,sk:col})=><span key={h} className="th" onClick={col?()=>invSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:invColSort.col===col?"#38bdf8":"inherit"}}>{h}{invColSort.col===col?(invColSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
+            {["Invoice","Client / Project","Period","Issue Date","Total","Balance","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
           {filtered.map((inv, _i_)=>{
             const cl   = clients.find(c=>c.id===inv.clientId);
@@ -6411,51 +6401,6 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
 function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, addAudit }) {
   const [modal, setModal]   = useState(false);
   const { dragProps: _dp } = useDragSort(crmDeals, setCrmDeals);
-  const [dealSort, setDealSort] = useState({ col: null, dir: "asc" });
-  const dealSortCycle = (col) => setDealSort(s => s.col === col ? { col, dir: s.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" });
-  const [form, setForm]     = useState(null);
-  const [editing, setEditing] = useState(null);
-  const [selected, setSelected] = useState(null);
-  const [stageFilter, setStageFilter] = useState("open");
-  const [actModal, setActModal] = useState(false);
-  const [actForm, setActForm]   = useState(null);
-
-  const emptyDeal = { accountId:"", name:"", stage:"prospecting", value:"", closeDate:"", owner:"Manju", probability:25, type:"new", notes:"", nextStep:"" };
-  const emptyAct  = { dealId:"", accountId:"", contactId:"", type:"email", date:new Date().toISOString().slice(0,10), subject:"", notes:"", completed:false };
-
-  const openDeal = (d=null) => { setEditing(d?.id||null); setForm(d?{...d,value:String(d.value),probability:String(d.probability)}:{...emptyDeal}); setModal(true); };
-  const saveDeal = () => {
-    const d = {...form, value:+form.value, probability:+form.probability};
-    if(editing) setCrmDeals(ds=>ds.map(x=>x.id===editing?d:x));
-    else { setCrmDeals(ds=>[...ds,{...d,id:"deal"+uid()}]); addAudit&&addAudit("CRM","New Deal","CRM Deals",`Created deal: ${d.name}`,{value:d.value,stage:d.stage}); }
-    setModal(false);
-  };
-  const openAct = (dealId, accountId) => {
-    setActForm({...emptyAct, dealId, accountId});
-    setActModal(true);
-  };
-  const saveAct = () => {
-    setCrmActivities(as=>[...as,{...actForm,id:"act"+uid()}]);
-    setActModal(false);
-  };
-  const advanceStage = (id) => {
-    setCrmDeals(ds=>ds.map(d=>{
-      if(d.id!==id) return d;
-      const idx = STAGE_ORDER.indexOf(d.stage);
-      const next = STAGE_ORDER[Math.min(idx+1, STAGE_ORDER.length-1)];
-      const probs = { prospecting:15, qualified:30, proposal:55, negotiation:75, "closed-won":100, "closed-lost":0 };
-      return {...d, stage:next, probability:probs[next]};
-    }));
-  };
-
-  const filtered = stageFilter==="open"
-    ? crmDeals.filter(d=>!["closed-won","closed-lost"].includes(d.stage))
-    : stageFilter==="won" ? crmDeals.filter(d=>d.stage==="closed-won")
-    : stageFilter==="lost" ? crmDeals.filter(d=>d.stage==="closed-lost")
-    : crmDeals;
-
-  const sortedDeals = dealSort.col ? [...filtered].sort((a, b) => {
-    const av = dealSort.col === "value" ? (a.value||0) : dealSort.col === "name" ? (a.name||"") : dealSort.col === "stage" ? (a.stage||"") : dealSort.col === "closeDate" ? (a.closeDate||"") : 0;
     const bv = dealSort.col === "value" ? (b.value||0) : dealSort.col === "name" ? (b.name||"") : dealSort.col === "stage" ? (b.stage||"") : dealSort.col === "closeDate" ? (b.closeDate||"") : 0;
     const r = typeof av === "string" ? av.localeCompare(bv) : av - bv;
     return dealSort.dir === "asc" ? r : -r;
@@ -6478,9 +6423,9 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
 
         <div className="card">
           <div className="tr" style={{gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",padding:"8px 18px"}}>
-            {[{l:"Deal / Account",sk:"name"},{l:"Stage",sk:"stage"},{l:"Type",sk:null},{l:"Value",sk:"value"},{l:"Prob",sk:null},{l:"Close Date",sk:"closeDate"},{l:"Actions",sk:null}].map(({l:h,sk:col})=><span key={h} className="th" onClick={col?()=>dealSortCycle(col):undefined} style={{cursor:col?"pointer":"default",userSelect:"none",color:dealSort.col===col?"#38bdf8":"inherit"}}>{h}{dealSort.col===col?(dealSort.dir==="asc"?" ↑":" ↓"):col?" ↕":""}</span>)}
+            {["Deal / Account","Stage","Type","Value","Probability","Close Date","Actions"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
-          {sortedDeals.map((d, _i_)=>{
+          {filtered.map((d, _i_)=>{
             const acc = crmAccounts.find(a=>a.id===d.accountId);
             return (
               <div key={d.id} className="tr" {..._dp(_i_)}
