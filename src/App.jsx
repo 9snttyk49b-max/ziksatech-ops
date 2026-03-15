@@ -3830,7 +3830,6 @@ function Pipeline({ pipeline, setPipeline }) {
 }
 
 function EbitdaOpt({ ebitdaLevers, setEbitdaLevers, finInvoices, finPayments, finExpenses, roster, apInvoices, adpRuns }) {
-  const BASE_REV = 2350000, BASE_EBITDA = 188000;
   // Real revenue from finInvoices lines
   const BASE_REV = (finInvoices||[]).reduce((s,inv)=>s+(inv.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0),0) || 2350000;
   // Real collected
