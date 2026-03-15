@@ -2266,7 +2266,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 
-// ─── WIDGET LIBRARY (used by Dashboard) ─────────────────────────────────────
+// ─── WIDGET LIBRARY ──────────────────────────────────────────────────────────
 const WIDGET_LIBRARY = [
   { id:"cash_flow", icon:"💰", label:"Cash Flow", desc:"30-day in vs out",
     render:({finPayments,finExpenses}) => {
@@ -2290,11 +2290,11 @@ const WIDGET_LIBRARY = [
           <div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{fontSize:10,color:"#64748b",width:60,textTransform:"capitalize"}}>{s}</div>
             <div style={{flex:1,background:"#0a1120",borderRadius:4,height:5}}>
-              <div style={{height:"100%",background:"#0369a1",width:Math.min(100,n*25)+"%",borderRadius:4}}/>
+              <div style={{height:"100%",background:"#0369a1",width:`${Math.min(100,n*25)}%`,borderRadius:4}}/>
             </div>
             <div style={{fontSize:11,color:"#38bdf8",fontWeight:700,width:16,textAlign:"right"}}>{n}</div>
-          </div>
-        );})}
+          </div>);
+        })}
         <div style={{fontSize:10,color:"#334155",marginTop:2}}>{(candidates||[]).length} total</div>
       </div>;
     }},
@@ -2306,7 +2306,7 @@ const WIDGET_LIBRARY = [
         {top.map(c=><div key={c.id||c.name} style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{fontSize:10,color:"#64748b",width:65,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
           <div style={{flex:1,background:"#0a1120",borderRadius:4,height:5}}>
-            <div style={{height:"100%",background:"linear-gradient(90deg,#0369a1,#38bdf8)",width:Math.round((c.annualRev||0)/mx*100)+"%",borderRadius:4}}/>
+            <div style={{height:"100%",background:"linear-gradient(90deg,#0369a1,#38bdf8)",width:`${Math.round((c.annualRev||0)/mx*100)}%`,borderRadius:4}}/>
           </div>
           <div style={{fontSize:10,color:"#38bdf8",width:55,textAlign:"right",fontFamily:"monospace"}}>{fmt(c.annualRev||0)}</div>
         </div>)}
@@ -2317,9 +2317,9 @@ const WIDGET_LIBRARY = [
       {(roster||[]).slice(0,6).map(r=>{
         const u=Math.round((r.util||0)*100),col=u>=90?"#34d399":u>=70?"#f59e0b":"#f87171";
         return <div key={r.id} style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{fontSize:10,color:"#64748b",width:65,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name&&r.name.split(" ")[0]}</div>
+          <div style={{fontSize:10,color:"#64748b",width:65,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name?.split(" ")[0]}</div>
           <div style={{flex:1,background:"#0a1120",borderRadius:4,height:5}}>
-            <div style={{height:"100%",background:col,width:u+"%",borderRadius:4}}/>
+            <div style={{height:"100%",background:col,width:`${u}%`,borderRadius:4}}/>
           </div>
           <div style={{fontSize:11,fontWeight:700,color:col,width:30,textAlign:"right"}}>{u}%</div>
         </div>;
@@ -2329,40 +2329,40 @@ const WIDGET_LIBRARY = [
     render:({crmDeals}) => {
       const sm={};(crmDeals||[]).forEach(d=>{sm[d.stage]=(sm[d.stage]||0)+1;});
       const stages=Object.entries(sm).sort((a,b)=>b[1]-a[1]).slice(0,5);
-      const mx=stages[0]&&stages[0][1]||1;
+      const mx=stages[0]?.[1]||1;
       return stages.length ? <div style={{display:"flex",flexDirection:"column",gap:5}}>
-        {stages.map(function(entry){var s=entry[0],n=entry[1];return <div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
+        {stages.map(([s,n])=><div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{fontSize:10,color:"#64748b",width:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize"}}>{s.replace(/_/g," ")}</div>
           <div style={{flex:1,background:"#0a1120",borderRadius:4,height:5}}>
-            <div style={{height:"100%",background:"linear-gradient(90deg,#7c3aed,#a78bfa)",width:Math.round(n/mx*100)+"%",borderRadius:4}}/>
+            <div style={{height:"100%",background:"linear-gradient(90deg,#7c3aed,#a78bfa)",width:`${Math.round(n/mx*100)}%`,borderRadius:4}}/>
           </div>
           <div style={{fontSize:11,color:"#a78bfa",fontWeight:700,width:16,textAlign:"right"}}>{n}</div>
-        </div>;})}
+        </div>)}
       </div> : <div style={{color:"#334155",fontSize:11,textAlign:"center",padding:8}}>No deals</div>;
     }},
   { id:"notes", icon:"📝", label:"Quick Notes", desc:"Personal sticky notes",
-    render:function(){
-      const [notes,setNotes]=React.useState(function(){try{return JSON.parse(localStorage.getItem("zt-wn")||"[]");}catch(e){return [];}});
+    render:() => {
+      const [notes,setNotes]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("zt-wn")||"[]");}catch{return [];}});
       const [inp,setInp]=React.useState("");
-      function add(){if(!inp.trim())return;var n=notes.concat([{id:Date.now(),t:inp.trim()}]);setNotes(n);localStorage.setItem("zt-wn",JSON.stringify(n));setInp("");}
+      const add=()=>{if(!inp.trim())return;const n=[...notes,{id:Date.now(),t:inp.trim()}];setNotes(n);localStorage.setItem("zt-wn",JSON.stringify(n));setInp("");};
       return <div>
         <div style={{display:"flex",gap:6,marginBottom:8}}>
-          <input value={inp} onChange={function(e){setInp(e.target.value);}} onKeyDown={function(e){if(e.key==="Enter")add();}}
+          <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()}
             className="inp" placeholder="Add note..." style={{flex:1,fontSize:11,padding:"5px 8px"}}/>
           <button onClick={add} style={{background:"#0369a1",border:"none",borderRadius:6,color:"#fff",fontSize:11,padding:"5px 10px",cursor:"pointer"}}>+</button>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:90,overflowY:"auto"}}>
-          {notes.slice(-4).reverse().map(function(n){return <div key={n.id} style={{display:"flex",gap:6,fontSize:11}}>
+          {notes.slice(-4).reverse().map(n=><div key={n.id} style={{display:"flex",gap:6,fontSize:11}}>
             <div style={{flex:1,color:"#94a3b8"}}>{n.t}</div>
-            <button onClick={function(){var nn=notes.filter(function(x){return x.id!==n.id;});setNotes(nn);localStorage.setItem("zt-wn",JSON.stringify(nn));}} style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:10}}>x</button>
-          </div>;})}
+            <button onClick={()=>{const nn=notes.filter(x=>x.id!==n.id);setNotes(nn);localStorage.setItem("zt-wn",JSON.stringify(nn));}} style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:10}}>✕</button>
+          </div>)}
           {!notes.length&&<div style={{color:"#334155",fontSize:11,textAlign:"center"}}>No notes yet</div>}
         </div>
       </div>;
     }},
 ];
 
-function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, finInvoices, finPayments, finExpenses, workAuth, compDocs, candidates, offers, crmDeals, crmAccounts, ptoRequests, auditLog, addAudit, setTab }) {
+function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, finInvoices, finPayments, workAuth, compDocs, candidates, offers, crmDeals, crmAccounts, finExpenses, ptoRequests, auditLog, addAudit, setTab }) {
   // ── Period picker ────────────────────────────────────────────────────────
   const PERIODS = [
     { id:"ytd2026",   label:"YTD 2026",    monthKeys:["2026-01","2026-02","2026-03"],          startIdx:9 },
@@ -2373,11 +2373,8 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
     { id:"rolling12", label:"Rolling 12m", monthKeys:["2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03"], startIdx:0 },
   ];
   const [dashPeriod, setDashPeriod] = useState("ytd2026");
-  const [activeWidgets, setActiveWidgets] = React.useState(()=>{
-    try{return JSON.parse(localStorage.getItem("zt-widgets")||JSON.stringify(["cash_flow","hiring","rev_client","util","deals","notes"]));}
-    catch{return ["cash_flow","hiring","rev_client","util","deals","notes"];}
-  });
-  const [widgetLibOpen, setWidgetLibOpen] = React.useState(false);
+  const [activeWidgets,setActiveWidgets]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("zt-widgets")||JSON.stringify(["cash_flow","hiring","rev_client","util","deals","notes"]));}catch{return ["cash_flow","hiring","rev_client","util","deals","notes"];}});
+  const [widgetLibOpen,setWidgetLibOpen]=React.useState(false);
   React.useEffect(()=>{localStorage.setItem("zt-widgets",JSON.stringify(activeWidgets));},[activeWidgets]);
   const activePeriod = PERIODS.find(p=>p.id===dashPeriod)||PERIODS[0];
 
@@ -2673,9 +2670,8 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
           ))}
         </div>
       </div>
-    </div>
-    {/* ─── WIDGET BOARD ───────────────────────────────────────────── */}
-    <div style={{marginTop:16,padding:"0 4px"}}>
+    {/* ─── WIDGET BOARD ─────────────────────────────────────────── */}
+    <div style={{marginTop:16}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
         <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📌 My Widgets</div>
         <button onClick={()=>setWidgetLibOpen(o=>!o)}
@@ -2686,7 +2682,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
       </div>
       {widgetLibOpen&&(
         <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px",marginBottom:12}}>
-          <div style={{fontSize:11,color:"#334155",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.1em"}}>Widget Library — click to add</div>
+          <div style={{fontSize:11,color:"#334155",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.1em"}}>Widget Library</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
             {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).map(w=>(
               <button key={w.id} onClick={()=>{setActiveWidgets(p=>[...p,w.id]);setWidgetLibOpen(false);}}
@@ -2697,7 +2693,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
               </button>
             ))}
             {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).length===0&&
-              <div style={{color:"#34d399",fontSize:12,gridColumn:"span 4",textAlign:"center",padding:8}}>✓ All widgets added</div>}
+              <div style={{color:"#34d399",fontSize:12,gridColumn:"span 4",textAlign:"center",padding:8}}>✓ All added</div>}
           </div>
         </div>
       )}
@@ -2714,11 +2710,11 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
                   <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{w.label}</span>
                 </div>
                 <button onClick={()=>setActiveWidgets(p=>p.filter(x=>x!==wid))}
-                  style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:12,lineHeight:1}}>✕</button>
+                  style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:12}}>✕</button>
               </div>
-              <Render roster={roster} clients={clients} finInvoices={finInvoices}
-                finPayments={finPayments} finExpenses={finExpenses}
-                crmDeals={crmDeals} candidates={candidates} ptoRequests={ptoRequests} setTab={setTab}/>
+              <Render roster={roster} clients={clients} finPayments={finPayments}
+                finExpenses={finExpenses} crmDeals={crmDeals} candidates={candidates}
+                ptoRequests={ptoRequests} setTab={setTab}/>
             </div>
           );
         })}
@@ -2730,79 +2726,11 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
         )}
       </div>
     </div>
-
+    </div>
   );
 }
 
 // ─── ROSTER ───────────────────────────────────────────────────────────────────
-
-// ─── WIDGET BOARD COMPONENT ──────────────────────────────────────────────────
-function WidgetBoard({ roster, clients, finPayments, finExpenses, crmDeals, candidates, setTab }) {
-  const [activeWidgets, setActiveWidgets] = useState(function(){
-    try{return JSON.parse(localStorage.getItem("zt-widgets")||JSON.stringify(["cash_flow","hiring","rev_client","util","deals","notes"]));}
-    catch(e){return ["cash_flow","hiring","rev_client","util","deals","notes"];}
-  });
-  const [widgetLibOpen, setWidgetLibOpen] = useState(false);
-  useEffect(function(){localStorage.setItem("zt-widgets",JSON.stringify(activeWidgets));},[activeWidgets]);
-
-  return (
-    <div style={{marginTop:16}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📌 My Widgets</div>
-        <button onClick={function(){setWidgetLibOpen(function(o){return !o;});}}
-          style={{background:"#0369a1",border:"none",borderRadius:7,color:"#fff",
-            fontSize:11,fontWeight:700,padding:"5px 12px",cursor:"pointer"}}>
-          {widgetLibOpen?"✕ Close":"+ Add Widget"}
-        </button>
-      </div>
-      {widgetLibOpen&&(
-        <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px",marginBottom:12}}>
-          <div style={{fontSize:11,color:"#334155",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.1em"}}>Widget Library</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-            {WIDGET_LIBRARY.filter(function(w){return !activeWidgets.includes(w.id);}).map(function(w){return(
-              <button key={w.id} onClick={function(){setActiveWidgets(function(p){return p.concat([w.id]);});setWidgetLibOpen(false);}}
-                style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:11,padding:"10px 8px",cursor:"pointer",textAlign:"left"}}>
-                <div style={{fontSize:18,marginBottom:4}}>{w.icon}</div>
-                <div style={{fontWeight:600,color:"#cbd5e1"}}>{w.label}</div>
-                <div style={{fontSize:10,color:"#334155",marginTop:2}}>{w.desc}</div>
-              </button>
-            );})}
-            {WIDGET_LIBRARY.filter(function(w){return !activeWidgets.includes(w.id);}).length===0&&
-              <div style={{color:"#34d399",fontSize:12,gridColumn:"span 4",textAlign:"center",padding:8}}>✓ All added</div>}
-          </div>
-        </div>
-      )}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-        {activeWidgets.map(function(wid){
-          var w=WIDGET_LIBRARY.find(function(x){return x.id===wid;});
-          if(!w)return null;
-          var Render=w.render;
-          return(
-            <div key={wid} style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <span style={{fontSize:16}}>{w.icon}</span>
-                  <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{w.label}</span>
-                </div>
-                <button onClick={function(){setActiveWidgets(function(p){return p.filter(function(x){return x!==wid;});});}}
-                  style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:12}} title="Remove">✕</button>
-              </div>
-              <Render roster={roster} clients={clients} finPayments={finPayments}
-                finExpenses={finExpenses} crmDeals={crmDeals} candidates={candidates} setTab={setTab}/>
-            </div>
-          );
-        })}
-        {activeWidgets.length===0&&(
-          <div style={{gridColumn:"span 3",textAlign:"center",padding:"32px",color:"#334155",
-            fontSize:13,border:"1px dashed #1a2d45",borderRadius:12}}>
-            Click <strong style={{color:"#0369a1"}}>+ Add Widget</strong> to personalize your dashboard.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function Roster({ roster, setRoster, addAudit }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(null);
