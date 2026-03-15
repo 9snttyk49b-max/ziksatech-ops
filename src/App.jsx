@@ -6907,7 +6907,7 @@ const ACT_ICONS    = { email:"✉", call:"📞", meeting:"📅", note:"📝", ta
 const HEALTH_COL   = { green:"#34d399", amber:"#f59e0b", red:"#f87171" };
 const ACCT_TYPE_C  = { customer:"#34d399", prospect:"#38bdf8", partner:"#a78bfa", "at-risk":"#f87171" };
 
-function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients, addAudit, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders }) {
+function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients, addAudit, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, roster }) {
   const [sub, setSub] = useState("overview");
   const tabs = [
     { id:"overview",    label:"📊 Overview" },
@@ -6923,7 +6923,7 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
     { id:"import",      label:"⬆️ Import" },
   ];
   const props = { crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients };
-  const extProps = { ...props, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders };
+  const extProps = { ...props, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, roster, addAudit };
   return (
     <div>
       <PH title="Sales CRM" sub="Leads · Accounts · Contacts · Deals · Tasks · Notes · Orders · Activities · Forecast · Import"/>
