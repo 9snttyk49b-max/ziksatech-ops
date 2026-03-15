@@ -304,11 +304,13 @@ const PIPELINE_SEED = [
 ];
 
 const CLIENTS_SEED = [
-  { id:"cl1", name:"AT&T",          vertical:"Telecom",           engType:"Managed Services", annualRev:1200000, consultants:4, grossMargin:0.22, health:"Green",  renewal:"2026-12-31", notes:"Core anchor. BRIM Phase 3 probe H2." },
-  { id:"cl2", name:"Client B",      vertical:"Financial Services", engType:"Staff Aug",        annualRev:480000,  consultants:2, grossMargin:0.18, health:"Green",  renewal:"2026-09-30", notes:"Stable. Expand to 3 consultants." },
-  { id:"cl3", name:"Client C",      vertical:"Healthcare",         engType:"Project",          annualRev:320000,  consultants:1, grossMargin:0.15, health:"Amber",  renewal:"2026-06-30", notes:"Renewal discussion needed by April." },
-  { id:"cl4", name:"Client D",      vertical:"Energy",             engType:"Staff Aug",        annualRev:180000,  consultants:1, grossMargin:0.20, health:"Green",  renewal:"2026-08-31", notes:"New Q1 2026. Positive signals." },
-  { id:"cl5", name:"Naxon Systems", vertical:"Internal",           engType:"Internal",         annualRev:170000,  consultants:2, grossMargin:0.12, health:"Green",  renewal:"2026-12-31", notes:"Rajesh + Priya at cost+." },
+  { id:"cl1", name:"HOPE-IDI",             vertical:"Utilities",         engType:"Project",    annualRev:1200000, grossMargin:0.35, health:"Green", csmId:"", notes:"Core anchor. BRIM Phase 3 probe H2.", consultants:4, renewalDate:"2026-12-31" },
+  { id:"cl2", name:"Toyota",               vertical:"Financials",        engType:"Staff Aug",  annualRev:180000,  grossMargin:0.20, health:"Green", csmId:"", notes:"New Q1 2026. Positive signals.",    consultants:1, renewalDate:"2026-08-31" },
+  { id:"cl3", name:"HPE",                  vertical:"Manufacturing",      engType:"Staff Aug",  annualRev:180000,  grossMargin:0.25, health:"Green", csmId:"", notes:"Add more consultants. Rachel contact person.", consultants:1, renewalDate:"2026-08-31" },
+  { id:"cl4", name:"PTC",                  vertical:"Tolling",            engType:"Project",    annualRev:450000,  grossMargin:0.30, health:"Green", csmId:"", notes:"Stable. Expand to 3 consultants.",  consultants:2, renewalDate:"2026-09-30" },
+  { id:"cl5", name:"Arhasi",               vertical:"AI",                 engType:"Staff Aug",  annualRev:108000,  grossMargin:0.15, health:"Green", csmId:"", notes:"",                                 consultants:1, renewalDate:"2027-02-02" },
+  { id:"cl6", name:"SCG",                  vertical:"Gas Utilities",      engType:"Staff Aug",  annualRev:300000,  grossMargin:0.25, health:"Green", csmId:"", notes:"",                                 consultants:1, renewalDate:"2027-02-02" },
+  { id:"cl7", name:"Freeman - Mouritech",  vertical:"Media",              engType:"Staff Aug",  annualRev:180000,  grossMargin:0.15, health:"Green", csmId:"", notes:"Ravi Soni",                        consultants:1, renewalDate:"2027-06-30" },
 ];
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -1214,7 +1216,7 @@ const uid = () => Math.random().toString(36).slice(2,9);
 const fmt = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
 const fmtD = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
 const pct = n => (n*100).toFixed(1)+"%";
-const fmtDate = d => new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+const fmtDate = d => { if(!d) return "—"; const dt=new Date(d+"T00:00:00"); return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
 
 function calcRoster(r) {
   const hrs = Math.round(r.util * BURDEN.hoursPerYear);
@@ -22010,18 +22012,29 @@ Provide: Key Discrepancies, Missing Entries, Reconciliation Status, Action Items
             {["Consultant","Expected Rev","Invoiced","Collected","Outstanding","Util"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
           {(roster||[]).map(r=>{
+          {(roster||[]).map(r=>{
             const expRev=Math.round((r.billRate||0)*(r.util||0)*160);
+            // Match invoices to this consultant via client name
+            const cliName = r.client || "";
+            const rInvoices = (invForPeriod||finInvoices||[]).filter(inv=>{
+              const n=(inv.clientName||inv.client||"").toLowerCase();
+              return cliName && n && (n.includes(cliName.toLowerCase().split(/[, ]/)[0]) || cliName.toLowerCase().includes(n.split(/[, ]/)[0]));
+            });
+            const rInvoiced = rInvoices.reduce((s,i)=>{const amt=(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0)||i.amount||0;return s+amt;},0);
+            const rCollected = (pymtForPeriod||finPayments||[]).filter(p=>rInvoices.some(i=>i.id===p.invoiceId)).reduce((s,p)=>s+(+p.amount||0),0);
+            const rOutstanding = rInvoiced - rCollected;
             return (
               <div key={r.id} className="tr" style={{gridTemplateColumns:"1.4fr 110px 110px 110px 100px 80px",alignItems:"center"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#0a1120"} onMouseLeave={e=>e.currentTarget.style.background=""}>
                 <div><div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div><div style={{fontSize:10,color:"#3d5a7a"}}>{r.type}·{r.client}</div></div>
                 <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8"}}>${expRev.toLocaleString()}</span>
-                <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8"}}>—</span>
-                <span style={{fontSize:12,fontFamily:"monospace",color:"#34d399"}}>—</span>
-                <span style={{fontSize:12,fontFamily:"monospace",color:"#f59e0b"}}>—</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8"}}>{rInvoiced>0?fmt(rInvoiced):"—"}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:"#34d399"}}>{rCollected>0?fmt(rCollected):"—"}</span>
+                <span style={{fontSize:12,fontFamily:"monospace",color:rOutstanding>0?"#f59e0b":"#64748b"}}>{rOutstanding>0?fmt(rOutstanding):"—"}</span>
                 <span style={{fontSize:12,color:r.util>=0.8?"#34d399":"#f59e0b"}}>{Math.round((r.util||0)*100)}%</span>
               </div>
             );
+          })}
           })}
         </div>
       )}
