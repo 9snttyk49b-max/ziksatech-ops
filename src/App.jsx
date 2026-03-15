@@ -9083,100 +9083,111 @@ function Avatar({ name, role, size=36 }) {
 
 // ── Org Chart ─────────────────────────────────────────────────────────────────
 function OrgChart({ orgMembers, setOrgMembers }) {
-  const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState(null);
 
-  // Build tree levels
-  const root   = orgMembers.find(m=>!m.reportsTo);
-  const lvl1   = orgMembers.filter(m=>m.reportsTo===root?.id);
-  const lvl2map = {};
-  lvl1.forEach(m=>{ lvl2map[m.id] = orgMembers.filter(x=>x.reportsTo===m.id); });
+  // Build tree: root → level1 → level2
+  const root  = orgMembers.find(m=>!m.reportsTo);
+  const lvl1  = orgMembers.filter(m=>root && m.reportsTo===root.id);
+  const allBelow = orgMembers.filter(m=>root && m.id!==root.id);
 
   const selMember = orgMembers.find(m=>m.id===selected);
-  const perms = selMember ? getEffectivePerms(selMember) : {};
-  const fullModules  = selMember ? ALL_MODULES.filter(m=>perms[m.id]==="full") : [];
-  const viewModules  = selMember ? ALL_MODULES.filter(m=>perms[m.id]==="view") : [];
 
-  const NodeCard = ({ member, isRoot=false }) => {
+  const NodeCard = ({ member, isRoot=false, size="md" }) => {
     const rt = ROLE_TEMPLATES[member.role];
-    const isHov  = hovered  === member.id;
-    const isSel  = selected === member.id;
+    const isSel = selected===member.id;
+    const sz = isRoot ? 44 : size==="sm" ? 28 : 32;
     return (
       <div onClick={()=>setSelected(isSel?null:member.id)}
-        onMouseEnter={()=>setHovered(member.id)} onMouseLeave={()=>setHovered(null)}
         style={{
-          padding:isRoot?"18px 24px":"12px 18px",
-          borderRadius:12,cursor:"pointer",userSelect:"none",
-          background: isSel ? (rt?.bg||"#0a1626") : isHov ? "#0f1e30" : "#070c18",
+          padding:isRoot?"14px 20px":"10px 14px",
+          borderRadius:10,cursor:"pointer",userSelect:"none",textAlign:"center",
+          background:isSel?(rt?.bg||"#0a1626"):"#070c18",
           border:`${isSel?"2px":"1px"} solid ${isSel?(rt?.color||"#38bdf8"):"#1a2d45"}`,
-          transition:"all 0.15s",minWidth:isRoot?180:160,textAlign:"center",
-          boxShadow: isSel?`0 0 0 3px ${rt?.color||"#38bdf8"}22`:"none",
+          transition:"all 0.15s",
+          minWidth:isRoot?160:130, maxWidth:isRoot?200:160,
+          boxShadow:isSel?`0 0 0 3px ${rt?.color||"#38bdf8"}22`:"none",
         }}>
-        <div style={{display:"flex",justifyContent:"center",marginBottom:8}}>
-          <Avatar name={member.name} role={member.role} size={isRoot?44:36}/>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:6}}>
+          <Avatar name={member.name} role={member.role} size={sz}/>
         </div>
-        <div style={{fontSize:isRoot?14:12,fontWeight:700,color:"#e2e8f0",marginBottom:2}}>{member.name}</div>
-        <div style={{fontSize:isRoot?11:10,color:"#475569",marginBottom:6,lineHeight:1.3}}>{member.title}</div>
-        <span style={{fontSize:9,fontWeight:700,padding:"3px 10px",borderRadius:20,
+        <div style={{fontSize:isRoot?13:11,fontWeight:700,color:"#e2e8f0",marginBottom:2,lineHeight:1.2}}>{member.name}</div>
+        <div style={{fontSize:9,color:"#475569",marginBottom:5,lineHeight:1.3}}>{member.title}</div>
+        <span style={{fontSize:8,fontWeight:700,padding:"2px 7px",borderRadius:20,
           background:rt?.bg||"#0a1626",color:rt?.color||"#64748b",
-          border:`1px solid ${rt?.color||"#1a2d45"}44`}}>
+          border:`1px solid ${(rt?.color||"#1a2d45")+"44"}`}}>
           {rt?.label||member.role}
         </span>
       </div>
     );
   };
 
-  // Vertical connector
-  const VLine = ({h=24}) => <div style={{width:2,height:h,background:"#1a2d45",margin:"0 auto"}}/>;
-  const HLine = ({w}) => <div style={{height:2,width:w,background:"#1a2d45"}}/>;
+  const Vline = ({h=20}) => <div style={{width:2,height:h,background:"#1a2d45",margin:"0 auto"}}/>;
+
+  // Group level2 members under their L1 parent
+  const childrenOf = (id) => allBelow.filter(m=>m.reportsTo===id);
 
   return (
     <div style={{display:"grid",gridTemplateColumns:selMember?"1fr 280px":"1fr",gap:20}}>
-      <div style={{overflowX:"auto",paddingBottom:16}}>
-        {/* Root */}
+      <div style={{overflowX:"auto",overflowY:"visible",paddingBottom:16}}>
+
+        {/* Root node — centered */}
         <div style={{display:"flex",justifyContent:"center",marginBottom:0}}>
-          <NodeCard member={root} isRoot/>
+          {root && <NodeCard member={root} isRoot/>}
         </div>
-        <VLine h={28}/>
+        <Vline h={24}/>
 
-        {/* L1 horizontal rail */}
-        <div style={{position:"relative",display:"flex",justifyContent:"center"}}>
-          {/* Rail line across tops of L1 nodes */}
-          <div style={{position:"absolute",top:0,left:"calc(50% - "+(lvl1.length>2?"280px":"140px")+")",
-            width:lvl1.length>2?"560px":"280px",height:2,background:"#1a2d45"}}/>
-        </div>
-
-        <div style={{display:"flex",gap:20,justifyContent:"center",alignItems:"flex-start",paddingTop:0}}>
-          {lvl1.map(m1=>{
-            const children = lvl2map[m1.id]||[];
-            return (
-              <div key={m1.id} style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-                <VLine h={24}/>
-                <NodeCard member={m1}/>
-                {children.length>0&&<>
-                  <VLine h={20}/>
-                  {/* Horizontal connector for children */}
-                  {children.length>1&&(
-                    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"center",position:"relative",width:"100%"}}>
-                      <div style={{position:"absolute",top:0,left:"50px",right:"50px",height:2,background:"#1a2d45"}}/>
-                    </div>
-                  )}
-                  <div style={{display:"flex",gap:10,alignItems:"flex-start",justifyContent:"center"}}>
-                    {children.map((m2,ci)=>(
-                      <div key={m2.id} style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-                        <VLine h={20}/>
-                        <NodeCard member={m2}/>
+        {/* L1 row */}
+        {lvl1.length > 0 && (
+          <div style={{position:"relative"}}>
+            {/* Horizontal connector rail across all L1 nodes */}
+            <div style={{display:"flex",justifyContent:"center",gap:20,flexWrap:"nowrap"}}>
+              {lvl1.map((m1, idx) => {
+                const children = childrenOf(m1.id);
+                return (
+                  <div key={m1.id} style={{display:"flex",flexDirection:"column",alignItems:"center",flex:"0 0 auto"}}>
+                    <NodeCard member={m1}/>
+                    {children.length>0 && <>
+                      <Vline h={20}/>
+                      {/* Children wrap grid — max 4 per row */}
+                      <div style={{
+                        display:"grid",
+                        gridTemplateColumns:`repeat(${Math.min(children.length,4)},1fr)`,
+                        gap:8,
+                        position:"relative"
+                      }}>
+                        {/* Top connector bar */}
+                        {children.length>1 && (
+                          <div style={{
+                            gridColumn:`1 / span ${Math.min(children.length,4)}`,
+                            height:2,background:"#1a2d45",marginBottom:0
+                          }}/>
+                        )}
+                        {children.map(child=>(
+                          <div key={child.id} style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+                            <Vline h={16}/>
+                            <NodeCard member={child} size="sm"/>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </>}
                   </div>
-                </>}
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Orphan nodes — directly under root but render as separate row if too many children total */}
+        {allBelow.filter(m=>m.reportsTo===root?.id && !lvl1.find(l=>l.id===m.id)).length > 0 && (
+          <div style={{marginTop:16,display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+            {allBelow.filter(m=>m.reportsTo===root?.id && !lvl1.find(l=>l.id===m.id)).map(m=>(
+              <NodeCard key={m.id} member={m} size="sm"/>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Side panel */}
+      {/* Side detail panel */}
       {selMember && (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           <div className="card" style={{padding:"18px 20px"}}>
@@ -9195,39 +9206,12 @@ function OrgChart({ orgMembers, setOrgMembers }) {
                 <div key={l}><div className="lbl">{l}</div><div style={{fontSize:11,color:"#94a3b8"}}>{v}</div></div>
               ))}
             </div>
-            <div style={{padding:"10px 14px",borderRadius:8,background:ROLE_TEMPLATES[selMember.role]?.bg,border:`1px solid ${ROLE_TEMPLATES[selMember.role]?.color}44`,textAlign:"center"}}>
+            <div style={{padding:"10px 14px",borderRadius:8,background:ROLE_TEMPLATES[selMember.role]?.bg,border:`1px solid ${ROLE_TEMPLATES[selMember.role]?.color||"#1a2d45"}44`}}>
               <div style={{fontSize:12,fontWeight:700,color:ROLE_TEMPLATES[selMember.role]?.color}}>{ROLE_TEMPLATES[selMember.role]?.label}</div>
               <div style={{fontSize:10,color:"#475569",marginTop:2}}>Role template</div>
             </div>
-          </div>
-
-          {/* Access summary */}
-          <div className="card">
-            <div className="section-hdr" style={{fontSize:12}}>Module Access</div>
-            {fullModules.length>0&&(
-              <div style={{padding:"10px 16px",borderBottom:"1px solid #0a1626"}}>
-                <div style={{fontSize:10,fontWeight:700,color:"#34d399",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Full Access</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                  {fullModules.map(m=><span key={m.id} className="bdg" style={{background:"#021f14",color:"#34d399",fontSize:9}}>{m.label}</span>)}
-                </div>
-              </div>
-            )}
-            {viewModules.length>0&&(
-              <div style={{padding:"10px 16px",borderBottom:"1px solid #0a1626"}}>
-                <div style={{fontSize:10,fontWeight:700,color:"#7dd3fc",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>View Only</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                  {viewModules.map(m=><span key={m.id} className="bdg" style={{background:"#0c2340",color:"#7dd3fc",fontSize:9}}>{m.label}</span>)}
-                </div>
-              </div>
-            )}
-            <div style={{padding:"8px 16px"}}>
-              <div style={{fontSize:9,color:"#1e3a5f"}}>Hidden: {ALL_MODULES.filter(m=>perms[m.id]==="none"||!perms[m.id]).length} modules</div>
-            </div>
-          </div>
-
-          <div style={{display:"flex",gap:8}}>
-            <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:11}}
-              onClick={()=>{ document.querySelector('[data-tab-members]')?.click(); }}>
+            <button className="btn bp" style={{width:"100%",marginTop:12,justifyContent:"center",fontSize:12}}
+              onClick={()=>{window.__setOrgTab&&window.__setOrgTab("members");}}>
               Edit in Team Members →
             </button>
           </div>
@@ -9237,7 +9221,6 @@ function OrgChart({ orgMembers, setOrgMembers }) {
   );
 }
 
-// ── Team Members ──────────────────────────────────────────────────────────────
 function OrgMembers({ orgMembers, setOrgMembers, roster }) {
   const [modal, setModal]   = useState(false);
   const [form, setForm]     = useState(null);
