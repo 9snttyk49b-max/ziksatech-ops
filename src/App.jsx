@@ -29,6 +29,7 @@ const RBAC = {
   timesheet:    ["super_admin","admin","hr_immigration","employee","contractor"],
   pto:          ["super_admin","admin","hr_immigration","employee"],   // contractors excluded from PTO
   onboarding:   ["super_admin","admin","hr_immigration"],
+  offboarding:  ["super_admin","admin","hr_immigration"],
   org:          ["super_admin","admin"],
   projects:     ["super_admin","admin","hr_immigration"],
   profitability:["super_admin","admin","accounts"],
@@ -549,6 +550,7 @@ const ALL_MODULES = [
   { id:"capacity",    label:"Capacity Planner",       group:"Delivery"    },
   { id:"budget",      label:"Budget vs. Actual",      group:"Finance"     },
   { id:"onboarding",  label:"Onboarding",             group:"Hiring"      },
+  { id:"offboarding", label:"Offboarding",            group:"Hiring"      },
   { id:"crm",        label:"Sales CRM",            group:"Sales"      },
   { id:"contracts",  label:"Contracts & SOW",      group:"Sales"      },
   { id:"projects",   label:"Project Tracker",       group:"Delivery"   },
@@ -616,6 +618,294 @@ const ROLE_TEMPLATES = {
     perms: { dashboard:"none", crm:"none", contracts:"none", projects:"view", roster:"none", timesheet:"view", clients:"none", ebitda:"none", pl:"none", finance:"none", adp:"none", freshbooks:"none", pipeline:"none", recruiting:"none", compliance:"none" },
   },
 };
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// OFFBOARDING — Employee & Contractor Exit Management
+// ═══════════════════════════════════════════════════════════════════════
+const OFFBOARD_CHECKLIST_FTE = [
+  {id:"ob1",  cat:"HR",        label:"Send formal resignation/termination letter"},
+  {id:"ob2",  cat:"HR",        label:"Confirm last working day & final paycheck date"},
+  {id:"ob3",  cat:"HR",        label:"Process COBRA / benefits termination notice"},
+  {id:"ob4",  cat:"HR",        label:"Complete exit interview"},
+  {id:"ob5",  cat:"HR",        label:"Return company equipment (laptop, badges, keys)"},
+  {id:"ob6",  cat:"IT",        label:"Revoke all system access (email, Slack, Jira)"},
+  {id:"ob7",  cat:"IT",        label:"Transfer files & handover documentation"},
+  {id:"ob8",  cat:"IT",        label:"Remove from cloud accounts (Azure, AWS, GitHub)"},
+  {id:"ob9",  cat:"Finance",   label:"Final payroll processed"},
+  {id:"ob10", cat:"Finance",   label:"Expense reports cleared"},
+  {id:"ob11", cat:"Finance",   label:"Update ADP — terminate employee record"},
+  {id:"ob12", cat:"Legal",     label:"Signed confidentiality reminder / NDA exit"},
+  {id:"ob13", cat:"Legal",     label:"Non-compete acknowledgment (if applicable)"},
+  {id:"ob14", cat:"Admin",     label:"Remove from team roster & org chart"},
+  {id:"ob15", cat:"Admin",     label:"Update client contacts of point-of-contact change"},
+  {id:"ob16", cat:"Admin",     label:"Archive employee records"},
+];
+
+const OFFBOARD_CHECKLIST_CONTRACTOR = [
+  {id:"oc1",  cat:"HR",        label:"Send end-of-contract notice"},
+  {id:"oc2",  cat:"HR",        label:"Confirm last billing day"},
+  {id:"oc3",  cat:"IT",        label:"Revoke system access (email, VPN, client systems)"},
+  {id:"oc4",  cat:"IT",        label:"Retrieve company-issued equipment (if any)"},
+  {id:"oc5",  cat:"Finance",   label:"Final invoice approved & paid"},
+  {id:"oc6",  cat:"Finance",   label:"Issue 1099 (if >$600 YTD)"},
+  {id:"oc7",  cat:"Finance",   label:"Update vendor/AP records — mark inactive"},
+  {id:"oc8",  cat:"Legal",     label:"Confirm IP assignment & confidentiality"},
+  {id:"oc9",  cat:"Client",    label:"Notify client of consultant transition"},
+  {id:"oc10", cat:"Client",    label:"Arrange knowledge transfer to replacement"},
+  {id:"oc11", cat:"Admin",     label:"Update roster — set status to Inactive"},
+  {id:"oc12", cat:"Admin",     label:"Update org chart"},
+];
+
+const OB_CAT_COLORS = {HR:"#38bdf8", IT:"#a78bfa", Finance:"#34d399", Legal:"#f87171", Client:"#f59e0b", Admin:"#64748b"};
+
+function OffboardingModule({ orgMembers, setOrgMembers, roster, setRoster, vendors, setVendors, addAudit }) {
+  const [records, setRecords] = useState([]);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({memberId:"", endDate:"", reason:"resignation", notes:""});
+  const [activeId, setActiveId] = useState(null);
+  const [checks, setChecks] = useState({});
+
+  // Load from localStorage
+  useEffect(()=>{
+    try{const s=localStorage.getItem("zt-offboarding"); if(s)setRecords(JSON.parse(s));}catch{}
+  },[]);
+  const saveRecords = r => { setRecords(r); localStorage.setItem("zt-offboarding",JSON.stringify(r)); };
+
+  const activeRecord = records.find(r=>r.id===activeId);
+  const memberChecklist = activeRecord ? (activeRecord.type==="contractor" ? OFFBOARD_CHECKLIST_CONTRACTOR : OFFBOARD_CHECKLIST_FTE) : [];
+  const recChecks = checks[activeId] || {};
+  const completedCount = memberChecklist.filter(c=>recChecks[c.id]).length;
+  const pct = memberChecklist.length ? Math.round(completedCount/memberChecklist.length*100) : 0;
+
+  const startOffboarding = () => {
+    if(!form.memberId) return alert("Select a team member");
+    if(!form.endDate) return alert("Set a last working day");
+    const member = orgMembers.find(m=>m.id===form.memberId) || roster.find(r=>r.id===form.memberId);
+    const rec = {
+      id:"ob-"+Date.now(),
+      memberId: form.memberId,
+      name: member?.name || form.memberId,
+      title: member?.title || "",
+      type: (member?.role==="contractor"||member?.type==="Contractor") ? "contractor" : "fte",
+      endDate: form.endDate,
+      reason: form.reason,
+      notes: form.notes,
+      startedDate: TODAY_STR,
+      status: "in_progress",
+    };
+    const updated = [...records, rec];
+    saveRecords(updated);
+    setActiveId(rec.id);
+    setModal(false);
+    addAudit&&addAudit("HR","Start Offboarding","Team Member",rec.name+" — last day: "+rec.endDate);
+  };
+
+  const toggleCheck = (recId, checkId) => {
+    setChecks(prev=>({...prev, [recId]:{...(prev[recId]||{}), [checkId]:!(prev[recId]||{})[checkId]}}));
+  };
+
+  const completeOffboarding = (recId) => {
+    if(!window.confirm("Mark offboarding complete and deactivate this member?")) return;
+    // Deactivate in orgMembers
+    const rec = records.find(r=>r.id===recId);
+    if(rec){
+      setOrgMembers(ms=>ms.map(m=>m.id===rec.memberId?{...m,active:false}:m));
+      setRoster&&setRoster(rs=>rs.map(r=>r.id===rec.memberId?{...r,active:false,endDate:rec.endDate}:r));
+    }
+    saveRecords(records.map(r=>r.id===recId?{...r,status:"completed",completedDate:TODAY_STR}:r));
+    addAudit&&addAudit("HR","Complete Offboarding","Team Member",(rec?.name||recId)+" offboarded");
+  };
+
+  const statusColor = {in_progress:"#f59e0b", completed:"#34d399"};
+  const reasonLabels = {resignation:"Resignation",termination:"Termination",contract_end:"Contract End",retirement:"Retirement",other:"Other"};
+
+  const allMembers = [
+    ...orgMembers.map(m=>({id:m.id, name:m.name, title:m.title, isOrg:true, type:m.role==="contractor"?"Contractor":"FTE"})),
+    ...roster.filter(r=>!orgMembers.find(m=>m.rosterId===r.id)).map(r=>({id:r.id, name:r.name, title:r.role, isOrg:false, type:r.type}))
+  ].filter(m=>!records.find(r=>r.memberId===m.id&&r.status==="in_progress"));
+
+  return (
+    <div>
+      <PH title="Offboarding" sub="Exit management · End date · Checklist for FTE & Contractors"/>
+
+      <div style={{display:"grid",gridTemplateColumns:activeRecord?"1fr 360px":"1fr",gap:16}}>
+        {/* Left: records list + new */}
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{display:"flex",gap:10}}>
+              <div style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,padding:"8px 14px",textAlign:"center"}}>
+                <div style={{fontSize:20,fontWeight:800,color:"#f59e0b"}}>{records.filter(r=>r.status==="in_progress").length}</div>
+                <div style={{fontSize:10,color:"#475569"}}>In Progress</div>
+              </div>
+              <div style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,padding:"8px 14px",textAlign:"center"}}>
+                <div style={{fontSize:20,fontWeight:800,color:"#34d399"}}>{records.filter(r=>r.status==="completed").length}</div>
+                <div style={{fontSize:10,color:"#475569"}}>Completed</div>
+              </div>
+            </div>
+            <button className="btn bp" onClick={()=>setModal(true)}>+ Start Offboarding</button>
+          </div>
+
+          {records.length===0 && (
+            <div className="card" style={{padding:40,textAlign:"center",color:"#334155"}}>
+              <div style={{fontSize:32,marginBottom:12}}>🚪</div>
+              <div style={{fontSize:14,fontWeight:600,color:"#475569",marginBottom:8}}>No offboarding records</div>
+              <div style={{fontSize:12}}>Click "Start Offboarding" to begin an exit process</div>
+            </div>
+          )}
+
+          {records.map(rec=>{
+            const cl = rec.type==="contractor" ? OFFBOARD_CHECKLIST_CONTRACTOR : OFFBOARD_CHECKLIST_FTE;
+            const done = Object.values(checks[rec.id]||{}).filter(Boolean).length;
+            const pct2 = Math.round(done/cl.length*100);
+            const isActive = activeId===rec.id;
+            return (
+              <div key={rec.id} className="card" onClick={()=>setActiveId(isActive?null:rec.id)}
+                style={{marginBottom:10,cursor:"pointer",border:`1px solid ${isActive?"#0369a1":"#1a2d45"}`,padding:"14px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <Avatar name={rec.name} role={rec.type==="contractor"?"contractor":"employee"} size={36}/>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                      <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{rec.name}</span>
+                      <span className="bdg" style={{background:rec.type==="contractor"?"#0369a122":"#34d39922",color:rec.type==="contractor"?"#38bdf8":"#34d399",fontSize:9}}>{rec.type==="contractor"?"Contractor":"FTE"}</span>
+                      <span className="bdg" style={{background:statusColor[rec.status]+"22",color:statusColor[rec.status],fontSize:9}}>{rec.status==="completed"?"✅ Completed":"⏳ In Progress"}</span>
+                    </div>
+                    <div style={{fontSize:11,color:"#475569"}}>{rec.title} · Last day: <strong style={{color:"#f87171"}}>{fmtDate(rec.endDate)}</strong> · {reasonLabels[rec.reason]||rec.reason}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:18,fontWeight:800,color:pct2===100?"#34d399":"#f59e0b"}}>{pct2}%</div>
+                    <div style={{fontSize:10,color:"#334155"}}>{done}/{cl.length} done</div>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div style={{height:4,background:"#0a1120",borderRadius:2,marginTop:10}}>
+                  <div style={{height:4,background:pct2===100?"#34d399":"#f59e0b",borderRadius:2,width:pct2+"%",transition:"width 0.3s"}}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Right: checklist panel */}
+        {activeRecord && (
+          <div className="card" style={{position:"sticky",top:0,height:"fit-content"}}>
+            <div style={{padding:"14px 18px",borderBottom:"1px solid #111d2d"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{activeRecord.name}</div>
+                  <div style={{fontSize:11,color:"#334155"}}>{activeRecord.type==="contractor"?"Contractor":"FTE"} · Last day: {fmtDate(activeRecord.endDate)}</div>
+                </div>
+                <button className="btn bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setActiveId(null)}>✕</button>
+              </div>
+              {/* Progress ring */}
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:12,padding:"10px",background:"#0a1120",borderRadius:8}}>
+                <div style={{fontSize:28,fontWeight:800,color:pct===100?"#34d399":"#f59e0b"}}>{pct}%</div>
+                <div style={{flex:1}}>
+                  <div style={{height:8,background:"#040810",borderRadius:4}}>
+                    <div style={{height:8,background:pct===100?"#34d399":"#f59e0b",borderRadius:4,width:pct+"%",transition:"width 0.3s"}}/>
+                  </div>
+                  <div style={{fontSize:10,color:"#334155",marginTop:4}}>{completedCount}/{memberChecklist.length} tasks complete</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{padding:"12px 18px",maxHeight:400,overflowY:"auto"}}>
+              {Object.entries(
+                memberChecklist.reduce((acc,c)=>{ (acc[c.cat]=acc[c.cat]||[]).push(c); return acc; },{})
+              ).map(([cat,items])=>(
+                <div key={cat} style={{marginBottom:14}}>
+                  <div style={{fontSize:10,fontWeight:700,color:OB_CAT_COLORS[cat]||"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{width:8,height:8,borderRadius:"50%",background:OB_CAT_COLORS[cat],display:"inline-block"}}/>
+                    {cat}
+                  </div>
+                  {items.map(item=>{
+                    const done = recChecks[item.id];
+                    return (
+                      <div key={item.id} onClick={()=>toggleCheck(activeId,item.id)}
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",borderRadius:7,cursor:"pointer",marginBottom:4,
+                          background:done?"#021f14":"#060d1c",border:`1px solid ${done?"#34d39933":"#1a2d45"}`}}
+                        onMouseEnter={e=>!done&&(e.currentTarget.style.borderColor="#334155")}
+                        onMouseLeave={e=>!done&&(e.currentTarget.style.borderColor="#1a2d45")}>
+                        <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${done?"#34d399":"#334155"}`,background:done?"#34d399":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                          {done&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
+                        </div>
+                        <span style={{fontSize:12,color:done?"#34d399":"#94a3b8",textDecoration:done?"line-through":"none",lineHeight:1.4}}>{item.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            {activeRecord.notes&&(
+              <div style={{margin:"0 18px 14px",padding:"10px 12px",background:"#1a1005",border:"1px solid #f59e0b33",borderRadius:8,fontSize:11,color:"#f59e0b"}}>
+                📝 {activeRecord.notes}
+              </div>
+            )}
+
+            <div style={{padding:"12px 18px",borderTop:"1px solid #111d2d",display:"flex",gap:8}}>
+              {activeRecord.status==="in_progress" && pct===100 && (
+                <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:12}}
+                  onClick={()=>completeOffboarding(activeId)}>
+                  ✅ Complete Offboarding
+                </button>
+              )}
+              {activeRecord.status==="in_progress" && pct<100 && (
+                <div style={{fontSize:11,color:"#334155",flex:1,textAlign:"center",padding:"6px 0"}}>
+                  Complete all {memberChecklist.length-completedCount} remaining tasks to finish
+                </div>
+              )}
+              {activeRecord.status==="completed" && (
+                <div style={{fontSize:12,color:"#34d399",flex:1,textAlign:"center",padding:"6px 0"}}>
+                  ✅ Offboarding completed on {fmtDate(activeRecord.completedDate||activeRecord.endDate)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* New offboarding modal */}
+      {modal&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:500}}>
+            <MH title="Start Offboarding" onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Team Member" style={{gridColumn:"span 2"}}>
+                <select className="inp" value={form.memberId} onChange={e=>setForm({...form,memberId:e.target.value})}>
+                  <option value=""> — Select member — </option>
+                  {allMembers.map(m=><option key={m.id} value={m.id}>{m.name} ({m.type})</option>)}
+                </select>
+              </FF>
+              <FF label="Last Working Day">
+                <input className="inp" type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/>
+              </FF>
+              <FF label="Reason">
+                <select className="inp" value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})}>
+                  <option value="resignation">Resignation</option>
+                  <option value="termination">Termination</option>
+                  <option value="contract_end">Contract End</option>
+                  <option value="retirement">Retirement</option>
+                  <option value="other">Other</option>
+                </select>
+              </FF>
+              <FF label="Notes (optional)" style={{gridColumn:"span 2"}}>
+                <textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Any specific handover notes, client notifications needed..."/>
+              </FF>
+            </div>
+            <div style={{padding:"10px 14px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8,marginTop:12,fontSize:11,color:"#38bdf8"}}>
+              💡 This will generate a {form.memberId&&allMembers.find(m=>m.id===form.memberId)?.type==="Contractor"?"contractor":"FTE"} exit checklist with {form.memberId&&allMembers.find(m=>m.id===form.memberId)?.type==="Contractor"?OFFBOARD_CHECKLIST_CONTRACTOR.length:OFFBOARD_CHECKLIST_FTE.length} tasks
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={startOffboarding}>🚪 Start Offboarding</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const ORG_MEMBERS_SEED = [
   { id:"org1",  rosterId:"",    name:"Manju Murthy",          title:"Owner / CEO",                       email:"mmurthy@ziksatech.com",   phone:"", reportsTo:"",     role:"super_admin", active:true, customPerms:{} },
@@ -2245,6 +2535,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="capacity"      && <CapacityPlanner {...shared}/>}
         {tab==="budget"        && <BudgetActual {...shared}/>}
         {tab==="onboarding"    && <OnboardingModule {...shared}/>}
+        {tab==="offboarding" && <OffboardingModule orgMembers={shared.orgMembers} setOrgMembers={shared.setOrgMembers} roster={shared.roster} setRoster={shared.setRoster} vendors={shared.vendors} setVendors={shared.setVendors} addAudit={shared.addAudit}/>}
         {tab==="glexport"      && <FreshBooksGL finInvoices={shared.finInvoices||[]} fbInvoices={shared.fbInvoices||[]} clients={shared.clients||[]}/>}
         {tab==="esign"         && <ESignature {...shared}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
@@ -9026,7 +9317,8 @@ function OrgMembers({ orgMembers, setOrgMembers, roster }) {
                   })}
                 </div>
                 <div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
-                  <button className="btn bg" style={{padding:"3px 7px",fontSize:10}} onClick={()=>open(m)}><I d={ICONS.edit} s={11}/></button>
+                  <button className="btn bg" style={{padding:"3px 7px",fontSize:10}} title="Edit member" onClick={e=>{e.stopPropagation();open(m);}}><I d={ICONS.edit} s={10}/></button>
+                  <button className="btn br" style={{padding:"3px 7px",fontSize:10}} title="Remove member" onClick={e=>{e.stopPropagation();if(window.confirm("Remove "+m.name+" from org chart?"))setOrgMembers(ms=>ms.filter(x=>x.id!==m.id));}}><I d={ICONS.trash} s={10}/></button>
                 </div>
               </div>
             );
