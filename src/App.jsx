@@ -22139,6 +22139,7 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
   const copyOutput = () => { navigator.clipboard.writeText(output); };
 
   return (
+    <div>
       <DocUploadPanel
         docData={docData} setDocData={setDocData}
         companyProfile={companyProfile} setCompanyProfile={setCompanyProf}
@@ -22198,6 +22199,7 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
           })}
         </div>
       </div>
+    </div>
     </div>
   );
 }
