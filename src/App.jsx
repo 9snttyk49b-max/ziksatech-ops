@@ -21727,8 +21727,320 @@ async function callClaude(systemPrompt, userPrompt, onChunk, maxTokens=1500) {
 // ═══════════════════════════════════════════════════════════════════════
 // SOW GENERATOR — AI-powered Statement of Work
 // ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// DOCUMENT UPLOAD & COMPANY PROFILE SYSTEM
+// Reusable across SOW, RFP, Resource Planner, Proposals
+// Supports: PDF (base64 via Anthropic), TXT, DOCX (text extract), CSV
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Company Profile Storage ──────────────────────────────────────────────────
+const getCompanyProfiles = () => {
+  try { return JSON.parse(localStorage.getItem('zt-company-profiles') || '[]'); } catch { return []; }
+};
+const saveCompanyProfiles = (profiles) => {
+  localStorage.setItem('zt-company-profiles', JSON.stringify(profiles));
+};
+
+// ── Document text extractor ───────────────────────────────────────────────────
+const extractDocText = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (['txt', 'md', 'csv', 'json'].includes(ext)) {
+    reader.onload = e => resolve({ text: e.target.result, type: 'text', name: file.name });
+    reader.readAsText(file);
+  } else if (ext === 'pdf') {
+    // Return base64 for Anthropic PDF vision
+    reader.onload = e => {
+      const base64 = e.target.result.split(',')[1];
+      resolve({ text: null, base64, type: 'pdf', name: file.name, mediaType: 'application/pdf' });
+    };
+    reader.readAsDataURL(file);
+  } else if (['doc', 'docx', 'pptx', 'xlsx'].includes(ext)) {
+    // Read as text — works for some Office files
+    reader.onload = e => resolve({ text: e.target.result.slice(0, 8000), type: 'office', name: file.name });
+    reader.readAsText(file);
+  } else {
+    reader.onload = e => resolve({ text: e.target.result.slice(0, 8000), type: 'unknown', name: file.name });
+    reader.readAsText(file);
+  }
+  reader.onerror = reject;
+});
+
+// ── Call Claude with optional PDF document ────────────────────────────────────
+const callClaudeWithDoc = async (systemPrompt, userPrompt, docData, onChunk, maxTokens = 3000) => {
+  const messages = [];
+
+  if (docData?.base64 && docData?.type === 'pdf') {
+    // Use Anthropic PDF vision
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'document', source: { type: 'base64', media_type: docData.mediaType, data: docData.base64 } },
+        { type: 'text', text: userPrompt }
+      ]
+    });
+  } else {
+    const docContext = docData?.text ? `\n\n--- UPLOADED DOCUMENT: ${docData.name} ---\n${docData.text.slice(0, 6000)}\n--- END DOCUMENT ---\n\n` : '';
+    messages.push({ role: 'user', content: docContext + userPrompt });
+  }
+
+  const response = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      stream: true,
+      system: systemPrompt,
+      messages,
+      ...(docData?.base64 ? { betas: ['pdfs-2024-09-25'] } : {})
+    })
+  });
+
+  if (!response.ok) throw new Error(`API error ${response.status}`);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') break;
+      try {
+        const j = JSON.parse(data);
+        const chunk = j.delta?.text || j.content?.[0]?.text || '';
+        if (chunk) onChunk(chunk);
+      } catch {}
+    }
+  }
+};
+
+// ── Company Profile Modal ─────────────────────────────────────────────────────
+function CompanyProfileModal({ open, onClose, onSelect }) {
+  const [profiles, setProfiles]   = useState(getCompanyProfiles);
+  const [editing, setEditing]     = useState(null);
+  const [form, setForm]           = useState({ name:'', industry:'', size:'', hq:'', sapLandscape:'', budget:'', contacts:'', notes:'', website:'' });
+  const [showForm, setShowForm]   = useState(false);
+
+  const save = () => {
+    if (!form.name.trim()) return alert('Company name is required');
+    const updated = editing
+      ? profiles.map(p => p.id === editing ? { ...p, ...form } : p)
+      : [...profiles, { ...form, id: 'cp-' + Date.now() }];
+    saveCompanyProfiles(updated);
+    setProfiles(updated);
+    setShowForm(false); setEditing(null);
+    setForm({ name:'', industry:'', size:'', hq:'', sapLandscape:'', budget:'', contacts:'', notes:'', website:'' });
+  };
+
+  const del = id => { const u = profiles.filter(p => p.id !== id); saveCompanyProfiles(u); setProfiles(u); };
+  const edit = p => { setForm({ ...p }); setEditing(p.id); setShowForm(true); };
+
+  if (!open) return null;
+  return (
+    <div className="modal-bg" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 680 }}>
+        <MH title="Company Profiles" onClose={onClose} />
+        <div style={{ fontSize: 11, color: '#475569', marginBottom: 14 }}>
+          Save company profiles to auto-fill and tailor SOW, RFP, Resource Plans to each client's context.
+        </div>
+
+        {!showForm ? (
+          <>
+            <button className="btn bp" style={{ fontSize: 12, marginBottom: 14 }} onClick={() => { setShowForm(true); setEditing(null); setForm({ name:'', industry:'', size:'', hq:'', sapLandscape:'', budget:'', contacts:'', notes:'', website:'' }); }}>
+              + New Company Profile
+            </button>
+            {profiles.length === 0 ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: '#1e3a5f', fontSize: 12 }}>
+                No profiles yet. Add your key prospects and clients for faster, tailored document generation.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
+                {profiles.map(p => (
+                  <div key={p.id} style={{ padding: '12px 16px', background: '#060d1c', borderRadius: 10, border: '1px solid #1a2d45', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { onSelect(p); onClose(); }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{p.name}</div>
+                      <div style={{ fontSize: 10, color: '#3d5a7a', marginTop: 2 }}>{p.industry} · {p.size} · {p.hq}</div>
+                      {p.sapLandscape && <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>SAP: {p.sapLandscape}</div>}
+                      {p.budget && <div style={{ fontSize: 10, color: '#f59e0b' }}>Budget range: {p.budget}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn bp" style={{ fontSize: 10, padding: '3px 10px' }} onClick={() => { onSelect(p); onClose(); }}>Use</button>
+                      <button className="btn bg" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => edit(p)}>✏️</button>
+                      <button className="btn br" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => del(p.id)}>🗑</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', marginBottom: 14 }}>{editing ? 'Edit' : 'New'} Company Profile</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[['Company Name *', 'name', '', 'e.g. Capital One'], ['Industry', 'industry', '', 'e.g. Financial Services'], ['Company Size', 'size', '', 'e.g. 50,000 employees'], ['HQ Location', 'hq', '', 'e.g. McLean, VA'], ['Website', 'website', '', 'e.g. capitalone.com'], ['Typical Budget Range', 'budget', '', 'e.g. $300K–$1M']].map(([l, k, , ph]) => (
+                <div key={k}>
+                  <div className="lbl">{l}</div>
+                  <input className="inp" value={form[k]} onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))} placeholder={ph} />
+                </div>
+              ))}
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className="lbl">SAP Landscape / Current Systems</div>
+                <input className="inp" value={form.sapLandscape} onChange={e => setForm(p => ({ ...p, sapLandscape: e.target.value }))} placeholder="e.g. SAP ECC 6.0, BRIM v2.0, planning S/4HANA by 2027"/>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className="lbl">Key Contacts</div>
+                <input className="inp" value={form.contacts} onChange={e => setForm(p => ({ ...p, contacts: e.target.value }))} placeholder="e.g. John Smith (VP IT), Sarah Lee (SAP Program Manager)"/>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className="lbl">Notes / Context</div>
+                <textarea className="inp" rows={3} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="Procurement preferences, pain points, relationship history, special requirements..."/>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn bg" onClick={() => { setShowForm(false); setEditing(null); }}>Cancel</button>
+              <button className="btn bp" onClick={save}>Save Profile</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Reusable Document Upload + Company Profile Panel ─────────────────────────
+// Used by SOW, RFP, Resource Planner — sits above the form as a collapsible section
+function DocUploadPanel({ docData, setDocData, companyProfile, setCompanyProfile, onAnalyze, analyzing, label = 'Upload Reference Document' }) {
+  const [expanded, setExpanded]       = useState(true);
+  const [showProfileModal, setShowPM] = useState(false);
+  const [dragging, setDragging]       = useState(false);
+  const [analysisHint, setHint]       = useState('');
+
+  const handleFile = async (file) => {
+    try {
+      const data = await extractDocText(file);
+      setDocData(data);
+      setHint(`✓ ${file.name} loaded (${(file.size / 1024).toFixed(0)} KB)`);
+    } catch (e) {
+      alert('Could not read file: ' + e.message);
+    }
+  };
+
+  const handleDrop = e => {
+    e.preventDefault(); setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <>
+      <div style={{ marginBottom: 16 }}>
+        {/* Header toggle */}
+        <div onClick={() => setExpanded(x => !x)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '10px 14px', background: '#060d1c', border: '1px solid #1a2d45', borderRadius: expanded ? '8px 8px 0 0' : 8, marginBottom: expanded ? 0 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14 }}>📎</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>Upload Document + Company Profile</span>
+            {(docData || companyProfile) && <span className="bdg" style={{ background: '#34d39922', color: '#34d399', fontSize: 9 }}>Active</span>}
+          </div>
+          <span style={{ fontSize: 11, color: '#334155' }}>{expanded ? '▲ Collapse' : '▼ Expand'}</span>
+        </div>
+
+        {expanded && (
+          <div style={{ padding: '14px 16px', background: '#060d1c', border: '1px solid #1a2d45', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+
+              {/* Document Upload */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+                <label
+                  style={{ display: 'block', border: `2px dashed ${dragging ? '#0284c7' : docData ? '#34d399' : '#1a2d45'}`, borderRadius: 8, padding: '14px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: docData ? '#021f14' : dragging ? '#0c2340' : '#070c18' }}
+                  onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={handleDrop}>
+                  <input type="file" accept=".pdf,.txt,.doc,.docx,.csv,.md" style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files[0]; if (f) handleFile(f); }} />
+                  {docData ? (
+                    <div>
+                      <div style={{ fontSize: 18, marginBottom: 4 }}>✅</div>
+                      <div style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>{docData.name}</div>
+                      <div style={{ fontSize: 9, color: '#15803d' }}>{docData.type === 'pdf' ? 'PDF — full vision analysis' : 'Text extracted'}</div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 20, marginBottom: 6 }}>📄</div>
+                      <div style={{ fontSize: 11, color: '#3d5a7a' }}>Drop or click to upload</div>
+                      <div style={{ fontSize: 9, color: '#1e3a5f', marginTop: 3 }}>PDF · DOCX · TXT · CSV</div>
+                    </div>
+                  )}
+                </label>
+                {docData && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <button className="btn bp" style={{ flex: 1, justifyContent: 'center', fontSize: 11 }}
+                      onClick={onAnalyze} disabled={analyzing}>
+                      {analyzing ? '🔍 Analyzing...' : '🔍 Analyze & Auto-Fill Form'}
+                    </button>
+                    <button className="btn br" style={{ fontSize: 11, padding: '4px 8px' }}
+                      onClick={() => { setDocData(null); setHint(''); }}>✕</button>
+                  </div>
+                )}
+                {analysisHint && <div style={{ fontSize: 10, color: '#34d399', marginTop: 6 }}>{analysisHint}</div>}
+                <div style={{ fontSize: 10, color: '#1e3a5f', marginTop: 8 }}>
+                  Upload a client's SOW, RFP, requirements doc, or project brief — AI will extract key info and pre-fill the form
+                </div>
+              </div>
+
+              {/* Company Profile */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Company Profile</div>
+                  <button className="btn bg" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => setShowPM(true)}>
+                    {companyProfile ? '✏️ Change' : '+ Select / Add'}
+                  </button>
+                </div>
+
+                {companyProfile ? (
+                  <div style={{ padding: '12px', background: '#0a1a2e', borderRadius: 8, border: '1px solid #0369a133' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>{companyProfile.name}</div>
+                    <div style={{ fontSize: 10, color: '#3d5a7a', marginBottom: 4 }}>{companyProfile.industry} · {companyProfile.size} · {companyProfile.hq}</div>
+                    {companyProfile.sapLandscape && <div style={{ fontSize: 10, color: '#475569' }}>SAP: {companyProfile.sapLandscape}</div>}
+                    {companyProfile.budget && <div style={{ fontSize: 10, color: '#f59e0b', marginTop: 3 }}>Budget: {companyProfile.budget}</div>}
+                    {companyProfile.notes && <div style={{ fontSize: 10, color: '#334155', marginTop: 4, fontStyle: 'italic' }}>{companyProfile.notes.slice(0, 100)}</div>}
+                    <button className="btn bg" style={{ fontSize: 9, marginTop: 8, padding: '2px 8px' }} onClick={() => setCompanyProfile(null)}>✕ Clear</button>
+                  </div>
+                ) : (
+                  <div style={{ padding: '20px 14px', background: '#070c18', borderRadius: 8, border: '1px dashed #1a2d45', textAlign: 'center', cursor: 'pointer' }} onClick={() => setShowPM(true)}>
+                    <div style={{ fontSize: 20, marginBottom: 6 }}>🏢</div>
+                    <div style={{ fontSize: 11, color: '#3d5a7a' }}>Select a company profile</div>
+                    <div style={{ fontSize: 9, color: '#1e3a5f', marginTop: 3 }}>Tailors the output to this company's context, SAP landscape & budget</div>
+                  </div>
+                )}
+                <div style={{ fontSize: 10, color: '#1e3a5f', marginTop: 8 }}>
+                  Company profiles pre-fill client details and help AI generate more targeted, relevant documents
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <CompanyProfileModal open={showProfileModal} onClose={() => setShowPM(false)} onSelect={p => { setCompanyProfile(p); }} />
+    </>
+  );
+}
+
+
 function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
   const topClient = clients?.[0]?.name || "";
+  const [docData, setDocData]             = useState(null);
+  const [companyProfile, setCompanyProf]  = useState(null);
+  const [analyzing, setAnalyzing]         = useState(false);
   const [form, setForm] = useState({
     client: "", project: "",
     scope: "Implement SAP BRIM billing engine, configure rate plans, and integrate with existing systems.",
@@ -21751,14 +22063,49 @@ function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
 
   const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
 
+  // Auto-fill form from uploaded document
+  const analyzeDoc = async () => {
+    if (!docData) return;
+    setAnalyzing(true);
+    try {
+      let extracted = "";
+      const system = "You are a document analyst. Extract key project information and return ONLY valid JSON.";
+      const prompt = `Extract project details from this document and return JSON:
+{"client":"","project":"","scope":"","deliverables":"","timeline":"","budget":"","consultants":"","assumptions":""}`;
+      await callClaudeWithDoc(system, prompt, docData, txt => { extracted += txt; }, 800);
+      const parsed = JSON.parse(extracted.replace(/```json|```/g,'').trim());
+      setForm(f => ({
+        ...f,
+        client:      parsed.client      || (companyProfile?.name) || f.client,
+        project:     parsed.project     || f.project,
+        scope:       parsed.scope       || f.scope,
+        deliverables:parsed.deliverables|| f.deliverables,
+        timeline:    parsed.timeline    || f.timeline,
+        budget:      parsed.budget?.replace(/[$,]/g,'') || f.budget,
+        consultants: parsed.consultants || f.consultants,
+        assumptions: parsed.assumptions || f.assumptions,
+      }));
+      if (companyProfile && !form.client) setForm(f => ({...f, client: companyProfile.name}));
+    } catch(e) { console.error('Doc analysis failed:', e); }
+    setAnalyzing(false);
+  };
+
   const generate = async () => {
     if (!form.client || !form.project || !form.scope) {
       setValidErr("Please fill in Client Name, Project Name, and Scope of Work.");
       return;
     }
     setValidErr(""); setLoading(true); setOutput("");
-    const system = `You are a professional IT consulting contract writer for Ziksatech, a SAP consulting firm. 
-Write formal, detailed Statements of Work. Use professional language. Include all standard SOW sections.
+    const cpCtx = companyProfile ? `
+Company Context:
+- Industry: ${companyProfile.industry}
+- Size: ${companyProfile.size}
+- SAP Landscape: ${companyProfile.sapLandscape}
+- Budget range: ${companyProfile.budget}
+- Notes: ${companyProfile.notes}
+` : "";
+    const system = `You are a professional IT consulting contract writer for Ziksatech, a WBE/HUB/WOSB certified SAP consulting firm. 
+Write formal, detailed Statements of Work tailored to the specific client. Use professional language. Include all standard SOW sections.
 Format with clear headers using ## for sections. Be specific and detailed.`;
     const prompt = `Write a complete Statement of Work for:
 Client: ${form.client}
@@ -21770,11 +22117,15 @@ Budget: ${form.budget ? "$"+form.budget : "TBD"}
 Consultants: ${form.consultants}
 Payment Terms: ${form.paymentTerms}
 Assumptions: ${form.assumptions}
-
+${cpCtx}
 Include: Executive Summary, Project Scope, Deliverables, Timeline & Milestones, 
 Resource Requirements, Pricing & Payment, Assumptions & Dependencies, 
 Change Management Process, Acceptance Criteria, Signatures section.`;
-    await callClaude(system, prompt, txt => setOutput(txt));
+    if (docData) {
+      await callClaudeWithDoc(system, prompt, docData, txt => setOutput(p => p + txt), 3000);
+    } else {
+      await callClaude(system, prompt, txt => setOutput(txt));
+    }
     setLoading(false);
   };
   const [showPreview, setShowPreview] = useState(false);
@@ -21788,6 +22139,11 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
   const copyOutput = () => { navigator.clipboard.writeText(output); };
 
   return (
+      <DocUploadPanel
+        docData={docData} setDocData={setDocData}
+        companyProfile={companyProfile} setCompanyProfile={setCompanyProf}
+        onAnalyze={analyzeDoc} analyzing={analyzing}
+        label="Upload Client Document (requirements, project brief, existing SOW)"/>
     <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:20,alignItems:"start"}}>
       <div>
         <PH title="SOW Generator" sub="AI-powered Statement of Work"/>
@@ -23376,6 +23732,7 @@ function SOPLibrary({ roster, finInvoices, finPayments, apInvoices, crmDeals, cr
 
 function RFPGenerator({ clients, roster }) {
   const [mode, setMode]         = useState("respond");   // "respond" | "create"
+  const [companyProfile, setCompanyProf] = useState(null);
 
   // ── RESPOND MODE state ────────────────────────────────────────────────────
   const [rfpText, setRfpText]   = useState("");
@@ -23395,6 +23752,7 @@ function RFPGenerator({ clients, roster }) {
   const [respLoading, setRespLoading] = useState(false);
   const [rfpAnalysis, setRfpAnalysis] = useState(null);
   const [analyzing, setAnalyzing]     = useState(false);
+  const [showCPModal, setShowCPModal] = useState(false);
 
   // ── CREATE MODE state ─────────────────────────────────────────────────────
   const [form, setForm] = useState({
@@ -23438,6 +23796,15 @@ Return JSON: {"title":"string","issuingOrg":"string","dueDate":"string","contrac
     setRespLoading(true); setRespOutput("");
 
     const consultants = (roster||[]).slice(0,6).map(r=>`${r.name} (${r.role||"SAP Consultant"}, ${r.billRate||120}/hr)`).join(", ");
+    const cpCtx = companyProfile ? `
+Prospect Company Context:
+- Company: ${companyProfile.name}
+- Industry: ${companyProfile.industry} | Size: ${companyProfile.size} | HQ: ${companyProfile.hq}
+- SAP Landscape: ${companyProfile.sapLandscape}
+- Budget Range: ${companyProfile.budget}
+- Key Contacts: ${companyProfile.contacts}
+- Notes: ${companyProfile.notes}
+` : "";
     const clientList  = (clients||[]).slice(0,5).map(c=>c.name).join(", ");
     const analysisCtx = rfpAnalysis ? `
 RFP Analysis Summary:
@@ -23465,6 +23832,7 @@ Ziksatech Proposed Details:
 - WBE Certified: ${respForm.wbeAngle ? "YES — highlight prominently" : "mention briefly"}
 - HUB Certified: ${respForm.hubAngle ? "YES — highlight as competitive advantage" : "mention briefly"}
 - Special Emphasis: ${respForm.emphasis || "SAP expertise, delivery track record, diversity supplier value"}
+${cpCtx}
 
 Write a COMPLETE response including:
 ## Executive Summary
@@ -23512,6 +23880,7 @@ Include: Introduction, Project Overview, Scope, Technical Requirements, Vendor Q
   // ── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <div>
+      <CompanyProfileModal open={showCPModal} onClose={()=>setShowCPModal(false)} onSelect={p=>{setCompanyProf(p);}}/>
       <PH title="RFP Generator & Responder" sub="Respond to client RFPs · Create new RFPs · AI-powered · WBE/HUB certified angle"/>
 
       {/* Mode Toggle */}
@@ -23596,6 +23965,26 @@ Include: Introduction, Project Overview, Scope, Technical Requirements, Vendor Q
               <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>
                 <span style={{background:"#0369a1",color:"#fff",borderRadius:"50%",padding:"1px 7px",fontSize:10,marginRight:6}}>2</span>
                 Configure Response
+              </div>
+              {/* Company Profile Selector */}
+              <div style={{marginBottom:12}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div className="lbl" style={{margin:0}}>Company Profile (optional)</div>
+                  <button className="btn bg" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>setShowCPModal(true)}>
+                    {companyProfile?"✏️ Change":"+ Add"}
+                  </button>
+                </div>
+                {companyProfile ? (
+                  <div style={{padding:"8px 12px",background:"#0a1a2e",borderRadius:8,border:"1px solid #0369a133",fontSize:11}}>
+                    <span style={{color:"#38bdf8",fontWeight:700}}>{companyProfile.name}</span>
+                    <span style={{color:"#3d5a7a"}}> · {companyProfile.industry} · {companyProfile.budget}</span>
+                    <button className="btn bg" style={{fontSize:9,padding:"1px 6px",marginLeft:8}} onClick={()=>setCompanyProf(null)}>✕</button>
+                  </div>
+                ) : (
+                  <div style={{fontSize:10,color:"#1e3a5f",padding:"6px 8px",background:"#070c18",borderRadius:6,border:"1px dashed #1a2d45"}}>
+                    Add a company profile to tailor the response to their SAP landscape and requirements
+                  </div>
+                )}
               </div>
               <div style={{marginBottom:10}}>
                 <div className="lbl">Bid Decision</div>
@@ -23921,6 +24310,9 @@ Prepared by Naxon Systems | GridMind™ AI Operations Platform`;
 
 
 function ResourcePlanAI({ roster, clients, projects, crmDeals }) {
+  const [docData, setDocData]             = useState(null);
+  const [companyProfile, setCompanyProf]  = useState(null);
+  const [analyzing, setAnalyzing]         = useState(false);
   const [form, setForm] = useState({
     project:"SAP S/4HANA Migration", duration:"9 months", skills:"SAP ABAP, BRIM, Finance module, integration", headcount:"4", budget:"800000",
     startDate:"", priority:"high", notes:"Client prefers FTE consultants with SAP certification"
@@ -23934,9 +24326,39 @@ function ResourcePlanAI({ roster, clients, projects, crmDeals }) {
   const teamSnapshot = (roster||[]).slice(0,8).map(r=>`${r.name} (${r.type}, util:${Math.round((r.util||0)*100)}%, client:${r.client||"available"})`).join('\n');
   const openDeals = (crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage)).map(d=>`${d.name} ($${(d.value||0).toLocaleString()})`).join(', ');
 
+  // Auto-fill from doc
+  const analyzeDoc = async () => {
+    if (!docData) return;
+    setAnalyzing(true);
+    try {
+      let extracted = "";
+      await callClaudeWithDoc(
+        "Extract project resource requirements and return only JSON.",
+        'Return JSON: {"project":"","duration":"","skills":"","headcount":"","budget":"","notes":""}',
+        docData, txt => { extracted += txt; }, 600
+      );
+      const p = JSON.parse(extracted.replace(/```json|```/g,'').trim());
+      setForm(f => ({ ...f,
+        project:   p.project   || (companyProfile?.name ? companyProfile.name+' SAP Project' : f.project),
+        duration:  p.duration  || f.duration,
+        skills:    p.skills    || f.skills,
+        headcount: p.headcount || f.headcount,
+        budget:    p.budget?.replace(/[$,]/g,'') || f.budget,
+        notes:     p.notes     || f.notes,
+      }));
+    } catch(e) { console.error(e); }
+    setAnalyzing(false);
+  };
+
   const generate = async () => {
     setLoading(true); setOutput("");
+    const cpCtx = companyProfile ? `
+Client Context: ${companyProfile.name} | ${companyProfile.industry} | SAP: ${companyProfile.sapLandscape} | Budget: ${companyProfile.budget}` : "";
     const system = `You are a resource planning expert for Ziksatech, an SAP consulting firm.
+Analyze the team roster and requirements to create detailed resource allocation plans.
+Be specific about consultant recommendations, capacity analysis, and risk factors.
+Format with ## headers. Include timeline, staffing plan, and recommendations.`;
+, an SAP consulting firm.
 Analyze the team roster and requirements to create detailed resource allocation plans.
 Be specific about consultant recommendations, capacity analysis, and risk factors.
 Format with ## headers. Include timeline, staffing plan, and recommendations.`;
@@ -23965,6 +24387,11 @@ Timeline & Ramp-up Plan, Risk Factors, Cost Estimate, Recommendations.`;
 
   };
   return (
+      <DocUploadPanel
+        docData={docData} setDocData={setDocData}
+        companyProfile={companyProfile} setCompanyProfile={setCompanyProf}
+        onAnalyze={analyzeDoc} analyzing={analyzing}
+        label="Upload Project Brief, RFP, or Statement of Work"/>
     <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
       <div>
         <PH title="Resource Planner AI" sub="Intelligent resource allocation from your team"/>
