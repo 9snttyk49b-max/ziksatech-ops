@@ -20429,250 +20429,114 @@ function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile,
 
 // ─── WIDGET LIBRARY ──────────────────────────────────────────────────────────
 const WIDGET_LIBRARY = [
-  {
-    id: "cash_flow", icon: "💰", label: "Cash Flow Snapshot",
-    desc: "Income vs expenses this month",
-    render: ({ finInvoices, candidates }) => {
-      const collected = 279520; // from payments
-      const expenses = 1449;
-      const net = collected - expenses;
-      return (
-        <div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
-            {[{l:"Collected",v:fmt(collected),c:"#34d399"},{l:"Expenses",v:fmt(expenses),c:"#f87171"},
-              {l:"Net",v:fmt(net),c:net>0?"#34d399":"#f87171"},{l:"Outstanding",v:fmt(166667),c:"#f59e0b"}]
-              .map(s=>(
-              <div key={s.l} style={{background:"#040810",borderRadius:6,padding:"8px 10px"}}>
-                <div style={{fontSize:16,fontWeight:800,color:s.c,fontFamily:"monospace"}}>{s.v}</div>
-                <div style={{fontSize:9,color:"#334155",marginTop:1,textTransform:"uppercase"}}>{s.l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-  },
-  {
-    id: "hiring_pipeline", icon: "🎯", label: "Hiring Pipeline",
-    desc: "Open roles and candidate status",
-    render: ({ candidates, setTab }) => {
-      const stages = ["applied","screening","interview","offer","hired"];
-      const counts = stages.reduce((acc,s)=>{
-        acc[s]=(candidates||[]).filter(c=>c.stage===s).length; return acc;
-      },{});
-      return (
-        <div>
-          <div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {stages.map(s=>(
-              <div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{fontSize:10,color:"#64748b",width:65,textTransform:"capitalize"}}>{s}</div>
-                <div style={{flex:1,background:"#0a1120",borderRadius:4,height:6,overflow:"hidden"}}>
-                  <div style={{height:"100%",background:"#0369a1",
-                    width:`${Math.min(100,(counts[s]||0)*20)}%`,borderRadius:4}}/>
-                </div>
-                <div style={{fontSize:11,color:"#38bdf8",fontWeight:700,width:16,textAlign:"right"}}>
-                  {counts[s]||0}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{marginTop:8,fontSize:10,color:"#334155"}}>
-            {(candidates||[]).length} total candidates
-          </div>
-        </div>
-      );
-    }
-  },
-  {
-    id: "pto_summary", icon: "🌴", label: "PTO Summary",
-    desc: "Pending and approved time off",
-    render: ({ ptoRequests, roster }) => {
-      const pending = (ptoRequests||[]).filter(p=>p.status==="pending").length;
-      const approved = (ptoRequests||[]).filter(p=>p.status==="approved").length;
-      const upcoming = (ptoRequests||[]).filter(p=>p.status==="approved" && p.startDate >= new Date().toISOString().slice(0,10)).slice(0,3);
-      return (
-        <div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
-            {[{l:"Pending",v:pending,c:"#f59e0b"},{l:"Approved",v:approved,c:"#34d399"}].map(s=>(
-              <div key={s.l} style={{background:"#040810",borderRadius:6,padding:"8px 10px",textAlign:"center"}}>
-                <div style={{fontSize:22,fontWeight:900,color:s.c}}>{s.v}</div>
-                <div style={{fontSize:9,color:"#334155",textTransform:"uppercase"}}>{s.l}</div>
-              </div>
-            ))}
-          </div>
-          {upcoming.map(p=>(
-            <div key={p.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",
-              borderBottom:"1px solid #0a1828",fontSize:11}}>
-              <span style={{color:"#94a3b8"}}>{p.memberName||p.memberId}</span>
-              <span style={{color:"#64748b"}}>{p.startDate}</span>
+  { id:"cash_flow", icon:"💰", label:"Cash Flow", desc:"30-day in vs out",
+    render:({finPayments,finExpenses}) => {
+      const now=new Date(),l30=new Date(now-30*86400000);
+      const inflow=(finPayments||[]).filter(p=>new Date(p.date||0)>=l30).reduce((s,p)=>s+(+p.amount||0),0);
+      const outflow=(finExpenses||[]).filter(e=>new Date(e.date||0)>=l30&&e.status==="approved").reduce((s,e)=>s+(+e.amount||0),0);
+      return <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+        {[{l:"In",v:fmt(inflow),c:"#34d399"},{l:"Out",v:fmt(outflow),c:"#f87171"},
+          {l:"Net",v:fmt(inflow-outflow),c:inflow>=outflow?"#34d399":"#f87171"},{l:"30d",v:"period",c:"#64748b"}]
+          .map(s=><div key={s.l} style={{background:"#040810",borderRadius:6,padding:"8px",textAlign:"center"}}>
+            <div style={{fontSize:14,fontWeight:800,color:s.c,fontFamily:"monospace"}}>{s.v}</div>
+            <div style={{fontSize:9,color:"#334155",textTransform:"uppercase"}}>{s.l}</div>
+          </div>)}
+      </div>;
+    }},
+  { id:"hiring", icon:"🎯", label:"Hiring Pipeline", desc:"Candidates by stage",
+    render:({candidates}) => {
+      const stages=["applied","screening","interview","offer","hired"];
+      return <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {stages.map(s=>{const n=(candidates||[]).filter(c=>c.stage===s).length;return(
+          <div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{fontSize:10,color:"#64748b",width:60,textTransform:"capitalize"}}>{s}</div>
+            <div style={{flex:1,background:"#0a1120",borderRadius:4,height:5}}>
+              <div style={{height:"100%",background:"#0369a1",width:`${Math.min(100,n*25)}%`,borderRadius:4}}/>
             </div>
-          ))}
-          {upcoming.length===0&&<div style={{color:"#334155",fontSize:11,textAlign:"center",paddingTop:4}}>No upcoming PTO</div>}
-        </div>
-      );
-    }
-  },
-  {
-    id: "revenue_by_client", icon: "📊", label: "Revenue by Client",
-    desc: "Top 5 clients by annual value",
-    render: ({ clients }) => {
-      const top = [...(clients||[])].sort((a,b)=>(b.annualRev||0)-(a.annualRev||0)).slice(0,5);
-      const max = top[0]?.annualRev||1;
-      return (
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {top.map(c=>(
-            <div key={c.id} style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{fontSize:10,color:"#64748b",width:70,overflow:"hidden",textOverflow:"ellipsis",
-                whiteSpace:"nowrap"}}>{c.name}</div>
-              <div style={{flex:1,background:"#0a1120",borderRadius:4,height:6,overflow:"hidden"}}>
-                <div style={{height:"100%",background:"linear-gradient(90deg,#0369a1,#38bdf8)",
-                  width:`${Math.round((c.annualRev||0)/max*100)}%`,borderRadius:4}}/>
-              </div>
-              <div style={{fontSize:10,color:"#38bdf8",width:60,textAlign:"right",fontFamily:"monospace"}}>
-                {fmt(c.annualRev||0)}
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-  },
-  {
-    id: "consultant_util", icon: "⚡", label: "Utilization Board",
-    desc: "Consultant utilization at a glance",
-    render: ({ roster }) => {
-      const rr = (roster||[]).slice(0,6);
-      return (
-        <div style={{display:"flex",flexDirection:"column",gap:5}}>
-          {rr.map(r=>{
-            const util = Math.round((r.util||0)*100);
-            const color = util>=90?"#34d399":util>=70?"#f59e0b":"#f87171";
-            return (
-              <div key={r.id} style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{fontSize:10,color:"#64748b",width:70,overflow:"hidden",
-                  textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name?.split(" ")[0]}</div>
-                <div style={{flex:1,background:"#0a1120",borderRadius:4,height:6,overflow:"hidden"}}>
-                  <div style={{height:"100%",background:color,width:`${util}%`,borderRadius:4}}/>
-                </div>
-                <div style={{fontSize:11,fontWeight:700,color,width:32,textAlign:"right"}}>{util}%</div>
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-  },
-  {
-    id: "compliance_countdown", icon: "🛡️", label: "Compliance Countdown",
-    desc: "Visa/work auth expiring soon",
-    render: ({ roster }) => {
-      // Simulate compliance items from roster
-      const items = [
-        {name:"Kiran Patel",type:"H-1B",days:21},
-        {name:"Arun Sharma",type:"H-1B",days:34},
-        {name:"Priya Nair",type:"H-1B",days:50},
-      ];
-      return (
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {items.map((item,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-              padding:"6px 8px",background:"#040810",borderRadius:6,
-              border:`1px solid ${item.days<30?"#7f1d1d":item.days<60?"#78350f":"#1a2d45"}`}}>
-              <div>
-                <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{item.name}</div>
-                <div style={{fontSize:9,color:"#64748b"}}>{item.type}</div>
-              </div>
-              <div style={{fontSize:13,fontWeight:800,
-                color:item.days<30?"#f87171":item.days<60?"#f59e0b":"#34d399"}}>
-                {item.days}d
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-  },
-  {
-    id: "pipeline_funnel", icon: "🏆", label: "Deal Stages",
-    desc: "CRM pipeline by stage",
-    render: ({ crmDeals }) => {
-      const stageMap = {};
-      (crmDeals||[]).forEach(d=>{ stageMap[d.stage]=(stageMap[d.stage]||0)+1; });
-      const stages = Object.entries(stageMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
-      const maxCount = stages[0]?.[1]||1;
-      return (
-        <div style={{display:"flex",flexDirection:"column",gap:5}}>
-          {stages.map(([stage,count])=>(
-            <div key={stage} style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{fontSize:10,color:"#64748b",width:80,overflow:"hidden",
-                textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize"}}>
-                {stage.replace(/_/g," ")}
-              </div>
-              <div style={{flex:1,background:"#0a1120",borderRadius:4,height:6,overflow:"hidden"}}>
-                <div style={{height:"100%",background:"linear-gradient(90deg,#7c3aed,#a78bfa)",
-                  width:`${Math.round(count/maxCount*100)}%`,borderRadius:4}}/>
-              </div>
-              <div style={{fontSize:11,color:"#a78bfa",fontWeight:700,width:16,textAlign:"right"}}>{count}</div>
-            </div>
-          ))}
-          {stages.length===0&&<div style={{color:"#334155",fontSize:11,textAlign:"center",padding:8}}>No deals</div>}
-        </div>
-      );
-    }
-  },
-  {
-    id: "quick_notes", icon: "📝", label: "Quick Notes",
-    desc: "Sticky notes for the team",
-    render: () => {
-      const [notes, setNotes] = React.useState(()=>{
-        try{return JSON.parse(localStorage.getItem("zt-widget-notes")||"[]");}catch{return [];}
-      });
-      const [input, setInput] = React.useState("");
-      const save = () => {
-        if(!input.trim()) return;
-        const n = [...notes,{id:Date.now(),text:input.trim(),ts:new Date().toLocaleDateString()}];
-        setNotes(n); localStorage.setItem("zt-widget-notes",JSON.stringify(n));
-        setInput("");
-      };
-      return (
-        <div>
-          <div style={{display:"flex",gap:6,marginBottom:8}}>
-            <input value={input} onChange={e=>setInput(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&save()}
-              className="inp" placeholder="Add note..." style={{flex:1,fontSize:11,padding:"5px 8px"}}/>
-            <button onClick={save} style={{background:"#0369a1",border:"none",borderRadius:6,
-              color:"#fff",fontSize:11,padding:"5px 10px",cursor:"pointer"}}>+</button>
+            <div style={{fontSize:11,color:"#38bdf8",fontWeight:700,width:16,textAlign:"right"}}>{n}</div>
           </div>
-          <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:100,overflowY:"auto"}}>
-            {notes.slice(-4).reverse().map(n=>(
-              <div key={n.id} style={{display:"flex",alignItems:"flex-start",gap:6,fontSize:11}}>
-                <div style={{flex:1,color:"#94a3b8"}}>{n.text}</div>
-                <button onClick={()=>{const nn=notes.filter(x=>x.id!==n.id);setNotes(nn);
-                  localStorage.setItem("zt-widget-notes",JSON.stringify(nn));}}
-                  style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:10}}>✕</button>
-              </div>
-            ))}
-            {notes.length===0&&<div style={{color:"#334155",fontSize:11,textAlign:"center"}}>No notes yet</div>}
+        );})}
+        <div style={{fontSize:10,color:"#334155",marginTop:2}}>{(candidates||[]).length} total</div>
+      </div>;
+    }},
+  { id:"rev_client", icon:"📊", label:"Revenue by Client", desc:"Top clients by value",
+    render:({clients}) => {
+      const top=[...(clients||[])].sort((a,b)=>(b.annualRev||0)-(a.annualRev||0)).slice(0,5);
+      const mx=top[0]?.annualRev||1;
+      return <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {top.map(c=><div key={c.id||c.name} style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{fontSize:10,color:"#64748b",width:65,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+          <div style={{flex:1,background:"#0a1120",borderRadius:4,height:5}}>
+            <div style={{height:"100%",background:"linear-gradient(90deg,#0369a1,#38bdf8)",width:`${Math.round((c.annualRev||0)/mx*100)}%`,borderRadius:4}}/>
           </div>
+          <div style={{fontSize:10,color:"#38bdf8",width:55,textAlign:"right",fontFamily:"monospace"}}>{fmt(c.annualRev||0)}</div>
+        </div>)}
+      </div>;
+    }},
+  { id:"util", icon:"⚡", label:"Utilization", desc:"Consultant util at a glance",
+    render:({roster}) => <div style={{display:"flex",flexDirection:"column",gap:5}}>
+      {(roster||[]).slice(0,6).map(r=>{
+        const u=Math.round((r.util||0)*100),col=u>=90?"#34d399":u>=70?"#f59e0b":"#f87171";
+        return <div key={r.id} style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{fontSize:10,color:"#64748b",width:65,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name?.split(" ")[0]}</div>
+          <div style={{flex:1,background:"#0a1120",borderRadius:4,height:5}}>
+            <div style={{height:"100%",background:col,width:`${u}%`,borderRadius:4}}/>
+          </div>
+          <div style={{fontSize:11,fontWeight:700,color:col,width:30,textAlign:"right"}}>{u}%</div>
+        </div>;
+      })}
+    </div>},
+  { id:"deals", icon:"🏆", label:"Deal Stages", desc:"CRM pipeline funnel",
+    render:({crmDeals}) => {
+      const sm={};(crmDeals||[]).forEach(d=>{sm[d.stage]=(sm[d.stage]||0)+1;});
+      const stages=Object.entries(sm).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const mx=stages[0]?.[1]||1;
+      return stages.length ? <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {stages.map(([s,n])=><div key={s} style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{fontSize:10,color:"#64748b",width:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textTransform:"capitalize"}}>{s.replace(/_/g," ")}</div>
+          <div style={{flex:1,background:"#0a1120",borderRadius:4,height:5}}>
+            <div style={{height:"100%",background:"linear-gradient(90deg,#7c3aed,#a78bfa)",width:`${Math.round(n/mx*100)}%`,borderRadius:4}}/>
+          </div>
+          <div style={{fontSize:11,color:"#a78bfa",fontWeight:700,width:16,textAlign:"right"}}>{n}</div>
+        </div>)}
+      </div> : <div style={{color:"#334155",fontSize:11,textAlign:"center",padding:8}}>No deals</div>;
+    }},
+  { id:"notes", icon:"📝", label:"Quick Notes", desc:"Personal sticky notes",
+    render:() => {
+      const [notes,setNotes]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("zt-wn")||"[]");}catch{return [];}});
+      const [inp,setInp]=React.useState("");
+      const add=()=>{if(!inp.trim())return;const n=[...notes,{id:Date.now(),t:inp.trim()}];setNotes(n);localStorage.setItem("zt-wn",JSON.stringify(n));setInp("");};
+      return <div>
+        <div style={{display:"flex",gap:6,marginBottom:8}}>
+          <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()}
+            className="inp" placeholder="Add note..." style={{flex:1,fontSize:11,padding:"5px 8px"}}/>
+          <button onClick={add} style={{background:"#0369a1",border:"none",borderRadius:6,color:"#fff",fontSize:11,padding:"5px 10px",cursor:"pointer"}}>+</button>
         </div>
-      );
-    }
-  },
+        <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:90,overflowY:"auto"}}>
+          {notes.slice(-4).reverse().map(n=><div key={n.id} style={{display:"flex",gap:6,fontSize:11}}>
+            <div style={{flex:1,color:"#94a3b8"}}>{n.t}</div>
+            <button onClick={()=>{const nn=notes.filter(x=>x.id!==n.id);setNotes(nn);localStorage.setItem("zt-wn",JSON.stringify(nn));}} style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:10}}>✕</button>
+          </div>)}
+          {!notes.length&&<div style={{color:"#334155",fontSize:11,textAlign:"center"}}>No notes yet</div>}
+        </div>
+      </div>;
+    }},
 ];
+
 function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
   dismissedAlerts, setDismissedAlerts }) {
 
   const [weather, setWeather]   = useState(null);
+  const [activeWidgets, setActiveWidgets] = useState(()=>{
+    try{return JSON.parse(localStorage.getItem("zt-widgets")||JSON.stringify(["cash_flow","hiring","rev_client","util","deals","notes"]));}
+    catch{return ["cash_flow","hiring","rev_client","util","deals","notes"];}
+  });
+  const [widgetLibOpen, setWidgetLibOpen] = useState(false);
+  useEffect(()=>{localStorage.setItem("zt-widgets",JSON.stringify(activeWidgets));},[activeWidgets]);
   const [todos,   setTodos]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch(e) { return []; } });
   const [newTodo, setNewTodo]   = useState("");
   const [clock,   setClock]     = useState(new Date());
-  const [activeWidgets, setActiveWidgets] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("zt-widgets") || JSON.stringify(["cash_flow","hiring_pipeline","consultant_util","compliance_countdown","revenue_by_client","pipeline_funnel"])); }
-    catch { return ["cash_flow","hiring_pipeline","consultant_util","compliance_countdown","revenue_by_client","pipeline_funnel"]; }
-  });
-  const [widgetLibOpen, setWidgetLibOpen] = useState(false);
-  useEffect(() => { localStorage.setItem("zt-widgets", JSON.stringify(activeWidgets)); }, [activeWidgets]);
 
   useEffect(() => { const t = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(t); }, []);
 
@@ -20751,171 +20615,6 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
           {clock.toLocaleTimeString("en-US", { hour:"2-digit", minute:"2-digit", second:"2-digit" })}
         </div>
       </div>
-
-      {/* ── WIDGET BAR ──────────────────────────────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12, marginBottom:14 }}>
-
-        {/* Weather Widget */}
-        <div style={{ background:"linear-gradient(135deg,#0c1e3d,#0a1829)", border:"1px solid #1e3a5f", borderRadius:12, padding:"14px 16px", minHeight:90 }}>
-          <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>🌤 Weather — Plano TX</div>
-          {!weather
-            ? <div style={{ color:"#334155", fontSize:12 }}>Loading…</div>
-            : <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                <div>
-                  <div style={{ fontSize:32, fontWeight:800, color:"#e2e8f0", lineHeight:1 }}>{weather.temp}°</div>
-                  <div style={{ fontSize:12, color:"#7dd3fc", marginTop:4 }}>{weather.condition}</div>
-                </div>
-                <div style={{ display:"flex", flexDirection:"column", gap:4, fontSize:11, color:"#475569", textAlign:"right" }}>
-                  <span>💧 {weather.humidity}%</span>
-                  <span>💨 {weather.wind} mph</span>
-                </div>
-              </div>
-          }
-        </div>
-
-        {/* To-Do Widget */}
-        <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>
-            ✅ My Tasks
-            {todos.filter(t=>!t.done).length > 0 && <span style={{ marginLeft:6, background:"#0369a1", color:"#fff", borderRadius:10, padding:"1px 6px", fontSize:9 }}>{todos.filter(t=>!t.done).length}</span>}
-          </div>
-          <div style={{ display:"flex", gap:6, marginBottom:6 }}>
-            <input className="inp" value={newTodo} onChange={e=>setNewTodo(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTodo()} placeholder="Add task…" style={{ flex:1, fontSize:11, padding:"5px 8px" }}/>
-            <button onClick={addTodo} style={{ background:"#0369a1", border:"none", borderRadius:6, color:"#fff", padding:"5px 10px", fontSize:11, cursor:"pointer", flexShrink:0 }}>+</button>
-          </div>
-          <div style={{ maxHeight:48, overflowY:"auto", display:"flex", flexDirection:"column", gap:3 }}>
-            {todos.length===0 && <div style={{ color:"#334155", fontSize:11, textAlign:"center" }}>No tasks yet</div>}
-            {todos.slice(0,3).map(t=>(
-              <div key={t.id} style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <input type="checkbox" checked={t.done} onChange={()=>toggleTodo(t.id)} style={{ accentColor:"#0369a1", cursor:"pointer" }}/>
-                <span style={{ flex:1, fontSize:11, color:t.done?"#334155":"#94a3b8", textDecoration:t.done?"line-through":"none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.text}</span>
-                <button onClick={()=>deleteTodo(t.id)} style={{ background:"none", border:"none", color:"#334155", cursor:"pointer", fontSize:11, padding:0 }}>×</button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Upcoming PTO Widget */}
-        <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>📅 Upcoming PTO</div>
-          {(ptoRequests||[]).filter(p=>p.status==="approved"&&new Date(p.startDate)>=new Date()).sort((a,b)=>new Date(a.startDate)-new Date(b.startDate)).slice(0,3).length===0
-            ? <div style={{ color:"#334155", fontSize:11, textAlign:"center", paddingTop:12 }}>No upcoming PTO</div>
-            : (ptoRequests||[]).filter(p=>p.status==="approved"&&new Date(p.startDate)>=new Date()).sort((a,b)=>new Date(a.startDate)-new Date(b.startDate)).slice(0,3).map(p=>{
-                const member = (roster||[]).find(r=>r.id===p.memberId);
-                const days = Math.ceil((new Date(p.endDate)-new Date(p.startDate))/(1000*60*60*24))+1;
-                return (
-                  <div key={p.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5, fontSize:11 }}>
-                    <span style={{ color:"#94a3b8" }}>{member?.name?.split(" ")[0]||"TBD"}</span>
-                    <span style={{ color:"#7dd3fc" }}>{fmtDate(p.startDate)}</span>
-                    <span style={{ color:"#475569" }}>{days}d</span>
-                  </div>
-                );
-              })
-          }
-        </div>
-
-        {/* Quick Actions Widget */}
-        <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>⚡ Quick Actions</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5 }}>
-            {[{i:"🧾",l:"Invoices",t:"finance"},{i:"📊",l:"Reports",t:"reportbuilder"},{i:"👥",l:"Roster",t:"roster"},{i:"🤝",l:"Deals",t:"crm"},{i:"⏱",l:"Timesheets",t:"timesheet"},{i:"📋",l:"SOW",t:"sowgen"}].map(q=>(
-              <button key={q.t} onClick={()=>setTab(q.t)}
-                style={{ background:"#0a1120", border:"1px solid #1a2d45", borderRadius:7, color:"#64748b", fontSize:11, padding:"6px 8px", cursor:"pointer", textAlign:"left" }}
-                onMouseEnter={e=>{e.currentTarget.style.background="#0f1e30";e.currentTarget.style.color="#38bdf8";}}
-                onMouseLeave={e=>{e.currentTarget.style.background="#0a1120";e.currentTarget.style.color="#64748b";}}>
-                {q.i} {q.l}
-              </button>
-            ))}
-          </div>
-        </div>
-
-      {/* ── WIDGET ROW 2 ─────────────────────────────────────────────── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:14 }}>
-
-        {/* Cash Flow Widget — 30-day in vs out */}
-        {(() => {
-          const now = new Date();
-          const last30 = new Date(now - 30*86400000);
-          const recentPmts = (finPayments||[]).filter(p=>new Date(p.date)>=last30);
-          const recentExp  = (finExpenses||[]).filter(e=>new Date(e.date)>=last30 && e.status==="approved");
-          const inflow  = recentPmts.reduce((s,p)=>s+(+p.amount||0),0);
-          const outflow = recentExp.reduce((s,e)=>s+(+e.amount||0),0);
-          const net = inflow - outflow;
-          return (
-            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
-                💵 Cash Flow — Last 30 Days
-              </div>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                <div>
-                  <div style={{ fontSize:10, color:"#334155" }}>IN</div>
-                  <div style={{ fontSize:15, fontWeight:700, color:"#34d399" }}>{fmt(inflow)}</div>
-                </div>
-                <div style={{ textAlign:"right" }}>
-                  <div style={{ fontSize:10, color:"#334155" }}>OUT</div>
-                  <div style={{ fontSize:15, fontWeight:700, color:"#f87171" }}>{fmt(outflow)}</div>
-                </div>
-              </div>
-              <div style={{ borderTop:"1px solid #1a2d45", paddingTop:6, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontSize:10, color:"#475569" }}>NET</span>
-                <span style={{ fontSize:16, fontWeight:800, color:net>=0?"#34d399":"#f87171" }}>{net>=0?"+":""}{fmt(net)}</span>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Top Earner Widget */}
-        {(() => {
-          const sorted = [...(roster||[])].sort((a,b)=>(b.billRate||0)*((b.util||0))-(a.billRate||0)*((a.util||0)));
-          const top3 = sorted.slice(0,3);
-          return (
-            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
-                🏆 Top Billers
-              </div>
-              {top3.map((r,i)=>(
-                <div key={r.id} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:i<2?6:0 }}>
-                  <span style={{ fontSize:11, color:i===0?"#f59e0b":i===1?"#94a3b8":"#cd7c54", fontWeight:700, width:14 }}>{i===0?"🥇":i===1?"🥈":"🥉"}</span>
-                  <span style={{ flex:1, fontSize:11, color:"#cbd5e1", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.name?.split(" ")[0]}</span>
-                  <span style={{ fontSize:11, fontWeight:700, color:"#38bdf8" }}>{fmt((r.billRate||0)*(r.util||0)*1920)}</span>
-                </div>
-              ))}
-              {top3.length===0 && <div style={{ color:"#334155", fontSize:11 }}>No data</div>}
-            </div>
-          );
-        })()}
-
-        {/* Upcoming Renewals Widget */}
-        {(() => {
-          const now = new Date();
-          const in90 = new Date(now.getTime() + 90*86400000);
-          const renewals = (clients||[])
-            .filter(c => c.renewalDate && new Date(c.renewalDate) >= now && new Date(c.renewalDate) <= in90)
-            .sort((a,b)=>new Date(a.renewalDate)-new Date(b.renewalDate))
-            .slice(0,3);
-          return (
-            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"#3d5a7a", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>
-                🔄 Renewals ≤90 Days
-              </div>
-              {renewals.length===0
-                ? <div style={{ color:"#334155", fontSize:11, textAlign:"center", paddingTop:8 }}>No renewals due soon</div>
-                : renewals.map(c=>{
-                    const days = Math.ceil((new Date(c.renewalDate)-now)/86400000);
-                    return (
-                      <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-                        <span style={{ fontSize:11, color:"#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:110 }}>{c.name}</span>
-                        <span style={{ fontSize:11, fontWeight:700, color:days<=30?"#f87171":days<=60?"#f59e0b":"#34d399" }}>{days}d</span>
-                      </div>
-                    );
-                  })
-              }
-            </div>
-          );
-        })()}
-
-      </div>
-      {/* ── END WIDGET ROW 2 ─────────────────────────────────────────── */}
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 310px", gap:18, alignItems:"start" }}>
         {/* LEFT */}
@@ -21057,75 +20756,64 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
             </div>
           </div>
         </div>
-
       </div>
-          </div>
-        </div>
-      </div>
-    </div>
-      {/* ─────── WIDGET BOARD ─────────────────────────────────────── */}
-      <div style={{gridColumn:"1 / -1",marginTop:4}}>
+      {/* ─── WIDGET BOARD ───────────────────────────────────────────── */}
+      <div style={{marginTop:16}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📌 My Widgets</div>
           <button onClick={()=>setWidgetLibOpen(o=>!o)}
-            style={{background:"#0369a1",border:"none",borderRadius:7,color:"#fff",fontSize:11,
-              fontWeight:700,padding:"5px 12px",cursor:"pointer"}}>
-            {widgetLibOpen ? "✕ Close" : "+ Add Widget"}
+            style={{background:"#0369a1",border:"none",borderRadius:7,color:"#fff",
+              fontSize:11,fontWeight:700,padding:"5px 12px",cursor:"pointer"}}>
+            {widgetLibOpen?"✕ Close":"+ Add Widget"}
           </button>
         </div>
-        {widgetLibOpen && (
-          <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,
-            padding:"16px",marginBottom:12}}>
-            <div style={{fontSize:11,color:"#334155",marginBottom:10,textTransform:"uppercase",
-              letterSpacing:"0.1em"}}>Widget Library — click to add</div>
+        {widgetLibOpen&&(
+          <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px",marginBottom:12}}>
+            <div style={{fontSize:11,color:"#334155",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.1em"}}>Widget Library — click to add</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
               {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).map(w=>(
                 <button key={w.id} onClick={()=>{setActiveWidgets(p=>[...p,w.id]);setWidgetLibOpen(false);}}
-                  style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,
-                    color:"#94a3b8",fontSize:11,padding:"10px 8px",cursor:"pointer",textAlign:"left"}}>
+                  style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:11,padding:"10px 8px",cursor:"pointer",textAlign:"left"}}>
                   <div style={{fontSize:18,marginBottom:4}}>{w.icon}</div>
                   <div style={{fontWeight:600,color:"#cbd5e1"}}>{w.label}</div>
                   <div style={{fontSize:10,color:"#334155",marginTop:2}}>{w.desc}</div>
                 </button>
               ))}
-              {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).length===0 &&
-                <div style={{color:"#34d399",fontSize:12,gridColumn:"span 4",textAlign:"center",padding:8}}>
-                  ✓ All widgets added
-                </div>}
+              {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).length===0&&
+                <div style={{color:"#34d399",fontSize:12,gridColumn:"span 4",textAlign:"center",padding:8}}>✓ All added</div>}
             </div>
           </div>
         )}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-          {activeWidgets.map(wid => {
-            const w = WIDGET_LIBRARY.find(x=>x.id===wid);
-            if (!w) return null;
-            const Render = w.render;
-            return (
-              <div key={wid} style={{background:"#060d1c",border:"1px solid #1a2d45",
-                borderRadius:12,padding:"16px",position:"relative"}}>
+          {activeWidgets.map(wid=>{
+            const w=WIDGET_LIBRARY.find(x=>x.id===wid);
+            if(!w)return null;
+            const Render=w.render;
+            return(
+              <div key={wid} style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontSize:16}}>{w.icon}</span>
                     <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{w.label}</span>
                   </div>
                   <button onClick={()=>setActiveWidgets(p=>p.filter(x=>x!==wid))}
-                    style={{background:"none",border:"none",color:"#334155",cursor:"pointer",
-                      fontSize:12,lineHeight:1}} title="Remove">✕</button>
+                    style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:12,lineHeight:1}} title="Remove">✕</button>
                 </div>
                 <Render roster={roster} clients={clients} finInvoices={finInvoices}
-                  crmDeals={crmDeals} candidates={candidates} ptoRequests={ptoRequests}
-                  setTab={setTab} />
+                  finPayments={finPayments} finExpenses={finExpenses}
+                  crmDeals={crmDeals} candidates={candidates} ptoRequests={ptoRequests} setTab={setTab}/>
               </div>
             );
           })}
-          {activeWidgets.length===0 && (
-            <div style={{gridColumn:"span 3",textAlign:"center",padding:"32px",
-              color:"#334155",fontSize:13,border:"1px dashed #1a2d45",borderRadius:12}}>
-              No widgets added. Click <strong style={{color:"#0369a1"}}>+ Add Widget</strong> to personalize your dashboard.
+          {activeWidgets.length===0&&(
+            <div style={{gridColumn:"span 3",textAlign:"center",padding:"32px",color:"#334155",
+              fontSize:13,border:"1px dashed #1a2d45",borderRadius:12}}>
+              Click <strong style={{color:"#0369a1"}}>+ Add Widget</strong> to personalize your dashboard.
             </div>
           )}
         </div>
       </div>
+    </div>
   );
 }
 
