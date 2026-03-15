@@ -3247,6 +3247,19 @@ function Roster({ roster, setRoster, addAudit }) {
           <div style={{display:"flex",gap:4,alignItems:"center",padding:"3px 8px",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:8}}>
             <span style={{fontSize:10,color:"#3d5a7a",fontWeight:600,marginRight:2}}>SORT:</span>
             <SortBtn field="name"    label="Name" />
+      <div style={{display:"flex",gap:8,marginBottom:8,justifyContent:"flex-end"}}>
+        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
+          const rows=(roster||[]).map(r=>[r.name||"",r.type||"",r.client||"",`$${r.billRate||0}/hr`,`${((r.util||0)*100).toFixed(0)}%`,r.role||""]);
+          await exportTableToXLSX(rows,["Name","Type","Client","Bill Rate","Utilization","Role"],"Team Roster",`Ziksatech-Roster-${TODAY_STR}.xlsx`);
+        }}>📋 XLSX</button>
+        <button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
+          const rows=(roster||[]).map(r=>[r.name||"",r.type||"",r.client||"—",`$${r.billRate||0}/hr`,`${((r.util||0)*100).toFixed(0)}%`]);
+          await generateReportPDF("Team Roster & Compensation",[
+            {type:"heading",text:"Consultant Roster"},
+            {type:"table",headers:["Name","Type","Client","Bill Rate","Util %"],rows},
+          ],`Ziksatech-Roster-${TODAY_STR}.pdf`);
+        }}>📄 PDF</button>
+      </div>
             <SortBtn field="revenue" label="Revenue" />
             <SortBtn field="cost"    label="Cost" />
             <SortBtn field="margin"  label="Margin" />
@@ -3851,6 +3864,19 @@ function EbitdaOpt({ ebitdaLevers, setEbitdaLevers, finInvoices, finPayments, fi
   return (
     <div>
       <PH title="EBITDA Optimizer & Exit Planner" sub="Toggle levers to model revenue and exit value impact"/>
+      <div style={{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}}>
+        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
+          const rows=ebitdaLevers.map(l=>[l.lever,l.done?"✓ Active":"",`$${(l.revImpact||0).toLocaleString()}`,`$${(l.ebitdaImpact||0).toLocaleString()}`,l.effort||"",l.timeframe||""]);
+          await exportTableToXLSX(rows,["Growth Lever","Status","Rev Impact","EBITDA Impact","Effort","Timeframe"],"EBITDA Model",`Ziksatech-EBITDA-${TODAY_STR}.xlsx`);
+        }}>📋 XLSX</button>
+        <button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
+          await generateReportPDF("EBITDA Optimizer & Exit Planner",[
+            {type:"heading",text:"Growth Lever Analysis"},
+            {type:"table",headers:["Lever","Active","Rev Impact","EBITDA Impact","Effort","Timeframe"],
+              rows:ebitdaLevers.map(l=>[l.lever,l.done?"✓":"",`$${(l.revImpact||0).toLocaleString()}`,`$${(l.ebitdaImpact||0).toLocaleString()}`,l.effort||"",l.timeframe||""])},
+          ],`Ziksatech-EBITDA-${TODAY_STR}.pdf`);
+        }}>📄 PDF</button>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18,marginBottom:22}}>
         <div className="card" style={{padding:20}}>
           <div className="th" style={{marginBottom:14}}>Projected Metrics</div>
@@ -6644,6 +6670,19 @@ function ComplianceModule({ workAuth, setWorkAuth, compDocs, setCompDocs, roster
   return (
     <div>
       <PH title="Compliance" sub="Work Auth · Visa Tracking · Document Expiry Alerts"/>
+      <div style={{display:"flex",gap:8,marginBottom:8,justifyContent:"flex-end"}}>
+        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
+          const rows=(workAuth||[]).map(r=>[r.name||"",r.type||"",r.status||"",r.expiryDate||"",r.employer||""]);
+          await exportTableToXLSX(rows,["Name","Work Auth Type","Status","Expiry Date","Employer"],"Compliance",`Ziksatech-Compliance-${TODAY_STR}.xlsx`);
+        }}>📋 XLSX</button>
+        <button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
+          const rows=(workAuth||[]).map(r=>[r.name||"",r.type||"",r.status||"",r.expiryDate||""]);
+          await generateReportPDF("Compliance Report",[
+            {type:"heading",text:"Work Authorization Status"},
+            {type:"table",headers:["Consultant","Auth Type","Status","Expiry"],rows},
+          ],`Ziksatech-Compliance-${TODAY_STR}.pdf`);
+        }}>📄 PDF</button>
+      </div>
       <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)}
@@ -23109,6 +23148,214 @@ function OutreachTracker({ crmLeads, setCrmLeads, crmAccounts, crmDeals, addAudi
   );
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOP LIBRARY + EXIT READINESS
+// ═══════════════════════════════════════════════════════════════════════════
+const SOP_CATEGORIES = ["Delivery","Finance","HR","Sales & BD","Compliance","Technology","Executive"];
+const SOP_CHECKLIST = [
+  {id:"s1",  cat:"Delivery",   title:"Client Onboarding Process",         desc:"Steps from contract sign to consultant start date",    impact:"High"},
+  {id:"s2",  cat:"Delivery",   title:"Consultant Performance Review SOP",  desc:"Monthly check-in, utilization review, billing audit",  impact:"High"},
+  {id:"s3",  cat:"Delivery",   title:"Project Escalation Playbook",        desc:"When/how to escalate client issues",                   impact:"Medium"},
+  {id:"s4",  cat:"Delivery",   title:"Knowledge Transfer Checklist",       desc:"How to transition consultants off engagements",         impact:"High"},
+  {id:"s5",  cat:"Finance",    title:"Invoice Generation & Approval",      desc:"Who approves, timing, client submission process",       impact:"High"},
+  {id:"s6",  cat:"Finance",    title:"Accounts Receivable Follow-up",      desc:"30/60/90 day collection escalation steps",             impact:"High"},
+  {id:"s7",  cat:"Finance",    title:"Month-End Close Process",            desc:"Reconciliation, P&L review, reporting cadence",        impact:"High"},
+  {id:"s8",  cat:"Finance",    title:"Vendor Payment Schedule",            desc:"AP approval workflow, payment timing",                 impact:"Medium"},
+  {id:"s9",  cat:"HR",         title:"Consultant Hiring Process",          desc:"Job post to screen to interview to offer to onboard",  impact:"High"},
+  {id:"s10", cat:"HR",         title:"H-1B Sponsorship Process",           desc:"Timeline, attorney workflow, tracking system",         impact:"High"},
+  {id:"s11", cat:"HR",         title:"Timesheet Submission & Approval",    desc:"Weekly process, client approval, billing trigger",     impact:"High"},
+  {id:"s12", cat:"HR",         title:"Benefits Enrollment Guide",          desc:"Health, dental, 401k enrollment for new hires",        impact:"Medium"},
+  {id:"s13", cat:"Sales & BD", title:"Lead Qualification Criteria",        desc:"ICP definition, scoring model, disqualification",      impact:"High"},
+  {id:"s14", cat:"Sales & BD", title:"Proposal & SOW Process",             desc:"Template, approval, send, follow-up cadence",          impact:"High"},
+  {id:"s15", cat:"Sales & BD", title:"Client Renewal Process",             desc:"90-day pre-renewal check-in, rate negotiation",        impact:"High"},
+  {id:"s16", cat:"Sales & BD", title:"RFP Response Process",               desc:"Bid/no-bid decision, WBE angle, submission checklist", impact:"Medium"},
+  {id:"s17", cat:"Compliance", title:"I-9 & Work Authorization Process",   desc:"Verification timing, re-verification alerts",          impact:"High"},
+  {id:"s18", cat:"Compliance", title:"WBE/HUB/WOSB Cert Maintenance",      desc:"Renewal dates, documentation requirements",            impact:"High"},
+  {id:"s19", cat:"Compliance", title:"Data Security & NDA Process",        desc:"Client NDA workflow, data handling policy",            impact:"Medium"},
+  {id:"s20", cat:"Technology", title:"System Access Management",           desc:"Onboard/offboard access to all tools and systems",     impact:"High"},
+  {id:"s21", cat:"Technology", title:"Backup & Disaster Recovery",         desc:"Data backup schedule, recovery procedures",            impact:"Medium"},
+  {id:"s22", cat:"Executive",  title:"Company Org Chart & Succession",     desc:"Who covers what if key person is unavailable",         impact:"High"},
+  {id:"s23", cat:"Executive",  title:"Investor/Advisor Reporting",         desc:"Monthly KPI deck, financial summary format",           impact:"Medium"},
+  {id:"s24", cat:"Executive",  title:"M&A Data Room Checklist",            desc:"Documents needed for due diligence",                   impact:"High"},
+];
+const EXIT_CHECKS = [
+  {id:"er1",  cat:"Financial",  check:"3 years of clean P&L statements",              weight:10},
+  {id:"er2",  cat:"Financial",  check:"AR aging < 60 days average",                   weight:8},
+  {id:"er3",  cat:"Financial",  check:"No single client > 40% of revenue",            weight:9},
+  {id:"er4",  cat:"Financial",  check:"Positive EBITDA margin documented",            weight:10},
+  {id:"er5",  cat:"Operations", check:"SOPs documented for all core processes",        weight:9},
+  {id:"er6",  cat:"Operations", check:"Business runs without owner day-to-day",       weight:10},
+  {id:"er7",  cat:"Operations", check:"CRM with clean pipeline data",                 weight:7},
+  {id:"er8",  cat:"Legal",      check:"WBE/HUB/WOSB certifications current",          weight:8},
+  {id:"er9",  cat:"Legal",      check:"All client contracts signed and filed",         weight:9},
+  {id:"er10", cat:"Legal",      check:"Consultant agreements (IP assignment, NDAs)",  weight:8},
+  {id:"er11", cat:"People",     check:"Key person dependency documented & mitigated", weight:8},
+  {id:"er12", cat:"People",     check:"Org chart with clear reporting lines",          weight:6},
+  {id:"er13", cat:"Brand",      check:"GridMind/ARIA IP registered or pending",        weight:7},
+  {id:"er14", cat:"Brand",      check:"Verifiable client references (3+ Fortune 500)",weight:9},
+];
+
+function SOPLibrary({ roster, finInvoices, finPayments, apInvoices, crmDeals, crmAccounts, addAudit }) {
+  const [view, setView]           = useState("sop");
+  const [sops, setSops]           = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-sops")||"{}");}catch{return {};}});
+  const [exitChecks, setExitChks] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-exit-checks")||"{}");}catch{return {};}});
+  const [catFilter, setCatFilter] = useState("All");
+
+  const saveSops = s  => { setSops(s);       localStorage.setItem("zt-sops",JSON.stringify(s)); };
+  const saveExit = e  => { setExitChks(e);   localStorage.setItem("zt-exit-checks",JSON.stringify(e)); };
+  const toggleSop  = (id,field) => { const u={...sops,[id]:{...(sops[id]||{}),[field]:!(sops[id]||{})[field]}}; saveSops(u); };
+  const toggleExit = (id) => { const u={...exitChecks,[id]:!exitChecks[id]}; saveExit(u); addAudit&&addAudit("Ops","Exit Check",id,exitChecks[id]?"Unchecked":"Checked"); };
+
+  const documented = SOP_CHECKLIST.filter(s=>(sops[s.id]||{}).documented).length;
+  const reviewed   = SOP_CHECKLIST.filter(s=>(sops[s.id]||{}).reviewed).length;
+  const sopPct     = Math.round(documented/SOP_CHECKLIST.length*100);
+  const totalW     = EXIT_CHECKS.reduce((s,c)=>s+c.weight,0);
+  const earnedW    = EXIT_CHECKS.filter(c=>exitChecks[c.id]).reduce((s,c)=>s+c.weight,0);
+  const exitScore  = Math.round(earnedW/totalW*100);
+  const exitColor  = exitScore>=80?"#34d399":exitScore>=60?"#f59e0b":"#f87171";
+
+  const clientRevs = (crmAccounts||[]).map(a=>({name:a.name,rev:(crmDeals||[]).filter(d=>d.accountId===a.id&&d.stage==="won").reduce((s,d)=>s+(+d.value||0),0)})).filter(a=>a.rev>0);
+  const totalRev   = clientRevs.reduce((s,a)=>s+a.rev,0);
+  const maxClientPct = totalRev>0 ? Math.max(...clientRevs.map(a=>a.rev/totalRev)) : 0;
+  const filtered   = catFilter==="All" ? SOP_CHECKLIST : SOP_CHECKLIST.filter(s=>s.cat===catFilter);
+
+  return (
+    <div>
+      <PH title="SOP Library & Exit Readiness" sub="Operating procedures · Exit valuation score · M&A preparation"/>
+      <div style={{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}}>
+        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
+          const rows=SOP_CHECKLIST.map(s=>[(sops[s.id]||{}).documented?"✓":"",(sops[s.id]||{}).reviewed?"✓":"",s.title,s.cat,s.impact,s.desc]);
+          await exportTableToXLSX(rows,["Documented","Reviewed","SOP Title","Category","Impact","Description"],"SOP Library",`Ziksatech-SOPs-${TODAY_STR}.xlsx`);
+        }}>📋 XLSX</button>
+        <button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
+          const rows=SOP_CHECKLIST.map(s=>[(sops[s.id]||{}).documented?"✓":"—",s.title,s.cat,s.impact]);
+          await generateReportPDF("SOP Library & Exit Readiness",[
+            {type:"heading",text:"Standard Operating Procedures — Ziksatech"},
+            {type:"text",text:`Documented: ${documented}/24 (${sopPct}%) | Reviewed: ${reviewed}/24 | Exit Score: ${exitScore}/100`},
+            {type:"table",headers:["Done","SOP Title","Category","Impact"],rows},
+          ],`Ziksatech-SOPs-${TODAY_STR}.pdf`);
+        }}>📄 PDF</button>
+      </div>
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {[{id:"sop",label:"📋 SOP Library"},{id:"exit",label:"🚪 Exit Readiness"}].map(v=>(
+          <button key={v.id} onClick={()=>setView(v.id)}
+            style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:view===v.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:view===v.id?"#fff":"#475569",transition:"all 0.15s"}}>{v.label}</button>
+        ))}
+      </div>
+
+      {view==="sop"&&(
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+            {[{l:"Total SOPs",v:SOP_CHECKLIST.length,c:"#64748b"},{l:"Documented",v:`${documented}/${SOP_CHECKLIST.length}`,c:"#34d399"},{l:"Reviewed",v:`${reviewed}/${SOP_CHECKLIST.length}`,c:"#38bdf8"},{l:"Completion",v:`${sopPct}%`,c:sopPct>=80?"#34d399":sopPct>=50?"#f59e0b":"#f87171"}].map(s=>(
+              <div key={s.l} className="card" style={{padding:"14px 18px"}}><div style={{fontSize:10,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>{s.l}</div><div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div></div>
+            ))}
+          </div>
+          <div style={{marginBottom:16,padding:"12px 16px",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:12,color:"#475569"}}>Documentation Progress</span><span style={{fontSize:12,fontWeight:700,color:sopPct>=80?"#34d399":"#f59e0b"}}>{sopPct}%</span></div>
+            <div style={{height:8,background:"#0a1626",borderRadius:4}}><div style={{height:8,borderRadius:4,background:sopPct>=80?"#34d399":"#f59e0b",width:sopPct+"%",transition:"width 0.5s"}}/></div>
+            <div style={{fontSize:11,color:"#1e3a5f",marginTop:6}}>Buyers pay <strong style={{color:"#38bdf8"}}>2-3× more</strong> for companies with documented SOPs. Target: 100% before exit.</div>
+          </div>
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            {["All",...SOP_CATEGORIES].map(cat=>(
+              <button key={cat} className="btn bg" style={{fontSize:10,padding:"4px 10px",borderColor:catFilter===cat?"#0284c7":"#1a2d45",color:catFilter===cat?"#38bdf8":"#475569"}} onClick={()=>setCatFilter(cat)}>{cat}</button>
+            ))}
+          </div>
+          <div className="card">
+            <div className="tr" style={{gridTemplateColumns:"18px 1fr 100px 70px 80px 80px",padding:"8px 18px"}}>
+              {["","SOP","Category","Impact","Doc'd","Reviewed"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {filtered.map(sop=>{
+              const st=sops[sop.id]||{};
+              return (
+                <div key={sop.id} className="tr" style={{gridTemplateColumns:"18px 1fr 100px 70px 80px 80px",background:st.documented&&st.reviewed?"#020f08":undefined}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",margin:"auto",background:st.documented&&st.reviewed?"#34d399":st.documented?"#f59e0b":"#334155"}}/>
+                  <div><div style={{fontSize:13,fontWeight:600,color:st.documented?"#34d399":"#94a3b8"}}>{sop.title}</div><div style={{fontSize:10,color:"#334155",marginTop:1}}>{sop.desc}</div></div>
+                  <span className="bdg" style={{fontSize:9,background:"#0a1626",color:"#475569"}}>{sop.cat}</span>
+                  <span className="bdg" style={{fontSize:9,background:sop.impact==="High"?"#f8717122":"#f59e0b22",color:sop.impact==="High"?"#f87171":"#f59e0b"}}>{sop.impact}</span>
+                  {["documented","reviewed"].map(field=>(
+                    <div key={field} onClick={()=>toggleSop(sop.id,field)} style={{cursor:"pointer",display:"flex",justifyContent:"center",alignItems:"center"}}>
+                      <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${(st[field])?(field==="documented"?"#34d399":"#38bdf8"):"#334155"}`,background:(st[field])?(field==="documented"?"#34d399":"#38bdf822"):"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {st[field]&&<span style={{color:field==="documented"?"#021f14":"#38bdf8",fontSize:11,fontWeight:800}}>✓</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {view==="exit"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 320px",gap:16}}>
+          <div>
+            <div className="card" style={{padding:"20px 24px",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:20}}>
+                <div style={{textAlign:"center"}}><div style={{fontSize:52,fontWeight:900,color:exitColor,lineHeight:1}}>{exitScore}</div><div style={{fontSize:11,color:"#475569"}}>Exit Score</div></div>
+                <div style={{flex:1}}>
+                  <div style={{height:10,background:"#0a1626",borderRadius:5,marginBottom:8}}><div style={{height:10,borderRadius:5,background:`linear-gradient(90deg,#f87171,#f59e0b,#34d399)`,width:exitScore+"%",transition:"width 0.6s"}}/></div>
+                  <div style={{fontSize:13,color:exitColor,fontWeight:600,marginBottom:4}}>{exitScore>=80?"🚀 Exit Ready":exitScore>=60?"⚡ Good Progress — 3-6 months":"🔨 Building Foundation"}</div>
+                  <div style={{fontSize:11,color:"#334155"}}>{EXIT_CHECKS.filter(c=>exitChecks[c.id]).length} of {EXIT_CHECKS.length} items complete</div>
+                </div>
+                <div style={{textAlign:"center",padding:"12px 16px",background:"#0a1120",borderRadius:10,border:"1px solid #1a2d45"}}>
+                  <div style={{fontSize:10,color:"#475569",marginBottom:4}}>Est. Exit Value</div>
+                  <div style={{fontSize:15,fontWeight:800,color:"#34d399"}}>{fmt(exitScore*15000*7)}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>score-based 7× estimate</div>
+                </div>
+              </div>
+            </div>
+            {["Financial","Operations","Legal","People","Brand"].map(cat=>{
+              const items=EXIT_CHECKS.filter(c=>c.cat===cat);
+              const done=items.filter(c=>exitChecks[c.id]).length;
+              const cc=done===items.length?"#34d399":done>0?"#f59e0b":"#f87171";
+              return (
+                <div key={cat} className="card" style={{marginBottom:10,padding:"12px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><div style={{fontSize:11,fontWeight:700,color:cc,textTransform:"uppercase"}}>{cat}</div><span style={{fontSize:11,color:cc}}>{done}/{items.length}</span></div>
+                  {items.map(item=>(
+                    <div key={item.id} onClick={()=>toggleExit(item.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:7,cursor:"pointer",marginBottom:4,background:exitChecks[item.id]?"#021f14":"#060d1c",border:`1px solid ${exitChecks[item.id]?"#34d39333":"#1a2d45"}`}}>
+                      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,border:`2px solid ${exitChecks[item.id]?"#34d399":"#334155"}`,background:exitChecks[item.id]?"#34d399":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {exitChecks[item.id]&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
+                      </div>
+                      <span style={{fontSize:12,color:exitChecks[item.id]?"#34d399":"#94a3b8",flex:1}}>{item.check}</span>
+                      <span style={{fontSize:9,color:"#334155"}}>w:{item.weight}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>AUTO CHECKS</div>
+              {[
+                {l:"Client Concentration",ok:maxClientPct<0.4||!totalRev,detail:maxClientPct>0?`Largest: ${Math.round(maxClientPct*100)}%`:"No deal data yet"},
+                {l:"CRM Pipeline Data",ok:(crmDeals||[]).length>3,detail:`${(crmDeals||[]).length} deals in CRM`},
+                {l:"Team Size ≥5",ok:(roster||[]).length>=5,detail:`${(roster||[]).length} team members`},
+                {l:"SOPs ≥80%",ok:sopPct>=80,detail:`Currently ${sopPct}%`},
+              ].map(({l,ok,detail})=>(
+                <div key={l} style={{display:"flex",gap:10,padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
+                  <span style={{fontSize:14,flexShrink:0}}>{ok?"✅":"❌"}</span>
+                  <div><div style={{fontSize:11,fontWeight:600,color:ok?"#34d399":"#f87171"}}>{l}</div><div style={{fontSize:10,color:"#475569"}}>{detail}</div></div>
+                </div>
+              ))}
+            </div>
+            <div className="card" style={{padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>💡 M&A BUYER PROFILE</div>
+              {["Mid-size SI firm wanting WBE cert","PE roll-up of SAP niche firms","SAP partner expanding to DFW","Indian IT firm needing US footprint"].map(b=>(
+                <div key={b} style={{fontSize:10,color:"#38bdf8",marginBottom:4}}>→ {b}</div>
+              ))}
+              <div style={{marginTop:8,fontSize:10,color:"#0369a1"}}>Target: 7× EBITDA = $1.5M–$3M exit</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RFPGenerator({ clients, roster }) {
   const [form, setForm] = useState({
     company:"Ziksatech", clientName:"", projectType:"SAP Implementation",
@@ -23355,6 +23602,18 @@ Write an engaging LinkedIn post. Include relevant hashtags at the end (5-8 hasht
   return (
     <div>
       <PH title="LinkedIn Post Generator" sub="AI-powered LinkedIn content for Ziksatech"/>
+      <div style={{display:"flex",gap:8,marginBottom:8,justifyContent:"flex-end"}}>
+        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={()=>{
+          if(!output) return alert("Generate a post first");
+          exportToDOCX({sowTitle:"LinkedIn Content",content:output,executiveSummary:output.slice(0,150),whyZiksatech:""},"rfp");
+        }}>📄 DOCX</button>
+        <button className="btn bg" style={{fontSize:11,color:"#94a3b8"}} onClick={()=>{
+          if(!output) return alert("Generate a post first");
+          const blob=new Blob([output],{type:"text/plain"});
+          const url=URL.createObjectURL(blob);const a=document.createElement("a");
+          a.href=url;a.download=`LinkedIn-post-${TODAY_STR}.txt`;a.click();URL.revokeObjectURL(url);
+        }}>📝 TXT</button>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
         <div>
           <div className="card" style={{padding:"20px"}}>
@@ -24350,6 +24609,12 @@ ${text.slice(0,4000)}`;
   return (
     <div>
       <PH title="ADP Pay Stubs" sub="AI-powered extraction from ADP payroll exports"/>
+      <div style={{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}}>
+        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
+          const rows=(stubs||[]).map(s=>[s.employeeName||s.name||"",s.period||"",window.__ZT_MASK__!==false?"●●●":s.grossPay||"",window.__ZT_MASK__!==false?"●●●":s.netPay||"",s.status||""]);
+          await exportTableToXLSX(rows,["Employee","Pay Period","Gross Pay","Net Pay","Status"],"ADP Pay Stubs",`Ziksatech-ADP-${TODAY_STR}.xlsx`);
+        }}>📋 XLSX</button>
+      </div>
 
       {/* Upload zone */}
       <div className="card" style={{padding:"20px",marginBottom:16}}>
@@ -24507,6 +24772,19 @@ Provide: Key Discrepancies, Missing Entries, Reconciliation Status, Action Items
   return (
     <div>
       <PH title="Reconciliation Report" sub="AI-assisted cross-source financial reconciliation"/>
+      <div style={{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}}>
+        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
+          const rows=(roster||[]).map(r=>[r.name,r.client||"",r.billRate||0,r.util||0,(r.billRate||0)*(r.util||0)*160]);
+          await exportTableToXLSX(rows,["Consultant","Client","Rate","Util %","Monthly Rev"],"Reconciliation",`Ziksatech-Reconciliation-${TODAY_STR}.xlsx`);
+        }}>📋 XLSX</button>
+        <button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
+          const rows=(roster||[]).map(r=>[r.name,r.client||"—",`$${r.billRate||0}/hr`,`${((r.util||0)*100).toFixed(0)}%`,`$${((r.billRate||0)*(r.util||0)*160).toLocaleString()}`]);
+          await generateReportPDF("Reconciliation Report",[
+            {type:"heading",text:"Consultant Billing Reconciliation"},
+            {type:"table",headers:["Consultant","Client","Rate","Utilization","Monthly Rev"],rows},
+          ],`Ziksatech-Reconciliation-${TODAY_STR}.pdf`);
+        }}>📄 PDF</button>
+      </div>
 
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
