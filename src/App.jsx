@@ -303,16 +303,16 @@ const ROSTER_SEED = [
 ];
 
 const PIPELINE_SEED = [
-  { id:"p1",  name:"Candidate A", role:"SAP BRIM Consultant",      billRate:135, status:"Offer Pending",   readyIn:"2 weeks",  source:"Referral",  skills:"SAP BRIM, IS-U" },
-  { id:"p2",  name:"Candidate B", role:"SAP IS-U Senior",          billRate:155, status:"Interviewing",    readyIn:"3 weeks",  source:"LinkedIn",  skills:"SAP IS-U" },
-  { id:"p3",  name:"Candidate C", role:"BRIM Architect",           billRate:175, status:"Screening",       readyIn:"4 weeks",  source:"Network",   skills:"SAP BRIM" },
-  { id:"p4",  name:"Candidate D", role:"S/4HANA Consultant",       billRate:145, status:"Offer Pending",   readyIn:"1 week",   source:"Referral",  skills:"S/4HANA, FI/CO" },
-  { id:"p5",  name:"Candidate E", role:"SAP Functional",           billRate:125, status:"Reference Check", readyIn:"2 weeks",  source:"Job Board", skills:"SAP FI, MM" },
-  { id:"p6",  name:"Candidate F", role:"Databricks Engineer",      billRate:150, status:"Interviewing",    readyIn:"3 weeks",  source:"LinkedIn",  skills:"Databricks, AWS" },
-  { id:"p7",  name:"Candidate G", role:"SAP BRIM Consultant",      billRate:130, status:"Screening",       readyIn:"4 weeks",  source:"Network",   skills:"SAP BRIM" },
-  { id:"p8",  name:"Candidate H", role:"SAP Technical Lead",       billRate:160, status:"Screening",       readyIn:"5 weeks",  source:"Referral",  skills:"ABAP, BTP" },
-  { id:"p9",  name:"Candidate I", role:"SAP IS-U Consultant",      billRate:135, status:"Screening",       readyIn:"4 weeks",  source:"Network",   skills:"SAP IS-U" },
-  { id:"p10", name:"Candidate J", role:"AWS Solutions Architect",  billRate:165, status:"Offer Pending",   readyIn:"2 weeks",  source:"LinkedIn",  skills:"AWS, DevOps" },
+  { id:"p1",  name:"Arjun Reddy",      role:"SAP BRIM Consultant",     billRate:140, status:"Offer Pending",   readyIn:"2 weeks",  source:"Referral",  skills:"SAP BRIM, IS-U, ABAP",       visa:"H-1B" },
+  { id:"p2",  name:"Lakshmi Venkat",   role:"SAP IS-U Senior",         billRate:155, status:"Interviewing",    readyIn:"3 weeks",  source:"LinkedIn",  skills:"SAP IS-U, CCS, DM",          visa:"GC" },
+  { id:"p3",  name:"Omar Hassan",      role:"BRIM Architect",          billRate:175, status:"Screening",       readyIn:"4 weeks",  source:"Network",   skills:"SAP BRIM, S/4HANA, BTP",     visa:"USC" },
+  { id:"p4",  name:"Pooja Malhotra",   role:"S/4HANA Finance Lead",    billRate:130, status:"Offer Pending",   readyIn:"1 week",   source:"Referral",  skills:"S/4HANA FI, CO, COPA",       visa:"H-1B" },
+  { id:"p5",  name:"Chen Wei",         role:"SAP Technical Architect", billRate:125, status:"Reference Check", readyIn:"2 weeks",  source:"Job Board", skills:"ABAP, BTP, CPI",             visa:"OPT" },
+  { id:"p6",  name:"Fatima Al-Rashid", role:"Databricks Engineer",     billRate:150, status:"Interviewing",    readyIn:"3 weeks",  source:"LinkedIn",  skills:"Databricks, Spark, Python",  visa:"USC" },
+  { id:"p7",  name:"Ana Kovacs",       role:"AWS Solutions Architect", billRate:165, status:"Screening",       readyIn:"4 weeks",  source:"LinkedIn",  skills:"AWS, Terraform, DevOps",     visa:"USC" },
+  { id:"p8",  name:"Rohan Mehta",      role:"SAP BRIM Consultant",     billRate:135, status:"Screening",       readyIn:"5 weeks",  source:"Referral",  skills:"SAP BRIM, IS-U",             visa:"H-1B" },
+  { id:"p9",  name:"Preethi Nair",     role:"SAP IS-U Consultant",     billRate:130, status:"Screening",       readyIn:"4 weeks",  source:"Network",   skills:"SAP IS-U, CS",               visa:"GC" },
+  { id:"p10", name:"David Kim",        role:"SAP S/4HANA Architect",   billRate:185, status:"Offer Pending",   readyIn:"2 weeks",  source:"LinkedIn",  skills:"S/4HANA, FI, CO, COPA",      visa:"USC" },
 ];
 
 const CLIENTS_SEED = [
@@ -1439,7 +1439,7 @@ const RISKS_SEED = [
 
 // ─── RECRUITING SEED DATA ────────────────────────────────────────────────────
 const CANDIDATES_SEED = [
-  { id:"cand1", name:"Arjun Reddy",     role:"SAP BRIM Consultant",     email:"arjun.r@email.com",   phone:"214-555-0101", source:"Referral",  visa:"H-1B",  skills:"SAP BRIM, IS-U, ABAP",         status:"active",   notes:"Referred by Suresh. Strong BRIM background.",          linkedIn:"" },
+  { id:"cand1", name:"Arjun Reddy",     role:"SAP BRIM Consultant",     email:"arjun.r@email.com",   phone:"214-555-0101", source:"Referral",  visa:"H-1B",  skills:"SAP BRIM, IS-U, ABAP",         status:"active",   notes:"Referred by Nuthan. Strong BRIM background.",          linkedIn:"" },
   { id:"cand2", name:"Lakshmi Venkat",  role:"SAP IS-U Senior",         email:"lakshmi.v@email.com", phone:"469-555-0202", source:"LinkedIn",  visa:"GC",    skills:"SAP IS-U, CCS, DM",            status:"active",   notes:"10 yrs utility exp. Available April 1.",               linkedIn:"" },
   { id:"cand3", name:"Omar Hassan",     role:"BRIM Architect",          email:"omar.h@email.com",    phone:"972-555-0303", source:"Network",   visa:"USC",   skills:"SAP BRIM, S/4HANA, BTP",       status:"active",   notes:"Ex-Deloitte. High demand — move fast.",                linkedIn:"" },
   { id:"cand4", name:"Pooja Malhotra",  role:"S/4HANA Finance Lead",    email:"pooja.m@email.com",   phone:"817-555-0404", source:"Referral",  visa:"H-1B",  skills:"S/4HANA FI, CO, COPA",         status:"placed",   notes:"Placed at Client B starting Apr 1.",                   linkedIn:"" },
