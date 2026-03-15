@@ -24736,6 +24736,15 @@ function IdeaPad({ authProfile, addAudit }) {
 }
 
 
+const GRIDMIND_PRESETS = {
+  "Electric Utility":  {outages:48,avgOutageCost:180000,operators:42,ticketsMonth:3200,compliance:250000,contract:1200000},
+  "Gas Utility":       {outages:32,avgOutageCost:120000,operators:28,ticketsMonth:2100,compliance:180000,contract:900000},
+  "Water Utility":     {outages:24,avgOutageCost:80000, operators:18,ticketsMonth:1400,compliance:120000,contract:650000},
+  "Telecom":           {outages:96,avgOutageCost:240000,operators:65,ticketsMonth:8500,compliance:150000,contract:1800000},
+  "Manufacturing":     {outages:60,avgOutageCost:95000, operators:35,ticketsMonth:2800,compliance:80000, contract:850000},
+  "Healthcare":        {outages:20,avgOutageCost:200000,operators:55,ticketsMonth:4200,compliance:400000,contract:1400000},
+};
+
 function GridMindROI() {
   const [industry, setIndustry]   = useState("Electric Utility");
   const [f, setF]                 = useState({...GRIDMIND_PRESETS["Electric Utility"]});
