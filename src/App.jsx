@@ -1182,7 +1182,7 @@ const OFFERS_SEED = [
 
 // ─── COMPLIANCE SEED DATA ────────────────────────────────────────────────────
 const WORK_AUTH_SEED = [
-  { id:"wa1",  consultantId:"", name:"Manju Murthy",         type:"USC",  status:"active",  startDate:"2020-01-01", expiryDate:"2099-12-31", petitionNo:"",      attorney:"", notes:"US Citizen" },
+  { id:"wa1",  consultantId:"", name:"Manju Murthy",         type:"USC",  status:"active",  startDate:"2020-01-01", expiryDate:"", petitionNo:"",      attorney:"", notes:"US Citizen — no expiry" },
   { id:"wa2",  consultantId:"", name:"Nuthan Joshi",         type:"H-1B", status:"active",  startDate:"2023-01-15", expiryDate:"2026-01-14", petitionNo:"WAC2300001", attorney:"", notes:"Renewal pending 2026" },
   { id:"wa3",  consultantId:"", name:"Malla Reddy",          type:"GC",   status:"active",  startDate:"2022-03-10", expiryDate:"2032-03-09", petitionNo:"GC-2022-001", attorney:"", notes:"GC holder" },
   { id:"wa4",  consultantId:"", name:"Sudheendra Mujamdhar", type:"H-1B", status:"active",  startDate:"2024-02-01", expiryDate:"2027-01-31", petitionNo:"WAC2400100", attorney:"", notes:"Recently renewed" },
@@ -6172,8 +6172,8 @@ function CompDashboard({ workAuth, compDocs, roster }) {
   const consultantStatus = roster.map(r => {
     const wa   = workAuth.find(w=>w.consultantId===r.id);
     const docs  = compDocs.filter(d=>d.consultantId===r.id);
-    const waDays  = wa   ? daysUntil(wa.expiryDate)   : 9999;
-    const docDays = docs.length ? Math.min(...docs.map(d=>daysUntil(d.expiryDate))) : 9999;
+    const waDays  = wa   ? (daysUntil(wa.expiryDate)  ?? 9999) : 9999;
+    const docDays = docs.length ? Math.min(...docs.map(d=>daysUntil(d.expiryDate)??9999)) : 9999;
     const minDays = Math.min(waDays, docDays);
     const urg = urgencyLevel(minDays);
     return { ...r, urg, minDays, wa, urgentDocs: docs.filter(d=>daysUntil(d.expiryDate)<=60) };
@@ -6189,7 +6189,7 @@ function CompDashboard({ workAuth, compDocs, roster }) {
   const allAlerts = [
     ...workAuth.map(w=>({ name:w.name, type:"Work Auth: "+w.type, expiry:w.expiryDate, days:daysUntil(w.expiryDate), notes:w.notes })),
     ...compDocs.map(d=>({ name:d.name, type:"Doc: "+d.docType, expiry:d.expiryDate, days:daysUntil(d.expiryDate), notes:d.notes })),
-  ].filter(a=>a.days<=90).sort((a,b)=>a.days-b.days);
+  ].filter(a=>a.days !== null && a.days <= 90).sort((a,b)=>(a.days??9999)-(b.days??9999));
 
   return (
     <div>
@@ -6246,13 +6246,13 @@ function CompDashboard({ workAuth, compDocs, roster }) {
               <div key={c.id} style={{background:urg.bg,border:`1px solid ${urg.color}33`,borderRadius:10,padding:"12px 14px"}}>
                 <div style={{fontSize:12,fontWeight:700,color:urg.color,marginBottom:4}}>
                   <span style={{marginRight:6}}>
-                    {c.minDays<0?"🔴":c.minDays<=30?"🔴":c.minDays<=60?"🟡":c.minDays<=90?"🟠":"🟢"}
+                    {c.minDays===9999?"🟢":c.minDays<0?"🔴":c.minDays<=30?"🔴":c.minDays<=60?"🟡":c.minDays<=90?"🟠":"🟢"}
                   </span>
                   {c.name.split(" ")[0]}
                 </div>
                 <div style={{fontSize:9,color:"#475569",marginBottom:4}}>{c.role}</div>
                 <div style={{fontSize:10,color:urg.color,fontWeight:600}}>
-                  {c.minDays<0?"EXPIRED":c.minDays<=90?`${c.minDays}d left`:"Current"}
+                  {c.minDays===9999?"Current":c.minDays<0?"EXPIRED":c.minDays<=90?`${c.minDays}d left`:"Current"}
                 </div>
                 {c.wa && <div style={{fontSize:9,color:"#3d5a7a",marginTop:3}}>{c.wa.type}</div>}
                 {c.urgentDocs.length>0&&<div style={{fontSize:9,color:"#f87171",marginTop:2}}>{c.urgentDocs.length} doc{c.urgentDocs.length>1?"s":""} expiring</div>}
