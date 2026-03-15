@@ -21945,6 +21945,26 @@ Format with markdown headers for each recommendation.`;
               </div>
             ))}
           </div>
+
+          {/* Direct CSV paste fallback */}
+          <div style={{marginTop:14}}>
+            <div style={{fontSize:11,color:"#334155",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>Or paste CSV / text data directly:</div>
+            <textarea
+              className="inp"
+              rows={5}
+              placeholder={"Date,Description,Amount,Type\n2026-03-01,ADP Payroll,47917,debit\n2026-03-02,AWS Cloud,890,debit\n..."}
+              style={{width:"100%",fontFamily:"monospace",fontSize:11,resize:"vertical"}}
+              onChange={e=>{
+                const txt = e.target.value.trim();
+                if(txt.length>30){
+                  handleFile(new File([txt],"pasted.csv",{type:"text/csv"}));
+                  e.target.value="";
+                }
+              }}
+            />
+            <div style={{fontSize:10,color:"#1e3a5f",marginTop:4}}>Paste your bank export data above — AI will analyze it automatically</div>
+          </div>
+
         </div>
       )}
 
