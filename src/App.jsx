@@ -21830,7 +21830,19 @@ Return ONLY valid JSON, no markdown, no explanation.`;
 
 ${text.slice(0,5000)}`;
     let full = "";
-    await callClaude(system, prompt, txt => { full = txt; });
+    // Use non-streaming for JSON analysis to ensure complete response
+    try {
+      const apiKey = localStorage.getItem('zt-anthropic-key') || '';
+      const apiRes = await fetch('/api/claude', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', ...(apiKey ? {'x-api-key-override':apiKey}:{})},
+        body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:4000, stream:false, system, messages:[{role:'user',content:prompt}]})
+      });
+      const apiData = await apiRes.json();
+      if (apiData.error) { alert('API Error: ' + (apiData.error.message||apiData.error)); setUploading(false); return; }
+      full = apiData.content?.[0]?.text || apiData.content || '';
+      if (!full) { alert('No response from AI. Check API key in Settings.'); setUploading(false); return; }
+    } catch(fetchErr) { alert('Network error: ' + fetchErr.message); setUploading(false); return; }
     try {
       const parsed = JSON.parse(full.replace(/\`\`\`json|\`\`\`/g,"").trim());
       const txns = parsed.transactions || [];
@@ -21846,7 +21858,35 @@ ${text.slice(0,5000)}`;
       const sorted = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
       setAnalysis({ catTotals, flagTotals, total, sorted, summary: parsed.summary||{} });
       setActiveTab("breakdown");
-    } catch(e) { console.error("Parse error:", e); }
+    } catch(e) {
+      console.error("BankAnalyzer parse error:", e, "Raw response:", full.slice(0,200));
+      // Try to recover partial JSON
+      try {
+        const bracketStart = full.indexOf('{');
+        const bracketEnd = full.lastIndexOf('}');
+        if (bracketStart >= 0 && bracketEnd > bracketStart) {
+          const partial = JSON.parse(full.slice(bracketStart, bracketEnd+1));
+          if (partial.transactions?.length > 0) {
+            setTransactions(partial.transactions);
+            const catTotals = {};
+            const flagTotals = { essential:0, review:0, avoidable:0 };
+            partial.transactions.filter(t=>t.type==="debit").forEach(t => {
+              catTotals[t.category] = (catTotals[t.category]||0) + (+t.amount||0);
+              if (t.flag) flagTotals[t.flag] = (flagTotals[t.flag]||0) + (+t.amount||0);
+            });
+            const total = Object.values(catTotals).reduce((s,v)=>s+v,0);
+            setAnalysis({ catTotals, flagTotals, total, sorted:Object.entries(catTotals).sort((a,b)=>b[1]-a[1]), summary: partial.summary||{} });
+            setActiveTab("breakdown");
+          } else {
+            alert("AI returned incomplete data. Try with a smaller statement or check API key in Settings.");
+          }
+        } else {
+          alert("AI response could not be parsed. Ensure your Anthropic API key is set in Settings → API Key.");
+        }
+      } catch(e2) {
+        alert("Analysis failed. Check that your API key is set in Settings. Raw: " + full.slice(0,100));
+      }
+    }
     setUploading(false);
   };
 
@@ -21871,7 +21911,7 @@ Provide numbered recommendations with:
 2. Estimated monthly savings
 3. How to implement it
 Format with markdown headers for each recommendation.`;
-    await callClaude(system, prompt, txt => setAiSuggestions(txt));
+    await callClaude(system, prompt, txt => setAiSuggestions(txt), 2000);
     setAiLoading(false);
     setActiveTab("ai");
   };
