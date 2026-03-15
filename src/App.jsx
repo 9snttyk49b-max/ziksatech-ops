@@ -6947,7 +6947,7 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
       {sub==="orders"     && <CRMOrders orders={crmOrders} setOrders={setCrmOrders} crmAccounts={crmAccounts} crmDeals={crmDeals} roster={roster} addAudit={addAudit}/>}
       {sub==="activities" && <CRMActivities {...props}/>}
       {sub==="forecast"   && <CRMForecast   {...props}/>}
-      {sub==="import"     && <CRMImport setLeads={setCrmLeads} setCrmContacts={setCrmContacts} crmAccounts={crmAccounts} addAudit={addAudit}/>}
+      {sub==="import"     && <CRMImport setLeads={setCrmLeads} setCrmContacts={setCrmContacts} crmAccounts={crmAccounts} crmLeads={crmLeads} crmContacts={crmContacts} crmDeals={crmDeals} addAudit={addAudit}/>}
     </div>
   );
 }
