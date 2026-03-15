@@ -2342,8 +2342,8 @@ const WIDGET_LIBRARY = [
     }},
   { id:"notes", icon:"📝", label:"Quick Notes", desc:"Personal sticky notes",
     render:() => {
-      const [notes,setNotes]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("zt-wn")||"[]");}catch{return [];}});
-      const [inp,setInp]=React.useState("");
+      const [notes,setNotes]=useState(()=>{try{return JSON.parse(localStorage.getItem("zt-wn")||"[]");}catch{return [];}});
+      const [inp,setInp]=useState("");
       const add=()=>{if(!inp.trim())return;const n=[...notes,{id:Date.now(),t:inp.trim()}];setNotes(n);localStorage.setItem("zt-wn",JSON.stringify(n));setInp("");};
       return <div>
         <div style={{display:"flex",gap:6,marginBottom:8}}>
@@ -2373,9 +2373,9 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
     { id:"rolling12", label:"Rolling 12m", monthKeys:["2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03"], startIdx:0 },
   ];
   const [dashPeriod, setDashPeriod] = useState("ytd2026");
-  const [activeWidgets,setActiveWidgets]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("zt-widgets")||JSON.stringify(["cash_flow","hiring","rev_client","util","deals","notes"]));}catch{return ["cash_flow","hiring","rev_client","util","deals","notes"];}});
-  const [widgetLibOpen,setWidgetLibOpen]=React.useState(false);
-  React.useEffect(()=>{localStorage.setItem("zt-widgets",JSON.stringify(activeWidgets));},[activeWidgets]);
+  const [activeWidgets,setActiveWidgets]=useState(()=>{try{return JSON.parse(localStorage.getItem("zt-widgets")||JSON.stringify(["cash_flow","hiring","rev_client","util","deals","notes"]));}catch{return ["cash_flow","hiring","rev_client","util","deals","notes"];}});
+  const [widgetLibOpen,setWidgetLibOpen]=useState(false);
+  useEffect(()=>{localStorage.setItem("zt-widgets",JSON.stringify(activeWidgets));},[activeWidgets]);
   const activePeriod = PERIODS.find(p=>p.id===dashPeriod)||PERIODS[0];
 
   const rData = roster.map(r => ({ ...r, ...calcRoster(r) }));
