@@ -1856,6 +1856,24 @@ export default function ZiksatechOps() {
   const [crmOrders, setCrmOrders]       = useState(CRM_ORDERS_SEED);
   const [loaded, setLoaded] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const [maskPII, setMaskPII] = useState(true); // PII masked by default for safety
+  const [maskPin, setMaskPin]     = useState(""); // optional PIN for unmask (empty = no PIN)
+  const [showMaskModal, setShowMaskModal] = useState(false);
+  const maskVal = (val, type="name") => {
+    if(!maskPII) return val;
+    if(!val || val==="—" || val==="") return val;
+    switch(type) {
+      case "email": return val.replace(/^(.{2})[^@]*(@.*)$/, "$1***$2");
+      case "phone": return val.replace(/(\d{3})\d{4}(\d{4})/, "$1-****-$2");
+      case "ssn":   return "***-**-" + (val.slice(-4)||"****");
+      case "taxid": return "**-***" + (val.slice(-4)||"****");
+      case "amount": return "$ ●●●,●●●";
+      case "salary": return "$ ●●●,●●●";
+      case "name":  return val.split(" ").map((w,i)=>i===0?w:w[0]+"***").join(" ");
+      case "account": return "****" + (val.slice(-4)||"****");
+      default:      return "●●●●●●";
+    }
+  };
   const [appSettings, setAppSettings] = useState({
     ownerName: "Manju",
     ownerEmail: "manju@ziksatech.com",
@@ -2130,6 +2148,8 @@ export default function ZiksatechOps() {
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings,
+    maskPII, setMaskPII, maskVal,
+  };
     appSettings, setAppSettings,
     globalSearch, setGlobalSearch, searchOpen, setSearchOpen,
     addAudit: makeAddAudit(setAuditLog, appSettings.ownerName),
@@ -2166,7 +2186,13 @@ export default function ZiksatechOps() {
     />;
   }
 
-    return (
+    // Make mask helpers available globally for all components
+  useEffect(() => {
+    window.__ZT_MASK__ = maskPII;
+    window.__ZT_MASK_VAL__ = maskVal;
+  }, [maskPII]);
+
+  return (
     <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",background:"#070b14",minHeight:"100vh",color:"#e2e8f0",display:"flex"}}>
       <style>{`
 /* ── Light mode override ───────────────────────────────────── */
@@ -2331,6 +2357,29 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
           {searchOpen&&globalSearch.length>1&&<GlobalSearchResults q={globalSearch} roster={shared.roster} finInvoices={shared.finInvoices} apInvoices={shared.apInvoices} projects={shared.projects} crmDeals={shared.crmDeals} clients={shared.clients} tsSubmissions={shared.tsSubmissions} workAuth={shared.workAuth} setTab={setTab} onClose={()=>setSearchOpen(false)}/>}
         </div>
 
+        {/* PII Mask/Unmask Toggle */}
+        <div style={{padding:"0 10px 10px",marginTop:2}}>
+          <button
+            onClick={()=>setMaskPII(m=>!m)}
+            style={{
+              display:"flex",alignItems:"center",gap:6,width:"100%",
+              background:maskPII?"#0a1a0a":"#1a0a0a",
+              border:`1px solid ${maskPII?"#15803d":"#991b1b"}`,
+              borderRadius:8,padding:"7px 12px",cursor:"pointer",
+              transition:"all 0.2s"
+            }}
+            title={maskPII?"Click to reveal all PII and financial data":"PII is visible — click to mask"}>
+            <span style={{fontSize:14}}>{maskPII?"🔒":"🔓"}</span>
+            <div style={{flex:1,textAlign:"left"}}>
+              <div style={{fontSize:11,fontWeight:700,color:maskPII?"#4ade80":"#f87171"}}>
+                {maskPII?"PII Masked":"PII Visible"}
+              </div>
+              <div style={{fontSize:9,color:maskPII?"#15803d":"#7f1d1d"}}>
+                {maskPII?"Click to unmask financials & contacts":"Click to re-mask sensitive data"}
+              </div>
+            </div>
+          </button>
+        </div>
         {["Overview","Clients","Team","Delivery","Finance","Hiring","Compliance"].filter(group => {
           // In CRM view, only show Clients + Overview (mini calc)
           if (portalView === "crm") return ["Clients","Overview"].includes(group);
@@ -4222,7 +4271,7 @@ function ADPPayroll({ roster, adpRuns, setAdpRuns }) {
                 <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{e.name}</div>
                 <div style={{fontSize:10,color:"#3d5a7a"}}>{e.role}</div>
               </div>
-              <span className="mono" style={{fontSize:12,color:"#38bdf8"}}>{fmt(e.baseSalary)}</span>
+              <span className="mono" style={{fontSize:12,color:"#38bdf8"}}>{window.__ZT_MASK__ ? "$ ●●●,●●●" : fmt(+e.baseSalary||0)}</span>
               <span className="mono" style={{fontSize:12,color:"#7dd3fc"}}>{fmt(b.gross)}</span>
               <span className="mono" style={{fontSize:11,color:"#64748b"}}>{fmt(b.fica)}</span>
               <span className="mono" style={{fontSize:11,color:"#64748b"}}>{fmt(b.futa)}</span>
@@ -7184,7 +7233,7 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
                     {c.isPrimary&&<span className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:8}}>PRIMARY</span>}
                   </div>
                   <div style={{fontSize:10,color:"#3d5a7a"}}>{c.title}</div>
-                  <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>{c.email}</div>
+                  <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>{window.__ZT_MASK__ && c.email ? c.email.replace(/^(.{2})[^@]*(@.*)$/,"$1***$2") : c.email}</div>
                 </div>
                 <button className="btn bg" style={{padding:"2px 7px",fontSize:10}} onClick={()=>openCon(c)}>Edit</button>
               </div>
@@ -18298,7 +18347,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
                         <Avatar name={b.name} size={36}/>
                         <div>
                           <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{b.name}</div>
-                          <div style={{fontSize:10,color:"#3d5a7a"}}>{fmt(b.salary)}/yr salary</div>
+                          <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__ ? "$ ●●●,●●●" : fmt(+b.salary||0)}/yr salary</div>
                         </div>
                       </div>
                       <div style={{textAlign:"right"}}>
@@ -23256,6 +23305,11 @@ const NOTE_TYPE_ICON = { meeting:"🤝", call:"📞", email:"📧", note:"📝",
 const ORDER_STATUS_COLOR = { active:"#34d399", completed:"#64748b", cancelled:"#f87171", paused:"#f59e0b" };
 
 // ── CRM Leads ─────────────────────────────────────────────────────────────────
+
+// Lead temperature based on score
+const leadTemp = score => score >= 75 ? {label:"🔥 Hot", color:"#f87171", bg:"#f8717122"} :
+                           score >= 45 ? {label:"🟡 Warm", color:"#f59e0b", bg:"#f59e0b22"} :
+                                         {label:"🔵 Cold", color:"#38bdf8", bg:"#38bdf822"};
 function CRMLeads({ leads, setLeads, crmAccounts, crmDeals, setCrmDeals, addAudit }) {
   const [modal, setModal]   = useState(false);
   const [form, setForm]     = useState(null);
@@ -23324,7 +23378,7 @@ Return JSON: {"linkedIn":"linkedin.com/in/likely-url","companyWebsite":"likely u
           <div key={lead.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 1fr 80px 80px 80px 90px"}}>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{lead.name}</div>
-              <div style={{fontSize:10,color:"#3d5a7a"}}>{lead.email}</div>
+              <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__ ? lead.email?.replace(/^(.{2})[^@]*(@.*)$/,"$1***$2") : lead.email}</div>
             </div>
             <div>
               <div style={{fontSize:12,color:"#94a3b8"}}>{lead.company}</div>
@@ -23335,7 +23389,8 @@ Return JSON: {"linkedIn":"linkedin.com/in/likely-url","companyWebsite":"likely u
               <div style={{width:28,height:28,borderRadius:"50%",background:`conic-gradient(${lead.score>=70?"#34d399":lead.score>=50?"#f59e0b":"#f87171"} ${lead.score*3.6}deg,#1a2d45 0)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
                 <div style={{width:20,height:20,borderRadius:"50%",background:"#070c18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"#e2e8f0"}}>{lead.score}</div>
               </div>
-            </div>
+ 
+              <span className="bdg" style={{background:leadTemp(lead.score).bg,color:leadTemp(lead.score).color,fontSize:9,padding:"2px 6px"}}>{leadTemp(lead.score).label}</span>           </div>
             <span className="bdg" style={{background:LEAD_STATUS_COLOR[lead.status]+"22",color:LEAD_STATUS_COLOR[lead.status],fontSize:9}}>{lead.status}</span>
             <span style={{fontSize:10,color:"#475569"}}>{fmtDate(lead.lastContact)}</span>
             <div style={{display:"flex",gap:4}}>
@@ -24167,7 +24222,7 @@ ${CSV_SAMPLE_DATA[importType]?.[0]||""}`}
                   <div key={i} style={{padding:"10px 0",borderBottom:"1px solid #0a1626"}}>
                     <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{c.name} <span style={{color:"#475569",fontWeight:400}}>· {c.title}</span></div>
                     <div style={{fontSize:11,color:"#3d5a7a"}}>{c.company} · {c.industry}</div>
-                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{c.email} · {c.phone}</div>
+                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{window.__ZT_MASK__ && c.email ? c.email.replace(/^(.{2})[^@]*(@.*)$/,"$1***$2") : c.email} · {c.phone}</div>
                     {c.notes&&<div style={{fontSize:10,color:"#475569",marginTop:3,fontStyle:"italic"}}>{c.notes}</div>}
                   </div>
                 ))}
@@ -24233,7 +24288,7 @@ ${CSV_SAMPLE_DATA[importType]?.[0]||""}`}
                         <div>
                           <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{lead.name}</div>
                           <div style={{fontSize:11,color:"#3d5a7a"}}>{lead.title} · {lead.company}</div>
-                          <div style={{fontSize:10,color:"#334155",marginTop:2}}>{lead.email}</div>
+                          <div style={{fontSize:10,color:"#334155",marginTop:2}}>{window.__ZT_MASK__ ? lead.email?.replace(/^(.{2})[^@]*(@.*)$/,"$1***$2") : lead.email}</div>
                         </div>
                         <span className="bdg" style={{background:lead.score>=80?"#34d39922":"#f59e0b22",color:lead.score>=80?"#34d399":"#f59e0b",fontSize:10}}>
                           {lead.score}pt
