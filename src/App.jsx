@@ -21763,6 +21763,7 @@ function BankAnalyzer({ authProfile }) {
   const [analysis, setAnalysis] = useState(null);
   const [aiSuggestions, setAiSuggestions] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [pasteText, setPasteText] = useState("");
   const [activeTab, setActiveTab] = useState("upload"); // upload | breakdown | transactions | ai
   const [filterCat, setFilterCat] = useState("all");
   const [filterFlag, setFilterFlag] = useState("all");
@@ -21951,18 +21952,24 @@ Format with markdown headers for each recommendation.`;
             <div style={{fontSize:11,color:"#334155",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}}>Or paste CSV / text data directly:</div>
             <textarea
               className="inp"
-              rows={5}
-              placeholder={"Date,Description,Amount,Type\n2026-03-01,ADP Payroll,47917,debit\n2026-03-02,AWS Cloud,890,debit\n..."}
+              rows={6}
+              placeholder={"Date,Description,Amount,Type\n2026-03-01,ADP Payroll,47917,debit\n2026-03-02,AWS Cloud,890,debit\n2026-03-03,Netflix Personal,23,debit\n..."}
               style={{width:"100%",fontFamily:"monospace",fontSize:11,resize:"vertical"}}
-              onChange={e=>{
-                const txt = e.target.value.trim();
-                if(txt.length>30){
-                  handleFile(new File([txt],"pasted.csv",{type:"text/csv"}));
-                  e.target.value="";
-                }
-              }}
+              value={pasteText}
+              onChange={e=>setPasteText(e.target.value)}
             />
-            <div style={{fontSize:10,color:"#1e3a5f",marginTop:4}}>Paste your bank export data above — AI will analyze it automatically</div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8}}>
+              <div style={{fontSize:10,color:"#1e3a5f"}}>Paste your bank/CC export — any format, AI auto-extracts</div>
+              <button
+                onClick={()=>{if(pasteText.trim().length>10){handleFile(new File([pasteText],"pasted.csv",{type:"text/csv"}));setPasteText("");}}}
+                disabled={pasteText.trim().length<10||uploading}
+                style={{background:pasteText.trim().length>10?"linear-gradient(135deg,#0369a1,#0284c7)":"#0a1120",
+                  border:"1px solid",borderColor:pasteText.trim().length>10?"#0369a1":"#1a2d45",
+                  borderRadius:7,color:pasteText.trim().length>10?"#fff":"#334155",
+                  fontSize:12,fontWeight:700,padding:"7px 18px",cursor:pasteText.trim().length>10?"pointer":"not-allowed"}}>
+                {uploading?"⏳ Analyzing...":"🤖 Analyze"}
+              </button>
+            </div>
           </div>
 
         </div>
