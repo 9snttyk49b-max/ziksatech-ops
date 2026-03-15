@@ -1,3 +1,4 @@
+window.__ZT_MASK__ = true; // PII masked by default
 import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1857,22 +1858,17 @@ export default function ZiksatechOps() {
   const [loaded, setLoaded] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [maskPII, setMaskPII] = useState(true); // PII masked by default for safety
-  const [maskPin, setMaskPin]     = useState(""); // optional PIN for unmask (empty = no PIN)
-  const [showMaskModal, setShowMaskModal] = useState(false);
   const maskVal = (val, type="name") => {
-    if(!maskPII) return val;
-    if(!val || val==="—" || val==="") return val;
-    switch(type) {
-      case "email": return val.replace(/^(.{2})[^@]*(@.*)$/, "$1***$2");
-      case "phone": return val.replace(/(\d{3})\d{4}(\d{4})/, "$1-****-$2");
-      case "ssn":   return "***-**-" + (val.slice(-4)||"****");
-      case "taxid": return "**-***" + (val.slice(-4)||"****");
-      case "amount": return "$ ●●●,●●●";
-      case "salary": return "$ ●●●,●●●";
-      case "name":  return val.split(" ").map((w,i)=>i===0?w:w[0]+"***").join(" ");
-      case "account": return "****" + (val.slice(-4)||"****");
-      default:      return "●●●●●●";
-    }
+    if(!maskPII) return val||"";
+    if(!val || val==="—" || val==="") return val||"";
+    if(type==="email") return String(val).replace(/^(.{2})[^@]*(@.*)$/, "$1***$2");
+    if(type==="phone") return "●●●-●●●-●●●●";
+    if(type==="ssn")   return "***-**-" + String(val).slice(-4);
+    if(type==="taxid") return "**-***" + String(val).slice(-4);
+    if(type==="amount"||type==="salary") return "$ ●●●,●●●";
+    if(type==="name")  return String(val).split(" ").map((w,i)=>i===0?w:w[0]+"***").join(" ");
+    if(type==="account") return "****" + String(val).slice(-4);
+    return "●●●●●●";
   };
   const [appSettings, setAppSettings] = useState({
     ownerName: "Manju",
@@ -2180,13 +2176,7 @@ export default function ZiksatechOps() {
     />;
   }
 
-    // Make mask helpers available globally for all components
-  useEffect(() => {
-    window.__ZT_MASK__ = maskPII;
-    window.__ZT_MASK_VAL__ = maskVal;
-  }, [maskPII]);
-
-  return (
+    return (
     <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",background:"#070b14",minHeight:"100vh",color:"#e2e8f0",display:"flex"}}>
       <style>{`
 /* ── Light mode override ───────────────────────────────────── */
@@ -2354,7 +2344,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {/* PII Mask/Unmask Toggle */}
         <div style={{padding:"0 10px 10px",marginTop:2}}>
           <button
-            onClick={()=>setMaskPII(m=>!m)}
+            onClick={()=>{ setMaskPII(m=>{ window.__ZT_MASK__=!m; return !m; }); }}
             style={{
               display:"flex",alignItems:"center",gap:6,width:"100%",
               background:maskPII?"#0a1a0a":"#1a0a0a",
@@ -4265,7 +4255,7 @@ function ADPPayroll({ roster, adpRuns, setAdpRuns }) {
                 <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{e.name}</div>
                 <div style={{fontSize:10,color:"#3d5a7a"}}>{e.role}</div>
               </div>
-              <span className="mono" style={{fontSize:12,color:"#38bdf8"}}>{window.__ZT_MASK__ ? "$ ●●●,●●●" : fmt(+e.baseSalary||0)}</span>
+              <span className="mono" style={{fontSize:12,color:"#38bdf8"}}>{window.__ZT_MASK__!==false ? "$ ●●●,●●●" : fmt(+e.baseSalary||0)}</span>
               <span className="mono" style={{fontSize:12,color:"#7dd3fc"}}>{fmt(b.gross)}</span>
               <span className="mono" style={{fontSize:11,color:"#64748b"}}>{fmt(b.fica)}</span>
               <span className="mono" style={{fontSize:11,color:"#64748b"}}>{fmt(b.futa)}</span>
@@ -7227,7 +7217,7 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
                     {c.isPrimary&&<span className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:8}}>PRIMARY</span>}
                   </div>
                   <div style={{fontSize:10,color:"#3d5a7a"}}>{c.title}</div>
-                  <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>{window.__ZT_MASK__ && c.email ? c.email.replace(/^(.{2})[^@]*(@.*)$/,"$1***$2") : c.email}</div>
+                  <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>{window.__ZT_MASK__!==false && c.email ? c.email.slice(0,2)+"***"+c.email.slice(c.email.indexOf("@")) : c.email}</div>
                 </div>
                 <button className="btn bg" style={{padding:"2px 7px",fontSize:10}} onClick={()=>openCon(c)}>Edit</button>
               </div>
@@ -18341,7 +18331,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
                         <Avatar name={b.name} size={36}/>
                         <div>
                           <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{b.name}</div>
-                          <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__ ? "$ ●●●,●●●" : fmt(+b.salary||0)}/yr salary</div>
+                          <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__!==false ? "$ ●●●,●●●" : fmt(+b.salary||0)}/yr salary</div>
                         </div>
                       </div>
                       <div style={{textAlign:"right"}}>
@@ -23372,7 +23362,7 @@ Return JSON: {"linkedIn":"linkedin.com/in/likely-url","companyWebsite":"likely u
           <div key={lead.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 1fr 80px 80px 80px 90px"}}>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{lead.name}</div>
-              <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__ ? lead.email?.replace(/^(.{2})[^@]*(@.*)$/,"$1***$2") : lead.email}</div>
+              <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__!==false && lead.email ? lead.email.slice(0,2)+"***"+lead.email.slice(lead.email.indexOf("@")) : lead.email}</div>
             </div>
             <div>
               <div style={{fontSize:12,color:"#94a3b8"}}>{lead.company}</div>
@@ -24216,7 +24206,7 @@ ${CSV_SAMPLE_DATA[importType]?.[0]||""}`}
                   <div key={i} style={{padding:"10px 0",borderBottom:"1px solid #0a1626"}}>
                     <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{c.name} <span style={{color:"#475569",fontWeight:400}}>· {c.title}</span></div>
                     <div style={{fontSize:11,color:"#3d5a7a"}}>{c.company} · {c.industry}</div>
-                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{window.__ZT_MASK__ && c.email ? c.email.replace(/^(.{2})[^@]*(@.*)$/,"$1***$2") : c.email} · {c.phone}</div>
+                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{window.__ZT_MASK__!==false && c.email ? c.email.slice(0,2)+"***"+c.email.slice(c.email.indexOf("@")) : c.email} · {c.phone}</div>
                     {c.notes&&<div style={{fontSize:10,color:"#475569",marginTop:3,fontStyle:"italic"}}>{c.notes}</div>}
                   </div>
                 ))}
@@ -24282,7 +24272,7 @@ ${CSV_SAMPLE_DATA[importType]?.[0]||""}`}
                         <div>
                           <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{lead.name}</div>
                           <div style={{fontSize:11,color:"#3d5a7a"}}>{lead.title} · {lead.company}</div>
-                          <div style={{fontSize:10,color:"#334155",marginTop:2}}>{window.__ZT_MASK__ ? lead.email?.replace(/^(.{2})[^@]*(@.*)$/,"$1***$2") : lead.email}</div>
+                          <div style={{fontSize:10,color:"#334155",marginTop:2}}>{window.__ZT_MASK__!==false && lead.email ? lead.email.slice(0,2)+"***"+lead.email.slice(lead.email.indexOf("@")) : lead.email}</div>
                         </div>
                         <span className="bdg" style={{background:lead.score>=80?"#34d39922":"#f59e0b22",color:lead.score>=80?"#34d399":"#f59e0b",fontSize:10}}>
                           {lead.score}pt
