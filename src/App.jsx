@@ -1552,9 +1552,11 @@ const DOCUMENTS_SEED = [
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2,9);
-const fmt = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
-const fmtD = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
-const pct = n => (n*100).toFixed(1)+"%";
+const _fmtNum = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
+const fmt = n => window.__ZT_MASK__!==false ? "$ ●●●,●●●" : _fmtNum(n);
+const _fmtDNum = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+const fmtD = n => window.__ZT_MASK__!==false ? "$ ●●●,●●●" : _fmtDNum(n);
+const pct = n => window.__ZT_MASK__!==false ? "●●.●%" : (n*100).toFixed(1)+"%";
 const fmtDate = d => { if(!d) return "—"; const dt=new Date(d+"T00:00:00"); return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
 
 function calcRoster(r) {
@@ -2935,7 +2937,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
             const isYTD = i>=9;
             return (
               <div key={m.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-                <div style={{fontSize:9,color:"#1e3a5f",fontFamily:"monospace",whiteSpace:"nowrap"}}>{m.rev>=1000?Math.round(m.rev/1000)+"k":m.rev}</div>
+                <div style={{fontSize:9,color:"#1e3a5f",fontFamily:"monospace",whiteSpace:"nowrap"}}>{window.__ZT_MASK__!==false?"●●k":(m.rev>=1000?Math.round(m.rev/1000)+"k":m.rev)}</div>
                 <div style={{width:"100%",height:pctH,borderRadius:"3px 3px 0 0",
                   background:isCur?"linear-gradient(180deg,#38bdf8,#0369a1)":isYTD?"#0c2a44":"#1a2d45",
                   border:isCur?"1px solid #38bdf8":isYTD?"1px solid #1a3a5c":"none",
