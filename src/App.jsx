@@ -2362,7 +2362,7 @@ const WIDGET_LIBRARY = [
     }},
 ];
 
-function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, finInvoices, finPayments, workAuth, compDocs, candidates, offers, crmDeals, crmAccounts, auditLog, addAudit, setTab }) {
+function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, finInvoices, finPayments, finExpenses, workAuth, compDocs, candidates, offers, crmDeals, crmAccounts, ptoRequests, auditLog, addAudit, setTab }) {
   // ── Period picker ────────────────────────────────────────────────────────
   const PERIODS = [
     { id:"ytd2026",   label:"YTD 2026",    monthKeys:["2026-01","2026-02","2026-03"],          startIdx:9 },
@@ -2373,6 +2373,12 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
     { id:"rolling12", label:"Rolling 12m", monthKeys:["2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03"], startIdx:0 },
   ];
   const [dashPeriod, setDashPeriod] = useState("ytd2026");
+  const [activeWidgets, setActiveWidgets] = React.useState(()=>{
+    try{return JSON.parse(localStorage.getItem("zt-widgets")||JSON.stringify(["cash_flow","hiring","rev_client","util","deals","notes"]));}
+    catch{return ["cash_flow","hiring","rev_client","util","deals","notes"];}
+  });
+  const [widgetLibOpen, setWidgetLibOpen] = React.useState(false);
+  React.useEffect(()=>{localStorage.setItem("zt-widgets",JSON.stringify(activeWidgets));},[activeWidgets]);
   const activePeriod = PERIODS.find(p=>p.id===dashPeriod)||PERIODS[0];
 
   const rData = roster.map(r => ({ ...r, ...calcRoster(r) }));
@@ -2671,6 +2677,63 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
       <WidgetBoard roster={roster} clients={clients} finPayments={finPayments}
         finExpenses={finExpenses} crmDeals={crmDeals} candidates={candidates} setTab={setTab}/>
     </div>
+    {/* ─── WIDGET BOARD ───────────────────────────────────────────── */}
+    <div style={{marginTop:16,padding:"0 4px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📌 My Widgets</div>
+        <button onClick={()=>setWidgetLibOpen(o=>!o)}
+          style={{background:"#0369a1",border:"none",borderRadius:7,color:"#fff",
+            fontSize:11,fontWeight:700,padding:"5px 12px",cursor:"pointer"}}>
+          {widgetLibOpen?"✕ Close":"+ Add Widget"}
+        </button>
+      </div>
+      {widgetLibOpen&&(
+        <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px",marginBottom:12}}>
+          <div style={{fontSize:11,color:"#334155",marginBottom:10,textTransform:"uppercase",letterSpacing:"0.1em"}}>Widget Library — click to add</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+            {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).map(w=>(
+              <button key={w.id} onClick={()=>{setActiveWidgets(p=>[...p,w.id]);setWidgetLibOpen(false);}}
+                style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:11,padding:"10px 8px",cursor:"pointer",textAlign:"left"}}>
+                <div style={{fontSize:18,marginBottom:4}}>{w.icon}</div>
+                <div style={{fontWeight:600,color:"#cbd5e1"}}>{w.label}</div>
+                <div style={{fontSize:10,color:"#334155",marginTop:2}}>{w.desc}</div>
+              </button>
+            ))}
+            {WIDGET_LIBRARY.filter(w=>!activeWidgets.includes(w.id)).length===0&&
+              <div style={{color:"#34d399",fontSize:12,gridColumn:"span 4",textAlign:"center",padding:8}}>✓ All widgets added</div>}
+          </div>
+        </div>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+        {activeWidgets.map(wid=>{
+          const w=WIDGET_LIBRARY.find(x=>x.id===wid);
+          if(!w)return null;
+          const Render=w.render;
+          return(
+            <div key={wid} style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:16}}>{w.icon}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{w.label}</span>
+                </div>
+                <button onClick={()=>setActiveWidgets(p=>p.filter(x=>x!==wid))}
+                  style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:12,lineHeight:1}}>✕</button>
+              </div>
+              <Render roster={roster} clients={clients} finInvoices={finInvoices}
+                finPayments={finPayments} finExpenses={finExpenses}
+                crmDeals={crmDeals} candidates={candidates} ptoRequests={ptoRequests} setTab={setTab}/>
+            </div>
+          );
+        })}
+        {activeWidgets.length===0&&(
+          <div style={{gridColumn:"span 3",textAlign:"center",padding:"32px",color:"#334155",
+            fontSize:13,border:"1px dashed #1a2d45",borderRadius:12}}>
+            Click <strong style={{color:"#0369a1"}}>+ Add Widget</strong> to personalize your dashboard.
+          </div>
+        )}
+      </div>
+    </div>
+
   );
 }
 
