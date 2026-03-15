@@ -21771,7 +21771,7 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
     await callClaude(system, prompt, txt => setOutput(txt));
     setLoading(false);
   };
-  const [showPreview, setShowPreview] = React.useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const previewFields = [
     {label:"Client",value:form.client},{label:"Project",value:form.project},
     {label:"Scope",value:form.scope},{label:"Deliverables",value:form.deliverables},
@@ -22144,8 +22144,8 @@ const exportToXLSX = async (data, type="prospect") => {
 
 // ── Export Button Component ──────────────────────────────────────────────────
 function ExportButtons({ data, type, label="Export" }) {
-  const [exporting, setExporting] = React.useState(null);
-  const [done, setDone] = React.useState("");
+  const [exporting, setExporting] = useState(null);
+  const [done, setDone] = useState("");
 
   const doExport = async (format) => {
     if(!data) return alert("Generate content first before exporting");
@@ -23401,7 +23401,7 @@ Timeline, Budget Guidelines, Terms & Conditions, Submission Instructions.`;
     await callClaude(system, prompt, txt => setOutput(txt));
     setLoading(false);
   };
-  const [showRFPPreview, setShowRFPPreview] = React.useState(false);
+  const [showRFPPreview, setShowRFPPreview] = useState(false);
   const rfpPreviewFields = [
     {label:"RFP Title",value:form?.title},{label:"Agency/Company",value:form?.agency},
     {label:"Due Date",value:form?.dueDate},{label:"Contract Value",value:form?.value},
