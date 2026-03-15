@@ -5348,6 +5348,11 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
                       {copiedId===inv.id?"✓ Copied":"⛓ Link"}
                     </button>
                   )}
+                  <button className="btn bg" style={{padding:"3px 7px",fontSize:10,color:"#f87171"}}
+                    title="Download PDF Invoice"
+                    onClick={e=>{e.stopPropagation();generateInvoicePDF(inv, clients, appSettings);}}>
+                    📄 PDF
+                  </button>
                 </div>
               </div>
             );
@@ -21715,6 +21720,13 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
     await callClaude(system, prompt, txt => setOutput(txt));
     setLoading(false);
   };
+  const [showPreview, setShowPreview] = React.useState(false);
+  const previewFields = [
+    {label:"Client",value:form.client},{label:"Project",value:form.project},
+    {label:"Scope",value:form.scope},{label:"Deliverables",value:form.deliverables},
+    {label:"Duration",value:form.duration},{label:"Budget Range",value:form.budget},
+    {label:"Engagement Type",value:form.type},{label:"Assumptions",value:form.assumptions},
+  ];
 
   const copyOutput = () => { navigator.clipboard.writeText(output); };
 
@@ -21745,6 +21757,12 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
               border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:loading?"wait":"pointer"}}>
             {loading ? "✍️ Generating SOW..." : "✨ Generate SOW with AI"}
           </button>
+          <button className="btn bg" style={{color:"#7dd3fc",fontSize:13,fontWeight:700,cursor:"pointer",width:"100%",marginTop:6}}
+            onClick={()=>setShowPreview(true)} disabled={loading}>
+            👁 Preview Before Generating
+          </button>
+          <PreviewModal open={showPreview} onClose={()=>setShowPreview(false)} onConfirm={()=>{setShowPreview(false);generate();}}
+            title="Statement of Work" fields={previewFields} loading={loading}/>
         </div>
       </div>
       <div>
@@ -22112,6 +22130,231 @@ function ExportButtons({ data, type, label="Export" }) {
     </div>
   );
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PREVIEW MODAL — Shows structured preview before AI generation
+// ═══════════════════════════════════════════════════════════════════════════
+function PreviewModal({ open, onClose, onConfirm, title, fields, loading }) {
+  if (!open) return null;
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:560}}>
+        <MH title={"Preview: "+title} onClose={onClose}/>
+        <div style={{fontSize:11,color:"#475569",marginBottom:14,padding:"8px 12px",background:"#0a1120",borderRadius:8,border:"1px solid #1a2d45"}}>
+          📋 Review your inputs below before generating. Click <strong style={{color:"#38bdf8"}}>Confirm & Generate</strong> to proceed.
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto",marginBottom:16}}>
+          {fields.filter(f=>f.value).map((f,i)=>(
+            <div key={i} style={{display:"grid",gridTemplateColumns:"140px 1fr",gap:8,padding:"8px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <span style={{fontSize:11,color:"#3d5a7a",fontWeight:600,paddingTop:1}}>{f.label}</span>
+              <span style={{fontSize:12,color:"#e2e8f0",wordBreak:"break-word"}}>{String(f.value).slice(0,120)}{String(f.value).length>120?"...":""}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button className="btn bg" onClick={onClose}>✏️ Edit</button>
+          <button className="btn bp" onClick={onConfirm} disabled={loading}>
+            {loading?"⚡ Generating...":"⚡ Confirm & Generate"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PDF INVOICE GENERATOR — Professional branded invoice PDF
+// ═══════════════════════════════════════════════════════════════════════════
+const generateInvoicePDF = async (inv, clients, appSettings) => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"pt", format:"letter" });
+
+  const NAVY=[13,27,42], GOLD=[201,168,76], WHITE=[255,255,255], LIGHT=[232,240,248], GRAY=[100,116,139], DARKGRAY=[51,65,85];
+  const client = (clients||[]).find(cl=>cl.id===inv.clientId) || {};
+  const co = appSettings || {};
+  const lines = inv.lines || [];
+  const subtotal = lines.reduce((s,l)=>s+(+l.amount||0),0);
+  const tax = inv.taxRate ? subtotal*(inv.taxRate/100) : 0;
+  const total = subtotal + tax;
+  const W=612, margin=40;
+
+  // ── Header band ──────────────────────────────────────────────────────────
+  doc.setFillColor(...NAVY); doc.rect(0,0,W,80,"F");
+  doc.setFillColor(...GOLD);  doc.rect(0,78,W,3,"F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.setTextColor(...WHITE);
+  doc.text(co.companyName||"ZIKSATECH INC.", margin, 38);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(180,200,220);
+  doc.text("WBE | HUB | WOSB Certified SAP Consulting", margin, 52);
+  doc.text(co.address||"Plano, TX 75024  |  manju@ziksatech.com", margin, 63);
+  // Invoice label right side
+  doc.setFont("helvetica","bold"); doc.setFontSize(26); doc.setTextColor(...GOLD);
+  doc.text("INVOICE", W-margin, 42, {align:"right"});
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...WHITE);
+  doc.text(inv.id||"INV-001", W-margin, 58, {align:"right"});
+
+  // ── Invoice meta + Bill To ────────────────────────────────────────────────
+  let y = 100;
+  // Left: Bill To
+  doc.setFillColor(235,243,252); doc.roundedRect(margin, y, 240, 90, 4, 4, "F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...GRAY);
+  doc.text("BILL TO", margin+10, y+15);
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(...DARKGRAY);
+  doc.text(client.name||inv.clientName||"Client", margin+10, y+30);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...GRAY);
+  if (client.address) doc.text(client.address, margin+10, y+44);
+  if (client.contact) doc.text(client.contact, margin+10, y+56);
+  if (client.email)   doc.text(client.email,   margin+10, y+68);
+
+  // Right: Invoice details
+  const rx=W-margin-200;
+  const detailRows=[["Invoice #",inv.id||""],["Issue Date",inv.issueDate||inv.date||""],["Due Date",inv.dueDate||""],["Terms",inv.paymentTerms||"Net 30"],["Period",inv.period||""]];
+  doc.setFillColor(235,243,252); doc.roundedRect(rx-10, y, 210, 90, 4, 4, "F");
+  detailRows.filter(r=>r[1]).forEach(([k,v],i)=>{
+    const dy = y+14+i*16;
+    doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...GRAY); doc.text(k, rx, dy);
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(...DARKGRAY); doc.text(String(v), rx+105, dy, {align:"right"});
+  });
+
+  y += 105;
+
+  // ── Project title ─────────────────────────────────────────────────────────
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(...NAVY);
+  doc.text(inv.projectName||inv.description||"Professional Services", margin, y+14);
+  y += 22;
+
+  // ── Line items table ──────────────────────────────────────────────────────
+  const tableRows = lines.map(l=>([
+    l.desc||l.description||"Services",
+    String(l.qty||1),
+    l.rate ? `$${Number(l.rate).toLocaleString()}` : "",
+    `$${Number(l.amount||0).toLocaleString()}`
+  ]));
+
+  doc.autoTable({
+    startY: y,
+    head: [["Description","Qty","Rate","Amount"]],
+    body: tableRows,
+    margin:{left:margin, right:margin},
+    headStyles:{fillColor:NAVY,textColor:WHITE,fontSize:9,fontStyle:"bold"},
+    bodyStyles:{fontSize:10,textColor:DARKGRAY},
+    columnStyles:{0:{cellWidth:"auto"},1:{cellWidth:50,halign:"center"},2:{cellWidth:70,halign:"right"},3:{cellWidth:80,halign:"right",fontStyle:"bold"}},
+    alternateRowStyles:{fillColor:[245,249,255]},
+    tableLineColor:LIGHT, tableLineWidth:0.5,
+  });
+
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ── Totals box ────────────────────────────────────────────────────────────
+  const boxX=W-margin-200, boxW=200;
+  doc.setFillColor(235,243,252); doc.roundedRect(boxX, y, boxW, tax>0?80:62, 4,4,"F");
+  let ty=y+18;
+  [["Subtotal",`$${subtotal.toLocaleString()}`], ...(tax>0?[[`Tax (${inv.taxRate}%)`,`$${tax.toFixed(2)}`]]:[])]
+    .forEach(([k,v])=>{
+      doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(...GRAY);doc.text(k,boxX+10,ty);
+      doc.setFont("helvetica","bold");doc.setFontSize(10);doc.setTextColor(...DARKGRAY);doc.text(v,boxX+boxW-10,ty,{align:"right"});
+      ty+=16;
+    });
+  // Total line
+  doc.setFillColor(...NAVY); doc.rect(boxX,ty-4,boxW,22,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(...WHITE);doc.text("TOTAL DUE",boxX+10,ty+10);
+  doc.setTextColor(...GOLD);doc.text(`$${total.toLocaleString()}`,boxX+boxW-10,ty+10,{align:"right"});
+
+  y = Math.max(y+85, doc.lastAutoTable.finalY+95);
+
+  // ── Notes / payment instructions ─────────────────────────────────────────
+  if(inv.notes||co.invoiceFooter) {
+    const note = inv.notes||co.invoiceFooter||"Thank you for your business.";
+    doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(...NAVY);doc.text("Notes / Payment Instructions",margin,y);
+    doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(...GRAY);
+    doc.text(note, margin, y+14, {maxWidth:W-margin*2});
+    y+=30;
+  }
+
+  // ── Status badge ─────────────────────────────────────────────────────────
+  const statusColors={paid:[34,197,94],sent:[56,189,248],overdue:[248,113,113],draft:[100,116,139],partial:[249,158,11]};
+  const sc=statusColors[inv.status]||GRAY;
+  doc.setFillColor(...sc); doc.roundedRect(margin,y,60,18,4,4,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(...WHITE);
+  doc.text((inv.status||"draft").toUpperCase(),margin+30,y+12,{align:"center"});
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  const pageH=792;
+  doc.setFillColor(...NAVY); doc.rect(0,pageH-30,W,30,"F");
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(150,180,200);
+  doc.text(`${co.companyName||"Ziksatech Inc."} | WBE/HUB/WOSB Certified | ${co.email||"manju@ziksatech.com"}`, W/2, pageH-12, {align:"center"});
+
+  const filename=`${inv.id||"invoice"}-${client.name||"client"}.pdf`.replace(/[^a-zA-Z0-9.-]/g,"-");
+  doc.save(filename);
+  return filename;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UNIVERSAL XLSX EXPORTER — for data tables across all modules
+// ═══════════════════════════════════════════════════════════════════════════
+const exportTableToXLSX = async (rows, headers, sheetName, filename) => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+  const XLSX = window.XLSX;
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws["!cols"] = headers.map(()=>({wch:22}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName||"Data");
+  XLSX.writeFile(wb, filename||`export-${Date.now()}.xlsx`);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UNIVERSAL PDF REPORT GENERATOR — tables, lists, any structured data
+// ═══════════════════════════════════════════════════════════════════════════
+const generateReportPDF = async (title, sections, filename) => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"pt", format:"letter" });
+  const NAVY=[13,27,42], GOLD=[201,168,76], WHITE=[255,255,255], GRAY=[100,116,139];
+  const W=612, margin=40;
+
+  // Header
+  doc.setFillColor(...NAVY); doc.rect(0,0,W,60,"F");
+  doc.setFillColor(...GOLD);  doc.rect(0,58,W,3,"F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(18); doc.setTextColor(...WHITE);
+  doc.text("ZIKSATECH", margin, 28);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(180,200,220);
+  doc.text(title, margin, 44);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(180,200,220);
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, W-margin, 44, {align:"right"});
+
+  let y=80;
+  for(const section of sections) {
+    if(section.type==="heading") {
+      doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(...NAVY);
+      doc.text(section.text, margin, y); y+=20;
+    } else if(section.type==="text") {
+      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...GRAY);
+      const lines = doc.splitTextToSize(section.text, W-margin*2);
+      doc.text(lines, margin, y); y+=lines.length*14+8;
+    } else if(section.type==="table") {
+      doc.autoTable({
+        startY: y, head:[section.headers], body:section.rows,
+        margin:{left:margin,right:margin},
+        headStyles:{fillColor:NAVY,textColor:WHITE,fontSize:9,fontStyle:"bold"},
+        bodyStyles:{fontSize:9,textColor:[51,65,85]},
+        alternateRowStyles:{fillColor:[245,249,255]},
+      });
+      y = doc.lastAutoTable.finalY + 16;
+    }
+    if(y>720){doc.addPage(); y=40;}
+  }
+
+  // Footer
+  doc.setFillColor(...NAVY); doc.rect(0,762,W,30,"F");
+  doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(150,180,200);
+  doc.text("Ziksatech Inc. | WBE/HUB/WOSB Certified | manju@ziksatech.com", W/2, 780, {align:"center"});
+
+  doc.save(filename||`ziksatech-report-${Date.now()}.pdf`);
+};
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROSPECT INTELLIGENCE ENGINE
@@ -22540,6 +22783,15 @@ Include 5-6 sections. Make it specific to ${target} and ${industry}. No markdown
             <button className="btn bp" style={{width:"100%",justifyContent:"center"}} onClick={generate} disabled={loading}>
               {loading?"⚡ Generating...":"⚡ Generate Deck"}
             </button>
+            <button className="btn bg" style={{color:"#7dd3fc",marginTop:6,width:"100%",fontSize:12,fontWeight:700,cursor:"pointer"}}
+              disabled={loading} onClick={()=>{
+                if(!target.trim()) return alert("Enter a target company");
+                if(!focus.length) return alert("Select at least one focus area");
+                const confirmed = window.confirm(`Generate deck for: ${target}\nIndustry: ${industry}\nFocus: ${focus.join(", ")}\n\nProceed?`);
+                if(confirmed) generate();
+              }}>
+              👁 Preview & Confirm
+            </button>
           </div>
           {history.length>0&&(<div className="card" style={{padding:"14px 16px"}}>
             <div style={{fontSize:11,fontWeight:700,color:"#475569",marginBottom:8}}>RECENT DECKS</div>
@@ -22890,6 +23142,12 @@ Timeline, Budget Guidelines, Terms & Conditions, Submission Instructions.`;
     await callClaude(system, prompt, txt => setOutput(txt));
     setLoading(false);
   };
+  const [showRFPPreview, setShowRFPPreview] = React.useState(false);
+  const rfpPreviewFields = [
+    {label:"RFP Title",value:form?.title},{label:"Agency/Company",value:form?.agency},
+    {label:"Due Date",value:form?.dueDate},{label:"Contract Value",value:form?.value},
+    {label:"Set-Aside",value:form?.setAside},{label:"Key Requirements",value:form?.requirements},
+  ];
 
   return (
     <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
@@ -22915,6 +23173,13 @@ Timeline, Budget Guidelines, Terms & Conditions, Submission Instructions.`;
             style={{width:"100%",padding:"11px",marginTop:8,background:loading?"#0a1826":"linear-gradient(135deg,#7c3aed,#6d28d9)",
               border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
             {loading ? "✍️ Generating RFP..." : "✨ Generate RFP with AI"}
+          </button>
+          <button className="btn bg" style={{color:"#7dd3fc",marginTop:6,width:"100%",fontSize:13,fontWeight:700,cursor:"pointer"}}
+            disabled={loading} onClick={()=>{
+              const confirmed = window.confirm(`Generate RFP response?\n\nTitle: ${form?.title||"—"}\nAgency: ${form?.agency||"—"}\nDue: ${form?.dueDate||"—"}\n\nProceed?`);
+              if(confirmed) generate();
+            }}>
+            👁 Preview & Confirm
           </button>
         </div>
       </div>
