@@ -2171,6 +2171,7 @@ export default function ZiksatechOps() {
     { id:"soplibrary",   label:"SOP & Exit Readiness",   icon:ICONS.pl,       group:"Delivery"    },
     { id:"certtracker",  label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
     { id:"gridmind",     label:"GridMind\u2122 ROI",     icon:ICONS.ebitda,   group:"Overview"    },
+    { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Overview"    },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -2622,6 +2623,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="capdeck"      && <CapabilityDeck clients={shared.clients} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="certtracker"  && <CertTracker addAudit={shared.addAudit}/>}
         {tab==="gridmind"     && <GridMindROI/>}
+        {tab==="ideapad"      && <IdeaPad authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="outreachtrk"  && <OutreachTracker crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="sowgen"     && <SOWGenerator   {...shared} />}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
@@ -24229,6 +24231,403 @@ Include: Introduction, Project Overview, Scope, Technical Requirements, Vendor Q
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IDEAPAD 💡 — Team Innovation & Revenue Sharing Board
+// Submit ideas → vote → AI evaluates potential → track implementation
+// Revenue share: 10% of net revenue from implemented ideas goes to contributor
+// ═══════════════════════════════════════════════════════════════════════════
+
+const IDEA_CATEGORIES = [
+  "New Product / Service",
+  "Client Referral",
+  "Process Improvement",
+  "Technology / AI",
+  "Partnership Opportunity",
+  "Cost Reduction",
+  "New Market / Vertical",
+  "Internal Tool",
+  "Other",
+];
+
+const IDEA_STATUS_CONFIG = {
+  submitted:    { label:"Submitted",     color:"#64748b", bg:"#64748b22", icon:"💡" },
+  reviewing:    { label:"Under Review",  color:"#38bdf8", bg:"#38bdf822", icon:"🔍" },
+  approved:     { label:"Approved",      color:"#a78bfa", bg:"#a78bfa22", icon:"✅" },
+  implementing: { label:"Implementing",  color:"#f59e0b", bg:"#f59e0b22", icon:"🔨" },
+  launched:     { label:"Launched",      color:"#34d399", bg:"#34d39922", icon:"🚀" },
+  rejected:     { label:"Not Selected",  color:"#f87171", bg:"#f8717122", icon:"❌" },
+};
+
+const REVENUE_SHARE_PCT = 10; // 10% of net revenue to idea contributor
+
+function IdeaPad({ authProfile, addAudit }) {
+  const [ideas, setIdeas]         = useState(()=>{ try{ return JSON.parse(localStorage.getItem('zt-ideapad')||'[]'); }catch{ return []; }});
+  const [modal, setModal]         = useState(false);
+  const [detailId, setDetailId]   = useState(null);
+  const [evalId, setEvalId]       = useState(null);
+  const [evalLoading, setEvalLoad]= useState(false);
+  const [evalResult, setEvalRes]  = useState({});
+  const [filter, setFilter]       = useState('all');
+  const [sortBy, setSortBy]       = useState('votes');
+  const [form, setForm]           = useState({
+    title:'', category:'New Product / Service', description:'', 
+    problem:'', solution:'', revenueModel:'', effort:'Medium',
+    estimatedRevenue:'', submitterName: authProfile?.full_name || '',
+  });
+
+  const saveIdeas = (updated) => { setIdeas(updated); localStorage.setItem('zt-ideapad', JSON.stringify(updated)); };
+
+  const submitIdea = () => {
+    if(!form.title.trim() || !form.description.trim()) return alert('Title and description are required');
+    const idea = {
+      id: 'idea-'+Date.now(),
+      ...form,
+      submitterName: form.submitterName || authProfile?.full_name || 'Anonymous',
+      submittedDate: TODAY_STR,
+      status: 'submitted',
+      votes: 0,
+      votedBy: [],
+      comments: [],
+      revenueActual: 0,
+      revenueShare: 0,
+      aiScore: null,
+      aiEval: null,
+    };
+    saveIdeas([idea, ...ideas]);
+    setModal(false);
+    setForm({ title:'', category:'New Product / Service', description:'', problem:'', solution:'', revenueModel:'', effort:'Medium', estimatedRevenue:'', submitterName: authProfile?.full_name||'' });
+    addAudit&&addAudit('IdeaPad','Idea Submitted',form.title,form.submitterName||'Team member');
+  };
+
+  const vote = (id) => {
+    const name = authProfile?.full_name || 'User';
+    saveIdeas(ideas.map(i => {
+      if(i.id !== id) return i;
+      const hasVoted = (i.votedBy||[]).includes(name);
+      return { ...i, votes:(i.votes||0)+(hasVoted?-1:1), votedBy: hasVoted?(i.votedBy||[]).filter(v=>v!==name):[...(i.votedBy||[]),name] };
+    }));
+  };
+
+  const updateStatus = (id, status) => {
+    saveIdeas(ideas.map(i => i.id===id ? {...i,status} : i));
+    addAudit&&addAudit('IdeaPad','Status Updated',id,status);
+  };
+
+  const addComment = (id, text) => {
+    if(!text.trim()) return;
+    saveIdeas(ideas.map(i => i.id===id ? {...i, comments:[...(i.comments||[]),{text,by:authProfile?.full_name||'User',date:TODAY_STR}]} : i));
+  };
+
+  const setRevenue = (id, amount) => {
+    const rev = +amount||0;
+    const share = Math.round(rev * REVENUE_SHARE_PCT / 100);
+    saveIdeas(ideas.map(i => i.id===id ? {...i,revenueActual:rev,revenueShare:share} : i));
+  };
+
+  // AI evaluation
+  const aiEvaluate = async (idea) => {
+    setEvalId(idea.id); setEvalLoad(true);
+    try {
+      let full='';
+      await callClaude(
+        'You are a business idea evaluator for Ziksatech, a WBE/HUB/WOSB certified SAP consulting firm in Plano TX targeting $25M by 2030. Be specific, realistic, and focused on SAP consulting market. Return ONLY valid JSON.',
+        `Evaluate this business idea for Ziksatech:
+Title: ${idea.title}
+Category: ${idea.category}
+Description: ${idea.description}
+Problem Solved: ${idea.problem}
+Proposed Solution: ${idea.solution}
+Revenue Model: ${idea.revenueModel}
+Estimated Revenue: ${idea.estimatedRevenue}
+Effort: ${idea.effort}
+
+Return JSON: {
+  "score": 0-100,
+  "verdict": "Strong Opportunity|Good Idea|Needs Work|Not Viable",
+  "revenueEstimate": "realistic annual estimate",
+  "timeToRevenue": "e.g. 3 months, 6-12 months",
+  "implementationSteps": ["step1","step2","step3"],
+  "risks": ["risk1","risk2"],
+  "strengths": ["strength1","strength2"],
+  "recommendation": "2-3 sentence recommendation",
+  "revenueShare": "estimated 10% share in dollars"
+}`,
+        txt=>{ full+=txt; }, 800
+      );
+      const parsed = JSON.parse(full.replace(/\`\`\`json|\`\`\`/g,'').trim());
+      const updated = {...(evalResult||{}), [idea.id]: parsed};
+      setEvalRes(updated);
+      saveIdeas(ideas.map(i => i.id===idea.id ? {...i, aiScore:parsed.score, aiEval:parsed} : i));
+    } catch(e){ alert('AI evaluation failed: '+e.message); }
+    setEvalLoad(false);
+  };
+
+  const detailIdea = ideas.find(i=>i.id===detailId);
+  const userName = authProfile?.full_name || 'User';
+  const isAdmin = ['super_admin','admin'].includes(authProfile?.role);
+
+  // Stats
+  const totalIdeas = ideas.length;
+  const implemented = ideas.filter(i=>['launched','implementing'].includes(i.status));
+  const totalRevShare = ideas.reduce((s,i)=>s+(i.revenueShare||0),0);
+  const myIdeas = ideas.filter(i=>i.submitterName===userName);
+
+  // Filter + sort
+  const filtered = ideas
+    .filter(i => filter==='all'||i.status===filter||i.category===filter||(filter==='mine'&&i.submitterName===userName))
+    .sort((a,b)=> sortBy==='votes'?(b.votes||0)-(a.votes||0) : sortBy==='newest'?b.id.localeCompare(a.id) : (b.aiScore||0)-(a.aiScore||0));
+
+  const scoreColor = s => s>=80?'#34d399':s>=60?'#f59e0b':'#f87171';
+
+  return (
+    <div>
+      <PH title="IdeaPad 💡" sub="Team ideas · Revenue sharing · AI evaluation · Implementation tracker"/>
+
+      {/* Mission banner */}
+      <div style={{padding:'14px 18px',background:'linear-gradient(135deg,#0c2340,#0a1a2e)',border:'1px solid #0369a1',borderRadius:10,marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:700,color:'#38bdf8',marginBottom:4}}>🚀 Revenue Sharing Program</div>
+          <div style={{fontSize:12,color:'#7dd3fc',lineHeight:1.6,maxWidth:600}}>
+            Got an idea that could make Ziksatech money? Submit it. If it's implemented and generates revenue,
+            <strong style={{color:'#34d399'}}> you get {REVENUE_SHARE_PCT}% of net revenue</strong> — forever, as long as it's running.
+          </div>
+          <div style={{fontSize:11,color:'#3d5a7a',marginTop:6}}>
+            Examples: new client referral → 10% of deal revenue | new product idea → 10% of product sales | process improvement that saves $X/yr → 10% of savings
+          </div>
+        </div>
+        <button className="btn bp" style={{fontSize:13,flexShrink:0}} onClick={()=>setModal(true)}>
+          + Submit Idea
+        </button>
+      </div>
+
+      {/* Stats row */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+        {[
+          {l:'Total Ideas',    v:totalIdeas,                           c:'#64748b'},
+          {l:'In Progress',    v:implemented.length,                   c:'#34d399'},
+          {l:'My Ideas',       v:myIdeas.length,                       c:'#38bdf8'},
+          {l:'Total Rev Share',v:'$'+totalRevShare.toLocaleString(),   c:'#f59e0b'},
+        ].map(s=>(
+          <div key={s.l} className="card" style={{padding:'12px 16px',textAlign:'center'}}>
+            <div style={{fontSize:9,color:'#3d5a7a',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>{s.l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters + sort */}
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        {['all','mine','submitted','reviewing','approved','implementing','launched'].map(f=>(
+          <button key={f} className="btn bg" style={{fontSize:10,padding:'4px 10px',
+            borderColor:filter===f?'#0284c7':'#1a2d45',color:filter===f?'#38bdf8':'#475569'}}
+            onClick={()=>setFilter(f)}>
+            {f==='all'?`All (${ideas.length})`:f==='mine'?`Mine (${myIdeas.length})`:IDEA_STATUS_CONFIG[f]?.icon+' '+IDEA_STATUS_CONFIG[f]?.label}
+          </button>
+        ))}
+        <div style={{marginLeft:'auto',display:'flex',gap:6,alignItems:'center'}}>
+          <span style={{fontSize:10,color:'#334155'}}>Sort:</span>
+          {[['votes','👍 Votes'],['newest','🕐 Newest'],['score','⚡ AI Score']].map(([v,l])=>(
+            <button key={v} className="btn bg" style={{fontSize:10,padding:'4px 8px',
+              borderColor:sortBy===v?'#0284c7':'#1a2d45',color:sortBy===v?'#38bdf8':'#475569'}}
+              onClick={()=>setSortBy(v)}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Ideas grid */}
+      {filtered.length===0?(
+        <div className="card" style={{padding:'50px',textAlign:'center'}}>
+          <div style={{fontSize:32,marginBottom:12}}>💡</div>
+          <div style={{fontSize:14,color:'#334155',marginBottom:8}}>No ideas yet</div>
+          <div style={{fontSize:12,color:'#1e3a5f',marginBottom:16}}>Be the first to submit an idea and potentially earn revenue share!</div>
+          <button className="btn bp" onClick={()=>setModal(true)}>+ Submit First Idea</button>
+        </div>
+      ):(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12}}>
+          {filtered.map(idea=>{
+            const st = IDEA_STATUS_CONFIG[idea.status]||IDEA_STATUS_CONFIG.submitted;
+            const hasVoted = (idea.votedBy||[]).includes(userName);
+            const eval_ = idea.aiEval || evalResult[idea.id];
+            return (
+              <div key={idea.id} className="card" style={{padding:'16px 18px',cursor:'pointer',border:`1px solid ${detailId===idea.id?'#0369a1':'#1a2d45'}`}}
+                onClick={()=>setDetailId(detailId===idea.id?null:idea.id)}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:700,color:'#e2e8f0',marginBottom:3}}>{idea.title}</div>
+                    <div style={{fontSize:10,color:'#3d5a7a'}}>{idea.category} · {idea.submitterName} · {fmtDate(idea.submittedDate)}</div>
+                  </div>
+                  <div style={{display:'flex',gap:6,alignItems:'center',flexShrink:0,marginLeft:8}}>
+                    <span className="bdg" style={{background:st.bg,color:st.color,fontSize:9}}>{st.icon} {st.label}</span>
+                    {eval_ && <span className="bdg" style={{background:scoreColor(eval_.score||0)+'22',color:scoreColor(eval_.score||0),fontSize:10}}>{eval_.score}pt</span>}
+                  </div>
+                </div>
+                <div style={{fontSize:11,color:'#475569',marginBottom:10,lineHeight:1.5}}>{idea.description.slice(0,140)}{idea.description.length>140?'...':''}</div>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <button className="btn bg" style={{fontSize:11,padding:'4px 10px',display:'flex',gap:4,alignItems:'center',
+                    borderColor:hasVoted?'#0284c7':'#1a2d45',color:hasVoted?'#38bdf8':'#475569'}}
+                    onClick={e=>{e.stopPropagation();vote(idea.id);}}>
+                    👍 {idea.votes||0}
+                  </button>
+                  {(idea.comments||[]).length>0&&<span style={{fontSize:10,color:'#334155'}}>💬 {idea.comments.length}</span>}
+                  {idea.estimatedRevenue&&<span style={{fontSize:10,color:'#f59e0b'}}>Est: {idea.estimatedRevenue}</span>}
+                  {idea.revenueActual>0&&<span style={{fontSize:10,color:'#34d399',fontWeight:600}}>🤑 Rev: ${idea.revenueActual.toLocaleString()} → You: ${idea.revenueShare.toLocaleString()}</span>}
+                  <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+                    {!eval_&&<button className="btn bg" style={{fontSize:9,padding:'2px 7px'}}
+                      onClick={e=>{e.stopPropagation();aiEvaluate(idea);}} disabled={evalLoading&&evalId===idea.id}>
+                      {evalLoading&&evalId===idea.id?'⚡...':'⚡ AI Eval'}
+                    </button>}
+                  </div>
+                </div>
+
+                {/* Detail expansion */}
+                {detailId===idea.id&&(
+                  <div style={{marginTop:14,paddingTop:14,borderTop:'1px solid #1a2d45'}} onClick={e=>e.stopPropagation()}>
+                    {idea.problem&&<div style={{marginBottom:8}}><div style={{fontSize:10,color:'#3d5a7a',fontWeight:700,marginBottom:2}}>PROBLEM</div><div style={{fontSize:11,color:'#94a3b8'}}>{idea.problem}</div></div>}
+                    {idea.solution&&<div style={{marginBottom:8}}><div style={{fontSize:10,color:'#3d5a7a',fontWeight:700,marginBottom:2}}>SOLUTION</div><div style={{fontSize:11,color:'#94a3b8'}}>{idea.solution}</div></div>}
+                    {idea.revenueModel&&<div style={{marginBottom:8}}><div style={{fontSize:10,color:'#3d5a7a',fontWeight:700,marginBottom:2}}>REVENUE MODEL</div><div style={{fontSize:11,color:'#94a3b8'}}>{idea.revenueModel}</div></div>}
+
+                    {/* AI Evaluation result */}
+                    {eval_&&(
+                      <div style={{padding:'12px 14px',background:'#0a1120',borderRadius:8,border:'1px solid #0369a133',marginBottom:12}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                          <div style={{fontSize:11,fontWeight:700,color:'#38bdf8'}}>⚡ AI Evaluation</div>
+                          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                            <span style={{fontSize:18,fontWeight:900,color:scoreColor(eval_.score||0)}}>{eval_.score}</span>
+                            <span className="bdg" style={{background:scoreColor(eval_.score||0)+'22',color:scoreColor(eval_.score||0),fontSize:10}}>{eval_.verdict}</span>
+                          </div>
+                        </div>
+                        <div style={{fontSize:11,color:'#94a3b8',marginBottom:8,lineHeight:1.5}}>{eval_.recommendation}</div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                          <div><div style={{fontSize:9,color:'#3d5a7a',marginBottom:3}}>REVENUE ESTIMATE</div><div style={{fontSize:11,color:'#34d399',fontWeight:600}}>{eval_.revenueEstimate}</div></div>
+                          <div><div style={{fontSize:9,color:'#3d5a7a',marginBottom:3}}>TIME TO REVENUE</div><div style={{fontSize:11,color:'#f59e0b',fontWeight:600}}>{eval_.timeToRevenue}</div></div>
+                          <div><div style={{fontSize:9,color:'#3d5a7a',marginBottom:3}}>YOUR 10% SHARE</div><div style={{fontSize:11,color:'#34d399',fontWeight:700}}>{eval_.revenueShare}</div></div>
+                        </div>
+                        {eval_.implementationSteps?.length>0&&(
+                          <div style={{marginBottom:6}}>
+                            <div style={{fontSize:9,color:'#3d5a7a',marginBottom:3}}>IMPLEMENTATION STEPS</div>
+                            {eval_.implementationSteps.map((s,i)=><div key={i} style={{fontSize:10,color:'#94a3b8',marginBottom:2}}>{i+1}. {s}</div>)}
+                          </div>
+                        )}
+                        {eval_.strengths?.length>0&&<div style={{fontSize:10,color:'#34d399',marginBottom:4}}>{eval_.strengths.map(s=>'✓ '+s).join(' | ')}</div>}
+                        {eval_.risks?.length>0&&<div style={{fontSize:10,color:'#f87171'}}>{eval_.risks.map(r=>'⚠ '+r).join(' | ')}</div>}
+                      </div>
+                    )}
+
+                    {/* Admin controls */}
+                    {isAdmin&&(
+                      <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
+                        <div style={{fontSize:10,color:'#334155',marginRight:2,paddingTop:4}}>Status:</div>
+                        {Object.entries(IDEA_STATUS_CONFIG).map(([k,v])=>(
+                          <button key={k} className="btn bg" style={{fontSize:9,padding:'3px 8px',
+                            borderColor:idea.status===k?v.color:'#1a2d45',color:idea.status===k?v.color:'#475569'}}
+                            onClick={()=>updateStatus(idea.id,k)}>{v.icon} {v.label}</button>
+                        ))}
+                      </div>
+                    )}
+                    {isAdmin&&idea.status==='launched'&&(
+                      <div style={{display:'flex',gap:8,marginBottom:12,alignItems:'center'}}>
+                        <div style={{fontSize:10,color:'#3d5a7a',flexShrink:0}}>Actual Revenue Generated:</div>
+                        <input className="inp" type="number" style={{width:120,fontSize:11}}
+                          placeholder="$0" defaultValue={idea.revenueActual||''}
+                          onBlur={e=>setRevenue(idea.id,e.target.value)}/>
+                        {idea.revenueActual>0&&<div style={{fontSize:11,color:'#34d399',fontWeight:700}}>→ {idea.submitterName} gets ${idea.revenueShare.toLocaleString()} ({REVENUE_SHARE_PCT}%)</div>}
+                      </div>
+                    )}
+
+                    {/* Comments */}
+                    <div>
+                      <div style={{fontSize:10,color:'#3d5a7a',fontWeight:700,marginBottom:6}}>COMMENTS ({(idea.comments||[]).length})</div>
+                      {(idea.comments||[]).map((cm,i)=>(
+                        <div key={i} style={{padding:'7px 10px',background:'#060d1c',borderRadius:7,marginBottom:4,border:'1px solid #1a2d45'}}>
+                          <div style={{fontSize:11,color:'#94a3b8'}}>{cm.text}</div>
+                          <div style={{fontSize:9,color:'#334155',marginTop:2}}>{cm.by} · {fmtDate(cm.date)}</div>
+                        </div>
+                      ))}
+                      <div style={{display:'flex',gap:6,marginTop:6}}>
+                        <input className="inp" style={{flex:1,fontSize:11}} placeholder="Add a comment..."
+                          id={'comment-'+idea.id}
+                          onKeyDown={e=>{if(e.key==='Enter'){const v=e.target.value.trim();if(v){addComment(idea.id,v);e.target.value='';}}}}/> 
+                        <button className="btn bg" style={{fontSize:11}} onClick={()=>{
+                          const el=document.getElementById('comment-'+idea.id);
+                          if(el?.value.trim()){addComment(idea.id,el.value.trim());el.value='';}
+                        }}>Post</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Submit Idea Modal */}
+      {modal&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:600}}>
+            <MH title="Submit Your Idea 💡" onClose={()=>setModal(false)}/>
+            <div style={{padding:'10px 14px',background:'#0c2340',border:'1px solid #0369a1',borderRadius:8,marginBottom:14,fontSize:11,color:'#38bdf8'}}>
+              💰 <strong>Revenue Share:</strong> If your idea is implemented and generates revenue, you receive <strong>{REVENUE_SHARE_PCT}% of net revenue</strong> — examples below.
+              <div style={{marginTop:6,display:'flex',gap:8,flexWrap:'wrap'}}>
+                {['New client you refer → 10% of deal','New product → 10% of sales','Cost saving idea → 10% of savings','Process tool → 10% of time saved × rate'].map(ex=>(
+                  <span key={ex} className="bdg" style={{background:'#0c2340',color:'#7dd3fc',fontSize:9}}>{ex}</span>
+                ))}
+              </div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <div style={{gridColumn:'span 2'}}>
+                <div className="lbl">Idea Title *</div>
+                <input className="inp" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="e.g. SAP BRIM as a SaaS product, AT&T referral, AI timesheet automation"/>
+              </div>
+              <div>
+                <div className="lbl">Category</div>
+                <select className="inp" value={form.category} onChange={e=>setForm(p=>({...p,category:e.target.value}))}>
+                  {IDEA_CATEGORIES.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Your Name</div>
+                <input className="inp" value={form.submitterName} onChange={e=>setForm(p=>({...p,submitterName:e.target.value}))}/>
+              </div>
+              <div style={{gridColumn:'span 2'}}>
+                <div className="lbl">Describe the Idea *</div>
+                <textarea className="inp" rows={3} value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} placeholder="What's the idea? Be as specific as possible."/>
+              </div>
+              <div>
+                <div className="lbl">What Problem Does It Solve?</div>
+                <textarea className="inp" rows={2} value={form.problem} onChange={e=>setForm(p=>({...p,problem:e.target.value}))} placeholder="Who has this problem and how big is it?"/>
+              </div>
+              <div>
+                <div className="lbl">Your Proposed Solution</div>
+                <textarea className="inp" rows={2} value={form.solution} onChange={e=>setForm(p=>({...p,solution:e.target.value}))} placeholder="How would Ziksatech implement this?"/>
+              </div>
+              <div>
+                <div className="lbl">How Does It Make Money?</div>
+                <input className="inp" value={form.revenueModel} onChange={e=>setForm(p=>({...p,revenueModel:e.target.value}))} placeholder="e.g. SaaS subscription, referral fee, project revenue"/>
+              </div>
+              <div>
+                <div className="lbl">Estimated Revenue (rough)</div>
+                <input className="inp" value={form.estimatedRevenue} onChange={e=>setForm(p=>({...p,estimatedRevenue:e.target.value}))} placeholder="e.g. $50K/yr, $10K one-time"/>
+              </div>
+              <div>
+                <div className="lbl">Implementation Effort</div>
+                <select className="inp" value={form.effort} onChange={e=>setForm(p=>({...p,effort:e.target.value}))}>
+                  {['Low (< 1 week)','Medium (1-4 weeks)','High (1-3 months)','Very High (3+ months)'].map(e=><option key={e}>{e}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={submitIdea}>💡 Submit Idea</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function GridMindROI() {
   const [industry, setIndustry]   = useState("Electric Utility");
