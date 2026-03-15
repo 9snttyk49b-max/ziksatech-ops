@@ -476,6 +476,38 @@ const FIN_EXPENSES_SEED = [
 ];
 
 // ─── SALES CRM SEED DATA ─────────────────────────────────────────────────────
+
+// ─── CRM Extended Seeds ────────────────────────────────────────────────────────
+const CRM_LEADS_SEED = [
+  { id:"lead1", name:"Tom Bradley",     company:"Client D",     title:"VP Technology",     email:"tom.b@clientd.com",    phone:"972-555-4001", source:"referral",   status:"qualified", score:82, industry:"Technology",    notes:"Intro via AT&T. Interested in S/4HANA migration.", linkedIn:"", assignedTo:"Manju", createdDate:"2026-02-15", lastContact:"2026-03-10" },
+  { id:"lead2", name:"Sarah Mitchell",  company:"Verizon",      title:"SAP Program Mgr",   email:"s.mitchell@vz.com",    phone:"732-555-2011", source:"linkedin",   status:"contacted", score:65, industry:"Telecom",       notes:"Responded to LinkedIn. Evaluating BRIM vendors.", linkedIn:"", assignedTo:"Manju", createdDate:"2026-02-20", lastContact:"2026-03-05" },
+  { id:"lead3", name:"Raj Patel",       company:"TechCorp",     title:"CTO",               email:"raj.p@techcorp.io",    phone:"408-555-3009", source:"cold_email", status:"new",       score:45, industry:"Technology",    notes:"Responded to outbound email. Needs follow-up.", linkedIn:"", assignedTo:"Manju", createdDate:"2026-03-01", lastContact:"2026-03-01" },
+  { id:"lead4", name:"Linda Wong",      company:"HealthFirst",  title:"IT Director",       email:"l.wong@healthfirst.com",phone:"214-555-7710", source:"conference", status:"contacted", score:58, industry:"Healthcare",    notes:"Met at SAP Summit. Exploring IS-U for billing.", linkedIn:"", assignedTo:"Manju", createdDate:"2026-02-28", lastContact:"2026-03-08" },
+  { id:"lead5", name:"Marcus Jones",    company:"TexasEnergy",  title:"VP IT",             email:"m.jones@txenergy.com", phone:"512-555-9020", source:"website",    status:"new",       score:35, industry:"Energy",        notes:"Downloaded BRIM whitepaper from site.", linkedIn:"", assignedTo:"Manju", createdDate:"2026-03-12", lastContact:"2026-03-12" },
+];
+
+const CRM_TASKS_SEED = [
+  { id:"task1", title:"Send SOW redlines response to AT&T",      accountId:"acc1", dealId:"deal1", dueDate:"2026-03-20", priority:"high",   status:"open",     assignedTo:"Manju", notes:"James sent redlines on Mar 10. Legal review done. Ready to send." },
+  { id:"task2", title:"Schedule Verizon discovery call",         accountId:"acc6", dealId:"deal2", dueDate:"2026-03-18", priority:"high",   status:"open",     assignedTo:"Manju", notes:"Need to find a 90-min slot with their team." },
+  { id:"task3", title:"Prepare Client D Phase 2 proposal",       accountId:"acc4", dealId:"deal8", dueDate:"2026-03-25", priority:"medium", status:"open",     assignedTo:"Manju", notes:"Include Sanjay Gupta profile when ready." },
+  { id:"task4", title:"Follow up Tom Bradley — Client D CTO",    accountId:"acc4", dealId:"",      dueDate:"2026-03-17", priority:"high",   status:"open",     assignedTo:"Manju", notes:"Called Mar 10, no answer. Try email." },
+  { id:"task5", title:"Send HPE renewal terms",                  accountId:"acc2", dealId:"deal3", dueDate:"2026-03-22", priority:"medium", status:"completed", assignedTo:"Manju", notes:"Contract renewal auto-sent via DocuSign." },
+  { id:"task6", title:"Log Verizon meeting notes",               accountId:"acc6", dealId:"deal2", dueDate:"2026-03-15", priority:"low",    status:"completed", assignedTo:"Manju", notes:"Done." },
+];
+
+const CRM_NOTES_SEED = [
+  { id:"note1", accountId:"acc1", dealId:"deal1", contactId:"con1", type:"meeting", date:"2026-03-10", title:"AT&T SOW Review Call", body:"James reviewed Phase 3 SOW. Main concern: T&M vs fixed price. Wants clause protecting against scope creep. Action: Manju to add change order language by Mar 20.", createdBy:"Manju" },
+  { id:"note2", accountId:"acc6", dealId:"deal2", contactId:"",     type:"call",    date:"2026-03-05", title:"Verizon Initial Discovery", body:"Spoke with Sarah Mitchell. Verizon currently on SAP ECC 6. Planning S/4HANA migration in Q4 2026. BRIM needed for billing transformation. Budget not confirmed yet. Need to loop in their SAP team.", createdBy:"Manju" },
+  { id:"note3", accountId:"acc4", dealId:"deal8", contactId:"con7", type:"email",   date:"2026-03-08", title:"Client D — Phase 2 Interest", body:"Tom Bradley reached out. Impressed with Phase 1 delivery. Wants to discuss cloud architect addition. Send Sanjay profile.", createdBy:"Manju" },
+];
+
+const CRM_ORDERS_SEED = [
+  { id:"ord1", accountId:"acc1", dealId:"", contractId:"con1", name:"AT&T BRIM Phase 1 — Active", poNumber:"ATT-PO-2024-001", sowNumber:"SOW-ATT-001", value:560000, startDate:"2024-09-01", endDate:"2026-12-31", status:"active",    billingFreq:"monthly", assignedConsultants:["r1","r2"], notes:"Ongoing. Renewing Dec 2026." },
+  { id:"ord2", accountId:"acc2", dealId:"", contractId:"con2", name:"HPE Staff Augmentation — Active", poNumber:"HPE-PO-2025-007", sowNumber:"SOW-HPE-002", value:180000, startDate:"2025-06-01", endDate:"2026-08-31", status:"active",  billingFreq:"monthly", assignedConsultants:["r3"], notes:"1 consultant. Auto-renewal pending." },
+  { id:"ord3", accountId:"acc5", dealId:"", contractId:"con4", name:"Arhasi AI Build — Completed", poNumber:"ARH-PO-2025-001", sowNumber:"SOW-ARH-001", value:108000, startDate:"2025-03-01", endDate:"2026-01-31", status:"completed",billingFreq:"milestone", assignedConsultants:["r5","r6"], notes:"Delivered. Final invoice paid." },
+];
+
+
 const CRM_ACCOUNTS_SEED = [
   { id:"acc1", name:"AT&T",              industry:"Telecom",          type:"customer",   website:"att.com",         phone:"214-555-1000", address:"Dallas, TX",      annualRevPotential:1400000, owner:"Manju",   health:"green",  notes:"Core anchor. BRIM Phase 3 upsell in H2. Renewal Dec 2026." },
   { id:"acc2", name:"Client B",          industry:"Financial Services",type:"customer",  website:"clientb.com",     phone:"972-555-2000", address:"Irving, TX",      annualRevPotential:600000,  owner:"Manju",   health:"green",  notes:"Stable. Expand to 3 consultants discussion started." },
@@ -1818,6 +1850,10 @@ export default function ZiksatechOps() {
   const [crmContacts, setCrmContacts]   = useState(CRM_CONTACTS_SEED);
   const [crmDeals, setCrmDeals]         = useState(CRM_DEALS_SEED);
   const [crmActivities, setCrmActivities] = useState(CRM_ACTIVITIES_SEED);
+  const [crmLeads, setCrmLeads]         = useState(CRM_LEADS_SEED);
+  const [crmTasks, setCrmTasks]         = useState(CRM_TASKS_SEED);
+  const [crmNotes, setCrmNotes]         = useState(CRM_NOTES_SEED);
+  const [crmOrders, setCrmOrders]       = useState(CRM_ORDERS_SEED);
   const [loaded, setLoaded] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [appSettings, setAppSettings] = useState({
@@ -1921,8 +1957,8 @@ export default function ZiksatechOps() {
 
   useEffect(() => {
     (async () => {
-      const keys = ["roster","pipeline","clients","tsHours","plIncome","plExpense","ebitdaLevers","fbInvoices","adpRuns","finInvoices","finPayments","finExpenses","candidates","submissions","interviews","offers","workAuth","compDocs","crmAccounts","crmContacts","crmDeals","crmActivities","contracts","sows","projects","tasks","risks","orgMembers","tsSubmissions","changeOrders","vendors","apInvoices","cfOverrides","ptoRequests","ptoBalances","dismissedAlerts","auditLog","proposals","benefits","esignRequests","onboardings"];
-      const setters = [setRoster,setPipeline,setClients,setTsHours,setPlIncome,setPlExpense,setEbitdaLevers,setFbInvoices,setAdpRuns,setFinInvoices,setFinPayments,setFinExpenses,setCandidates,setSubmissions,setInterviews,setOffers,setWorkAuth,setCompDocs,setCrmAccounts,setCrmContacts,setCrmDeals,setCrmActivities,setContracts,setSows,setProjects,setTasks,setRisks,setOrgMembers,setTsSubmissions,setChangeOrders,setVendors,setApInvoices,setCfOverrides,setPtoRequests,setPtoBalances,setDismissedAlerts,setAuditLog,setProposals,setBenefits,setEsignRequests,setOnboardings,(v)=>setAppSettings(p=>({...p,...v}))];
+      const keys = ["roster","pipeline","clients","tsHours","plIncome","plExpense","ebitdaLevers","fbInvoices","adpRuns","finInvoices","finPayments","finExpenses","candidates","submissions","interviews","offers","workAuth","compDocs","crmAccounts","crmContacts","crmDeals","crmActivities","crmLeads","crmTasks","crmNotes","crmOrders","contracts","sows","projects","tasks","risks","orgMembers","tsSubmissions","changeOrders","vendors","apInvoices","cfOverrides","ptoRequests","ptoBalances","dismissedAlerts","auditLog","proposals","benefits","esignRequests","onboardings"];
+      const setters = [setRoster,setPipeline,setClients,setTsHours,setPlIncome,setPlExpense,setEbitdaLevers,setFbInvoices,setAdpRuns,setFinInvoices,setFinPayments,setFinExpenses,setCandidates,setSubmissions,setInterviews,setOffers,setWorkAuth,setCompDocs,setCrmAccounts,setCrmContacts,setCrmDeals,setCrmActivities,setCrmLeads,setCrmTasks,setCrmNotes,setCrmOrders,setContracts,setSows,setProjects,setTasks,setRisks,setOrgMembers,setTsSubmissions,setChangeOrders,setVendors,setApInvoices,setCfOverrides,setPtoRequests,setPtoBalances,setDismissedAlerts,setAuditLog,setProposals,setBenefits,setEsignRequests,setOnboardings,(v)=>setAppSettings(p=>({...p,...v}))];
       const results = await Promise.all(keys.map(k => store.get("zt-"+k)));
       results.forEach((r,i) => { if(r) setters[i](r); });
       // load last-saved timestamp
@@ -1952,7 +1988,7 @@ export default function ZiksatechOps() {
           store.set("zt-interviews",interviews), store.set("zt-offers",offers),
           store.set("zt-workAuth",workAuth), store.set("zt-compDocs",compDocs),
           store.set("zt-crmAccounts",crmAccounts), store.set("zt-crmContacts",crmContacts),
-          store.set("zt-crmDeals",crmDeals), store.set("zt-crmActivities",crmActivities),
+          store.set("zt-crmDeals",crmDeals), store.set("zt-crmActivities",crmActivities),store.set("zt-crmLeads",crmLeads),store.set("zt-crmTasks",crmTasks),store.set("zt-crmNotes",crmNotes),store.set("zt-crmOrders",crmOrders),
           store.set("zt-contracts",contracts), store.set("zt-sows",sows),
           store.set("zt-projects",projects), store.set("zt-tasks",tasks), store.set("zt-risks",risks),
           store.set("zt-orgMembers",orgMembers), store.set("zt-tsSubmissions",tsSubmissions),
@@ -2019,6 +2055,10 @@ export default function ZiksatechOps() {
       if (d.crmAccounts)  setCrmAccounts(d.crmAccounts);
       if (d.crmContacts)  setCrmContacts(d.crmContacts);
       if (d.crmDeals)     setCrmDeals(d.crmDeals);
+      if (d.crmLeads)      setCrmLeads(d.crmLeads);
+      if (d.crmTasks)      setCrmTasks(d.crmTasks);
+      if (d.crmNotes)      setCrmNotes(d.crmNotes);
+      if (d.crmOrders)     setCrmOrders(d.crmOrders);
       if (d.crmActivities)setCrmActivities(d.crmActivities);
       if (d.contracts)    setContracts(d.contracts);
       if (d.sows)         setSows(d.sows);
@@ -2089,7 +2129,7 @@ export default function ZiksatechOps() {
     { id:"compliance",   label:"Compliance",           icon:ICONS.dash,     group:"Compliance"  },
   ];
 
-  const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings,
+  const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings,
     appSettings, setAppSettings,
     globalSearch, setGlobalSearch, searchOpen, setSearchOpen,
     addAudit: makeAddAudit(setAuditLog, appSettings.ownerName),
@@ -6870,16 +6910,23 @@ const ACCT_TYPE_C  = { customer:"#34d399", prospect:"#38bdf8", partner:"#a78bfa"
 function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients, addAudit }) {
   const [sub, setSub] = useState("overview");
   const tabs = [
-    { id:"overview",    label:"Pipeline Overview" },
-    { id:"accounts",    label:"Accounts" },
-    { id:"deals",       label:"Deals" },
-    { id:"activities",  label:"Activities" },
-    { id:"forecast",    label:"Forecast" },
+    { id:"overview",    label:"📊 Overview" },
+    { id:"leads",       label:"🎯 Leads" },
+    { id:"accounts",    label:"🏢 Accounts" },
+    { id:"contacts",    label:"👤 Contacts" },
+    { id:"deals",       label:"🤝 Deals" },
+    { id:"tasks",       label:"✅ Tasks" },
+    { id:"notes",       label:"📝 Notes" },
+    { id:"orders",      label:"📦 Orders" },
+    { id:"activities",  label:"⚡ Activities" },
+    { id:"forecast",    label:"📈 Forecast" },
+    { id:"import",      label:"⬆️ Import" },
   ];
   const props = { crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients };
+  const extProps = { ...props, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders };
   return (
     <div>
-      <PH title="Sales CRM" sub="Accounts · Deals · Pipeline · Activities · Forecast"/>
+      <PH title="Sales CRM" sub="Leads · Accounts · Contacts · Deals · Tasks · Notes · Orders · Activities · Forecast · Import"/>
       <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)}
@@ -6891,10 +6938,16 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
         ))}
       </div>
       {sub==="overview"   && <CRMOverview   {...props}/>}
+      {sub==="leads"      && <CRMLeads leads={crmLeads} setLeads={setCrmLeads} crmAccounts={crmAccounts} crmDeals={crmDeals} setCrmDeals={setCrmDeals} addAudit={addAudit}/>}
       {sub==="accounts"   && <CRMAccounts   {...props}/>}
+      {sub==="contacts"   && <CRMContactsTab crmContacts={crmContacts} setCrmContacts={setCrmContacts} crmAccounts={crmAccounts} addAudit={addAudit}/>}
       {sub==="deals"      && <CRMDeals      {...props}/>}
+      {sub==="tasks"      && <CRMTasks tasks={crmTasks} setTasks={setCrmTasks} crmAccounts={crmAccounts} crmDeals={crmDeals} addAudit={addAudit}/>}
+      {sub==="notes"      && <CRMNotes notes={crmNotes} setNotes={setCrmNotes} crmAccounts={crmAccounts} crmDeals={crmDeals} crmContacts={crmContacts} addAudit={addAudit}/>}
+      {sub==="orders"     && <CRMOrders orders={crmOrders} setOrders={setCrmOrders} crmAccounts={crmAccounts} crmDeals={crmDeals} roster={roster} addAudit={addAudit}/>}
       {sub==="activities" && <CRMActivities {...props}/>}
       {sub==="forecast"   && <CRMForecast   {...props}/>}
+      {sub==="import"     && <CRMImport setLeads={setCrmLeads} setCrmContacts={setCrmContacts} crmAccounts={crmAccounts} addAudit={addAudit}/>}
     </div>
   );
 }
@@ -7236,6 +7289,9 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
   const [stageFilter, setStageFilter] = useState("open");
   const [editing, setEditing]   = useState(null);
   const [form, setForm]         = useState({});
+  const [actModal, setActModal] = useState(false);
+  const [actForm, setActForm]   = useState({type:"email",accountId:"",contactId:"",dealId:"",subject:"",notes:"",date:TODAY_STR,completed:false});
+  const saveAct = () => { setCrmActivities(as=>[...as,{...actForm,id:"act"+uid(),completed:actForm.completed==="true"||actForm.completed===true}]); setActModal(false); };
   const { dragProps: _dp } = useDragSort(crmDeals, setCrmDeals);
   const filtered = stageFilter==="all" ? crmDeals : crmDeals.filter(d=>d.stage===stageFilter);
   const openDeal = (d=null) => { setEditing(d?.id||null); setForm(d?{...d}:{name:"",accountId:"",stage:"open",type:"New",value:"",probability:50,closeDate:"",owner:"",notes:""}); setModal(true); };
@@ -23083,6 +23139,717 @@ Provide: Key Discrepancies, Missing Entries, Reconciliation Status, Action Items
     </div>
   );
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXTENDED CRM — Leads, Contacts (standalone), Tasks, Notes, Orders, Import, AI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const LEAD_STATUS_COLOR = { new:"#64748b", contacted:"#38bdf8", qualified:"#34d399", lost:"#f87171", converted:"#a78bfa" };
+const LEAD_SOURCE_LABEL = { referral:"Referral", linkedin:"LinkedIn", cold_email:"Cold Email", conference:"Conference", website:"Website", apollo:"Apollo.io", zoominfo:"ZoomInfo", other:"Other" };
+const TASK_PRIORITY_COLOR = { high:"#f87171", medium:"#f59e0b", low:"#64748b" };
+const NOTE_TYPE_ICON = { meeting:"🤝", call:"📞", email:"📧", note:"📝", task:"✅" };
+const ORDER_STATUS_COLOR = { active:"#34d399", completed:"#64748b", cancelled:"#f87171", paused:"#f59e0b" };
+
+// ── CRM Leads ─────────────────────────────────────────────────────────────────
+function CRMLeads({ leads, setLeads, crmAccounts, crmDeals, setCrmDeals, addAudit }) {
+  const [modal, setModal]   = useState(false);
+  const [form, setForm]     = useState(null);
+  const [editing, setEditing]= useState(null);
+  const [enrich, setEnrich] = useState(null);
+  const [enriching, setEnriching] = useState(false);
+  const [filter, setFilter] = useState("all");
+
+  const emptyLead = { name:"", company:"", title:"", email:"", phone:"", source:"referral", status:"new", score:50, industry:"", notes:"", linkedIn:"", assignedTo:"Manju", createdDate:TODAY_STR, lastContact:TODAY_STR };
+  const open = (l=null) => { setEditing(l?.id||null); setForm(l?{...l}:{...emptyLead}); setModal(true); };
+  const save = () => {
+    if(editing) setLeads(ls=>ls.map(l=>l.id===editing?{...form}:l));
+    else setLeads(ls=>[...ls,{...form,id:"lead"+uid()}]);
+    addAudit&&addAudit("CRM","Save Lead","Lead",form.name);
+    setModal(false);
+  };
+  const deleteLead = id => { if(window.confirm("Delete lead?")) setLeads(ls=>ls.filter(l=>l.id!==id)); };
+  const convertToDeal = (lead) => {
+    const newDeal = { id:"deal"+uid(), accountId:"", name:lead.name+" — "+lead.company, stage:"qualified", value:0, closeDate:"", owner:lead.assignedTo||"Manju", probability:40, type:"new", notes:lead.notes, nextStep:"Schedule discovery call" };
+    setCrmDeals(ds=>[...ds,newDeal]);
+    setLeads(ls=>ls.map(l=>l.id===lead.id?{...l,status:"converted"}:l));
+    addAudit&&addAudit("CRM","Convert Lead","Deal",lead.name);
+    alert("Lead converted to Deal: "+newDeal.name);
+  };
+
+  // AI Enrichment via Claude
+  const enrichLead = async (lead) => {
+    setEnriching(true); setEnrich(null);
+    try {
+      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:800, stream:false,
+        messages:[{role:"user",content:`You are a B2B sales intelligence tool. Based on this contact, provide enriched info as JSON only (no markdown):
+Name: ${lead.name}, Company: ${lead.company}, Title: ${lead.title}, Industry: ${lead.industry}
+
+Return JSON: {"linkedIn":"linkedin.com/in/likely-url","companyWebsite":"likely url","companySize":"estimate","annualRevenue":"estimate","techStack":["likely tech 1","tech 2"],"buyingSignals":["signal 1","signal 2"],"recommendedApproach":"2 sentence pitch","leadScore":number 0-100,"suggestedNextStep":"specific action"}`}]
+      })});
+      const d = await res.json();
+      const txt = d.content?.[0]?.text||"{}";
+      const clean = txt.replace(/```json|```/g,"").trim();
+      setEnrich({...JSON.parse(clean), leadId:lead.id});
+    } catch(e) { setEnrich({error:"Enrichment failed. Check API key."}); }
+    setEnriching(false);
+  };
+
+  const filtered = filter==="all" ? leads : leads.filter(l=>l.status===filter);
+  const byStatus = s => leads.filter(l=>l.status===s).length;
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+        {["new","contacted","qualified","converted","lost"].map(s=>(
+          <div key={s} className="card" style={{padding:"10px 14px",borderLeft:`3px solid ${LEAD_STATUS_COLOR[s]}`,cursor:"pointer",opacity:filter===s||filter==="all"?1:0.5}} onClick={()=>setFilter(filter===s?"all":s)}>
+            <div style={{fontSize:10,color:LEAD_STATUS_COLOR[s],fontWeight:700,textTransform:"uppercase",marginBottom:3}}>{s}</div>
+            <div style={{fontSize:22,fontWeight:800,color:"#e2e8f0"}}>{byStatus(s)}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+        <button className="btn bp" onClick={()=>open()}>+ Add Lead</button>
+      </div>
+      <div className="card">
+        <div className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 1fr 80px 80px 80px 90px",padding:"8px 18px"}}>
+          {["Lead","Company / Title","Source","Score","Status","Last Contact","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {filtered.map(lead=>(
+          <div key={lead.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 1fr 80px 80px 80px 90px"}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{lead.name}</div>
+              <div style={{fontSize:10,color:"#3d5a7a"}}>{lead.email}</div>
+            </div>
+            <div>
+              <div style={{fontSize:12,color:"#94a3b8"}}>{lead.company}</div>
+              <div style={{fontSize:10,color:"#475569"}}>{lead.title}</div>
+            </div>
+            <span style={{fontSize:11,color:"#64748b"}}>{LEAD_SOURCE_LABEL[lead.source]||lead.source}</span>
+            <div style={{display:"flex",alignItems:"center",gap:4}}>
+              <div style={{width:28,height:28,borderRadius:"50%",background:`conic-gradient(${lead.score>=70?"#34d399":lead.score>=50?"#f59e0b":"#f87171"} ${lead.score*3.6}deg,#1a2d45 0)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div style={{width:20,height:20,borderRadius:"50%",background:"#070c18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"#e2e8f0"}}>{lead.score}</div>
+              </div>
+            </div>
+            <span className="bdg" style={{background:LEAD_STATUS_COLOR[lead.status]+"22",color:LEAD_STATUS_COLOR[lead.status],fontSize:9}}>{lead.status}</span>
+            <span style={{fontSize:10,color:"#475569"}}>{fmtDate(lead.lastContact)}</span>
+            <div style={{display:"flex",gap:4}}>
+              <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} title="AI Enrich" onClick={()=>enrichLead(lead)}>{enriching&&enrich?.leadId===lead.id?"⏳":"✨"}</button>
+              {lead.status!=="converted"&&<button className="btn bp" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>convertToDeal(lead)}>→ Deal</button>}
+              <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(lead)}><I d={ICONS.edit} s={9}/></button>
+              <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>deleteLead(lead.id)}><I d={ICONS.trash} s={9}/></button>
+            </div>
+          </div>
+        ))}
+        {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:"#1e3a5f",fontSize:12}}>No leads in this status</div>}
+      </div>
+
+      {/* AI Enrich panel */}
+      {enrich&&!enrich.error&&(
+        <div className="card" style={{marginTop:16,padding:"16px 20px",border:"1px solid #0369a133"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#38bdf8"}}>✨ AI Enrichment Result</div>
+            <button className="btn bg" style={{fontSize:11,padding:"3px 10px"}} onClick={()=>setEnrich(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+            {[["LinkedIn",enrich.linkedIn],["Company",enrich.companyWebsite],["Size",enrich.companySize],["Revenue",enrich.annualRevenue],["Lead Score",enrich.leadScore],["Tech Stack",(enrich.techStack||[]).join(", ")]].map(([l,v])=>(
+              <div key={l}><div className="lbl">{l}</div><div style={{fontSize:11,color:"#94a3b8"}}>{v||"—"}</div></div>
+            ))}
+          </div>
+          <div style={{marginTop:12,padding:"10px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a133"}}>
+            <div style={{fontSize:10,color:"#38bdf8",fontWeight:700,marginBottom:4}}>🎯 RECOMMENDED APPROACH</div>
+            <div style={{fontSize:12,color:"#94a3b8"}}>{enrich.recommendedApproach}</div>
+          </div>
+          <div style={{marginTop:10,padding:"8px 14px",background:"#1a1005",borderRadius:8,border:"1px solid #f59e0b33"}}>
+            <div style={{fontSize:10,color:"#f59e0b",fontWeight:700,marginBottom:3}}>⚡ NEXT STEP</div>
+            <div style={{fontSize:12,color:"#94a3b8"}}>{enrich.suggestedNextStep}</div>
+          </div>
+          {(enrich.buyingSignals||[]).length>0&&(
+            <div style={{marginTop:10,display:"flex",gap:6,flexWrap:"wrap"}}>
+              {enrich.buyingSignals.map((s,i)=><span key={i} className="bdg" style={{background:"#34d39922",color:"#34d399",fontSize:9}}>✅ {s}</span>)}
+            </div>
+          )}
+        </div>
+      )}
+      {enrich?.error&&<div style={{marginTop:12,padding:"10px 14px",background:"#1a0505",borderRadius:8,color:"#f87171",fontSize:12}}>{enrich.error}</div>}
+
+      {modal&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:560}}>
+            <MH title={editing?"Edit Lead":"Add Lead"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Full Name"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></FF>
+              <FF label="Company"><input className="inp" value={form.company} onChange={e=>setForm({...form,company:e.target.value})}/></FF>
+              <FF label="Title"><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></FF>
+              <FF label="Industry"><input className="inp" value={form.industry} onChange={e=>setForm({...form,industry:e.target.value})}/></FF>
+              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></FF>
+              <FF label="Phone"><input className="inp" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></FF>
+              <FF label="Source"><select className="inp" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>
+                {Object.entries(LEAD_SOURCE_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></FF>
+              <FF label="Status"><select className="inp" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
+                {["new","contacted","qualified","converted","lost"].map(s=><option key={s}>{s}</option>)}</select></FF>
+              <FF label="Lead Score (0-100)"><input className="inp" type="number" min={0} max={100} value={form.score} onChange={e=>setForm({...form,score:+e.target.value})}/></FF>
+              <FF label="Assigned To"><input className="inp" value={form.assignedTo} onChange={e=>setForm({...form,assignedTo:e.target.value})}/></FF>
+              <FF label="LinkedIn URL"><input className="inp" value={form.linkedIn} onChange={e=>setForm({...form,linkedIn:e.target.value})}/></FF>
+              <FF label="Last Contact Date"><input className="inp" type="date" value={form.lastContact} onChange={e=>setForm({...form,lastContact:e.target.value})}/></FF>
+              <FF label="Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save Lead</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CRM Contacts (standalone) ──────────────────────────────────────────────────
+function CRMContactsTab({ crmContacts, setCrmContacts, crmAccounts, addAudit }) {
+  const [modal, setModal]   = useState(false);
+  const [form, setForm]     = useState(null);
+  const [editing, setEditing]= useState(null);
+  const [search, setSearch] = useState("");
+
+  const empty = { name:"", title:"", email:"", phone:"", linkedIn:"", accountId:"", isPrimary:false, notes:"" };
+  const open = (c=null) => { setEditing(c?.id||null); setForm(c?{...c}:{...empty}); setModal(true); };
+  const save = () => {
+    if(editing) setCrmContacts(cs=>cs.map(c=>c.id===editing?{...form}:c));
+    else setCrmContacts(cs=>[...cs,{...form,id:"con"+uid()}]);
+    addAudit&&addAudit("CRM","Save Contact","Contact",form.name);
+    setModal(false);
+  };
+
+  const filtered = crmContacts.filter(c=>!search||c.name.toLowerCase().includes(search.toLowerCase())||c.email?.toLowerCase().includes(search.toLowerCase())||c.title?.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div>
+      <div style={{display:"flex",gap:10,marginBottom:14,alignItems:"center"}}>
+        <input className="inp" placeholder="Search contacts..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:240}}/>
+        <button className="btn bp" onClick={()=>open()}>+ Add Contact</button>
+        <span style={{marginLeft:"auto",fontSize:11,color:"#334155"}}>{filtered.length} contacts</span>
+      </div>
+      <div className="card">
+        <div className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 1.2fr 1fr 60px 80px",padding:"8px 18px"}}>
+          {["Contact","Account","Email / Phone","LinkedIn","Primary","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {filtered.map(con=>{
+          const acc = crmAccounts.find(a=>a.id===con.accountId);
+          return (
+            <div key={con.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 1.2fr 1fr 60px 80px"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{con.name}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{con.title}</div>
+              </div>
+              <span style={{fontSize:11,color:"#475569"}}>{acc?.name||"—"}</span>
+              <div>
+                <div style={{fontSize:11,color:"#94a3b8"}}>{con.email}</div>
+                <div style={{fontSize:10,color:"#475569"}}>{con.phone}</div>
+              </div>
+              <span style={{fontSize:10,color:"#3b82f6"}}>{con.linkedIn?<a href={"https://"+con.linkedIn} target="_blank" style={{color:"#3b82f6",textDecoration:"none"}}>🔗 LinkedIn</a>:"—"}</span>
+              <span style={{textAlign:"center",fontSize:12}}>{con.isPrimary?"⭐":"—"}</span>
+              <div style={{display:"flex",gap:4}}>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(con)}><I d={ICONS.edit} s={9}/></button>
+                <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>{if(window.confirm("Delete contact?"))setCrmContacts(cs=>cs.filter(c=>c.id!==con.id))}}><I d={ICONS.trash} s={9}/></button>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:"#1e3a5f",fontSize:12}}>No contacts found</div>}
+      </div>
+      {modal&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:500}}>
+            <MH title={editing?"Edit Contact":"Add Contact"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Full Name"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></FF>
+              <FF label="Title"><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></FF>
+              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></FF>
+              <FF label="Phone"><input className="inp" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></FF>
+              <FF label="Account"><select className="inp" value={form.accountId} onChange={e=>setForm({...form,accountId:e.target.value})}>
+                <option value="">None</option>
+                {crmAccounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></FF>
+              <FF label="LinkedIn URL"><input className="inp" value={form.linkedIn} onChange={e=>setForm({...form,linkedIn:e.target.value})}/></FF>
+              <FF label="Primary Contact"><select className="inp" value={form.isPrimary?"yes":"no"} onChange={e=>setForm({...form,isPrimary:e.target.value==="yes"})}>
+                <option value="no">No</option><option value="yes">Yes — Primary</option></select></FF>
+              <FF label="Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CRM Tasks ─────────────────────────────────────────────────────────────────
+function CRMTasks({ tasks, setTasks, crmAccounts, crmDeals, addAudit }) {
+  const [modal, setModal]   = useState(false);
+  const [form, setForm]     = useState(null);
+  const [editing, setEditing]= useState(null);
+  const [filter, setFilter] = useState("open");
+
+  const empty = { title:"", accountId:"", dealId:"", dueDate:"", priority:"medium", status:"open", assignedTo:"Manju", notes:"" };
+  const open = (t=null) => { setEditing(t?.id||null); setForm(t?{...t}:{...empty}); setModal(true); };
+  const save = () => {
+    if(editing) setTasks(ts=>ts.map(t=>t.id===editing?{...form}:t));
+    else setTasks(ts=>[...ts,{...form,id:"task"+uid(),createdDate:TODAY_STR}]);
+    addAudit&&addAudit("CRM","Save Task","Task",form.title);
+    setModal(false);
+  };
+  const toggleDone = id => setTasks(ts=>ts.map(t=>t.id===id?{...t,status:t.status==="open"?"completed":"open"}:t));
+  const overdue = t => t.status==="open" && t.dueDate && t.dueDate < TODAY_STR;
+
+  const filtered = filter==="all" ? tasks : tasks.filter(t=>t.status===filter);
+  const openCount = tasks.filter(t=>t.status==="open").length;
+  const overdueCount = tasks.filter(overdue).length;
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+        {[["Open",openCount,"#38bdf8"],["Overdue",overdueCount,"#f87171"],["Completed",tasks.filter(t=>t.status==="completed").length,"#34d399"]].map(([l,v,c])=>(
+          <div key={l} className="card" style={{padding:"10px 14px",borderLeft:`3px solid ${c}`}}>
+            <div style={{fontSize:10,color:c,fontWeight:700,textTransform:"uppercase",marginBottom:3}}>{l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:"#e2e8f0"}}>{v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+        {["open","completed","all"].map(f=>(
+          <button key={f} className={filter===f?"btn bp":"btn bg"} style={{fontSize:11,padding:"5px 14px"}} onClick={()=>setFilter(f)}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>
+        ))}
+        <button className="btn bp" style={{marginLeft:"auto"}} onClick={()=>open()}>+ Add Task</button>
+      </div>
+      <div className="card">
+        {filtered.map(task=>{
+          const acc = crmAccounts.find(a=>a.id===task.accountId);
+          const deal = crmDeals.find(d=>d.id===task.dealId);
+          const isOverdue = overdue(task);
+          return (
+            <div key={task.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 18px",borderBottom:"1px solid #0a1626",opacity:task.status==="completed"?0.6:1}}>
+              <div onClick={()=>toggleDone(task.id)} style={{width:20,height:20,borderRadius:4,border:`2px solid ${task.status==="completed"?"#34d399":"#334155"}`,background:task.status==="completed"?"#34d399":"transparent",flexShrink:0,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {task.status==="completed"&&<span style={{color:"#021f14",fontSize:11,fontWeight:800}}>✓</span>}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:13,fontWeight:600,color:task.status==="completed"?"#475569":"#cbd5e1",textDecoration:task.status==="completed"?"line-through":"none"}}>{task.title}</span>
+                  <span className="bdg" style={{background:TASK_PRIORITY_COLOR[task.priority]+"22",color:TASK_PRIORITY_COLOR[task.priority],fontSize:8}}>{task.priority}</span>
+                  {isOverdue&&<span className="bdg" style={{background:"#f8717122",color:"#f87171",fontSize:8}}>OVERDUE</span>}
+                </div>
+                <div style={{fontSize:10,color:"#334155",marginTop:2}}>
+                  {acc&&<span>📁 {acc.name}</span>}
+                  {deal&&<span style={{marginLeft:8}}>🤝 {deal.name}</span>}
+                  {task.dueDate&&<span style={{marginLeft:8,color:isOverdue?"#f87171":"#475569"}}>📅 Due {fmtDate(task.dueDate)}</span>}
+                  {task.assignedTo&&<span style={{marginLeft:8}}>👤 {task.assignedTo}</span>}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:4}}>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(task)}><I d={ICONS.edit} s={9}/></button>
+                <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>{if(window.confirm("Delete task?"))setTasks(ts=>ts.filter(t=>t.id!==task.id))}}><I d={ICONS.trash} s={9}/></button>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:"#1e3a5f",fontSize:12}}>No tasks</div>}
+      </div>
+      {modal&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:500}}>
+            <MH title={editing?"Edit Task":"Add Task"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Task Title" style={{gridColumn:"span 2"}}><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></FF>
+              <FF label="Account"><select className="inp" value={form.accountId} onChange={e=>setForm({...form,accountId:e.target.value})}>
+                <option value="">None</option>{crmAccounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></FF>
+              <FF label="Deal"><select className="inp" value={form.dealId} onChange={e=>setForm({...form,dealId:e.target.value})}>
+                <option value="">None</option>{crmDeals.map(d=><option key={d.id} value={d.id}>{d.name.slice(0,35)}</option>)}</select></FF>
+              <FF label="Due Date"><input className="inp" type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})}/></FF>
+              <FF label="Priority"><select className="inp" value={form.priority} onChange={e=>setForm({...form,priority:e.target.value})}>
+                {["high","medium","low"].map(p=><option key={p}>{p}</option>)}</select></FF>
+              <FF label="Assigned To"><input className="inp" value={form.assignedTo} onChange={e=>setForm({...form,assignedTo:e.target.value})}/></FF>
+              <FF label="Status"><select className="inp" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
+                <option value="open">Open</option><option value="completed">Completed</option></select></FF>
+              <FF label="Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save Task</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CRM Notes ─────────────────────────────────────────────────────────────────
+function CRMNotes({ notes, setNotes, crmAccounts, crmDeals, crmContacts, addAudit }) {
+  const [modal, setModal]   = useState(false);
+  const [form, setForm]     = useState(null);
+  const [editing, setEditing]= useState(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+
+  const empty = { title:"", body:"", accountId:"", dealId:"", contactId:"", type:"note", date:TODAY_STR, createdBy:"Manju" };
+  const open = (n=null) => { setEditing(n?.id||null); setForm(n?{...n}:{...empty}); setAiPrompt(""); setModal(true); };
+  const save = () => {
+    if(editing) setNotes(ns=>ns.map(n=>n.id===editing?{...form}:n));
+    else setNotes(ns=>[...ns,{...form,id:"note"+uid()}]);
+    addAudit&&addAudit("CRM","Save Note","Note",form.title);
+    setModal(false);
+  };
+
+  const generateNote = async () => {
+    if(!aiPrompt.trim()) return alert("Enter what the meeting/call was about");
+    setAiLoading(true);
+    try {
+      const acc = crmAccounts.find(a=>a.id===form.accountId);
+      const deal = crmDeals.find(d=>d.id===form.dealId);
+      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:600, stream:false,
+        messages:[{role:"user",content:`You are a CRM note writer for a SAP consulting firm (Ziksatech). Write professional meeting/call notes.
+Context: ${acc?`Account: ${acc.name}.`:""} ${deal?`Deal: ${deal.name}.`:""} 
+Meeting type: ${form.type}. Date: ${form.date}.
+User summary: ${aiPrompt}
+
+Write clean, professional CRM notes in 3-4 sentences covering: what was discussed, key decisions/outcomes, and action items. No bullet points - just well-structured prose.`}]
+      })});
+      const d = await res.json();
+      const txt = d.content?.[0]?.text||"";
+      setForm(f=>({...f, body:txt}));
+    } catch(e) { alert("AI generation failed."); }
+    setAiLoading(false);
+  };
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+        <button className="btn bp" onClick={()=>open()}>+ Add Note</button>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {[...notes].sort((a,b)=>b.date.localeCompare(a.date)).map(note=>{
+          const acc = crmAccounts.find(a=>a.id===note.accountId);
+          const deal = crmDeals.find(d=>d.id===note.dealId);
+          const isExp = expanded===note.id;
+          return (
+            <div key={note.id} className="card" style={{padding:"14px 18px",cursor:"pointer"}} onClick={()=>setExpanded(isExp?null:note.id)}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:18}}>{NOTE_TYPE_ICON[note.type]||"📝"}</span>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{note.title}</span>
+                    {acc&&<span className="bdg" style={{background:"#0369a122",color:"#38bdf8",fontSize:8}}>{acc.name}</span>}
+                    {deal&&<span className="bdg" style={{background:"#34d39922",color:"#34d399",fontSize:8}}>{deal.name.slice(0,20)}</span>}
+                  </div>
+                  <div style={{fontSize:10,color:"#334155",marginTop:2}}>{fmtDate(note.date)} · {note.createdBy}</div>
+                  {!isExp&&<div style={{fontSize:11,color:"#475569",marginTop:4,lineHeight:1.5}}>{note.body.slice(0,120)}{note.body.length>120?"…":""}</div>}
+                </div>
+                <div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
+                  <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(note)}><I d={ICONS.edit} s={9}/></button>
+                  <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>{if(window.confirm("Delete note?"))setNotes(ns=>ns.filter(n=>n.id!==note.id))}}><I d={ICONS.trash} s={9}/></button>
+                </div>
+              </div>
+              {isExp&&<div style={{marginTop:12,padding:"12px 14px",background:"#060d1c",borderRadius:8,fontSize:12,color:"#94a3b8",lineHeight:1.7}}>{note.body}</div>}
+            </div>
+          );
+        })}
+        {notes.length===0&&<div style={{padding:40,textAlign:"center",color:"#334155",fontSize:13}}>No notes yet — add your first meeting note</div>}
+      </div>
+
+      {modal&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:580}}>
+            <MH title={editing?"Edit Note":"Add Note"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Title" style={{gridColumn:"span 2"}}><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></FF>
+              <FF label="Type"><select className="inp" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>
+                {["meeting","call","email","note"].map(t=><option key={t}>{t}</option>)}</select></FF>
+              <FF label="Date"><input className="inp" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></FF>
+              <FF label="Account"><select className="inp" value={form.accountId} onChange={e=>setForm({...form,accountId:e.target.value})}>
+                <option value="">None</option>{crmAccounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></FF>
+              <FF label="Deal"><select className="inp" value={form.dealId} onChange={e=>setForm({...form,dealId:e.target.value})}>
+                <option value="">None</option>{crmDeals.map(d=><option key={d.id} value={d.id}>{d.name.slice(0,35)}</option>)}</select></FF>
+            </div>
+            {/* AI Note Generator */}
+            <div style={{margin:"14px 0",padding:"12px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a133"}}>
+              <div style={{fontSize:10,color:"#38bdf8",fontWeight:700,marginBottom:8}}>✨ AI NOTE GENERATOR</div>
+              <div style={{display:"flex",gap:8}}>
+                <input className="inp" style={{flex:1,fontSize:11}} placeholder="Briefly describe what happened (e.g. 'Reviewed SOW with James, he wants change order clause added')" value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)}/>
+                <button className="btn bp" style={{fontSize:11,padding:"5px 12px",flexShrink:0}} onClick={generateNote} disabled={aiLoading}>{aiLoading?"Generating…":"✨ Generate"}</button>
+              </div>
+            </div>
+            <FF label="Notes"><textarea className="inp" rows={5} value={form.body} onChange={e=>setForm({...form,body:e.target.value})} placeholder="Write notes or use AI generator above..."/></FF>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save Note</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CRM Orders (Closed Won → Active Engagements) ───────────────────────────────
+function CRMOrders({ orders, setOrders, crmAccounts, crmDeals, roster, addAudit }) {
+  const [modal, setModal]   = useState(false);
+  const [form, setForm]     = useState(null);
+  const [editing, setEditing]= useState(null);
+
+  const empty = { name:"", accountId:"", dealId:"", poNumber:"", sowNumber:"", value:0, startDate:"", endDate:"", status:"active", billingFreq:"monthly", assignedConsultants:[], notes:"" };
+  const open = (o=null) => { setEditing(o?.id||null); setForm(o?{...o}:{...empty}); setModal(true); };
+  const save = () => {
+    if(editing) setOrders(os=>os.map(o=>o.id===editing?{...form}:o));
+    else setOrders(os=>[...os,{...form,id:"ord"+uid()}]);
+    addAudit&&addAudit("CRM","Save Order","Order",form.name);
+    setModal(false);
+  };
+
+  const totalActive = orders.filter(o=>o.status==="active").reduce((s,o)=>s+(+o.value||0),0);
+
+  // Convert closed-won deals not yet in orders
+  const wonDealsNoOrder = crmDeals.filter(d=>d.stage==="closed-won"&&!orders.find(o=>o.dealId===d.id));
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+        {[["Active Orders",orders.filter(o=>o.status==="active").length,"#34d399"],["Total Contract Value",fmt(totalActive),"#38bdf8"],["Won → Pending Order",wonDealsNoOrder.length,"#f59e0b"]].map(([l,v,c])=>(
+          <div key={l} className="card" style={{padding:"10px 14px",borderLeft:`3px solid ${c}`}}>
+            <div style={{fontSize:10,color:c,fontWeight:700,textTransform:"uppercase",marginBottom:3}}>{l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:"#e2e8f0"}}>{v}</div>
+          </div>
+        ))}
+      </div>
+      {wonDealsNoOrder.length>0&&(
+        <div style={{marginBottom:14,padding:"10px 14px",background:"#1a1005",border:"1px solid #f59e0b33",borderRadius:8}}>
+          <div style={{fontSize:11,color:"#f59e0b",fontWeight:700,marginBottom:6}}>⚡ Closed-Won Deals Without Orders</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {wonDealsNoOrder.map(d=>(
+              <button key={d.id} className="btn bs" style={{fontSize:10}} onClick={()=>{setForm({...empty,name:d.name,accountId:d.accountId,dealId:d.id,value:d.value});setEditing(null);setModal(true);}}>
+                + Create Order for {d.name.slice(0,25)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+        <button className="btn bp" onClick={()=>open()}>+ New Order</button>
+      </div>
+      <div className="card">
+        <div className="tr" style={{gridTemplateColumns:"2fr 1.2fr 1fr 80px 80px 80px 70px",padding:"8px 18px"}}>
+          {["Order","Account","PO / SOW","Value","Start","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {orders.map(ord=>{
+          const acc = crmAccounts.find(a=>a.id===ord.accountId);
+          return (
+            <div key={ord.id} className="tr" style={{gridTemplateColumns:"2fr 1.2fr 1fr 80px 80px 80px 70px"}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{ord.name}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{ord.billingFreq} billing</div>
+              </div>
+              <span style={{fontSize:11,color:"#475569"}}>{acc?.name||"—"}</span>
+              <div>
+                <div style={{fontSize:10,color:"#64748b"}}>{ord.poNumber||"—"}</div>
+                <div style={{fontSize:10,color:"#475569"}}>{ord.sowNumber||"—"}</div>
+              </div>
+              <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#34d399"}}>{fmt(+ord.value||0)}</span>
+              <span style={{fontSize:10,color:"#475569"}}>{fmtDate(ord.startDate)||"—"}</span>
+              <span className="bdg" style={{background:ORDER_STATUS_COLOR[ord.status]+"22",color:ORDER_STATUS_COLOR[ord.status],fontSize:9}}>{ord.status}</span>
+              <div style={{display:"flex",gap:4}}>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(ord)}><I d={ICONS.edit} s={9}/></button>
+                <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>{if(window.confirm("Delete order?"))setOrders(os=>os.filter(o=>o.id!==ord.id))}}><I d={ICONS.trash} s={9}/></button>
+              </div>
+            </div>
+          );
+        })}
+        {orders.length===0&&<div style={{padding:24,textAlign:"center",color:"#1e3a5f",fontSize:12}}>No orders yet</div>}
+      </div>
+      {modal&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title={editing?"Edit Order":"New Order"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Order Name" style={{gridColumn:"span 2"}}><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></FF>
+              <FF label="Account"><select className="inp" value={form.accountId} onChange={e=>setForm({...form,accountId:e.target.value})}>
+                <option value="">—</option>{crmAccounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></FF>
+              <FF label="Contract Value ($)"><input className="inp" type="number" value={form.value} onChange={e=>setForm({...form,value:+e.target.value})}/></FF>
+              <FF label="PO Number"><input className="inp" value={form.poNumber} onChange={e=>setForm({...form,poNumber:e.target.value})}/></FF>
+              <FF label="SOW Number"><input className="inp" value={form.sowNumber} onChange={e=>setForm({...form,sowNumber:e.target.value})}/></FF>
+              <FF label="Start Date"><input className="inp" type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></FF>
+              <FF label="End Date"><input className="inp" type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></FF>
+              <FF label="Billing Frequency"><select className="inp" value={form.billingFreq} onChange={e=>setForm({...form,billingFreq:e.target.value})}>
+                {["monthly","bi-weekly","weekly","milestone"].map(f=><option key={f}>{f}</option>)}</select></FF>
+              <FF label="Status"><select className="inp" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
+                {["active","completed","paused","cancelled"].map(s=><option key={s}>{s}</option>)}</select></FF>
+              <FF label="Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save Order</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CRM Import (CSV + Apollo/ZoomInfo/LinkedIn mock enrichment) ────────────────
+function CRMImport({ setLeads, setCrmContacts, crmAccounts, addAudit }) {
+  const [csvText, setCsvText]     = useState("");
+  const [importType, setImportType] = useState("leads");
+  const [preview, setPreview]     = useState([]);
+  const [enrichQuery, setEnrichQuery] = useState("");
+  const [enrichResult, setEnrichResult] = useState(null);
+  const [enrichLoading, setEnrichLoading] = useState(false);
+  const [importSrc, setImportSrc] = useState("csv");
+  const [importDone, setImportDone] = useState(0);
+
+  const parseCsv = () => {
+    const rows = csvText.trim().split("\n").filter(Boolean);
+    if(rows.length < 2) return alert("Paste at least a header row + 1 data row");
+    const headers = rows[0].split(",").map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]/g,""));
+    const records = rows.slice(1).map(row=>{
+      const vals = row.split(",");
+      const obj = {};
+      headers.forEach((h,i)=>{ obj[h]=vals[i]?.trim()||""; });
+      return obj;
+    });
+    setPreview(records.slice(0,5));
+  };
+
+  const importRecords = () => {
+    const rows = csvText.trim().split("\n").slice(1).filter(Boolean);
+    const headers = csvText.trim().split("\n")[0].split(",").map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]/g,""));
+    const records = rows.map(row=>{
+      const vals = row.split(",");
+      const obj = {};
+      headers.forEach((h,i)=>{ obj[h]=vals[i]?.trim()||""; });
+      return obj;
+    });
+    if(importType==="leads") {
+      setLeads(ls=>[...ls,...records.map(r=>({id:"lead"+uid(),name:r.name||r.firstname+" "+r.lastname,company:r.company||r.organization||"",title:r.title||r.jobtitle||"",email:r.email||"",phone:r.phone||r.phonenumber||"",source:"csv",status:"new",score:50,industry:r.industry||"",notes:r.notes||"",linkedIn:r.linkedin||"",assignedTo:"Manju",createdDate:TODAY_STR,lastContact:TODAY_STR}))]);
+    } else {
+      setCrmContacts(cs=>[...cs,...records.map(r=>({id:"con"+uid(),name:r.name||r.firstname+" "+r.lastname,title:r.title||r.jobtitle||"",email:r.email||"",phone:r.phone||"",linkedIn:r.linkedin||"",accountId:"",isPrimary:false,notes:r.notes||""}))]);
+    }
+    setImportDone(records.length);
+    setCsvText("");
+    setPreview([]);
+    addAudit&&addAudit("CRM","CSV Import",importType,records.length+" records imported");
+  };
+
+  // AI-powered enrichment (simulates Apollo/ZoomInfo/LinkedIn)
+  const runEnrichment = async () => {
+    if(!enrichQuery.trim()) return;
+    setEnrichLoading(true); setEnrichResult(null);
+    try {
+      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:700, stream:false,
+        messages:[{role:"user",content:`You are a B2B data enrichment tool (like Apollo.io/ZoomInfo). Given this search query, return realistic enriched B2B contact data as JSON only (no markdown):
+Query: "${enrichQuery}"
+Source context: ${importSrc==="apollo"?"Apollo.io":`${importSrc==="zoominfo"?"ZoomInfo":"LinkedIn Sales Navigator"}`}
+
+Return JSON array of 3-5 realistic contacts matching the query:
+[{"name":"full name","title":"job title","company":"company name","email":"professional email","phone":"direct dial","linkedIn":"linkedin.com/in/slug","industry":"industry","companySize":"size","techStack":["tech1"],"buyingIntent":"high|medium|low","notes":"relevant context for SAP consulting outreach"}]
+
+Make these realistic SAP/IT decision makers relevant to staffing/consulting sales.`}]
+      })});
+      const d = await res.json();
+      const txt = (d.content?.[0]?.text||"[]").replace(/```json|```/g,"").trim();
+      setEnrichResult(JSON.parse(txt));
+    } catch(e) { setEnrichResult({error:"Enrichment failed"}); }
+    setEnrichLoading(false);
+  };
+
+  const importEnriched = (contacts) => {
+    setLeads(ls=>[...ls,...contacts.map(c=>({id:"lead"+uid(),name:c.name,company:c.company,title:c.title,email:c.email,phone:c.phone,source:importSrc,status:"new",score:c.buyingIntent==="high"?80:c.buyingIntent==="medium"?55:35,industry:c.industry,notes:c.notes,linkedIn:c.linkedIn,assignedTo:"Manju",createdDate:TODAY_STR,lastContact:TODAY_STR}))]);
+    addAudit&&addAudit("CRM","AI Import",importSrc,contacts.length+" leads imported");
+    alert(contacts.length+" leads imported to CRM Leads!");
+    setEnrichResult(null); setEnrichQuery("");
+  };
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+      {/* Left: CSV Import */}
+      <div className="card" style={{padding:"18px 20px"}}>
+        <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>📁 CSV Import</div>
+        <div style={{fontSize:11,color:"#334155",marginBottom:14}}>Upload or paste CSV to import leads or contacts</div>
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          {["leads","contacts"].map(t=>(
+            <button key={t} className={importType===t?"btn bp":"btn bg"} style={{fontSize:11}} onClick={()=>setImportType(t)}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
+          ))}
+        </div>
+        <div style={{marginBottom:10,padding:"10px 12px",background:"#0a1120",borderRadius:8,fontSize:10,color:"#475569"}}>
+          Expected columns: <code style={{color:"#38bdf8"}}>name, email, phone, company, title, industry, notes, linkedin</code>
+        </div>
+        <textarea className="inp" rows={7} style={{width:"100%",fontFamily:"monospace",fontSize:11}} placeholder={"name,email,phone,company,title\nJohn Smith,john@corp.com,214-555-0101,Corp Inc,VP IT"} value={csvText} onChange={e=>setCsvText(e.target.value)}/>
+        <div style={{display:"flex",gap:8,marginTop:10}}>
+          <button className="btn bg" style={{flex:1,justifyContent:"center"}} onClick={parseCsv}>Preview</button>
+          <button className="btn bp" style={{flex:1,justifyContent:"center"}} disabled={!csvText.trim()} onClick={importRecords}>Import {importType}</button>
+        </div>
+        {importDone>0&&<div style={{marginTop:10,padding:"8px 12px",background:"#021f14",borderRadius:6,color:"#34d399",fontSize:12}}>✅ {importDone} records imported</div>}
+        {preview.length>0&&(
+          <div style={{marginTop:12}}>
+            <div style={{fontSize:10,color:"#334155",marginBottom:6}}>Preview (first 5 rows):</div>
+            {preview.map((r,i)=>(
+              <div key={i} style={{padding:"5px 8px",background:"#060d1c",borderRadius:4,fontSize:10,color:"#94a3b8",marginBottom:3}}>
+                {Object.entries(r).slice(0,4).map(([k,v])=><span key={k} style={{marginRight:10}}><span style={{color:"#475569"}}>{k}:</span> {v}</span>)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Right: AI Enrichment (Apollo / ZoomInfo / LinkedIn) */}
+      <div className="card" style={{padding:"18px 20px"}}>
+        <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>✨ AI Lead Enrichment</div>
+        <div style={{fontSize:11,color:"#334155",marginBottom:14}}>Search for contacts via Apollo.io, ZoomInfo, or LinkedIn Sales Navigator (AI-powered)</div>
+        <div style={{display:"flex",gap:6,marginBottom:12}}>
+          {[["apollo","🔵 Apollo.io"],["zoominfo","🟠 ZoomInfo"],["linkedin","🔷 LinkedIn"]].map(([k,l])=>(
+            <button key={k} className={importSrc===k?"btn bp":"btn bg"} style={{fontSize:10,padding:"5px 10px"}} onClick={()=>setImportSrc(k)}>{l}</button>
+          ))}
+        </div>
+        <div style={{marginBottom:10,padding:"8px 12px",background:"#0a1120",borderRadius:8,fontSize:10,color:"#475569"}}>
+          {importSrc==="apollo"&&"Apollo.io: Search by company, title, industry, tech stack"}
+          {importSrc==="zoominfo"&&"ZoomInfo: Intent data + direct dials, decision makers"}
+          {importSrc==="linkedin"&&"LinkedIn Sales Navigator: Connection paths, recent activity"}
+        </div>
+        <input className="inp" style={{width:"100%",marginBottom:10}} placeholder={`e.g. "SAP VP IT Texas telecom company" or "CIO healthcare Dallas"`} value={enrichQuery} onChange={e=>setEnrichQuery(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&runEnrichment()}/>
+        <button className="btn bp" style={{width:"100%",justifyContent:"center",marginBottom:14}} onClick={runEnrichment} disabled={enrichLoading}>
+          {enrichLoading?"Searching...":"🔍 Find Leads"}
+        </button>
+        {enrichResult&&!enrichResult.error&&Array.isArray(enrichResult)&&(
+          <div>
+            <div style={{fontSize:11,color:"#334155",marginBottom:8}}>{enrichResult.length} contacts found:</div>
+            {enrichResult.map((c,i)=>(
+              <div key={i} style={{padding:"10px 12px",background:"#060d1c",borderRadius:8,marginBottom:8,border:"1px solid #1a2d45"}}>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{c.name}</div>
+                    <div style={{fontSize:10,color:"#475569"}}>{c.title} · {c.company}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{c.email}</div>
+                  </div>
+                  <span className="bdg" style={{background:c.buyingIntent==="high"?"#34d39922":c.buyingIntent==="medium"?"#f59e0b22":"#64748b22",color:c.buyingIntent==="high"?"#34d399":c.buyingIntent==="medium"?"#f59e0b":"#64748b",fontSize:8,height:"fit-content"}}>{c.buyingIntent} intent</span>
+                </div>
+              </div>
+            ))}
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>importEnriched(enrichResult)}>
+              Import All as Leads
+            </button>
+          </div>
+        )}
+        {enrichResult?.error&&<div style={{padding:"10px 12px",background:"#1a0505",borderRadius:6,color:"#f87171",fontSize:12}}>{enrichResult.error}</div>}
+      </div>
+    </div>
+  );
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════
 // PORTAL HUB — Ziksatech Launcher Page
