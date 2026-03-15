@@ -24360,10 +24360,6 @@ Client Context: ${companyProfile.name} | ${companyProfile.industry} | SAP: ${com
 Analyze the team roster and requirements to create detailed resource allocation plans.
 Be specific about consultant recommendations, capacity analysis, and risk factors.
 Format with ## headers. Include timeline, staffing plan, and recommendations.`;
-, an SAP consulting firm.
-Analyze the team roster and requirements to create detailed resource allocation plans.
-Be specific about consultant recommendations, capacity analysis, and risk factors.
-Format with ## headers. Include timeline, staffing plan, and recommendations.`;
     const prompt = `Create a resource plan for:
 Project: ${form.project}
 Duration: ${form.duration}
@@ -24389,6 +24385,7 @@ Timeline & Ramp-up Plan, Risk Factors, Cost Estimate, Recommendations.`;
 
   };
   return (
+    <div>
       <DocUploadPanel
         docData={docData} setDocData={setDocData}
         companyProfile={companyProfile} setCompanyProfile={setCompanyProf}
@@ -24447,6 +24444,7 @@ Timeline & Ramp-up Plan, Risk Factors, Cost Estimate, Recommendations.`;
           })}
         </div>
       </div>
+    </div>
     </div>
   );
 }
