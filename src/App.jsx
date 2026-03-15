@@ -1,4 +1,20 @@
 window.__ZT_MASK__ = true; // PII masked by default
+// Global PII masking helper — reads window.__ZT_MASK__ flag
+const mask = (val, type="text") => {
+  if(window.__ZT_MASK__===false) return val==null?"":String(val);
+  if(val==null||val===""||val==="—") return val==null?"":String(val);
+  const s = String(val);
+  if(type==="email")   return s.slice(0,2)+"●●●"+s.slice(s.indexOf("@")>0?s.indexOf("@"):-3);
+  if(type==="phone")   return "●●●-●●●-●●●●";
+  if(type==="ssn")     return "●●●-●●-"+s.slice(-4);
+  if(type==="taxid")   return "●●-●●●"+s.slice(-4);
+  if(type==="salary"||type==="amount") return "$●●●,●●●";
+  if(type==="rate")    return "$●●/hr";
+  if(type==="name")    return s.split(" ").map((w,i)=>i===0?w:w[0]+"●●").join(" ");
+  if(type==="account") return "●●●●"+s.slice(-4);
+  if(type==="dob")     return "●●/●●/●●●●";
+  return s.slice(0,2)+"●●●●";
+};
 import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -3764,7 +3780,7 @@ function Pipeline({ pipeline, setPipeline }) {
                 {p.notes&&<div style={{fontSize:10,color:"#334155"}}>{p.notes.slice(0,50)}</div>}
               </div>
               <span style={{fontSize:12,color:"#94a3b8"}}>{p.role}</span>
-              <span style={{fontSize:12,fontFamily:"monospace",color:"#34d399"}}>{p.billRate?`$${p.billRate}/hr`:"—"}</span>
+              <span style={{fontSize:12,fontFamily:"monospace",color:"#34d399"}}>{p.billRate?`${window.__ZT_MASK__!==false?"$●●/hr":"$"+p.billRate+"/hr"}`:"—"}</span>
               <span style={{fontSize:10,color:"#475569"}}>{p.skills?.slice(0,35)||"—"}</span>
               <span style={{fontSize:10,fontWeight:700,background:(VISA_COLORS[p.visa]||"#64748b")+"22",color:VISA_COLORS[p.visa]||"#64748b",padding:"2px 6px",borderRadius:4}}>{p.visa||"—"}</span>
               <span style={{fontSize:10,fontWeight:700,background:(STAGE_BG[p.status]||"#0a1120"),color:(STAGE_COLORS[p.status]||"#64748b"),padding:"2px 7px",borderRadius:4}}>{p.status}</span>
@@ -4255,7 +4271,7 @@ function ADPPayroll({ roster, adpRuns, setAdpRuns }) {
                 <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{e.name}</div>
                 <div style={{fontSize:10,color:"#3d5a7a"}}>{e.role}</div>
               </div>
-              <span className="mono" style={{fontSize:12,color:"#38bdf8"}}>{window.__ZT_MASK__!==false ? "$ ●●●,●●●" : fmt(+e.baseSalary||0)}</span>
+              <span className="mono" style={{fontSize:12,color:"#38bdf8"}}>{window.__ZT_MASK__!==false ? mask(e.baseSalary,"salary") : fmt(+e.baseSalary||0)}</span>
               <span className="mono" style={{fontSize:12,color:"#7dd3fc"}}>{fmt(b.gross)}</span>
               <span className="mono" style={{fontSize:11,color:"#64748b"}}>{fmt(b.fica)}</span>
               <span className="mono" style={{fontSize:11,color:"#64748b"}}>{fmt(b.futa)}</span>
@@ -7217,7 +7233,7 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
                     {c.isPrimary&&<span className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:8}}>PRIMARY</span>}
                   </div>
                   <div style={{fontSize:10,color:"#3d5a7a"}}>{c.title}</div>
-                  <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>{window.__ZT_MASK__!==false && c.email ? c.email.slice(0,2)+"***"+c.email.slice(c.email.indexOf("@")) : c.email}</div>
+                  <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>{mask(c.email,"email")}</div>
                 </div>
                 <button className="btn bg" style={{padding:"2px 7px",fontSize:10}} onClick={()=>openCon(c)}>Edit</button>
               </div>
@@ -9189,7 +9205,7 @@ function UserApprovalsPanel() {
         padding:"12px 16px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,marginBottom:6}}>
         <div>
           <div style={{fontWeight:600,color:"#e2e8f0",fontSize:13}}>{p.full_name}</div>
-          <div style={{color:"#475569",fontSize:11,marginTop:2}}>{p.email}</div>
+          <div style={{color:"#475569",fontSize:11,marginTop:2}}>{mask(p.email,"email")}</div>
         </div>
         <div style={{color:"#64748b",fontSize:12,textTransform:"capitalize"}}>{p.role}</div>
         <div>
@@ -11485,7 +11501,7 @@ function COBuilder({ projects, contracts, sows, roster, crmAccounts, onSave }) {
                     <div style={{width:10,height:10,borderRadius:"50%",border:`2px solid ${sel?"#38bdf8":"#1a2d45"}`,background:sel?"#38bdf8":"transparent",flexShrink:0}}/>
                     <div>
                       <div style={{fontSize:12,fontWeight:600,color:sel?"#e2e8f0":"#64748b"}}>{r.name}</div>
-                      <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role} · ${r.billRate}/hr</div>
+                      <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role} · ${window.__ZT_MASK__!==false?"●●":r.billRate}/hr</div>
                     </div>
                   </div>
                 );
@@ -11665,7 +11681,7 @@ function COImpact({ changeOrders, projects, roster }) {
                 <div key={rid} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
                   <div>
                     <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{r?.name||rid}</div>
-                    <div style={{fontSize:10,color:"#3d5a7a"}}>{r?.role} · ${r?.billRate}/hr</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{r?.role} · ${window.__ZT_MASK__!==false?"●●":r?.billRate}/hr</div>
                   </div>
                   <div style={{textAlign:"right"}}>
                     <div style={{fontSize:12,fontWeight:700,color:hrs>=0?"#34d399":"#f87171"}}>{hrs>=0?"+":""}{hrs}h</div>
@@ -16245,7 +16261,7 @@ function ProposalEditor({ proposals, setProposals, crmDeals, roster, selId, setS
                         <Avatar name={r.name} size={28}/>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:12,fontWeight:600,color:selected?"#38bdf8":"#94a3b8"}}>{r.name}</div>
-                          <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role||"Consultant"} · ${r.billRate}/hr</div>
+                          <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role||"Consultant"} · ${window.__ZT_MASK__!==false?"●●":r.billRate}/hr</div>
                           {r.skills&&<div style={{fontSize:9,color:"#1e3a5f",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.skills}</div>}
                         </div>
                         <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${selected?"#0284c7":"#1a2d45"}`,background:selected?"#0284c7":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
@@ -18331,7 +18347,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
                         <Avatar name={b.name} size={36}/>
                         <div>
                           <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{b.name}</div>
-                          <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__!==false ? "$ ●●●,●●●" : fmt(+b.salary||0)}/yr salary</div>
+                          <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__!==false ? mask(b.salary,"salary") : fmt(+b.salary||0)}/yr salary</div>
                         </div>
                       </div>
                       <div style={{textAlign:"right"}}>
@@ -18351,7 +18367,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
                         ["Health",   `${plan?.name||"—"} · ${TIER_LABELS[b.healthTier]}`,   fmt(monthlyHealthCost(b))+"/mo"],
                         ["Dental",   dental?.name||"—",                                       fmt(monthlyDentalCost(b))+"/mo"],
                         ["Vision",   vision?.name||"—",                                       fmt(monthlyVisionCost(b))+"/mo"],
-                        ["Life",     b.lifeInsured?`${b.lifeMultiple}x = ${fmt(b.salary*b.lifeMultiple)}`:"Not enrolled", b.lifeInsured?fmt(monthlyLifeCost(b))+"/mo":"—"],
+                        ["Life",     b.lifeInsured?`${b.lifeMultiple}x = ${window.__ZT_MASK__!==false ? "$ ●●●,●●●" : fmt(b.salary*b.lifeMultiple)}`:"Not enrolled", b.lifeInsured?fmt(monthlyLifeCost(b))+"/mo":"—"],
                         ["STD",      b.stdEnrolled?"Enrolled":"Not enrolled",                 b.stdEnrolled?fmt(monthlySTDCost(b))+"/mo":"—"],
                         ["LTD",      b.ltdEnrolled?"Enrolled":"Not enrolled",                 b.ltdEnrolled?fmt(monthlyLTDCost(b))+"/mo":"—"],
                       ].map(([l,v,cost])=>(
@@ -23031,8 +23047,8 @@ ${text.slice(0,4000)}`;
               </div>
               <span style={{fontSize:12,color:"#94a3b8"}}>{s.payPeriod||"—"}</span>
               <span style={{fontSize:11,color:"#64748b"}}>{s.checkDate||"—"}</span>
-              <span style={{fontSize:12,fontWeight:600,color:"#38bdf8",fontFamily:"monospace"}}>{s.grossPay?("$"+(+s.grossPay).toLocaleString()):"—"}</span>
-              <span style={{fontSize:12,fontWeight:600,color:"#34d399",fontFamily:"monospace"}}>{s.netPay?("$"+(+s.netPay).toLocaleString()):"—"}</span>
+              <span style={{fontSize:12,fontWeight:600,color:"#38bdf8",fontFamily:"monospace"}}>{s.grossPay?(window.__ZT_MASK__!==false?"$ ●●●,●●●":("$"+(+s.grossPay).toLocaleString())):"—"}</span>
+              <span style={{fontSize:12,fontWeight:600,color:"#34d399",fontFamily:"monospace"}}>{s.netPay?(window.__ZT_MASK__!==false?"$ ●●●,●●●":("$"+(+s.netPay).toLocaleString())):"—"}</span>
               <span style={{fontSize:12,color:"#f87171",fontFamily:"monospace"}}>{s.fedTax?("$"+(+s.fedTax).toLocaleString()):"—"}</span>
               <span style={{fontSize:12,color:"#f59e0b",fontFamily:"monospace"}}>{s.ficaEe?("$"+(+s.ficaEe).toLocaleString()):"—"}</span>
               <span style={{fontSize:11,color:"#475569",fontFamily:"monospace"}}>{s.stubRef||"—"}</span>
@@ -23362,7 +23378,7 @@ Return JSON: {"linkedIn":"linkedin.com/in/likely-url","companyWebsite":"likely u
           <div key={lead.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 1fr 80px 80px 80px 90px"}}>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{lead.name}</div>
-              <div style={{fontSize:10,color:"#3d5a7a"}}>{window.__ZT_MASK__!==false && lead.email ? lead.email.slice(0,2)+"***"+lead.email.slice(lead.email.indexOf("@")) : lead.email}</div>
+              <div style={{fontSize:10,color:"#3d5a7a"}}>{mask(lead.email,"email")}</div>
             </div>
             <div>
               <div style={{fontSize:12,color:"#94a3b8"}}>{lead.company}</div>
@@ -23488,8 +23504,8 @@ function CRMContactsTab({ crmContacts, setCrmContacts, crmAccounts, addAudit }) 
               </div>
               <span style={{fontSize:11,color:"#475569"}}>{acc?.name||"—"}</span>
               <div>
-                <div style={{fontSize:11,color:"#94a3b8"}}>{con.email}</div>
-                <div style={{fontSize:10,color:"#475569"}}>{con.phone}</div>
+                <div style={{fontSize:11,color:"#94a3b8"}}>{mask(con.email,"email")}</div>
+                <div style={{fontSize:10,color:"#475569"}}>{mask(con.phone,"phone")}</div>
               </div>
               <span style={{fontSize:10,color:"#3b82f6"}}>{con.linkedIn?<a href={"https://"+con.linkedIn} target="_blank" style={{color:"#3b82f6",textDecoration:"none"}}>🔗 LinkedIn</a>:"—"}</span>
               <span style={{textAlign:"center",fontSize:12}}>{con.isPrimary?"⭐":"—"}</span>
@@ -24206,7 +24222,7 @@ ${CSV_SAMPLE_DATA[importType]?.[0]||""}`}
                   <div key={i} style={{padding:"10px 0",borderBottom:"1px solid #0a1626"}}>
                     <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{c.name} <span style={{color:"#475569",fontWeight:400}}>· {c.title}</span></div>
                     <div style={{fontSize:11,color:"#3d5a7a"}}>{c.company} · {c.industry}</div>
-                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{window.__ZT_MASK__!==false && c.email ? c.email.slice(0,2)+"***"+c.email.slice(c.email.indexOf("@")) : c.email} · {c.phone}</div>
+                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{mask(c.email,"email")} · {c.phone}</div>
                     {c.notes&&<div style={{fontSize:10,color:"#475569",marginTop:3,fontStyle:"italic"}}>{c.notes}</div>}
                   </div>
                 ))}
@@ -24272,7 +24288,7 @@ ${CSV_SAMPLE_DATA[importType]?.[0]||""}`}
                         <div>
                           <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{lead.name}</div>
                           <div style={{fontSize:11,color:"#3d5a7a"}}>{lead.title} · {lead.company}</div>
-                          <div style={{fontSize:10,color:"#334155",marginTop:2}}>{window.__ZT_MASK__!==false && lead.email ? lead.email.slice(0,2)+"***"+lead.email.slice(lead.email.indexOf("@")) : lead.email}</div>
+                          <div style={{fontSize:10,color:"#334155",marginTop:2}}>{mask(lead.email,"email")}</div>
                         </div>
                         <span className="bdg" style={{background:lead.score>=80?"#34d39922":"#f59e0b22",color:lead.score>=80?"#34d399":"#f59e0b",fontSize:10}}>
                           {lead.score}pt
