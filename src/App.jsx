@@ -12326,8 +12326,8 @@ function CFRunway({ finInvoices, finPayments, apInvoices, adpRuns, roster, cfOve
   const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
   const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+(+r.netPay||0),0);
   const estCash        = totalCollected - totalApPaid - payrollPaid;
-  const estAR          = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided").reduce((s,i)=>s+i.balance,0)
-                       + (finPayments.length>0 ? 0 : 0);
+  const estAR          = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided").reduce((s,i)=>s+((+i.balance||0)||(+i.amount||0)||(i.lines||[]).reduce((sl,l)=>sl+(+l.amount||0),0)),0)
+;
 
   const cashBal    = parseFloat(cashInput)    || estCash;
   const arBal      = parseFloat(arInput)      || Math.max(0, estAR);
@@ -12338,7 +12338,7 @@ function CFRunway({ finInvoices, finPayments, apInvoices, adpRuns, roster, cfOve
   const last3moBilled = finInvoices.filter(inv=>{
     const d = parseDate(inv.issueDate);
     return d && d >= addDays(TODAY, -90);
-  }).reduce((s,i)=>s+(+i.amount||0),0);
+  }).reduce((s,i)=>s+((+i.amount||0)||(i.lines||[]).reduce((sl,l)=>sl+(+l.amount||0),0)),0);
   const estMonthlyRevenue = last3moBilled / 3;
 
   // Monthly fixed costs
