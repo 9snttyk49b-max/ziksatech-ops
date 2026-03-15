@@ -20523,7 +20523,7 @@ const WIDGET_LIBRARY = [
     }},
 ];
 
-function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
+function HomePage({ roster, clients, finInvoices, finPayments, finExpenses, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
   dismissedAlerts, setDismissedAlerts }) {
 
