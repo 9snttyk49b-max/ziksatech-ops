@@ -2608,6 +2608,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="rfpgen"     && <RFPGenerator   {...shared} />}
         {tab==="prospectintel" && <ProspectIntel crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} addAudit={shared.addAudit} />}
         {tab==="soplibrary"   && <SOPLibrary roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} apInvoices={shared.apInvoices} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
+        {tab==="capdeck"      && <CapabilityDeck clients={shared.clients} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} roster={shared.roster} addAudit={shared.addAudit}/>}
+        {tab==="certtracker"  && <CertTracker addAudit={shared.addAudit}/>}
+        {tab==="outreachtrk"  && <OutreachTracker crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="sowgen"     && <SOWGenerator   {...shared} />}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
@@ -22123,6 +22126,387 @@ Next: ${r.nextStep}`,
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAPABILITY DECK GENERATOR — AI-powered client-specific pitch decks
+// ═══════════════════════════════════════════════════════════════════════════
+function CapabilityDeck({ clients, crmAccounts, crmDeals, roster, addAudit }) {
+  const [target, setTarget] = useState(""); const [industry, setIndustry] = useState("Utilities");
+  const [focus, setFocus] = useState([]); const [loading, setLoading] = useState(false);
+  const [deck, setDeck] = useState(null); const [history, setHistory] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-decks")||"[]");}catch{return [];}});
+  const FOCUS_AREAS = ["SAP BRIM","SAP IS-U","S/4HANA Migration","Databricks / Data Engineering","GridMind™ AI","Managed Services","Staff Augmentation"];
+  const toggleFocus = f => setFocus(prev=>prev.includes(f)?prev.filter(x=>x!==f):[...prev,f]);
+  const allAccounts = [...(clients||[]).map(c=>({name:c.name,type:"client"})),...(crmAccounts||[]).filter(a=>!clients?.find(c=>c.name===a.name)).map(a=>({name:a.name,type:"prospect"}))];
+  const activeConsultants = (roster||[]).filter(r=>r.util>0);
+  const wonDeals = (crmDeals||[]).filter(d=>d.stage==="won");
+
+  const generate = async () => {
+    if(!target.trim()) return alert("Enter a target company name");
+    if(!focus.length) return alert("Select at least one focus area");
+    setLoading(true); setDeck(null);
+    const prompt = `You are a senior SAP consulting BD strategist at Ziksatech (WBE/HUB/WOSB certified, Plano TX).
+Generate a compelling capability deck outline for: ${target} (${industry} industry)
+Focus areas: ${focus.join(", ")}
+Our team: ${activeConsultants.length} active consultants including SAP BRIM, IS-U, S/4HANA, Databricks specialists
+Our clients: ${(clients||[]).map(c=>c.name).join(", ")}
+
+Return ONLY valid JSON:
+{"deckTitle":"string","tagline":"string","executiveSummary":"2-3 sentences","sections":[{"title":"string","headline":"string","bullets":["string"],"proof":"1 real-sounding stat or case study"}],"differentiators":["string"],"callToAction":"string","whyNow":"urgency reason specific to ${target}","suggestedNextStep":"string"}
+Include 5-6 sections. Make it specific to ${target} and ${industry}. No markdown.`;
+
+    try {
+      let full="";
+      await callClaude("You are a BD deck generator. Return only valid JSON.", prompt, t=>{full=t;}, 2000);
+      const parsed = JSON.parse(full.replace(/```json|```/g,"").trim());
+      parsed._target=target; parsed._industry=industry; parsed._focus=[...focus]; parsed._ts=new Date().toISOString();
+      setDeck(parsed);
+      const h=[parsed,...history].slice(0,10); setHistory(h); localStorage.setItem("zt-decks",JSON.stringify(h));
+      addAudit&&addAudit("Sales","Capability Deck",target,"AI deck generated");
+    } catch(e){alert("Generation failed: "+e.message);}
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <PH title="Capability Deck AI" sub="Generate client-specific pitch decks in seconds · SAP expertise · WBE/HUB angle"/>
+      <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:16,alignItems:"start"}}>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🎯 Configure Deck</div>
+            <div style={{marginBottom:10}}><div className="lbl">Target Company</div>
+              <input className="inp" value={target} onChange={e=>setTarget(e.target.value)} placeholder="e.g. Capital One, Verizon, CHRISTUS Health"/>
+            </div>
+            <div style={{marginBottom:10}}><div className="lbl">Industry</div>
+              <select className="inp" value={industry} onChange={e=>setIndustry(e.target.value)}>
+                {["Utilities","Telecom","Healthcare","Financial Services","Manufacturing","Retail","Energy","Government","Technology"].map(i=><option key={i}>{i}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:14}}><div className="lbl" style={{marginBottom:6}}>Focus Areas (select all that apply)</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {FOCUS_AREAS.map(f=>(
+                  <button key={f} className="btn bg" style={{fontSize:9,padding:"3px 8px",
+                    borderColor:focus.includes(f)?"#0284c7":"#1a2d45",color:focus.includes(f)?"#38bdf8":"#475569"}}
+                    onClick={()=>toggleFocus(f)}>{f}</button>
+                ))}
+              </div>
+            </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center"}} onClick={generate} disabled={loading}>
+              {loading?"⚡ Generating...":"⚡ Generate Deck"}
+            </button>
+          </div>
+          {history.length>0&&(<div className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#475569",marginBottom:8}}>RECENT DECKS</div>
+            {history.slice(0,5).map((h,i)=>(
+              <div key={i} onClick={()=>setDeck(h)} style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",marginBottom:4,background:deck===h?"#0a1a2e":"#060d1c",border:`1px solid ${deck===h?"#0369a1":"#1a2d45"}`}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{h._target}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{h._industry} · {(h._focus||[]).slice(0,2).join(", ")}</div>
+              </div>
+            ))}
+          </div>)}
+        </div>
+        <div>
+          {!deck&&!loading&&(<div className="card" style={{padding:"60px 40px",textAlign:"center"}}>
+            <div style={{fontSize:40,marginBottom:12}}>📊</div>
+            <div style={{fontSize:15,fontWeight:700,color:"#334155",marginBottom:8}}>Client-Specific Capability Decks</div>
+            <div style={{fontSize:12,color:"#1e3a5f",lineHeight:1.6}}>Enter a target company and select focus areas.<br/>AI generates a tailored deck outline specific to their industry and pain points.</div>
+          </div>)}
+          {loading&&(<div className="card" style={{padding:"60px",textAlign:"center",color:"#38bdf8"}}>
+            <div style={{fontSize:24,marginBottom:12}}>⚡</div>
+            <div style={{fontSize:14}}>Building deck for {target}...</div>
+          </div>)}
+          {deck&&!loading&&(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div className="card" style={{padding:"20px 24px"}}>
+                <div style={{fontSize:22,fontWeight:800,color:"#e2e8f0",marginBottom:4}}>{deck.deckTitle}</div>
+                <div style={{fontSize:14,color:"#38bdf8",marginBottom:10,fontStyle:"italic"}}>{deck.tagline}</div>
+                <div style={{fontSize:12,color:"#64748b",lineHeight:1.6,marginBottom:14}}>{deck.executiveSummary}</div>
+                <div style={{padding:"10px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1",marginBottom:10}}>
+                  <div style={{fontSize:10,color:"#0284c7",marginBottom:3}}>⚡ WHY NOW FOR {(deck._target||"").toUpperCase()}</div>
+                  <div style={{fontSize:12,color:"#38bdf8"}}>{deck.whyNow}</div>
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {(deck._focus||[]).map(f=><span key={f} className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:10}}>{f}</span>)}
+                </div>
+              </div>
+              {(deck.sections||[]).map((s,i)=>(
+                <div key={i} className="card" style={{padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:10,color:"#475569",fontWeight:700,marginBottom:2}}>SLIDE {i+2}: {s.title?.toUpperCase()}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{s.headline}</div>
+                    </div>
+                    <span style={{fontSize:10,background:"#1a2d45",color:"#475569",padding:"2px 8px",borderRadius:10}}>Slide {i+2}</span>
+                  </div>
+                  <div style={{marginBottom:10}}>
+                    {(s.bullets||[]).map((b,j)=><div key={j} style={{fontSize:12,color:"#94a3b8",marginBottom:5,paddingLeft:12,borderLeft:"2px solid #1a3d60"}}>• {b}</div>)}
+                  </div>
+                  {s.proof&&<div style={{fontSize:11,color:"#34d399",background:"#021f14",padding:"7px 10px",borderRadius:6,border:"1px solid #34d39933"}}>📊 {s.proof}</div>}
+                </div>
+              ))}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:6}}>WHY ZIKSATECH</div>
+                  {(deck.differentiators||[]).map((d,i)=><div key={i} style={{fontSize:12,color:"#94a3b8",marginBottom:5}}>✓ {d}</div>)}
+                </div>
+                <div style={{padding:"12px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
+                  <div style={{fontSize:10,color:"#0284c7",marginBottom:3}}>CALL TO ACTION</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#38bdf8"}}>{deck.callToAction}</div>
+                </div>
+                <div style={{marginTop:10,padding:"10px 14px",background:"#021f14",borderRadius:8,border:"1px solid #34d39933"}}>
+                  <div style={{fontSize:10,color:"#34d399",marginBottom:3}}>⚡ SUGGESTED NEXT STEP</div>
+                  <div style={{fontSize:12,color:"#34d399"}}>{deck.suggestedNextStep}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WBE/HUB/WOSB CERTIFICATION TRACKER
+// ═══════════════════════════════════════════════════════════════════════════
+const CERT_LIST = [
+  {id:"c1",name:"WBE – Women's Business Enterprise",body:"WBENC",desc:"National WBE certification through Women's Business Enterprise National Council",renewalMonths:12,docs:["WBENC application","Owner personal financial statement","Business financial statements","Articles of incorporation","Operating agreement","Photos of business premises"]},
+  {id:"c2",name:"HUB – Historically Underutilized Business",body:"Texas HUB Program",desc:"Texas state HUB certification for state agency procurement",renewalMonths:24,docs:["HUB application","Owner's personal net worth statement","Proof of Texas residency","Business financial statements","IRS filings","Organizational documents"]},
+  {id:"c3",name:"WOSB – Women-Owned Small Business",body:"SBA",desc:"Federal SBA WOSB certification for federal contracting",renewalMonths:12,docs:["SBA WOSB application","NAICS codes documentation","Joint venture agreements (if any)","Annual certification renewal"]},
+  {id:"c4",name:"DBE – Disadvantaged Business Enterprise",body:"TxDOT",desc:"Federal DBE certification for transportation-related federal contracts",renewalMonths:36,docs:["DBE application","Personal net worth statement","Business financial statements","SBA 8(a) eligibility docs"]},
+  {id:"c5",name:"SAP Partner Edge",body:"SAP",desc:"SAP Partner Edge certification — enables co-selling and joint GTM with SAP",renewalMonths:12,docs:["Partner application","Reference clients","Certified consultant list","Revenue targets commitment"]},
+  {id:"c6",name:"GSA Schedule (IT 70)",body:"GSA",desc:"Federal GSA IT Schedule 70 — enables direct federal agency sales",renewalMonths:60,docs:["GSA eOffer application","Pricing proposal","Quality assurance plan","Past performance references","Financial statements"]},
+];
+
+function CertTracker({ addAudit }) {
+  const [certs, setCerts] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-certs")||"{}");}catch{return {};}});
+  const [detail, setDetail] = useState(null);
+  const save = (id, data) => { const u={...certs,[id]:{...(certs[id]||{}),...data}}; setCerts(u); localStorage.setItem("zt-certs",JSON.stringify(u)); };
+
+  const status = (cert) => {
+    const d = certs[cert.id];
+    if(!d?.obtained) return {label:"Not Started",color:"#f87171",bg:"#f8717122"};
+    if(!d?.expiryDate) return {label:"Active – No Expiry Set",color:"#f59e0b",bg:"#f59e0b22"};
+    const days = Math.round((new Date(d.expiryDate)-new Date())/86400000);
+    if(days<0) return {label:"EXPIRED",color:"#f87171",bg:"#f8717122"};
+    if(days<=90) return {label:`Expires in ${days}d`,color:"#f59e0b",bg:"#f59e0b22"};
+    return {label:`Active · ${days}d left`,color:"#34d399",bg:"#34d39922"};
+  };
+
+  const docsComplete = (cert) => {
+    const d = certs[cert.id]?.docs||{};
+    return cert.docs.filter(doc=>d[doc]).length;
+  };
+
+  return (
+    <div>
+      <PH title="WBE/HUB/WOSB Certification Tracker" sub="Certification status · Renewal dates · Document checklist · Federal contracting readiness"/>
+      <div style={{display:"grid",gridTemplateColumns:detail?"1fr 360px":"1fr",gap:16}}>
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            {[{l:"Active",c:"#34d399"},{l:"Expiring Soon",c:"#f59e0b"},{l:"Not Started",c:"#f87171"}].map(({l,c})=>{
+              const count = CERT_LIST.filter(cert=>{const s=status(cert); return l==="Active"?s.color==="#34d399":l==="Expiring Soon"?s.color==="#f59e0b":s.color==="#f87171";}).length;
+              return <div key={l} className="card" style={{padding:"12px 16px"}}>
+                <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>{l.toUpperCase()}</div>
+                <div style={{fontSize:24,fontWeight:800,color:c}}>{count}</div>
+              </div>;
+            })}
+          </div>
+          <div style={{padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:10,marginBottom:16,fontSize:11,color:"#38bdf8"}}>
+            💡 <strong>Market Impact:</strong> WBE + HUB + WOSB certifications unlock <strong>set-aside contracts</strong> and make Ziksatech a preferred vendor for Fortune 500 diversity supplier programs — AT&T, Toyota, and most large companies have supplier diversity mandates. These certs alone can double your addressable market.
+          </div>
+          <div className="card">
+            <div className="tr" style={{gridTemplateColumns:"2fr 110px 90px 80px 80px",padding:"8px 18px"}}>
+              {["Certification","Status","Obtained","Expiry","Docs"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {CERT_LIST.map(cert=>{
+              const st=status(cert); const d=certs[cert.id]||{}; const docs=docsComplete(cert);
+              return (
+                <div key={cert.id} className="tr" style={{gridTemplateColumns:"2fr 110px 90px 80px 80px",cursor:"pointer",background:detail?.id===cert.id?"#0a1a2e":undefined}}
+                  onClick={()=>setDetail(detail?.id===cert.id?null:cert)}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{cert.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{cert.body} · Renews every {cert.renewalMonths}mo</div>
+                  </div>
+                  <span className="bdg" style={{background:st.bg,color:st.color,fontSize:9}}>{st.label}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:6}} onClick={e=>{e.stopPropagation();save(cert.id,{obtained:!d.obtained});}}>
+                    <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${d.obtained?"#34d399":"#334155"}`,background:d.obtained?"#34d399":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {d.obtained&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
+                    </div>
+                    <span style={{fontSize:10,color:"#475569"}}>{d.obtained?"Yes":"No"}</span>
+                  </div>
+                  <span style={{fontSize:11,color:"#475569"}}>{d.expiryDate?fmtDate(d.expiryDate):"—"}</span>
+                  <div>
+                    <div style={{height:5,background:"#0a1626",borderRadius:3}}>
+                      <div style={{height:5,borderRadius:3,background:docs===cert.docs.length?"#34d399":"#f59e0b",width:(docs/cert.docs.length*100)+"%"}}/>
+                    </div>
+                    <span style={{fontSize:9,color:"#334155"}}>{docs}/{cert.docs.length}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {detail&&(
+          <div className="card" style={{height:"fit-content",position:"sticky",top:0,padding:"16px 18px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{detail.name}</div>
+              <button className="btn bg" style={{padding:"3px 8px",fontSize:11}} onClick={()=>setDetail(null)}>✕</button>
+            </div>
+            <div style={{fontSize:11,color:"#3d5a7a",marginBottom:12,lineHeight:1.5}}>{detail.desc}</div>
+            <div style={{marginBottom:12}}>
+              <div className="lbl">Expiry Date</div>
+              <input className="inp" type="date" value={certs[detail.id]?.expiryDate||""}
+                onChange={e=>save(detail.id,{expiryDate:e.target.value})}/>
+            </div>
+            <div style={{marginBottom:12}}>
+              <div className="lbl">Notes</div>
+              <textarea className="inp" rows={2} value={certs[detail.id]?.notes||""}
+                onChange={e=>save(detail.id,{notes:e.target.value})} placeholder="Attorney contact, renewal notes..."/>
+            </div>
+            <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8}}>REQUIRED DOCUMENTS</div>
+            {detail.docs.map(doc=>{
+              const checked=!!(certs[detail.id]?.docs||{})[doc];
+              return (
+                <div key={doc} onClick={()=>save(detail.id,{docs:{...(certs[detail.id]?.docs||{}),[doc]:!checked}})}
+                  style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:7,cursor:"pointer",marginBottom:4,
+                    background:checked?"#021f14":"#060d1c",border:`1px solid ${checked?"#34d39933":"#1a2d45"}`}}>
+                  <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${checked?"#34d399":"#334155"}`,background:checked?"#34d399":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {checked&&<span style={{color:"#021f14",fontSize:9,fontWeight:800}}>✓</span>}
+                  </div>
+                  <span style={{fontSize:11,color:checked?"#34d399":"#94a3b8"}}>{doc}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 30-DAY OUTREACH CADENCE TRACKER
+// ═══════════════════════════════════════════════════════════════════════════
+const OUTREACH_STAGES = ["Identified","Researched","1st Contact","Follow-up 1","Follow-up 2","Meeting Booked","Proposal","Closed/Won","Closed/Lost","Nurture"];
+const OUTREACH_STAGE_COLOR = {"Identified":"#475569","Researched":"#38bdf8","1st Contact":"#a78bfa","Follow-up 1":"#f59e0b","Follow-up 2":"#f97316","Meeting Booked":"#34d399","Proposal":"#0284c7","Closed/Won":"#34d399","Closed/Lost":"#f87171","Nurture":"#64748b"};
+
+function OutreachTracker({ crmLeads, setCrmLeads, crmAccounts, crmDeals, addAudit }) {
+  const [records, setRecords] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-outreach")||"[]");}catch{return [];}});
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""});
+  const [filter, setFilter] = useState("All");
+  const [editing, setEditing] = useState(null);
+
+  const save = r => { setRecords(r); localStorage.setItem("zt-outreach",JSON.stringify(r)); };
+
+  const addRecord = () => {
+    if(!form.company.trim()) return alert("Enter company name");
+    const rec = editing
+      ? records.map(r=>r.id===editing?{...r,...form}:r)
+      : [{...form,id:"ot-"+Date.now(),createdDate:TODAY_STR},...records];
+    save(rec); setModal(false); setEditing(null);
+    setForm({company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""});
+    addAudit&&addAudit("Sales","Outreach Tracked",form.company,form.stage);
+  };
+
+  const open = (r=null) => { setEditing(r?.id||null); setForm(r?{...r}:{company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""}); setModal(true); };
+  const del = id => { if(window.confirm("Delete this outreach record?")) save(records.filter(r=>r.id!==id)); };
+  const convertToLead = (r) => {
+    setCrmLeads&&setCrmLeads(ls=>[...ls,{id:"lead"+uid(),name:r.contact||r.company,company:r.company,title:r.title||"",email:r.email||"",phone:r.phone||"",industry:"",source:r.source,score:60,status:"new",notes:r.notes||"",linkedIn:"",assignedTo:"Manju",createdDate:TODAY_STR,lastContact:TODAY_STR}]);
+    alert("✅ Converted to CRM Lead!");
+    addAudit&&addAudit("CRM","Lead Created",r.company,"From Outreach Tracker");
+  };
+
+  const filtered = filter==="All" ? records : records.filter(r=>r.stage===filter);
+  const dueToday = records.filter(r=>r.nextDate&&r.nextDate<=TODAY_STR&&!["Closed/Won","Closed/Lost"].includes(r.stage));
+  const byStage = OUTREACH_STAGES.reduce((acc,s)=>({...acc,[s]:records.filter(r=>r.stage===s).length}),{});
+
+  return (
+    <div>
+      <PH title="30-Day Outreach Tracker" sub="Prospect pipeline · Contact cadence · Follow-up alerts · Convert to CRM"/>
+      {dueToday.length>0&&(
+        <div style={{padding:"12px 16px",background:"#1a0a05",border:"1px solid #f59e0b",borderRadius:10,marginBottom:16,display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:18}}>⏰</span>
+          <div>
+            <div style={{fontSize:12,fontWeight:700,color:"#f59e0b"}}>{dueToday.length} follow-up{dueToday.length>1?"s":""} due today</div>
+            <div style={{fontSize:11,color:"#92400e"}}>{dueToday.map(r=>r.company).join(", ")}</div>
+          </div>
+        </div>
+      )}
+      <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
+        <div style={{display:"flex",gap:4,flex:1,overflowX:"auto"}}>
+          {["All",...OUTREACH_STAGES.filter(s=>byStage[s]>0)].map(s=>(
+            <button key={s} className="btn bg" style={{fontSize:10,padding:"4px 10px",whiteSpace:"nowrap",
+              borderColor:filter===s?(OUTREACH_STAGE_COLOR[s]||"#0284c7"):"#1a2d45",
+              color:filter===s?(OUTREACH_STAGE_COLOR[s]||"#38bdf8"):"#475569"}}
+              onClick={()=>setFilter(s)}>
+              {s}{s!=="All"&&byStage[s]>0?` (${byStage[s]})`:s==="All"?` (${records.length})`:""}
+            </button>
+          ))}
+        </div>
+        <button className="btn bp" style={{flexShrink:0,fontSize:12}} onClick={()=>open()}>+ Add Prospect</button>
+      </div>
+      <div className="card">
+        <div className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 100px 90px 120px 100px",padding:"8px 18px"}}>
+          {["Company / Contact","Stage","Source","Next Action","Due Date","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:"#1e3a5f",fontSize:12}}>No outreach records{filter!=="All"?" for this stage":""}. Add your first prospect!</div>}
+        {filtered.map(r=>{
+          const overdue=r.nextDate&&r.nextDate<TODAY_STR&&!["Closed/Won","Closed/Lost"].includes(r.stage);
+          const sc=OUTREACH_STAGE_COLOR[r.stage]||"#64748b";
+          return (
+            <div key={r.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 100px 90px 120px 100px",background:overdue?"#100800":undefined}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.company}</div>
+                {r.contact&&<div style={{fontSize:10,color:"#3d5a7a"}}>{r.contact}{r.title?` · ${r.title}`:""}</div>}
+                {r.notes&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:2}}>{r.notes.slice(0,60)}{r.notes.length>60?"...":""}</div>}
+              </div>
+              <span className="bdg" style={{background:sc+"22",color:sc,fontSize:9}}>{r.stage}</span>
+              <span style={{fontSize:10,color:"#475569"}}>{r.source}</span>
+              <span style={{fontSize:10,color:"#94a3b8"}}>{r.nextAction||"—"}</span>
+              <span style={{fontSize:11,color:overdue?"#f87171":r.nextDate?"#94a3b8":"#334155",fontWeight:overdue?700:400}}>
+                {r.nextDate?fmtDate(r.nextDate):"—"}{overdue?" ⚠️":""}
+              </span>
+              <div style={{display:"flex",gap:3}} onClick={e=>e.stopPropagation()}>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(r)} title="Edit">✏️</button>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>convertToLead(r)} title="→ CRM Lead">→</button>
+                <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>del(r.id)} title="Delete">🗑</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {modal&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:560}}>
+            <MH title={editing?"Edit Prospect":"Add Prospect to Outreach"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Company" style={{gridColumn:"span 2"}}><input className="inp" value={form.company} onChange={e=>setForm({...form,company:e.target.value})} placeholder="e.g. Capital One"/></FF>
+              <FF label="Contact Name"><input className="inp" value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})} placeholder="Full name"/></FF>
+              <FF label="Title"><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="VP SAP, CTO..."/></FF>
+              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="email@company.com"/></FF>
+              <FF label="Phone"><input className="inp" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="214-555-xxxx"/></FF>
+              <FF label="Stage"><select className="inp" value={form.stage} onChange={e=>setForm({...form,stage:e.target.value})}>
+                {OUTREACH_STAGES.map(s=><option key={s}>{s}</option>)}
+              </select></FF>
+              <FF label="Source"><select className="inp" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>
+                {["Prospect Intel","LinkedIn","Referral","Conference","Cold Email","Apollo","ZoomInfo","Other"].map(s=><option key={s}>{s}</option>)}
+              </select></FF>
+              <FF label="Next Action"><input className="inp" value={form.nextAction} onChange={e=>setForm({...form,nextAction:e.target.value})} placeholder="Send intro email, Schedule call..."/></FF>
+              <FF label="Next Action Date"><input className="inp" type="date" value={form.nextDate} onChange={e=>setForm({...form,nextDate:e.target.value})}/></FF>
+              <FF label="Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Context, connection, talking points..."/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={addRecord}><I d={ICONS.check} s={13}/>{editing?"Update":"Add Prospect"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
