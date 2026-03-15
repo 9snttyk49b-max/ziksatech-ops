@@ -401,8 +401,8 @@ const FIN_INVOICES_SEED = [
   { id:"INV-001", clientId:"cl1", projectName:"AT&T Managed Services", period:"Jan 2026",
     issueDate:"2026-01-31", dueDate:"2026-02-28", status:"paid", paymentTerms:"Net 30",
     lines:[
-      { id:"l1", desc:"BRIM Sr Consultant — Suresh Menon", qty:160, rate:155, amount:24800 },
-      { id:"l2", desc:"SAP Functional — Deepa Rao", qty:128, rate:135, amount:17280 },
+      { id:"l1", desc:"BRIM Sr Consultant — Nuthan Joshi", qty:160, rate:155, amount:24800 },
+      { id:"l2", desc:"SAP Functional — Malla Reddy", qty:128, rate:135, amount:17280 },
       { id:"l3", desc:"SAP Technical — Vikram Singh", qty:128, rate:140, amount:17920 },
       { id:"l4", desc:"BRIM Consultant — Ananya Krishnan", qty:96, rate:130, amount:12480 },
       { id:"l5", desc:"Management Fee", qty:1, rate:27520, amount:27520 },
@@ -410,15 +410,15 @@ const FIN_INVOICES_SEED = [
   { id:"INV-002", clientId:"cl2", projectName:"Client B Staff Augmentation", period:"Jan 2026",
     issueDate:"2026-01-31", dueDate:"2026-02-28", status:"paid", paymentTerms:"Net 30",
     lines:[
-      { id:"l1", desc:"SAP Functional — Arun Sharma", qty:32, rate:125, amount:4000 },
+      { id:"l1", desc:"SAP Functional — Kartheek", qty:32, rate:125, amount:4000 },
       { id:"l2", desc:"Data Engineer — Kiran Patel", qty:64, rate:145, amount:9280 },
       { id:"l3", desc:"Management & Overhead", qty:1, rate:26720, amount:26720 },
     ], notes:"" },
   { id:"INV-003", clientId:"cl1", projectName:"AT&T Managed Services", period:"Feb 2026",
     issueDate:"2026-02-28", dueDate:"2026-03-30", status:"paid", paymentTerms:"Net 30",
     lines:[
-      { id:"l1", desc:"BRIM Sr Consultant — Suresh Menon", qty:160, rate:155, amount:24800 },
-      { id:"l2", desc:"SAP Functional — Deepa Rao", qty:128, rate:135, amount:17280 },
+      { id:"l1", desc:"BRIM Sr Consultant — Nuthan Joshi", qty:160, rate:155, amount:24800 },
+      { id:"l2", desc:"SAP Functional — Malla Reddy", qty:128, rate:135, amount:17280 },
       { id:"l3", desc:"SAP Technical — Vikram Singh", qty:128, rate:140, amount:17920 },
       { id:"l4", desc:"BRIM Consultant — Ananya Krishnan", qty:96, rate:130, amount:12480 },
       { id:"l5", desc:"Management Fee", qty:1, rate:27520, amount:27520 },
@@ -432,8 +432,8 @@ const FIN_INVOICES_SEED = [
   { id:"INV-005", clientId:"cl1", projectName:"AT&T Managed Services", period:"Mar 2026",
     issueDate:"2026-03-31", dueDate:"2026-04-30", status:"sent", paymentTerms:"Net 30",
     lines:[
-      { id:"l1", desc:"BRIM Sr Consultant — Suresh Menon", qty:160, rate:155, amount:24800 },
-      { id:"l2", desc:"SAP Functional — Deepa Rao", qty:128, rate:135, amount:17280 },
+      { id:"l1", desc:"BRIM Sr Consultant — Nuthan Joshi", qty:160, rate:155, amount:24800 },
+      { id:"l2", desc:"SAP Functional — Malla Reddy", qty:128, rate:135, amount:17280 },
       { id:"l3", desc:"SAP Technical — Vikram Singh", qty:128, rate:140, amount:17920 },
       { id:"l4", desc:"BRIM Consultant — Ananya Krishnan", qty:96, rate:130, amount:12480 },
       { id:"l5", desc:"Management Fee", qty:1, rate:27520, amount:27520 },
@@ -441,7 +441,7 @@ const FIN_INVOICES_SEED = [
   { id:"INV-006", clientId:"cl2", projectName:"Client B Staff Augmentation", period:"Mar 2026",
     issueDate:"2026-03-31", dueDate:"2026-04-30", status:"sent", paymentTerms:"Net 30",
     lines:[
-      { id:"l1", desc:"SAP Functional — Arun Sharma", qty:32, rate:125, amount:4000 },
+      { id:"l1", desc:"SAP Functional — Kartheek", qty:32, rate:125, amount:4000 },
       { id:"l2", desc:"Data Engineer — Kiran Patel", qty:64, rate:145, amount:9280 },
       { id:"l3", desc:"Management & Overhead", qty:1, rate:26720, amount:26720 },
     ], notes:"" },
@@ -643,35 +643,26 @@ const AP_STATUS_LABEL      = { draft:"Draft", pending:"Pending Approval", approv
 const W9_STATUS_COLOR      = { received:"#34d399", pending:"#f59e0b", missing:"#f87171" };
 
 const VENDORS_SEED = [
-  { id:"v1",  name:"Rajesh Kumar",       type:"subcontractor", taxId:"***-**-7821", w9Status:"received", w9Date:"2026-01-15", contact:"rajesh@rajeshkumar.com",    phone:"214-555-0141", address:"Frisco, TX", paymentTerms:"Net 30", paymentMethod:"ACH", accountNotes:"BRIM Architect — 70% rev share on NTTA & Naxon projects", ytdPaid:42560,  ytdThreshold:600, needs1099:true,  active:true  },
-  { id:"v2",  name:"Priya Nair",         type:"subcontractor", taxId:"***-**-3342", w9Status:"received", w9Date:"2026-01-15", contact:"priya@priyaconsulting.com",  phone:"469-555-0188", address:"Plano, TX",  paymentTerms:"Net 30", paymentMethod:"ACH", accountNotes:"SAP IS-U Lead — 70% rev share on Naxon project",        ytdPaid:18480,  ytdThreshold:600, needs1099:true,  active:true  },
-  { id:"v3",  name:"Kiran Patel",        type:"subcontractor", taxId:"***-**-9910", w9Status:"received", w9Date:"2026-01-20", contact:"kiran@kirandata.io",         phone:"972-555-0227", address:"Irving, TX", paymentTerms:"Net 30", paymentMethod:"ACH", accountNotes:"Data Engineer — 70% rev share. OPT expires May 15 — H-1B filing by Apr 1!", ytdPaid:10192, ytdThreshold:600, needs1099:true,  active:true  },
-  { id:"v4",  name:"Sanjay Gupta",       type:"subcontractor", taxId:"",            w9Status:"missing",  w9Date:"",          contact:"sanjay@sanjaycloud.com",     phone:"817-555-0093", address:"Grapevine, TX", paymentTerms:"Net 30", paymentMethod:"Check", accountNotes:"AWS Architect — currently on bench. W-9 outstanding!",  ytdPaid:0,      ytdThreshold:600, needs1099:true,  active:true  },
-  { id:"v5",  name:"Microsoft Azure",    type:"software",      taxId:"91-1144442",  w9Status:"received", w9Date:"2025-03-01", contact:"billing@microsoft.com",      phone:"",             address:"Redmond, WA", paymentTerms:"Net 30", paymentMethod:"CC",   accountNotes:"Azure subscription — shared dev/staging environments",  ytdPaid:8400,   ytdThreshold:600, needs1099:false, active:true  },
-  { id:"v6",  name:"Regus Frisco",       type:"office",        taxId:"47-3829104",  w9Status:"received", w9Date:"2025-06-01", contact:"frisco@regus.com",           phone:"972-555-0300", address:"Frisco, TX",  paymentTerms:"Due on receipt", paymentMethod:"ACH", accountNotes:"Office suite — 3 private offices, shared conference room", ytdPaid:7500,  ytdThreshold:600, needs1099:true,  active:true  },
-  { id:"v7",  name:"Littler Mendelson",  type:"legal",         taxId:"94-1255555",  w9Status:"received", w9Date:"2025-01-10", contact:"billing@littler.com",        phone:"",             address:"Dallas, TX",  paymentTerms:"Net 15", paymentMethod:"Wire", accountNotes:"Immigration & employment law — H-1B filings, MSA review", ytdPaid:12500,  ytdThreshold:600, needs1099:true,  active:true  },
-  { id:"v8",  name:"Travelers Insurance",type:"insurance",     taxId:"06-0132120",  w9Status:"received", w9Date:"2025-08-01", contact:"billing@travelers.com",      phone:"",             address:"Hartford, CT", paymentTerms:"Annual", paymentMethod:"ACH", accountNotes:"E&O, GL, Workers Comp — renewal August 2026",           ytdPaid:18600,  ytdThreshold:600, needs1099:false, active:true  },
+  { id:"v5",  name:"Microsoft Azure",    type:"software",      taxId:"**-***4321", w9Status:"received", w9Date:"2025-01-01", contact:"billing@microsoft.com",    phone:"800-642-7676", address:"Redmond, WA",     paymentTerms:"Net 30",      paymentMethod:"CC",    accountNotes:"Azure subscription — shared dev/staging environments", ytdPaid:8400,   ytdThreshold:600,  needs1099:false, active:true  },
+  { id:"v6",  name:"Regus Frisco",       type:"office",        taxId:"**-***5512", w9Status:"received", w9Date:"2025-01-01", contact:"frisco@regus.com",          phone:"214-555-0110", address:"2591 Dallas Pkwy, Frisco TX", paymentTerms:"Due on receipt", paymentMethod:"ACH", accountNotes:"Office suite — 3 private offices, shared conf rooms", ytdPaid:7500,   ytdThreshold:600,  needs1099:false, active:true  },
+  { id:"v7",  name:"Littler Mendelson",  type:"legal",         taxId:"**-***6601", w9Status:"received", w9Date:"2025-01-01", contact:"billing@littler.com",       phone:"214-880-8100", address:"2001 Ross Ave, Dallas TX",   paymentTerms:"Net 15",       paymentMethod:"Wire",  accountNotes:"Immigration & employment law — H-1B filings, I-9 compliance", ytdPaid:12500, ytdThreshold:600,  needs1099:true,  active:true  },
+  { id:"v8",  name:"Travelers Insurance",type:"insurance",     taxId:"**-***7701", w9Status:"received", w9Date:"2025-01-01", contact:"billing@travelers.com",     phone:"800-842-5075", address:"Hartford, CT",               paymentTerms:"Annual",       paymentMethod:"ACH",   accountNotes:"E&O, GL, Workers Comp — renewal August 2026",              ytdPaid:18600, ytdThreshold:600,  needs1099:false, active:true  },
 ];
 
 const AP_INVOICES_SEED = [
-  // Subcontractor — January (paid)
-  { id:"ap1",  vendorId:"v1", number:"RKUMAR-2601", description:"NTTA Integration consulting — Jan 2026 (128h @ $140)",            amount:17920, status:"paid",    issueDate:"2026-02-01", dueDate:"2026-03-03", paidDate:"2026-02-28", projectId:"proj5", poNumber:"PO-2601", category:"subcontractor", notes:"" },
-  { id:"ap2",  vendorId:"v2", number:"PNAIR-2601",  description:"Naxon BRIM Overflow — Jan 2026 (96h @ $110)",                     amount:10560, status:"paid",    issueDate:"2026-02-01", dueDate:"2026-03-03", paidDate:"2026-02-28", projectId:"proj3", poNumber:"PO-2602", category:"subcontractor", notes:"" },
-  { id:"ap3",  vendorId:"v3", number:"KPATEL-2601", description:"Misc data engineering — Jan 2026 (64h @ $110)",                   amount:7040,  status:"paid",    issueDate:"2026-02-01", dueDate:"2026-03-03", paidDate:"2026-02-28", projectId:"",      poNumber:"PO-2603", category:"subcontractor", notes:"" },
-  // Subcontractor — February (approved)
-  { id:"ap4",  vendorId:"v1", number:"RKUMAR-2602", description:"NTTA Integration + Naxon consulting — Feb 2026 (128h @ $140)",    amount:17920, status:"approved",  issueDate:"2026-03-01", dueDate:"2026-03-31", paidDate:"",           projectId:"proj5", poNumber:"PO-2604", category:"subcontractor", notes:"" },
-  { id:"ap5",  vendorId:"v2", number:"PNAIR-2602",  description:"Naxon BRIM Overflow — Feb 2026 (80h @ $110) — DISPUTED",         amount:8800,  status:"pending",   issueDate:"2026-03-01", dueDate:"2026-03-31", paidDate:"",           projectId:"proj3", poNumber:"",        category:"subcontractor", notes:"Hours don't match timesheet (rejected). Hold payment until resubmission." },
-  { id:"ap6",  vendorId:"v3", number:"KPATEL-2602", description:"Data engineering — Feb 2026 (64h @ $110)",                       amount:7040,  status:"approved",  issueDate:"2026-03-03", dueDate:"2026-04-02", paidDate:"",           projectId:"",      poNumber:"PO-2605", category:"subcontractor", notes:"" },
-  // Software
-  { id:"ap7",  vendorId:"v5", number:"MSFT-MAR26",  description:"Microsoft Azure — March 2026 subscription",                      amount:700,   status:"paid",    issueDate:"2026-03-01", dueDate:"2026-03-01", paidDate:"2026-03-01", projectId:"",      poNumber:"",        category:"software",      notes:"Auto-pay" },
-  // Office
-  { id:"ap8",  vendorId:"v6", number:"REGUS-MAR26", description:"Regus Frisco office suite — March 2026",                        amount:2500,  status:"approved",  issueDate:"2026-03-01", dueDate:"2026-03-05", paidDate:"",           projectId:"",      poNumber:"",        category:"office",        notes:"" },
-  // Legal — OVERDUE
-  { id:"ap9",  vendorId:"v7", number:"LM-2026-031", description:"H-1B petition prep — Kiran Patel (Apr 1 deadline)",              amount:4500,  status:"overdue", issueDate:"2026-02-15", dueDate:"2026-03-01", paidDate:"",           projectId:"",      poNumber:"",        category:"legal",         notes:"URGENT — H-1B must be filed Apr 1. Pay immediately." },
-  // Insurance
-  { id:"ap10", vendorId:"v8", number:"TRV-2026-Q1", description:"Travelers Insurance — Q1 2026 premium",                         amount:4650,  status:"paid",    issueDate:"2026-01-01", dueDate:"2026-01-15", paidDate:"2026-01-10", projectId:"",      poNumber:"",        category:"insurance",     notes:"" },
-  // March subcontractor (draft)
-  { id:"ap11", vendorId:"v1", number:"RKUMAR-2603", description:"NTTA + Naxon consulting — Mar 2026 (partial, 96h @ $140)",       amount:13440, status:"draft",   issueDate:"2026-03-01", dueDate:"2026-04-10", paidDate:"",           projectId:"proj5", poNumber:"",        category:"subcontractor", notes:"Mar not yet complete. Draft for tracking." },
+  // Software — Microsoft Azure
+  { id:"ap7",  vendorId:"v5", number:"MSFT-JAN26",  description:"Microsoft Azure — Jan 2026 subscription",  amount:700,  status:"paid",     issueDate:"2026-01-01", dueDate:"2026-01-01", paidDate:"2026-01-01", projectId:"", poNumber:"", category:"software",  notes:"Auto-pay" },
+  { id:"ap12", vendorId:"v5", number:"MSFT-FEB26",  description:"Microsoft Azure — Feb 2026 subscription",  amount:700,  status:"paid",     issueDate:"2026-02-01", dueDate:"2026-02-01", paidDate:"2026-02-01", projectId:"", poNumber:"", category:"software",  notes:"Auto-pay" },
+  { id:"ap7b", vendorId:"v5", number:"MSFT-MAR26",  description:"Microsoft Azure — Mar 2026 subscription",  amount:700,  status:"paid",     issueDate:"2026-03-01", dueDate:"2026-03-01", paidDate:"2026-03-01", projectId:"", poNumber:"", category:"software",  notes:"Auto-pay" },
+  // Office — Regus Frisco
+  { id:"ap13", vendorId:"v6", number:"REGUS-JAN26",  description:"Regus Frisco office suite — Jan 2026",    amount:2500, status:"paid",     issueDate:"2026-01-01", dueDate:"2026-01-05", paidDate:"2026-01-05", projectId:"", poNumber:"", category:"office",    notes:"" },
+  { id:"ap14", vendorId:"v6", number:"REGUS-FEB26",  description:"Regus Frisco office suite — Feb 2026",    amount:2500, status:"paid",     issueDate:"2026-02-01", dueDate:"2026-02-05", paidDate:"2026-02-05", projectId:"", poNumber:"", category:"office",    notes:"" },
+  { id:"ap8",  vendorId:"v6", number:"REGUS-MAR26",  description:"Regus Frisco office suite — Mar 2026",    amount:2500, status:"approved", issueDate:"2026-03-01", dueDate:"2026-03-05", paidDate:"",           projectId:"", poNumber:"", category:"office",    notes:"" },
+  // Legal — Littler Mendelson (H-1B filings)
+  { id:"ap9",  vendorId:"v7", number:"LM-2026-031",  description:"H-1B petition prep — work authorization filing (Apr 1 deadline)", amount:4500, status:"overdue", issueDate:"2026-02-15", dueDate:"2026-03-01", paidDate:"", projectId:"", poNumber:"", category:"legal", notes:"URGENT — H-1B must be filed Apr 1. Pay immediately." },
+  // Insurance — Travelers
+  { id:"ap10", vendorId:"v8", number:"TRV-2026-Q1",  description:"Travelers Insurance — Q1 2026 premium (E&O, GL, Workers Comp)", amount:4650, status:"paid",     issueDate:"2026-01-01", dueDate:"2026-01-15", paidDate:"2026-01-10", projectId:"", poNumber:"", category:"insurance", notes:"" },
+  { id:"ap15", vendorId:"v8", number:"TRV-2026-Q2",  description:"Travelers Insurance — Q2 2026 premium",  amount:4650, status:"pending",   issueDate:"2026-04-01", dueDate:"2026-04-15", paidDate:"",           projectId:"", poNumber:"", category:"insurance", notes:"Due Apr 15" },
 ];
 
 
