@@ -2673,9 +2673,6 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
           ))}
         </div>
       </div>
-      {/* ─── WIDGET BOARD ───────────────────────────────────────────── */}
-      <WidgetBoard roster={roster} clients={clients} finPayments={finPayments}
-        finExpenses={finExpenses} crmDeals={crmDeals} candidates={candidates} setTab={setTab}/>
     </div>
     {/* ─── WIDGET BOARD ───────────────────────────────────────────── */}
     <div style={{marginTop:16,padding:"0 4px"}}>
