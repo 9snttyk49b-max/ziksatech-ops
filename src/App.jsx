@@ -51,6 +51,7 @@ const RBAC = {
   recruiting:   ["super_admin","admin","hr_immigration"],
   pipeline:     ["super_admin","admin","hr_immigration"],
   resourceplan: ["super_admin","admin","hr_immigration"],
+  consultanthub: ["super_admin","admin","hr_immigration","employee","contractor"],  // visible to all staff
   compliance:   ["super_admin","admin","hr_immigration"],
   paffiles:     ["super_admin","admin","hr_immigration"],
   minicalc:     ["super_admin","admin","accounts","hr_immigration"],
@@ -565,6 +566,7 @@ const ALL_MODULES = [
   { id:"pipeline",   label:"Hiring Pipeline",       group:"Hiring"     },
   { id:"recruiting", label:"Recruiting",            group:"Hiring"     },
   { id:"pto",        label:"PTO & Leave",           group:"Compliance" },
+    { id:"consultanthub",label:"Consultant Hub",         icon:ICONS.roster,   group:"Compliance"  },
   { id:"compliance", label:"Compliance",            group:"Compliance" },
 ];
 
@@ -2181,6 +2183,14 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             <span style={{marginLeft:"auto",fontSize:9,color:"#1e3a5f",padding:"2px 5px",
               background:"#060d1c",borderRadius:3,border:"1px solid #111d2d"}}>click to toggle</span>
           </button>
+          {/* Powered by Naxon */}
+          <div onClick={()=>window.open('https://naxon-product.vercel.app','_blank')} style={{marginTop:10,padding:"8px 12px",textAlign:"center",cursor:"pointer",borderRadius:8,border:"1px solid #1a2d45",background:"#040810"}}
+            onMouseEnter={e=>e.currentTarget.style.borderColor="#C9A84C"}
+            onMouseLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}>
+            <div style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Powered by</div>
+            <div style={{fontSize:12,fontWeight:800,background:"linear-gradient(90deg,#C9A84C,#f0d080)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>⬡ NAXON SYSTEMS</div>
+            <div style={{fontSize:9,color:"#1e3a5f",marginTop:1}}>AI Operations Platform</div>
+          </div>
         </div>
       </aside>
 
@@ -2267,6 +2277,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="crm"         && <SalesCRM {...shared}/> }
         {tab==="recruiting"  && <RecruitingModule {...shared}/>}
         {tab==="pto"        && <PTOModule {...shared}/>}
+        {tab==="consultanthub" && <ConsultantHub roster={shared.roster} authProfile={authProfile}/>}
         {tab==="compliance"  && <ComplianceModule {...shared}/>}
         {tab==="freshbooks" && <FreshBooks {...shared}/>}
       </main>
@@ -22146,6 +22157,234 @@ Format with markdown headers for each recommendation.`;
               </button>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONSULTANT HUB — Tax Tips, Visa Guidance & Company News
+// ═══════════════════════════════════════════════════════════════════════
+function ConsultantHub({ roster, authProfile }) {
+  const [activeVisa, setActiveVisa] = useState("all");
+  const [activeSection, setActiveSection] = useState("tax");
+
+  const visaTypes = ["all","H-1B","OPT/F-1","GC","USC","L-1","TN"];
+
+  const TAX_TIPS = {
+    "H-1B": {
+      icon:"🛂", color:"#f59e0b", bg:"#1a1005",
+      deadline:"April 15, 2026 (2025 tax year) — Extension to Oct 15 via Form 4868",
+      form:"Form 1040 (Resident Alien — if 183+ days in 2025)",
+      tips:[
+        { title:"🆕 Overtime Deduction (NEW 2025)", text:"Deduct up to $12,500 single / $25,000 married of overtime premium pay. Must be reported on W-2. Huge win for IT consultants with billable overtime.", tag:"NEW" },
+        { title:"🆕 SALT Cap Raised to $40,000", text:"State & Local Tax deduction limit increased from $10K to $40K for 2025. If you pay $25K+ in state income tax + property tax, itemizing may beat the standard deduction.", tag:"NEW" },
+        { title:"📋 Standard Deduction: $15,750 (Single)", text:"Up from $14,600. Most H-1B holders take this — reduces taxable income by $15,750 automatically. Married filing jointly: $31,500.", tag:"2025" },
+        { title:"💰 Max 401(k): $23,500 + $500 SIMPLE IRA", text:"Contribute max to employer 401(k) — directly reduces taxable income. If Ziksatech offers 401k match, contribute at least to get full match.", tag:"Tip" },
+        { title:"🏥 HSA Contributions: $4,300 (self) / $8,550 (family)", text:"If enrolled in a High-Deductible Health Plan, HSA contributions are triple tax-advantaged: pre-tax, grow tax-free, tax-free withdrawals for medical.", tag:"Tip" },
+        { title:"🎓 F-1→H-1B Transition Year", text:"Changed from F-1 to H-1B in 2025? You may still use treaty benefits for part of the year. Dual-status return may apply — consult a CPA.", tag:"Alert" },
+        { title:"🏠 Home Office Deduction", text:"W-2 employees cannot claim home office deduction under federal law. But if you have any freelance/consulting income, home office is deductible against that income.", tag:"Tip" },
+        { title:"📱 Work Expenses Not Reimbursed", text:"Unreimbursed employee expenses are no longer federally deductible (suspended till 2025). Keep receipts for state returns — some states still allow these.", tag:"Note" },
+        { title:"🌍 India Treaty Benefit", text:"Indian citizens who were students/apprentices immediately before H-1B may still claim standard deduction even as non-residents via US-India Tax Treaty Article 21.", tag:"India" },
+        { title:"🚗 Car Loan Interest (NEW 2025)", text:"For the first time, interest on a personal vehicle loan is deductible. Keep your loan documents.", tag:"NEW" },
+      ]
+    },
+    "OPT/F-1": {
+      icon:"🎓", color:"#38bdf8", bg:"#040d1a",
+      deadline:"April 15, 2026 | Form 8843 due June 15 even with zero income",
+      form:"Form 1040-NR (Non-Resident) + Form 8843 — first 5 calendar years on F-1",
+      tips:[
+        { title:"📄 Form 8843 Required Even with Zero Income", text:"All F-1/J-1 students must file Form 8843 annually — even if you earned nothing. Deadline June 15, 2026. Failure to file can hurt Green Card chances.", tag:"Required" },
+        { title:"🚫 FICA Exempt on OPT (F-1 Non-Resident)", text:"If you are a non-resident alien on OPT, you are EXEMPT from Social Security (6.2%) and Medicare (1.45%) taxes. That's 7.65% savings — make sure employer isn't withholding!", tag:"💡 Save" },
+        { title:"🤝 Tax Treaties", text:"Countries like India, China, UK have treaties with the US. Indian students may use Article 21 — $15,750 standard deduction even as non-resident, or partial treaty exemption.", tag:"Treaty" },
+        { title:"🔄 OPT→H-1B Year is Complex", text:"If you transitioned from OPT to H-1B mid-2025, you may be dual-status — part non-resident, part resident. Treaty benefits may apply for the non-resident period only.", tag:"Alert" },
+        { title:"💳 No Standard Deduction as Non-Resident", text:"Non-resident aliens can only claim itemized deductions or treaty-based standard deduction. Most OPT workers cannot claim the standard deduction unless covered by treaty.", tag:"Note" },
+        { title:"📊 ITIN if No SSN", text:"If you earned income but don't have an SSN, apply for an Individual Taxpayer ID (ITIN) via Form W-7. Needed to file returns.", tag:"Tip" },
+      ]
+    },
+    "GC": {
+      icon:"💚", color:"#34d399", bg:"#021f14",
+      deadline:"April 15, 2026 — same as US citizens",
+      form:"Form 1040 (Full resident — worldwide income reporting)",
+      tips:[
+        { title:"✅ Same Rights as Citizens for Taxes", text:"Green Card holders file as US residents on Form 1040. You have access to all deductions and credits including Earned Income Credit, Child Tax Credit, standard deduction.", tag:"Good News" },
+        { title:"🌍 Worldwide Income Required", text:"You must report ALL income globally — including income from India or any other country. Foreign Bank Account Report (FBAR) required if foreign accounts exceed $10,000.", tag:"Important" },
+        { title:"💰 Foreign Tax Credit (Form 1116)", text:"If you paid taxes in another country on foreign income, claim a Foreign Tax Credit to avoid double taxation. Reduces your US tax dollar-for-dollar.", tag:"Tip" },
+        { title:"🏠 Standard Deduction: $15,750 (Single)", text:"Full standard deduction available. Alternatively itemize if total deductions exceed $15,750 (mortgage interest, SALT, charitable, etc.).", tag:"2025" },
+        { title:"🆕 SALT Cap: $40,000", text:"State & Local Tax deduction now $40K for 2025. Texas has no income tax so primarily property tax applies. If in high-tax state, this is significant.", tag:"NEW" },
+        { title:"📋 Expatriation Warning", text:"If you surrender your Green Card, you may be subject to exit tax if net worth > $2M or avg annual tax > $206K. Plan ahead with a CPA.", tag:"Alert" },
+      ]
+    },
+    "USC": {
+      icon:"🇺🇸", color:"#60a5fa", bg:"#040d1a",
+      deadline:"April 15, 2026",
+      form:"Form 1040 — Full resident filing",
+      tips:[
+        { title:"🆕 One Big Beautiful Bill (OBBB) 2025", text:"Major tax changes for 2025: Overtime deduction ($12,500), SALT cap raised to $40K, car loan interest deductible, enhanced child tax credit.", tag:"NEW" },
+        { title:"💰 Max All Retirement Accounts", text:"401(k): $23,500 | IRA: $7,000 (catch-up $8,000 if 50+) | HSA: $4,300 (self) or $8,550 (family). Maxing these can reduce taxable income by $30,000+.", tag:"Tip" },
+        { title:"🏠 Mortgage Interest Still Deductible", text:"Interest on mortgages up to $750K is deductible if you itemize. Combined with raised SALT cap of $40K, itemizing now beats standard deduction for many homeowners.", tag:"2025" },
+        { title:"🎓 529 Plan Contributions", text:"While not federal deduction, many states offer state tax deductions for 529 education savings. Texas has no state income tax, but 529 grows tax-free.", tag:"Tip" },
+        { title:"📈 Long-Term Capital Gains", text:"Hold investments 12+ months: taxed at 0%, 15%, or 20% (vs. ordinary income rates up to 37%). Strategic asset placement matters.", tag:"Tip" },
+        { title:"🏥 Backdoor Roth IRA", text:"If income exceeds Roth IRA limits ($161K single, $240K MFJ), use backdoor conversion: contribute to Traditional IRA then convert to Roth. Tax-free growth forever.", tag:"Advanced" },
+      ]
+    },
+    "L-1": {
+      icon:"🏢", color:"#a78bfa", bg:"#0d0720",
+      deadline:"April 15, 2026",
+      form:"Form 1040 (resident if 183+ days) or 1040-NR",
+      tips:[
+        { title:"🌍 Totalization Agreements", text:"If your home country has a totalization agreement with the US (India does NOT, but many EU countries do), you may avoid double FICA taxation.", tag:"Check" },
+        { title:"📍 Days Count Carefully", text:"L-1 uses the same Substantial Presence Test as H-1B: 183+ days in US in current year (counting all days), or 31 days current + 1/3 prior + 1/6 two years ago.", tag:"Important" },
+        { title:"🏠 Housing Allowance", text:"If your employer provides housing or a housing allowance, it's generally taxable income in the US — unlike in some countries. Report it on your W-2.", tag:"Note" },
+        { title:"💼 Dependent Care FSA", text:"Enroll in Dependent Care FSA if you have children — up to $5,000 pre-tax for child care, significantly reducing taxable income.", tag:"Tip" },
+      ]
+    },
+    "TN": {
+      icon:"🍁", color:"#fb923c", bg:"#1a0d05",
+      deadline:"April 15, 2026",
+      form:"Form 1040-NR or 1040 depending on days present",
+      tips:[
+        { title:"🇨🇦🇲🇽 USMCA Citizens Only", text:"TN status is for Canadian and Mexican citizens. US-Canada/Mexico tax treaty may provide additional protections. Canada treaty is especially favorable.", tag:"Note" },
+        { title:"🚫 FICA — TN Status", text:"TN holders ARE subject to FICA taxes if resident aliens. Non-resident TN holders may be exempt — check your days carefully.", tag:"Check" },
+        { title:"🤝 Canada Tax Treaty", text:"Canada-US treaty provides relief on many income types. If Canadian, you can claim treaty benefits — reduces double taxation on Canadian-source income.", tag:"Tip" },
+      ]
+    },
+  };
+
+  const COMPANY_NEWS = [
+    {
+      date:"Mar 15, 2026", category:"🏆 Milestone", title:"Ziksatech Crosses $2.6M Annual Revenue",
+      body:"We've hit a major milestone — $2.6M in annual revenue with 10 active consultants across 7 clients. HOPE-IDI alone represents $1.2M. Strong growth momentum heading into Q2.",
+      tag:"Company"
+    },
+    {
+      date:"Mar 10, 2026", category:"🤝 New Client", title:"New Client: Arhasi (AI Division)",
+      body:"Ziksatech has onboarded Arhasi, an AI-focused company. This expands our presence in the emerging AI/ML space alongside our core SAP practice.",
+      tag:"Client"
+    },
+    {
+      date:"Mar 5, 2026", category:"💻 Platform", title:"Ziksatech Ops Center v3.0 Launched",
+      body:"Our internal operations platform — built on Naxon Systems AI infrastructure — is now live. Featuring AI-powered SOW/RFP generation, Bank Statement Analyzer, and real-time financial dashboards.",
+      tag:"Tech"
+    },
+    {
+      date:"Feb 28, 2026", category:"🛂 Immigration", title:"H-1B Lottery 2027 — Registration Opens April",
+      body:"USCIS will open H-1B cap registration for FY2027 in April 2026. If any consultant needs H-1B sponsorship or transfer, please contact HR immediately to begin preparation.",
+      tag:"Immigration"
+    },
+    {
+      date:"Feb 15, 2026", category:"📊 Finance", title:"Q1 2026 Invoicing on Track",
+      body:"Q1 2026 invoicing is tracking well with $181K invoiced for March alone. Collection rate at 77% — following up on $42K outstanding A/R with HOPE-IDI and PTC.",
+      tag:"Finance"
+    },
+    {
+      date:"Feb 1, 2026", category:"🚀 Naxon", title:"Naxon Systems Gridmind Goes Live",
+      body:"Our sister company Naxon Systems has launched Gridmind — an AI-powered SAP BRIM/IS-U operations platform. Early beta access available for Ziksatech consultants.",
+      tag:"Naxon"
+    },
+    {
+      date:"Jan 20, 2026", category:"👥 Team", title:"Team Expansion: New Consultant Onboarded",
+      body:"Welcome to our growing team! We've successfully onboarded a new consultant to support our expanding client roster. Training and onboarding documentation available in the Onboarding module.",
+      tag:"HR"
+    },
+  ];
+
+  const tagColors = { Company:"#f59e0b", Client:"#34d399", Tech:"#38bdf8", Immigration:"#f87171", Finance:"#a78bfa", HR:"#fb923c", Naxon:"#C9A84C" };
+
+  const filteredTips = activeVisa === "all"
+    ? Object.entries(TAX_TIPS).flatMap(([visa, data]) => data.tips.map(t=>({...t, visa, color:data.color, bg:data.bg, icon:data.icon})))
+    : (TAX_TIPS[activeVisa]?.tips.map(t=>({...t, visa:activeVisa, color:TAX_TIPS[activeVisa].color, bg:TAX_TIPS[activeVisa].bg, icon:TAX_TIPS[activeVisa].icon})) || []);
+
+  return (
+    <div>
+      <PH title="Consultant Hub" sub="Tax Savings · Visa Guidance · Company News · 2025 Tax Year"/>
+
+      {/* Section tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45"}}>
+        {[["tax","💰 Tax Tips & Savings"],["news","📰 Company News"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setActiveSection(id)}
+            style={{flex:1,padding:"9px 16px",borderRadius:7,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
+              background:activeSection===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:activeSection===id?"#fff":"#475569"}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* TAX TIPS SECTION */}
+      {activeSection==="tax" && (
+        <div>
+          {/* Visa filter */}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+            {visaTypes.map(v=>(
+              <button key={v} onClick={()=>setActiveVisa(v)}
+                style={{padding:"6px 14px",borderRadius:20,border:"1px solid",cursor:"pointer",fontSize:12,fontWeight:600,
+                  background:activeVisa===v?"linear-gradient(135deg,#0369a1,#0284c7)":"#060d1c",
+                  borderColor:activeVisa===v?"#0369a1":"#1a2d45",
+                  color:activeVisa===v?"#fff":"#475569"}}>
+                {v==="all"?"🗂 All Visa Types":TAX_TIPS[v]?.icon+" "+v}
+              </button>
+            ))}
+          </div>
+
+          {/* Deadline banner */}
+          {activeVisa !== "all" && TAX_TIPS[activeVisa] && (
+            <div style={{padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:10,marginBottom:16,display:"flex",flexWrap:"wrap",gap:16}}>
+              <div>
+                <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Filing Deadline</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#f87171"}}>⏰ {TAX_TIPS[activeVisa].deadline}</div>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Tax Form</div>
+                <div style={{fontSize:13,fontWeight:600,color:"#38bdf8"}}>📄 {TAX_TIPS[activeVisa].form}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Disclaimer */}
+          <div style={{padding:"8px 14px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,marginBottom:14,fontSize:11,color:"#334155"}}>
+            ⚠️ These are general informational tips for the 2025 tax year (filing in 2026). Always consult a qualified CPA or tax attorney for advice specific to your situation.
+          </div>
+
+          {/* Tips grid */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+            {filteredTips.map((tip,i)=>(
+              <div key={i} style={{background:tip.bg||"#060d1c",border:`1px solid ${tip.color}33`,borderRadius:10,padding:"14px 16px"}}>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}>
+                  <div style={{fontSize:13,fontWeight:700,color:tip.color,lineHeight:1.3,flex:1,paddingRight:8}}>{tip.title}</div>
+                  <span style={{background:tip.color+"22",color:tip.color,fontSize:9,fontWeight:800,padding:"2px 7px",borderRadius:10,whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:"0.06em",flexShrink:0}}>
+                    {tip.tag}
+                  </span>
+                </div>
+                <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>{tip.text}</div>
+                {activeVisa==="all" && <div style={{marginTop:6,fontSize:10,color:"#3d5a7a"}}>Visa: {tip.icon} {tip.visa}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* COMPANY NEWS SECTION */}
+      {activeSection==="news" && (
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {COMPANY_NEWS.map((news,i)=>(
+            <div key={i} style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"16px 20px",display:"flex",gap:16}}>
+              <div style={{flexShrink:0,textAlign:"center",minWidth:52}}>
+                <div style={{fontSize:11,fontWeight:800,color:tagColors[news.tag]||"#64748b",background:(tagColors[news.tag]||"#64748b")+"22",borderRadius:6,padding:"3px 6px",marginBottom:4}}>{news.tag}</div>
+                <div style={{fontSize:10,color:"#334155"}}>{news.date}</div>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:"#3d5a7a",marginBottom:4}}>{news.category}</div>
+                <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>{news.title}</div>
+                <div style={{fontSize:12,color:"#64748b",lineHeight:1.6}}>{news.body}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{textAlign:"center",padding:"8px",fontSize:11,color:"#1e3a5f"}}>
+            News and announcements are managed by Ziksatech admin. For updates, contact mmurthy@ziksatech.com
+          </div>
         </div>
       )}
     </div>
