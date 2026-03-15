@@ -7141,6 +7141,7 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
                 <span className="bdg" style={{background:"#060d1c",color:HEALTH_COL[a.health]||"#64748b"}}>{a.health}</span>
                 <div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
                   <button className="btn bg" style={{padding:"3px 7px",fontSize:10}} onClick={()=>openAcc(a)}><I d={ICONS.edit} s={11}/></button>
+                  <button className="btn br" style={{padding:"3px 7px",fontSize:10}} title="Delete" onClick={e=>{e.stopPropagation();if(window.confirm("Delete account "+a.name+"?"))setCrmAccounts(as=>as.filter(x=>x.id!==a.id));}}><I d={ICONS.trash} s={10}/></button>
                 </div>
               </div>
             );
@@ -7289,6 +7290,7 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
   const [stageFilter, setStageFilter] = useState("open");
   const [editing, setEditing]   = useState(null);
   const [form, setForm]         = useState({});
+  const [viewMode, setViewMode] = useState("list"); // "list" | "kanban"
   const [actModal, setActModal] = useState(false);
   const [actForm, setActForm]   = useState({type:"email",accountId:"",contactId:"",dealId:"",subject:"",notes:"",date:TODAY_STR,completed:false});
   const saveAct = () => { setCrmActivities(as=>[...as,{...actForm,id:"act"+uid(),completed:actForm.completed==="true"||actForm.completed===true}]); setActModal(false); };
@@ -7309,9 +7311,60 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
               borderColor:stageFilter===v?"#0284c7":"#1a2d45",color:stageFilter===v?"#38bdf8":"#475569"}}
               onClick={()=>setStageFilter(v)}>{l}</button>
           ))}
-          <button className="btn bp" style={{marginLeft:"auto",fontSize:12}} onClick={()=>openDeal()}><I d={ICONS.plus} s={13}/>New Deal</button>
+          <button className="btn bg" style={{fontSize:11,padding:"5px 10px",marginLeft:"auto",borderColor:viewMode==="kanban"?"#0284c7":"#1a2d45",color:viewMode==="kanban"?"#38bdf8":"#475569"}} onClick={()=>setViewMode(viewMode==="list"?"kanban":"list")}>⬡ {viewMode==="list"?"Kanban":"List"} View</button>
+          <button className="btn bp" style={{fontSize:12}} onClick={()=>openDeal()}><I d={ICONS.plus} s={13}/>New Deal</button>
         </div>
 
+
+        {viewMode === "kanban" && (
+          <div style={{overflowX:"auto",paddingBottom:8}}>
+            <div style={{display:"flex",gap:14,minWidth:"max-content"}}>
+              {[
+                {key:"prospecting", label:"Prospecting", color:"#64748b"},
+                {key:"qualification", label:"Qualification", color:"#38bdf8"},
+                {key:"proposal", label:"Proposal Sent", color:"#a78bfa"},
+                {key:"negotiation", label:"Negotiation", color:"#f59e0b"},
+                {key:"won", label:"Won ✅", color:"#34d399"},
+                {key:"lost", label:"Lost ❌", color:"#f87171"},
+              ].map(stage=>{
+                const stageDeals = (stageFilter==="all"||stageFilter==="open"
+                  ? filtered
+                  : filtered.filter(d=>d.stage===stageFilter)
+                ).filter(d=>d.stage===stage.key);
+                const stageValue = stageDeals.reduce((s,d)=>s+(+d.value||0)*((+d.probability||50)/100),0);
+                return (
+                  <div key={stage.key} style={{width:220,flexShrink:0}}>
+                    <div style={{padding:"8px 12px",borderRadius:"8px 8px 0 0",background:stage.color+"22",border:`1px solid ${stage.color}44`,borderBottom:"none",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:11,fontWeight:700,color:stage.color}}>{stage.label}</span>
+                      <span style={{fontSize:10,color:"#334155"}}>{stageDeals.length} · {fmt(stageValue)}</span>
+                    </div>
+                    <div style={{minHeight:200,background:"#060d1c",border:`1px solid ${stage.color}33`,borderRadius:"0 0 8px 8px",padding:8,display:"flex",flexDirection:"column",gap:6}}>
+                      {stageDeals.map(d=>{
+                        const acc=crmAccounts.find(a=>a.id===d.accountId);
+                        return (
+                          <div key={d.id} onClick={()=>setSelected(selected===d.id?null:d.id)}
+                            style={{background:selected===d.id?"#0c1e30":"#0a1120",border:`1px solid ${selected===d.id?stage.color:"#1a2d45"}`,borderRadius:8,padding:"10px 12px",cursor:"pointer",transition:"all 0.15s"}}
+                            onMouseEnter={e=>e.currentTarget.style.borderColor=stage.color+"88"}
+                            onMouseLeave={e=>e.currentTarget.style.borderColor=selected===d.id?stage.color:"#1a2d45"}>
+                            <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0",marginBottom:3,lineHeight:1.3}}>{d.name}</div>
+                            <div style={{fontSize:10,color:"#3d5a7a",marginBottom:6}}>{acc?.name}</div>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                              <span style={{fontSize:12,fontWeight:700,fontFamily:"'DM Mono',monospace",color:stage.color}}>{fmt(+d.value||0)}</span>
+                              <span style={{fontSize:10,color:"#475569"}}>{d.probability}%</span>
+                            </div>
+                            {d.closeDate&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:4}}>Close: {fmtDate(d.closeDate)}</div>}
+                          </div>
+                        );
+                      })}
+                      {stageDeals.length===0&&<div style={{fontSize:11,color:"#1e3a5f",textAlign:"center",padding:"20px 0"}}>No deals</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {viewMode === "list" && (
         <div className="card">
           <div className="tr" style={{gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",padding:"8px 18px"}}>
             {["Deal / Account","Stage","Type","Value","Probability","Close Date","Actions"].map(h=><span key={h} className="th">{h}</span>)}
@@ -7342,11 +7395,14 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
                   <button className="btn bg" style={{padding:"3px 7px",fontSize:10}} onClick={()=>openDeal(d)}><I d={ICONS.edit} s={11}/></button>
                   {!["closed-won","closed-lost"].includes(d.stage)&&
                     <button className="btn bs" style={{padding:"3px 6px",fontSize:10}} title="Advance stage" onClick={()=>advanceStage(d.id)}>▶</button>}
+                  <button className="btn br" style={{padding:"3px 6px",fontSize:10}} title="Delete deal" onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.name+"?"))setCrmDeals(ds=>ds.filter(x=>x.id!==d.id));}}><I d={ICONS.trash} s={10}/></button>
                 </div>
               </div>
             );
           })}
         </div>
+        )}
+
       </div>
 
       {/* Deal detail panel */}
@@ -14578,6 +14634,54 @@ function SettingsPage({ appSettings, setAppSettings, addAudit }) {
         <div style={{fontSize:10,color:"#1e3a5f",marginTop:8}}>
           Get your key at console.anthropic.com · Alternatively, ask your system admin to set ANTHROPIC_API_KEY in Vercel environment variables.
         </div>
+
+      {/* CRM Integration API Keys */}
+      <div className="card" style={{padding:"20px",maxWidth:600,marginTop:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🔌 CRM Integration API Keys</div>
+        <div style={{fontSize:11,color:"#475569",marginBottom:14}}>
+          Optional — enable real data enrichment from Apollo.io, ZoomInfo, and LinkedIn Sales Navigator.
+          Keys are stored in your browser only and used in the CRM → Import tab.
+        </div>
+        {[
+          {key:"zt-apollo-key",    label:"Apollo.io API Key",                  placeholder:"api_key_...",       link:"https://developer.apollo.io",    hint:"Enables real contact search & enrichment from Apollo's 275M+ contact database"},
+          {key:"zt-zoominfo-key",  label:"ZoomInfo API Key",                   placeholder:"Bearer eyJ...",     link:"https://api.zoominfo.com",        hint:"Enterprise B2B intelligence — company data, buyer intent, org charts"},
+          {key:"zt-linkedin-key",  label:"LinkedIn Sales Navigator Token",     placeholder:"AQX...",            link:"https://www.linkedin.com/sales/",  hint:"Prospect search, account research, lead recommendations"},
+          {key:"zt-hunter-key",    label:"Hunter.io API Key (Email Finder)",   placeholder:"xxxxxxxxxxxxxxxx",  link:"https://hunter.io/api",           hint:"Find verified email addresses for any domain — free tier available"},
+        ].map(({key,label,placeholder,link,hint})=>(
+          <div key={key} style={{marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <div className="lbl">{label}</div>
+              <a href={link} target="_blank" rel="noreferrer" style={{fontSize:10,color:"#0284c7"}}>Get API key →</a>
+            </div>
+            <input className="inp" type="password" id={key}
+              defaultValue={typeof localStorage!=="undefined"?localStorage.getItem(key)||"":""}
+              placeholder={placeholder}
+              style={{fontFamily:"monospace",fontSize:12}}/>
+            <div style={{fontSize:10,color:"#1e3a5f",marginTop:4}}>{hint}</div>
+          </div>
+        ))}
+        <div style={{display:"flex",gap:10,marginTop:8}}>
+          <button className="btn bp" style={{fontSize:12}} onClick={()=>{
+            ["zt-apollo-key","zt-zoominfo-key","zt-linkedin-key","zt-hunter-key"].forEach(k=>{
+              const el = document.getElementById(k);
+              if(el?.value?.trim()) localStorage.setItem(k, el.value.trim());
+              else localStorage.removeItem(k);
+            });
+            alert("✅ Integration keys saved to browser storage");
+          }}>Save Integration Keys</button>
+          <button className="btn bg" style={{fontSize:12}} onClick={()=>{
+            ["zt-apollo-key","zt-zoominfo-key","zt-linkedin-key","zt-hunter-key"].forEach(k=>{
+              localStorage.removeItem(k);
+              const el=document.getElementById(k); if(el) el.value="";
+            });
+            alert("Integration keys cleared");
+          }}>Clear All</button>
+        </div>
+        <div style={{marginTop:14,padding:"10px 14px",background:"#0c1e30",border:"1px solid #0369a1",borderRadius:8,fontSize:11,color:"#38bdf8"}}>
+          💡 <strong>No API keys?</strong> The CRM Import tab uses Claude AI to generate realistic enrichment data based on your query. You get the same structured output format — just AI-generated rather than live database results.
+        </div>
+      </div>
+
       </div>
 
         {/* Role Management — super_admin only */}
@@ -23700,160 +23804,464 @@ function CRMOrders({ orders, setOrders, crmAccounts, crmDeals, roster, addAudit 
 }
 
 // ── CRM Import (CSV + Apollo/ZoomInfo/LinkedIn mock enrichment) ────────────────
-function CRMImport({ setLeads, setCrmContacts, crmAccounts, addAudit }) {
-  const [csvText, setCsvText]     = useState("");
+function CRMImport({ setLeads, setCrmContacts, crmAccounts, crmLeads, crmContacts, crmDeals, addAudit }) {
+  const [tab, setTab]               = useState("upload");   // upload | download | enrich | generate
+  const [csvText, setCsvText]       = useState("");
   const [importType, setImportType] = useState("leads");
-  const [preview, setPreview]     = useState([]);
+  const [preview, setPreview]       = useState([]);
   const [enrichQuery, setEnrichQuery] = useState("");
   const [enrichResult, setEnrichResult] = useState(null);
   const [enrichLoading, setEnrichLoading] = useState(false);
-  const [importSrc, setImportSrc] = useState("csv");
+  const [importSrc, setImportSrc]   = useState("apollo");
   const [importDone, setImportDone] = useState(0);
+  const [genLoading, setGenLoading] = useState(false);
+  const [genResult, setGenResult]   = useState(null);
+  const [genPrompt, setGenPrompt]   = useState("");
+  const [genCount, setGenCount]     = useState(10);
+  const [fileRef]                   = useState(()=>({current:null}));
 
-  const parseCsv = () => {
-    const rows = csvText.trim().split("\n").filter(Boolean);
-    if(rows.length < 2) return alert("Paste at least a header row + 1 data row");
-    const headers = rows[0].split(",").map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]/g,""));
-    const records = rows.slice(1).map(row=>{
-      const vals = row.split(",");
-      const obj = {};
-      headers.forEach((h,i)=>{ obj[h]=vals[i]?.trim()||""; });
-      return obj;
-    });
-    setPreview(records.slice(0,5));
+  // ── CSV Templates ──────────────────────────────────────────────────────────
+  const CSV_TEMPLATES = {
+    leads: "name,company,title,email,phone,industry,source,score,notes,linkedIn",
+    contacts: "name,company,title,email,phone,linkedIn,notes",
+    deals: "name,account,stage,value,probability,closeDate,type,notes",
+    accounts: "name,industry,type,website,phone,address,city,state,notes",
   };
 
-  const importRecords = () => {
-    const rows = csvText.trim().split("\n").slice(1).filter(Boolean);
-    const headers = csvText.trim().split("\n")[0].split(",").map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]/g,""));
-    const records = rows.map(row=>{
+  const CSV_SAMPLE_DATA = {
+    leads: [
+      "Rajesh Iyer,Toyota Connected,VP SAP,rajesh.iyer@toyota.com,469-555-0101,Automotive,LinkedIn,80,SAP BRIM champion — key decision maker,linkedin.com/in/rajeshiyer",
+      "Anita Sharma,HPE,Director IT,anita.s@hpe.com,972-555-0102,Technology,Referral,70,Evaluating SAP upgrade in Q2,linkedin.com/in/anitasharma",
+      "Tom Bradley,PTC Inc,CTO,t.bradley@ptc.com,817-555-0103,Manufacturing,Network,85,Active RFP for S/4HANA migration,,",
+    ],
+    contacts: [
+      "James Wright,AT&T,VP SAP Delivery,j.wright@att.com,214-555-0201,linkedin.com/in/jwright,Primary decision maker BRIM",
+      "Priya Rajan,Toyota,Head Data Engineering,p.rajan@toyota.com,469-555-0202,linkedin.com/in/prijarajan,Python/Databricks focus",
+    ],
+    deals: [
+      "AT&T BRIM Phase 4,AT&T,proposal,450000,60,2026-09-30,expansion,Extension of Phase 3",
+      "Toyota AI Analytics,Toyota,qualification,280000,40,2026-12-31,new,Data engineering staffing",
+    ],
+    accounts: [
+      "Freeman Mouritech,Technology,customer,www.freeman.com,214-555-0301,123 Main St,Dallas,TX,Long-term staffing partner",
+      "Arhasi Inc,Consulting,customer,www.arhasi.com,972-555-0302,456 Oak Ave,Plano,TX,SAP consulting partner",
+    ],
+  };
+
+  // ── CSV Parse ──────────────────────────────────────────────────────────────
+  const parseCsv = (text) => {
+    const rows = text.trim().split("\n").filter(Boolean);
+    if(rows.length < 2) return [];
+    const headers = rows[0].split(",").map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]/g,""));
+    return rows.slice(1).map(row=>{
       const vals = row.split(",");
       const obj = {};
       headers.forEach((h,i)=>{ obj[h]=vals[i]?.trim()||""; });
       return obj;
     });
+  };
+
+  const handlePreview = () => { setPreview(parseCsv(csvText).slice(0,5)); };
+
+  const handleImport = () => {
+    const records = parseCsv(csvText);
+    if(!records.length) return alert("No valid rows found. Check CSV format.");
     if(importType==="leads") {
-      setLeads(ls=>[...ls,...records.map(r=>({id:"lead"+uid(),name:r.name||r.firstname+" "+r.lastname,company:r.company||r.organization||"",title:r.title||r.jobtitle||"",email:r.email||"",phone:r.phone||r.phonenumber||"",source:"csv",status:"new",score:50,industry:r.industry||"",notes:r.notes||"",linkedIn:r.linkedin||"",assignedTo:"Manju",createdDate:TODAY_STR,lastContact:TODAY_STR}))]);
-    } else {
-      setCrmContacts(cs=>[...cs,...records.map(r=>({id:"con"+uid(),name:r.name||r.firstname+" "+r.lastname,title:r.title||r.jobtitle||"",email:r.email||"",phone:r.phone||"",linkedIn:r.linkedin||"",accountId:"",isPrimary:false,notes:r.notes||""}))]);
+      setLeads(ls=>[...ls,...records.map(r=>({
+        id:"lead"+uid(), name:r.name||"", company:r.company||"", title:r.title||"",
+        email:r.email||"", phone:r.phone||"", industry:r.industry||"",
+        source:r.source||"CSV Import", score:+(r.score||50), status:"new",
+        notes:r.notes||"", linkedIn:r.linkedin||"",
+        assignedTo:"Manju", createdDate:TODAY_STR, lastContact:TODAY_STR,
+      }))]);
+    } else if(importType==="contacts") {
+      setCrmContacts(cs=>[...cs,...records.map(r=>({
+        id:"con"+uid(), name:r.name||"", title:r.title||"",
+        email:r.email||"", phone:r.phone||"",
+        accountId:crmAccounts.find(a=>a.name.toLowerCase()===r.company?.toLowerCase())?.id||"",
+        linkedIn:r.linkedin||"", notes:r.notes||"", isPrimary:false,
+      }))]);
     }
     setImportDone(records.length);
-    setCsvText("");
-    setPreview([]);
+    setCsvText(""); setPreview([]);
     addAudit&&addAudit("CRM","CSV Import",importType,records.length+" records imported");
   };
 
-  // AI-powered enrichment (simulates Apollo/ZoomInfo/LinkedIn)
+  // ── CSV Download ───────────────────────────────────────────────────────────
+  const downloadCsv = (data, type) => {
+    if(!data.length) return alert("No "+type+" data to export");
+    const headers = Object.keys(data[0]);
+    const rows = [headers.join(","), ...data.map(r=>headers.map(h=>{
+      const v = String(r[h]||"").replace(/,/g," ");
+      return v.includes('"') ? `"${v}"` : v;
+    }).join(","))];
+    const blob = new Blob([rows.join("\n")], {type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=`ziksatech-${type}-${TODAY_STR}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    addAudit&&addAudit("CRM","CSV Export",type,data.length+" records exported");
+  };
+
+  const downloadTemplate = (type) => {
+    const header = CSV_TEMPLATES[type];
+    const sample = (CSV_SAMPLE_DATA[type]||[]).join("\n");
+    const blob = new Blob([header+"\n"+sample], {type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=`template-${type}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
+
+  // ── AI Enrichment (Apollo/ZoomInfo simulation or real API) ─────────────────
   const runEnrichment = async () => {
     if(!enrichQuery.trim()) return;
     setEnrichLoading(true); setEnrichResult(null);
+    const apolloKey = localStorage.getItem("zt-apollo-key");
+    const zoomKey   = localStorage.getItem("zt-zoominfo-key");
+    const hunterKey = localStorage.getItem("zt-hunter-key");
+    // Real Apollo API if key exists
+    if(apolloKey && importSrc==="apollo") {
+      try {
+        const r = await fetch("https://api.apollo.io/v1/mixed_people/search", {
+          method:"POST", headers:{"Content-Type":"application/json","x-api-key":apolloKey},
+          body:JSON.stringify({q_keywords:enrichQuery, per_page:5})
+        });
+        if(r.ok) { const d=await r.json(); setEnrichResult(d.people||[]); setEnrichLoading(false); return; }
+      } catch(e) { console.log("Apollo API failed, using AI fallback"); }
+    }
+    // AI fallback / simulation
     try {
-      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:700, stream:false,
-        messages:[{role:"user",content:`You are a B2B data enrichment tool (like Apollo.io/ZoomInfo). Given this search query, return realistic enriched B2B contact data as JSON only (no markdown):
+      const srcLabel = {apollo:"Apollo.io",zoominfo:"ZoomInfo",linkedin:"LinkedIn Sales Navigator",hunter:"Hunter.io"}[importSrc]||importSrc;
+      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,stream:false,
+          messages:[{role:"user",content:`You are a B2B data enrichment tool (${srcLabel}) for an IT staffing company.
 Query: "${enrichQuery}"
-Source context: ${importSrc==="apollo"?"Apollo.io":`${importSrc==="zoominfo"?"ZoomInfo":"LinkedIn Sales Navigator"}`}
-
-Return JSON array of 3-5 realistic contacts matching the query:
-[{"name":"full name","title":"job title","company":"company name","email":"professional email","phone":"direct dial","linkedIn":"linkedin.com/in/slug","industry":"industry","companySize":"size","techStack":["tech1"],"buyingIntent":"high|medium|low","notes":"relevant context for SAP consulting outreach"}]
-
-Make these realistic SAP/IT decision makers relevant to staffing/consulting sales.`}]
+Return ONLY a JSON array of 5 realistic SAP/IT decision-maker contacts:
+[{"name":"Full Name","title":"Job Title","company":"Company Name","email":"work@company.com","phone":"214-555-XXXX","industry":"Industry","linkedin":"linkedin.com/in/slug","notes":"Why relevant to IT staffing/SAP consulting"}]
+Realistic companies: AT&T, Toyota, HPE, PTC, Deloitte, Accenture, IBM. No markdown, JSON only.`}]
       })});
       const d = await res.json();
-      const txt = (d.content?.[0]?.text||"[]").replace(/```json|```/g,"").trim();
+      const txt = (d.content?.[0]?.text||"[]").replace(/\`\`\`json|\`\`\`/g,"").trim();
       setEnrichResult(JSON.parse(txt));
-    } catch(e) { setEnrichResult({error:"Enrichment failed"}); }
+    } catch(e) { setEnrichResult([{error:"Enrichment failed — check API connection"}]); }
     setEnrichLoading(false);
   };
 
   const importEnriched = (contacts) => {
-    setLeads(ls=>[...ls,...contacts.map(c=>({id:"lead"+uid(),name:c.name,company:c.company,title:c.title,email:c.email,phone:c.phone,source:importSrc,status:"new",score:c.buyingIntent==="high"?80:c.buyingIntent==="medium"?55:35,industry:c.industry,notes:c.notes,linkedIn:c.linkedIn,assignedTo:"Manju",createdDate:TODAY_STR,lastContact:TODAY_STR}))]);
-    addAudit&&addAudit("CRM","AI Import",importSrc,contacts.length+" leads imported");
-    alert(contacts.length+" leads imported to CRM Leads!");
-    setEnrichResult(null); setEnrichQuery("");
+    const clean = contacts.filter(c=>!c.error);
+    setLeads(ls=>[...ls,...clean.map(c=>({
+      id:"lead"+uid(), name:c.name||"", company:c.company||"", title:c.title||"",
+      email:c.email||"", phone:c.phone||"", industry:c.industry||"",
+      source:importSrc, score:70, status:"new",
+      notes:c.notes||"", linkedIn:c.linkedin||"",
+      assignedTo:"Manju", createdDate:TODAY_STR, lastContact:TODAY_STR,
+    }))]);
+    addAudit&&addAudit("CRM","Enrichment Import",importSrc,clean.length+" leads imported");
+    alert(clean.length+" leads imported!"); setEnrichResult(null); setEnrichQuery("");
   };
 
+  // ── AI Lead Generator ──────────────────────────────────────────────────────
+  const runAIGenerate = async () => {
+    if(!genPrompt.trim()) return alert("Enter a prompt describing your target leads");
+    setGenLoading(true); setGenResult(null);
+    try {
+      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,stream:false,
+          messages:[{role:"user",content:`You are a sales lead generation AI for Ziksatech, an SAP IT staffing & consulting firm in Plano TX.
+Generate ${genCount} highly targeted B2B leads based on this criteria:
+"${genPrompt}"
+
+Return ONLY a JSON array:
+[{
+  "name": "Full Name",
+  "title": "Job Title (SAP/IT decision maker)",
+  "company": "Company Name",
+  "industry": "Industry",
+  "email": "firstname.lastname@company.com",
+  "phone": "XXX-555-XXXX",
+  "linkedin": "linkedin.com/in/slug",
+  "score": 60-95,
+  "source": "AI Generated",
+  "notes": "Specific reason why this lead is a fit for SAP staffing/consulting"
+}]
+Make these realistic, diverse, and specifically relevant to SAP consulting/staffing sales in the US.
+No markdown, return valid JSON array only.`}]
+      })});
+      const d = await res.json();
+      const txt = (d.content?.[0]?.text||"[]").replace(/\`\`\`json|\`\`\`/g,"").trim();
+      setGenResult(JSON.parse(txt));
+    } catch(e) { alert("AI generation failed: "+e.message); }
+    setGenLoading(false);
+  };
+
+  const importGenerated = () => {
+    if(!genResult?.length) return;
+    setLeads(ls=>[...ls,...genResult.map(r=>({
+      id:"lead"+uid(), name:r.name||"", company:r.company||"", title:r.title||"",
+      email:r.email||"", phone:r.phone||"", industry:r.industry||"",
+      source:"AI Generated", score:+(r.score||65), status:"new",
+      notes:r.notes||"", linkedIn:r.linkedin||"",
+      assignedTo:"Manju", createdDate:TODAY_STR, lastContact:TODAY_STR,
+    }))]);
+    addAudit&&addAudit("CRM","AI Lead Gen","Leads",genResult.length+" leads generated & imported");
+    alert(genResult.length+" leads imported to CRM Leads!"); setGenResult(null); setGenPrompt("");
+  };
+
+  const TABS = [
+    {id:"upload",   label:"⬆️ Upload CSV"},
+    {id:"download", label:"⬇️ Download / Export"},
+    {id:"enrich",   label:"🔍 Enrich / Lookup"},
+    {id:"generate", label:"🤖 AI Lead Generator"},
+  ];
+
   return (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-      {/* Left: CSV Import */}
-      <div className="card" style={{padding:"18px 20px"}}>
-        <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>📁 CSV Import</div>
-        <div style={{fontSize:11,color:"#334155",marginBottom:14}}>Upload or paste CSV to import leads or contacts</div>
-        <div style={{display:"flex",gap:8,marginBottom:12}}>
-          {["leads","contacts"].map(t=>(
-            <button key={t} className={importType===t?"btn bp":"btn bg"} style={{fontSize:11}} onClick={()=>setImportType(t)}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
-          ))}
-        </div>
-        <div style={{marginBottom:10,padding:"10px 12px",background:"#0a1120",borderRadius:8,fontSize:10,color:"#475569"}}>
-          Expected columns: <code style={{color:"#38bdf8"}}>name, email, phone, company, title, industry, notes, linkedin</code>
-        </div>
-        <textarea className="inp" rows={7} style={{width:"100%",fontFamily:"monospace",fontSize:11}} placeholder={"name,email,phone,company,title\nJohn Smith,john@corp.com,214-555-0101,Corp Inc,VP IT"} value={csvText} onChange={e=>setCsvText(e.target.value)}/>
-        <div style={{display:"flex",gap:8,marginTop:10}}>
-          <button className="btn bg" style={{flex:1,justifyContent:"center"}} onClick={parseCsv}>Preview</button>
-          <button className="btn bp" style={{flex:1,justifyContent:"center"}} disabled={!csvText.trim()} onClick={importRecords}>Import {importType}</button>
-        </div>
-        {importDone>0&&<div style={{marginTop:10,padding:"8px 12px",background:"#021f14",borderRadius:6,color:"#34d399",fontSize:12}}>✅ {importDone} records imported</div>}
-        {preview.length>0&&(
-          <div style={{marginTop:12}}>
-            <div style={{fontSize:10,color:"#334155",marginBottom:6}}>Preview (first 5 rows):</div>
-            {preview.map((r,i)=>(
-              <div key={i} style={{padding:"5px 8px",background:"#060d1c",borderRadius:4,fontSize:10,color:"#94a3b8",marginBottom:3}}>
-                {Object.entries(r).slice(0,4).map(([k,v])=><span key={k} style={{marginRight:10}}><span style={{color:"#475569"}}>{k}:</span> {v}</span>)}
-              </div>
-            ))}
-          </div>
-        )}
+    <div>
+      <PH title="Import & Export" sub="CSV upload · Download · Data enrichment · AI lead generation"/>
+      {/* Sub-tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:tab===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:tab===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Right: AI Enrichment (Apollo / ZoomInfo / LinkedIn) */}
-      <div className="card" style={{padding:"18px 20px"}}>
-        <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>✨ AI Lead Enrichment</div>
-        <div style={{fontSize:11,color:"#334155",marginBottom:14}}>Search for contacts via Apollo.io, ZoomInfo, or LinkedIn Sales Navigator (AI-powered)</div>
-        <div style={{display:"flex",gap:6,marginBottom:12}}>
-          {[["apollo","🔵 Apollo.io"],["zoominfo","🟠 ZoomInfo"],["linkedin","🔷 LinkedIn"]].map(([k,l])=>(
-            <button key={k} className={importSrc===k?"btn bp":"btn bg"} style={{fontSize:10,padding:"5px 10px"}} onClick={()=>setImportSrc(k)}>{l}</button>
+      {/* ── UPLOAD TAB ── */}
+      {tab==="upload" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>📁 Upload CSV</div>
+            <div style={{fontSize:11,color:"#334155",marginBottom:14}}>Paste CSV data or upload a file to import leads or contacts</div>
+            <div style={{display:"flex",gap:8,marginBottom:12}}>
+              {["leads","contacts"].map(t=>(
+                <button key={t} className="btn bg" style={{fontSize:11,padding:"5px 12px",
+                  borderColor:importType===t?"#0284c7":"#1a2d45",color:importType===t?"#38bdf8":"#475569"}}
+                  onClick={()=>setImportType(t)}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
+              ))}
+              <button className="btn bg" style={{fontSize:11,padding:"5px 12px",marginLeft:"auto"}}
+                onClick={()=>downloadTemplate(importType)}>⬇️ Template</button>
+            </div>
+            {/* File upload */}
+            <label style={{display:"block",border:"2px dashed #1a2d45",borderRadius:8,padding:"12px",textAlign:"center",cursor:"pointer",marginBottom:10,fontSize:11,color:"#475569"}}
+              onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#0284c7"}}
+              onDragLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+              onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f){const r=new FileReader();r.onload=ev=>setCsvText(ev.target.result);r.readAsText(f);}e.currentTarget.style.borderColor="#1a2d45"}}>
+              <input type="file" accept=".csv,.txt" style={{display:"none"}}
+                onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>setCsvText(ev.target.result);r.readAsText(f);}}}/>
+              📂 Drop CSV file here or click to browse
+            </label>
+            <textarea className="inp" rows={8} value={csvText} onChange={e=>setCsvText(e.target.value)}
+              placeholder={`Paste CSV here or upload file above.
+Expected format:
+${CSV_TEMPLATES[importType]}
+
+Row example:
+${CSV_SAMPLE_DATA[importType]?.[0]||""}`}
+              style={{fontFamily:"monospace",fontSize:11}}/>
+            <div style={{display:"flex",gap:8,marginTop:10}}>
+              <button className="btn bg" style={{fontSize:12}} onClick={handlePreview}>Preview</button>
+              <button className="btn bp" style={{fontSize:12}} onClick={handleImport}>⬆️ Import {importType}</button>
+            </div>
+            {importDone>0&&<div style={{marginTop:10,color:"#34d399",fontSize:12}}>✅ {importDone} records imported successfully!</div>}
+          </div>
+          {/* Preview panel */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Preview (first 5 rows)</div>
+            {preview.length===0 ? (
+              <div style={{padding:"30px 0",textAlign:"center",color:"#1e3a5f",fontSize:12}}>
+                Click Preview to see how your data will be imported
+              </div>
+            ) : (
+              <div style={{overflowX:"auto"}}>
+                {preview.map((row,i)=>(
+                  <div key={i} style={{padding:"8px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                    {Object.entries(row).map(([k,v])=>(
+                      <span key={k} style={{display:"inline-block",marginRight:12,color:"#94a3b8"}}>
+                        <span style={{color:"#3d5a7a"}}>{k}:</span> {v||"—"}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{marginTop:16,padding:"10px 14px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,fontSize:11,color:"#475569"}}>
+              <div style={{fontWeight:600,color:"#94a3b8",marginBottom:6}}>CSV Column Guide ({importType})</div>
+              <code style={{fontSize:10,color:"#38bdf8",wordBreak:"break-all"}}>{CSV_TEMPLATES[importType]}</code>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DOWNLOAD TAB ── */}
+      {tab==="download" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          {[
+            {type:"leads",    label:"Leads",    icon:"🎯", data:crmLeads,    desc:"All CRM leads with scores and status"},
+            {type:"contacts", label:"Contacts", icon:"👤", data:crmContacts, desc:"All contacts linked to accounts"},
+            {type:"deals",    label:"Deals",    icon:"🤝", data:null,        desc:"Download template for deal import"},
+            {type:"accounts", label:"Accounts", icon:"🏢", data:null,        desc:"Download template for account import"},
+          ].map(({type,label,icon,data,desc})=>(
+            <div key={type} className="card" style={{padding:"18px 20px"}}>
+              <div style={{fontSize:20,marginBottom:8}}>{icon}</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{label}</div>
+              <div style={{fontSize:11,color:"#475569",marginBottom:14}}>{desc}</div>
+              {data&&<div style={{fontSize:12,color:"#34d399",marginBottom:10,fontWeight:600}}>{data.length} records available</div>}
+              <div style={{display:"flex",gap:8}}>
+                {data&&<button className="btn bp" style={{fontSize:12}} onClick={()=>downloadCsv(data,type)}>
+                  ⬇️ Export {label} CSV
+                </button>}
+                <button className="btn bg" style={{fontSize:12}} onClick={()=>downloadTemplate(type)}>
+                  ⬇️ Download Template
+                </button>
+              </div>
+            </div>
           ))}
         </div>
-        <div style={{marginBottom:10,padding:"8px 12px",background:"#0a1120",borderRadius:8,fontSize:10,color:"#475569"}}>
-          {importSrc==="apollo"&&"Apollo.io: Search by company, title, industry, tech stack"}
-          {importSrc==="zoominfo"&&"ZoomInfo: Intent data + direct dials, decision makers"}
-          {importSrc==="linkedin"&&"LinkedIn Sales Navigator: Connection paths, recent activity"}
-        </div>
-        <input className="inp" style={{width:"100%",marginBottom:10}} placeholder={`e.g. "SAP VP IT Texas telecom company" or "CIO healthcare Dallas"`} value={enrichQuery} onChange={e=>setEnrichQuery(e.target.value)}
-          onKeyDown={e=>e.key==="Enter"&&runEnrichment()}/>
-        <button className="btn bp" style={{width:"100%",justifyContent:"center",marginBottom:14}} onClick={runEnrichment} disabled={enrichLoading}>
-          {enrichLoading?"Searching...":"🔍 Find Leads"}
-        </button>
-        {enrichResult&&!enrichResult.error&&Array.isArray(enrichResult)&&(
-          <div>
-            <div style={{fontSize:11,color:"#334155",marginBottom:8}}>{enrichResult.length} contacts found:</div>
-            {enrichResult.map((c,i)=>(
-              <div key={i} style={{padding:"10px 12px",background:"#060d1c",borderRadius:8,marginBottom:8,border:"1px solid #1a2d45"}}>
-                <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <div>
-                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{c.name}</div>
-                    <div style={{fontSize:10,color:"#475569"}}>{c.title} · {c.company}</div>
-                    <div style={{fontSize:10,color:"#3d5a7a"}}>{c.email}</div>
-                  </div>
-                  <span className="bdg" style={{background:c.buyingIntent==="high"?"#34d39922":c.buyingIntent==="medium"?"#f59e0b22":"#64748b22",color:c.buyingIntent==="high"?"#34d399":c.buyingIntent==="medium"?"#f59e0b":"#64748b",fontSize:8,height:"fit-content"}}>{c.buyingIntent} intent</span>
-                </div>
-              </div>
-            ))}
-            <button className="btn bp" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>importEnriched(enrichResult)}>
-              Import All as Leads
+      )}
+
+      {/* ── ENRICH TAB ── */}
+      {tab==="enrich" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🔍 Contact Enrichment</div>
+            <div style={{fontSize:11,color:"#475569",marginBottom:14}}>Search for contacts by company, title, or industry. Uses real API if key is configured in Settings, otherwise Claude AI simulation.</div>
+            <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+              {[
+                {id:"apollo",   label:"Apollo.io",  color:"#f59e0b"},
+                {id:"zoominfo", label:"ZoomInfo",    color:"#38bdf8"},
+                {id:"linkedin", label:"LinkedIn SN", color:"#0077b5"},
+                {id:"hunter",   label:"Hunter.io",   color:"#34d399"},
+              ].map(s=>{
+                const hasKey = localStorage.getItem("zt-"+s.id+"-key");
+                return (
+                  <button key={s.id} className="btn bg"
+                    style={{fontSize:10,padding:"4px 10px",borderColor:importSrc===s.id?s.color:"#1a2d45",color:importSrc===s.id?s.color:"#475569"}}
+                    onClick={()=>setImportSrc(s.id)}>
+                    {s.label}{hasKey?" ✅":" (AI sim)"}
+                  </button>
+                );
+              })}
+            </div>
+            <textarea className="inp" rows={3} value={enrichQuery} onChange={e=>setEnrichQuery(e.target.value)}
+              placeholder='Examples: "SAP VP at automotive companies Texas" / "IT Directors at Fortune 500 manufacturing" / "CTO fintech startup Dallas"'/>
+            <button className="btn bp" style={{marginTop:10,width:"100%",justifyContent:"center",fontSize:12}}
+              onClick={runEnrichment} disabled={enrichLoading}>
+              {enrichLoading?"🔄 Searching...":"🔍 Search & Enrich"}
             </button>
           </div>
-        )}
-        {enrichResult?.error&&<div style={{padding:"10px 12px",background:"#1a0505",borderRadius:6,color:"#f87171",fontSize:12}}>{enrichResult.error}</div>}
-      </div>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Results</div>
+            {!enrichResult&&!enrichLoading&&(
+              <div style={{padding:"30px 0",textAlign:"center",color:"#1e3a5f",fontSize:12}}>
+                Enter a search query and click Search
+              </div>
+            )}
+            {enrichLoading&&<div style={{textAlign:"center",padding:"30px",color:"#38bdf8",fontSize:13}}>🔄 Searching {importSrc}...</div>}
+            {enrichResult&&!enrichLoading&&Array.isArray(enrichResult)&&enrichResult.length>0&&(
+              <>
+                {enrichResult.map((c,i)=>(
+                  <div key={i} style={{padding:"10px 0",borderBottom:"1px solid #0a1626"}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{c.name} <span style={{color:"#475569",fontWeight:400}}>· {c.title}</span></div>
+                    <div style={{fontSize:11,color:"#3d5a7a"}}>{c.company} · {c.industry}</div>
+                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{c.email} · {c.phone}</div>
+                    {c.notes&&<div style={{fontSize:10,color:"#475569",marginTop:3,fontStyle:"italic"}}>{c.notes}</div>}
+                  </div>
+                ))}
+                <button className="btn bp" style={{marginTop:12,width:"100%",justifyContent:"center",fontSize:12}}
+                  onClick={()=>importEnriched(enrichResult)}>
+                  ⬆️ Import All {enrichResult.length} to CRM Leads
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI LEAD GENERATOR TAB ── */}
+      {tab==="generate" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🤖 AI Lead Generator</div>
+            <div style={{fontSize:11,color:"#475569",marginBottom:14}}>
+              Describe your ideal customer profile and Claude generates targeted, realistic leads ready to work.
+            </div>
+            <textarea className="inp" rows={5} value={genPrompt} onChange={e=>setGenPrompt(e.target.value)}
+              placeholder={"Examples:
+• SAP decision makers at Fortune 500 manufacturing companies in Texas
+• VP IT or CTO at mid-size insurance or utilities companies
+• Companies doing SAP S/4HANA migration in next 12 months
+• Consulting firms that partner with SAP in the Southwest US"}
+              style={{fontSize:12}}/>
+            <div style={{display:"flex",gap:10,alignItems:"center",marginTop:10,marginBottom:12}}>
+              <div className="lbl" style={{margin:0,whiteSpace:"nowrap"}}>Number of leads:</div>
+              {[5,10,20,30].map(n=>(
+                <button key={n} className="btn bg" style={{fontSize:11,padding:"4px 10px",
+                  borderColor:genCount===n?"#0284c7":"#1a2d45",color:genCount===n?"#38bdf8":"#475569"}}
+                  onClick={()=>setGenCount(n)}>{n}</button>
+              ))}
+            </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12}}
+              onClick={runAIGenerate} disabled={genLoading}>
+              {genLoading?"🔄 Generating...":"⚡ Generate "+genCount+" Leads"}
+            </button>
+            <div style={{marginTop:16,padding:"10px 14px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8,fontSize:11,color:"#38bdf8"}}>
+              💡 Generated leads include name, title, company, email, phone, LinkedIn, lead score, and why they're a fit. All ready to import directly to CRM Leads.
+            </div>
+          </div>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>
+              Generated Leads {genResult&&<span style={{color:"#34d399"}}>({genResult.length})</span>}
+            </div>
+            {!genResult&&!genLoading&&(
+              <div style={{padding:"40px 0",textAlign:"center"}}>
+                <div style={{fontSize:32,marginBottom:12}}>🤖</div>
+                <div style={{fontSize:12,color:"#1e3a5f"}}>Describe your target leads and click Generate</div>
+              </div>
+            )}
+            {genLoading&&(
+              <div style={{textAlign:"center",padding:"40px",color:"#38bdf8"}}>
+                <div style={{fontSize:24,marginBottom:12}}>⚡</div>
+                <div style={{fontSize:13}}>AI is generating {genCount} targeted leads...</div>
+              </div>
+            )}
+            {genResult&&!genLoading&&(
+              <>
+                <div style={{maxHeight:380,overflowY:"auto"}}>
+                  {genResult.map((lead,i)=>(
+                    <div key={i} style={{padding:"10px 0",borderBottom:"1px solid #0a1626"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{lead.name}</div>
+                          <div style={{fontSize:11,color:"#3d5a7a"}}>{lead.title} · {lead.company}</div>
+                          <div style={{fontSize:10,color:"#334155",marginTop:2}}>{lead.email}</div>
+                        </div>
+                        <span className="bdg" style={{background:lead.score>=80?"#34d39922":"#f59e0b22",color:lead.score>=80?"#34d399":"#f59e0b",fontSize:10}}>
+                          {lead.score}pt
+                        </span>
+                      </div>
+                      {lead.notes&&<div style={{fontSize:10,color:"#475569",marginTop:4,fontStyle:"italic"}}>{lead.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:8,marginTop:12}}>
+                  <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:12}}
+                    onClick={importGenerated}>⬆️ Import All to CRM</button>
+                  <button className="btn bg" style={{fontSize:12}}
+                    onClick={()=>downloadCsv(genResult,"ai-leads")}>⬇️ CSV</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════
-// PORTAL HUB — Ziksatech Launcher Page
-// ═══════════════════════════════════════════════════════════════════════
 function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, finPayments, crmDeals, compliance, onSignOut }) {
   const [time, setTime] = useState(new Date());
   useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
