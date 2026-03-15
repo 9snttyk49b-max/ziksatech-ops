@@ -3561,74 +3561,170 @@ function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
 
 // ─── HIRING PIPELINE ──────────────────────────────────────────────────────────
 function Pipeline({ pipeline, setPipeline }) {
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState(null);
+  const [modal, setModal]   = useState(false);
+  const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
-  const empty = { name:"", role:"", billRate:"", status:"Screening", readyIn:"", source:"", skills:"" };
-  const statuses = ["Screening","Interviewing","Reference Check","Offer Pending","Hired","Declined"];
+  const [view, setView]     = useState("kanban"); // kanban | list
+  const [dragId, setDragId] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
 
+  const STAGES = ["Screening","Interviewing","Reference Check","Offer Pending","Hired","On Bench","Declined"];
+  const STAGE_COLORS = {
+    "Screening":"#38bdf8","Interviewing":"#a78bfa","Reference Check":"#f59e0b",
+    "Offer Pending":"#fb923c","Hired":"#34d399","On Bench":"#64748b","Declined":"#f87171"
+  };
+  const STAGE_BG = {
+    "Screening":"#040d1a","Interviewing":"#0d0720","Reference Check":"#1a1005",
+    "Offer Pending":"#1a0d05","Hired":"#021f14","On Bench":"#0a1120","Declined":"#1a0808"
+  };
+
+  const empty = { name:"", role:"", billRate:"", status:"Screening", readyIn:"", source:"", skills:"", visa:"", notes:"" };
   const open = (p=null) => { setEditing(p?.id||null); setForm(p?{...p}:{...empty}); setModal(true); };
   const save = () => {
-    const f = { ...form, billRate:+form.billRate };
-    if (editing) setPipeline(ps=>ps.map(p=>p.id===editing?f:p));
-    else setPipeline(ps=>[...ps,{...f,id:"p"+uid()}]);
+    if(editing) setPipeline(ps=>ps.map(p=>p.id===editing?{...form}:p));
+    else setPipeline(ps=>[...ps,{...form,id:"p"+uid()}]);
     setModal(false);
   };
-  const del = id => setPipeline(ps=>ps.filter(p=>p.id!==id));
+  const del = id => { if(window.confirm("Remove from pipeline?")) setPipeline(ps=>ps.filter(p=>p.id!==id)); };
 
-  const estRevYear = r => Math.round(r.billRate * BURDEN.hoursPerYear * 0.75);
-  const grouped = statuses.reduce((acc,s)=>{ acc[s]=pipeline.filter(p=>p.status===s); return acc; },{});
+  const onDragStart = (id) => setDragId(id);
+  const onDragOver  = (e, stage) => { e.preventDefault(); setDragOver(stage); };
+  const onDrop      = (e, stage) => {
+    e.preventDefault();
+    if(dragId) setPipeline(ps=>ps.map(p=>p.id===dragId?{...p,status:stage}:p));
+    setDragId(null); setDragOver(null);
+  };
+  const onDragEnd   = () => { setDragId(null); setDragOver(null); };
+
+  const VISA_COLORS = {USC:"#60a5fa","H-1B":"#f59e0b",GC:"#34d399",OPT:"#a78bfa",Other:"#64748b"};
 
   return (
     <div>
-      <PH title="Hiring Pipeline" sub={`${pipeline.length} candidates · Est. pipeline rev: ${fmt(pipeline.reduce((s,p)=>s+estRevYear(p),0))}/yr at 75% util`}>
-        <button className="btn bp" onClick={()=>open()}><I d={ICONS.plus} s={14}/>Add Candidate</button>
-      </PH>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:18}}>
-        {["Screening","Interviewing","Reference Check","Offer Pending"].map(s=>(
-          <div key={s} className="card" style={{padding:"12px 16px"}}>
-            <div style={{fontSize:10,fontWeight:700,color:pipelineColor[s]||"#94a3b8",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:6}}>{s}</div>
-            <div className="mono" style={{fontSize:20,fontWeight:700,color:"#e2e8f0"}}>{(grouped[s]||[]).length}</div>
-            <div style={{fontSize:11,color:"#3d5a7a"}}>{fmt((grouped[s]||[]).reduce((s2,p)=>s2+estRevYear(p),0))}/yr potential</div>
-          </div>
-        ))}
-      </div>
-      <div className="card">
-        <div className="tr" style={{gridTemplateColumns:"1.2fr 1fr 80px 120px 100px 100px auto",padding:"8px 18px"}}>
-          {["Candidate","Role","Rate","Status","Ready In","Source",""].map(h=><span key={h} className="th">{h}</span>)}
+      <PH title="Hiring Pipeline" sub="Track candidates from screening to hire"/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{display:"flex",gap:8}}>
+          {STAGES.map(s=>{
+            const cnt = pipeline.filter(p=>p.status===s).length;
+            return cnt>0?(
+              <div key={s} style={{background:STAGE_BG[s],border:"1px solid "+STAGE_COLORS[s]+"44",borderRadius:8,padding:"4px 10px",textAlign:"center"}}>
+                <div style={{fontSize:16,fontWeight:800,color:STAGE_COLORS[s]}}>{cnt}</div>
+                <div style={{fontSize:8,color:STAGE_COLORS[s],opacity:0.8,textTransform:"uppercase",letterSpacing:"0.05em"}}>{s.split(" ")[0]}</div>
+              </div>
+            ):null;
+          })}
         </div>
-        {pipeline.map(p=>(
-          <div key={p.id} className="tr" style={{gridTemplateColumns:"1.2fr 1fr 80px 120px 100px 100px auto"}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{p.name}</div>
-              <div style={{fontSize:10,color:"#3d5a7a"}}>{p.skills}</div>
-            </div>
-            <span style={{fontSize:12,color:"#64748b"}}>{p.role}</span>
-            <span className="mono" style={{fontSize:12,color:"#38bdf8"}}>${p.billRate}/hr</span>
-            <span className="bdg" style={{background:"#0c1e30",color:pipelineColor[p.status]||"#94a3b8",width:"fit-content",whiteSpace:"nowrap"}}>{p.status}</span>
-            <span style={{fontSize:11,color:"#475569"}}>{p.readyIn}</span>
-            <span style={{fontSize:11,color:"#475569"}}>{p.source}</span>
-            <div style={{display:"flex",gap:6}}>
-              <button className="btn bg" style={{padding:"4px 8px"}} onClick={()=>open(p)}><I d={ICONS.edit} s={12}/></button>
-              <button className="btn br" style={{padding:"4px 8px"}} onClick={()=>del(p.id)}><I d={ICONS.trash} s={12}/></button>
-            </div>
-          </div>
-        ))}
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn bg" style={{fontSize:11,padding:"5px 12px"}} onClick={()=>setView(v=>v==="kanban"?"list":"kanban")}>
+            {view==="kanban"?"☰ List":"⬜ Kanban"}
+          </button>
+          <button className="btn bp" style={{fontSize:12}} onClick={()=>open()}>+ Add Candidate</button>
+        </div>
       </div>
-      {modal && form && (
-        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
-          <div className="modal">
-            <MH title={editing?"Edit Candidate":"Add Candidate"} onClose={()=>setModal(false)}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Name"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Candidate K"/></FF>
-              <FF label="Role"><input className="inp" value={form.role} onChange={e=>setForm({...form,role:e.target.value})} placeholder="SAP BRIM Consultant"/></FF>
-              <FF label="Bill Rate/hr"><input className="inp" type="number" value={form.billRate} onChange={e=>setForm({...form,billRate:e.target.value})}/></FF>
-              <FF label="Status"><select className="inp" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>{statuses.map(s=><option key={s}>{s}</option>)}</select></FF>
-              <FF label="Ready In"><input className="inp" value={form.readyIn} onChange={e=>setForm({...form,readyIn:e.target.value})} placeholder="2 weeks"/></FF>
-              <FF label="Source"><select className="inp" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>{["Referral","LinkedIn","Network","Job Board","Other"].map(s=><option key={s}>{s}</option>)}</select></FF>
+
+      {/* KANBAN VIEW */}
+      {view==="kanban" && (
+        <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8,alignItems:"flex-start"}}>
+          {STAGES.map(stage=>{
+            const cards = pipeline.filter(p=>p.status===stage);
+            const isOver = dragOver===stage;
+            return (
+              <div key={stage}
+                onDragOver={e=>onDragOver(e,stage)} onDrop={e=>onDrop(e,stage)}
+                style={{flexShrink:0,width:200,background:isOver?STAGE_BG[stage]:"#060d1c",
+                  border:"1px solid "+(isOver?STAGE_COLORS[stage]:"#1a2d45"),borderRadius:10,
+                  transition:"all 0.15s",minHeight:200}}>
+                {/* Column header */}
+                <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2d45",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:STAGE_COLORS[stage]}}/>
+                    <span style={{fontSize:11,fontWeight:700,color:STAGE_COLORS[stage]}}>{stage}</span>
+                  </div>
+                  <span style={{fontSize:11,fontWeight:800,color:"#475569"}}>{cards.length}</span>
+                </div>
+                {/* Cards */}
+                <div style={{padding:"8px",display:"flex",flexDirection:"column",gap:8}}>
+                  {cards.map(p=>(
+                    <div key={p.id}
+                      draggable onDragStart={()=>onDragStart(p.id)} onDragEnd={onDragEnd}
+                      style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,
+                        padding:"10px 12px",cursor:"grab",opacity:dragId===p.id?0.5:1,
+                        transition:"opacity 0.1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor="#334155"}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}>
+                      <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:3}}>{p.name}</div>
+                      <div style={{fontSize:10,color:"#475569",marginBottom:6,lineHeight:1.3}}>{p.role}</div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        {p.visa&&<span style={{fontSize:9,fontWeight:700,background:(VISA_COLORS[p.visa]||"#64748b")+"22",color:VISA_COLORS[p.visa]||"#64748b",padding:"2px 6px",borderRadius:4}}>{p.visa}</span>}
+                        {p.billRate&&<span style={{fontSize:10,fontFamily:"monospace",color:"#34d399"}}>${p.billRate}/hr</span>}
+                      </div>
+                      {p.skills&&<div style={{fontSize:9,color:"#3d5a7a",marginTop:5,lineHeight:1.4}}>{p.skills.slice(0,40)}{p.skills.length>40?"…":""}</div>}
+                      <div style={{display:"flex",gap:4,marginTop:8,justifyContent:"flex-end"}} onClick={e=>e.stopPropagation()}>
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(p)}>✏️</button>
+                        <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>del(p.id)}>🗑</button>
+                      </div>
+                    </div>
+                  ))}
+                  {cards.length===0&&(
+                    <div style={{textAlign:"center",padding:"20px 8px",fontSize:10,color:"#1e3a5f",borderRadius:6,border:"1px dashed #1a2d45"}}>
+                      Drop here
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* LIST VIEW */}
+      {view==="list" && (
+        <div className="card">
+          <div className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 80px 120px 100px 80px 80px",padding:"8px 18px"}}>
+            {["Name","Role","Bill Rate","Skills","Visa","Status","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+          </div>
+          {pipeline.map(p=>(
+            <div key={p.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 80px 120px 100px 80px 80px",alignItems:"center"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#0a1120"}
+              onMouseLeave={e=>e.currentTarget.style.background=""}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{p.name}</div>
+                {p.notes&&<div style={{fontSize:10,color:"#334155"}}>{p.notes.slice(0,50)}</div>}
+              </div>
+              <span style={{fontSize:12,color:"#94a3b8"}}>{p.role}</span>
+              <span style={{fontSize:12,fontFamily:"monospace",color:"#34d399"}}>{p.billRate?`$${p.billRate}/hr`:"—"}</span>
+              <span style={{fontSize:10,color:"#475569"}}>{p.skills?.slice(0,35)||"—"}</span>
+              <span style={{fontSize:10,fontWeight:700,background:(VISA_COLORS[p.visa]||"#64748b")+"22",color:VISA_COLORS[p.visa]||"#64748b",padding:"2px 6px",borderRadius:4}}>{p.visa||"—"}</span>
+              <span style={{fontSize:10,fontWeight:700,background:(STAGE_BG[p.status]||"#0a1120"),color:(STAGE_COLORS[p.status]||"#64748b"),padding:"2px 7px",borderRadius:4}}>{p.status}</span>
+              <div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}>
+                <button className="btn bg" style={{padding:"3px 7px",fontSize:10}} onClick={()=>open(p)}><I d={ICONS.edit} s={10}/></button>
+                <button className="btn br" style={{padding:"3px 7px",fontSize:10}} onClick={()=>del(p.id)}><I d={ICONS.trash} s={10}/></button>
+              </div>
             </div>
-            <FF label="Skills"><input className="inp" value={form.skills} onChange={e=>setForm({...form,skills:e.target.value})} placeholder="SAP BRIM, IS-U, ABAP"/></FF>
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}>
+          ))}
+          {pipeline.length===0&&<div style={{textAlign:"center",padding:32,color:"#334155"}}>No candidates in pipeline</div>}
+        </div>
+      )}
+
+      {modal&&form&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title={editing?"Edit Candidate":"Add to Pipeline"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Full Name" style={{gridColumn:"span 2"}}><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Full name"/></FF>
+              <FF label="Role"><input className="inp" value={form.role} onChange={e=>setForm({...form,role:e.target.value})} placeholder="SAP BRIM Consultant"/></FF>
+              <FF label="Bill Rate ($/hr)"><input className="inp" type="number" value={form.billRate} onChange={e=>setForm({...form,billRate:e.target.value})}/></FF>
+              <FF label="Visa Status"><select className="inp" value={form.visa} onChange={e=>setForm({...form,visa:e.target.value})}>
+                {["","USC","GC","H-1B","OPT","TN","L-1","Other"].map(v=><option key={v} value={v}>{v||"—"}</option>)}
+              </select></FF>
+              <FF label="Stage"><select className="inp" value={form.status} onChange={e=>setForm({...form,status:e.target.value})}>
+                {STAGES.map(s=><option key={s} value={s}>{s}</option>)}
+              </select></FF>
+              <FF label="Skills" style={{gridColumn:"span 2"}}><input className="inp" value={form.skills} onChange={e=>setForm({...form,skills:e.target.value})} placeholder="SAP BRIM, IS-U, ABAP"/></FF>
+              <FF label="Source"><input className="inp" value={form.source} onChange={e=>setForm({...form,source:e.target.value})} placeholder="LinkedIn, Referral..."/></FF>
+              <FF label="Ready In"><input className="inp" value={form.readyIn} onChange={e=>setForm({...form,readyIn:e.target.value})} placeholder="Immediate, 2 weeks..."/></FF>
+              <FF label="Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
               <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
               <button className="btn bp" onClick={save}><I d={ICONS.check} s={13}/>Save</button>
             </div>
@@ -3639,7 +3735,6 @@ function Pipeline({ pipeline, setPipeline }) {
   );
 }
 
-// ─── EBITDA OPTIMIZER ─────────────────────────────────────────────────────────
 function EbitdaOpt({ ebitdaLevers, setEbitdaLevers }) {
   const BASE_REV = 2350000, BASE_EBITDA = 188000;
   const toggle = id => setEbitdaLevers(ls=>ls.map(l=>l.id===id?{...l,done:!l.done}:l));
@@ -6163,10 +6258,14 @@ function RecCandidates({ candidates, setCandidates, submissions, interviews, off
 
 function RecSubmissions({ candidates, clients, submissions, setSubmissions, interviews }) {
   const [modal, setModal] = useState(false);
-  const [form, setForm]   = useState({ candidateId:"", clientId:"", projectName:"", submitDate:new Date().toISOString().slice(0,10), reqId:"", notes:"" });
+  const [editing, setEditing] = useState(null);
+  const emptyForm = { candidateId:"", clientId:"", projectName:"", submitDate:new Date().toISOString().slice(0,10), reqId:"", notes:"" };
+  const [form, setForm]   = useState({...emptyForm});
 
+  const open = (s=null) => { setEditing(s?.id||null); setForm(s?{...s}:{...emptyForm}); setModal(true); };
   const save = () => {
-    setSubmissions(ss=>[...ss,{...form,id:"sub"+uid()}]);
+    if(editing) setSubmissions(ss=>ss.map(s=>s.id===editing?{...form}:s));
+    else setSubmissions(ss=>[...ss,{...form,id:"sub"+uid()}]);
     setModal(false);
     setForm({ candidateId:"", clientId:"", projectName:"", submitDate:new Date().toISOString().slice(0,10), reqId:"", notes:"" });
   };
@@ -6174,7 +6273,7 @@ function RecSubmissions({ candidates, clients, submissions, setSubmissions, inte
   return (
     <div>
       <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
-        <button className="btn bp" style={{fontSize:12}} onClick={()=>setModal(true)}><I d={ICONS.plus} s={13}/>New Submission</button>
+        <button className="btn bp" style={{fontSize:12}} onClick={()=>open()}><I d={ICONS.plus} s={13}/>New Submission</button>
       </div>
       <div className="card">
         <div className="tr" style={{gridTemplateColumns:"1fr 1fr 1fr 100px 90px 1fr",padding:"8px 18px"}}>
@@ -6206,7 +6305,7 @@ function RecSubmissions({ candidates, clients, submissions, setSubmissions, inte
       {modal && (
         <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
           <div className="modal" style={{maxWidth:500}}>
-            <MH title="New Submission" onClose={()=>setModal(false)}/>
+            <MH title={editing?"Edit Submission":"New Submission"} onClose={()=>setModal(false)}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Candidate"><select className="inp" value={form.candidateId} onChange={e=>setForm({...form,candidateId:e.target.value})}>
                 <option value="">Select…</option>{candidates.filter(c=>c.status==="active").map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
