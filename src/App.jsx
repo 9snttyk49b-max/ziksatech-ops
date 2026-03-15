@@ -2408,8 +2408,8 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
   const exitVal7x = Math.round(clientRevTotal * 0.08 * 7);
 
   const activeLevers = 0;
-  const outstanding = fbInvoices.filter(i=>i.status==="sent").reduce((s,i)=>s+i.amount,0);
-  const collected = fbInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+  const outstanding = fbInvoices.filter(i=>i.status==="sent").reduce((s,i)=>s+(+i.amount||0),0);
+  const collected = fbInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
 
   // ── Rolling 12-month revenue (simulated from finInvoices + seed) ─────────────
   const MONTHS_12 = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
@@ -2462,7 +2462,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
 
   // Finance metrics
   const finBilled    = (finInvoices||[]).reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+l.amount,0),0);
-  const finCollected = (finPayments||[]).reduce((s,p)=>s+p.amount,0);
+  const finCollected = (finPayments||[]).reduce((s,p)=>s+(+p.amount||0),0);
   const finAR        = (finInvoices||[]).filter(i=>["sent","overdue"].includes(i.status)).reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+l.amount,0)-((finPayments||[]).filter(p=>p.invoiceId===i.id).reduce((x,p)=>x+p.amount,0)),0);
   const finOverdue   = (finInvoices||[]).filter(i=>i.status==="overdue").reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+l.amount,0),0);
 
@@ -3991,10 +3991,10 @@ function FreshBooks({ clients, fbInvoices, setFbInvoices, tsHours, roster }) {
   const updateStatus = (id, status) => setFbInvoices(is=>is.map(i=>i.id===id?{...i,status}:i));
   const del = (id) => setFbInvoices(is=>is.filter(i=>i.id!==id));
 
-  const totalBilled    = fbInvoices.reduce((s,i)=>s+i.amount,0);
-  const totalPaid      = fbInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
-  const outstanding    = fbInvoices.filter(i=>i.status==="sent").reduce((s,i)=>s+i.amount,0);
-  const totalDraft     = fbInvoices.filter(i=>i.status==="draft").reduce((s,i)=>s+i.amount,0);
+  const totalBilled    = fbInvoices.reduce((s,i)=>s+(+i.amount||0),0);
+  const totalPaid      = fbInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
+  const outstanding    = fbInvoices.filter(i=>i.status==="sent").reduce((s,i)=>s+(+i.amount||0),0);
+  const totalDraft     = fbInvoices.filter(i=>i.status==="draft").reduce((s,i)=>s+(+i.amount||0),0);
 
   const filtered = filterStatus==="all" ? fbInvoices : fbInvoices.filter(i=>i.status===filterStatus);
 
@@ -4581,7 +4581,7 @@ function FinanceModule({ roster, clients, tsHours, finInvoices, setFinInvoices, 
 
 // ── Finance helpers ────────────────────────────────────────────────────────────
 const invTotal     = inv => (inv.lines||[]).reduce((s,l)=>s+l.amount,0);
-const invPaid      = (inv, payments) => payments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0);
+const invPaid      = (inv, payments) => payments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0);
 const invBalance   = (inv, payments) => invTotal(inv) - invPaid(inv, payments);
 const daysOverdue  = (inv) => {
   const due = new Date(inv.dueDate); const today = new Date();
@@ -4599,7 +4599,7 @@ const agingBucket  = (inv) => {
 // ── OVERVIEW ──────────────────────────────────────────────────────────────────
 function FinOverview({ roster, clients, finInvoices, finPayments, finExpenses }) {
   const totalBilled    = finInvoices.reduce((s,i)=>s+invTotal(i),0);
-  const totalCollected = finPayments.reduce((s,p)=>s+p.amount,0);
+  const totalCollected = finPayments.reduce((s,p)=>s+(+p.amount||0),0);
   const outstanding    = finInvoices.filter(i=>["sent","overdue"].includes(i.status)).reduce((s,i)=>s+invBalance(i,finPayments),0);
   const overdue        = finInvoices.filter(i=>i.status==="overdue").reduce((s,i)=>s+invBalance(i,finPayments),0);
   const totalExpenses  = finExpenses.filter(e=>e.status==="approved").reduce((s,e)=>s+e.amount,0);
@@ -5040,7 +5040,7 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
 // ── PAYMENTS ──────────────────────────────────────────────────────────────────
 function FinPayments({ clients, finInvoices, finPayments, setFinPayments }) {
   const sorted = [...finPayments].sort((a,b)=>b.date.localeCompare(a.date));
-  const totalCollected = finPayments.reduce((s,p)=>s+p.amount,0);
+  const totalCollected = finPayments.reduce((s,p)=>s+(+p.amount||0),0);
   const methodTotals = {};
   finPayments.forEach(p=>{ methodTotals[p.method]=(methodTotals[p.method]||0)+p.amount; });
 
@@ -11217,9 +11217,9 @@ function APDashboard({ vendors, apInvoices, setApInvoices, projects }) {
   const overdue  = apInvoices.filter(i=>i.status==="overdue");
   const draft    = apInvoices.filter(i=>i.status==="draft");
 
-  const totalPaid    = paid.reduce((s,i)=>s+i.amount,0);
-  const totalOwed    = [...approved,...pending,...overdue].reduce((s,i)=>s+i.amount,0);
-  const totalOverdue = overdue.reduce((s,i)=>s+i.amount,0);
+  const totalPaid    = paid.reduce((s,i)=>s+(+i.amount||0),0);
+  const totalOwed    = [...approved,...pending,...overdue].reduce((s,i)=>s+(+i.amount||0),0);
+  const totalOverdue = overdue.reduce((s,i)=>s+(+i.amount||0),0);
 
   // Spending by category
   const byCategory = {};
@@ -11363,8 +11363,8 @@ function APDashboard({ vendors, apInvoices, setApInvoices, projects }) {
         </div>
         {vendors.filter(v=>v.active).map(v=>{
           const vInvs  = apInvoices.filter(i=>i.vendorId===v.id);
-          const vPaid  = vInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
-          const vOwed  = vInvs.filter(i=>["pending","approved","overdue"].includes(i.status)).reduce((s,i)=>s+i.amount,0);
+          const vPaid  = vInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
+          const vOwed  = vInvs.filter(i=>["pending","approved","overdue"].includes(i.status)).reduce((s,i)=>s+(+i.amount||0),0);
           return (
             <div key={v.id} className="tr" style={{gridTemplateColumns:"1.5fr 80px 80px 80px 80px 90px"}}>
               <div>
@@ -11643,11 +11643,11 @@ function VendorRegistry({ vendors, setVendors, apInvoices }) {
             {/* YTD summary */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
               <div className="card" style={{padding:"10px 12px",textAlign:"center"}}>
-                <div style={{fontSize:18,fontWeight:800,color:"#34d399",fontFamily:"'DM Mono',monospace"}}>{fmt(selInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0))}</div>
+                <div style={{fontSize:18,fontWeight:800,color:"#34d399",fontFamily:"'DM Mono',monospace"}}>{fmt(selInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0))}</div>
                 <div style={{fontSize:9,color:"#475569"}}>YTD Paid</div>
               </div>
               <div className="card" style={{padding:"10px 12px",textAlign:"center"}}>
-                <div style={{fontSize:18,fontWeight:800,color:"#f59e0b",fontFamily:"'DM Mono',monospace"}}>{fmt(selInvs.filter(i=>["pending","approved","overdue"].includes(i.status)).reduce((s,i)=>s+i.amount,0))}</div>
+                <div style={{fontSize:18,fontWeight:800,color:"#f59e0b",fontFamily:"'DM Mono',monospace"}}>{fmt(selInvs.filter(i=>["pending","approved","overdue"].includes(i.status)).reduce((s,i)=>s+(+i.amount||0),0))}</div>
                 <div style={{fontSize:9,color:"#475569"}}>Outstanding</div>
               </div>
             </div>
@@ -11723,7 +11723,7 @@ function Tracker1099({ vendors, apInvoices }) {
     .map(v=>{
       const paid = apInvoices
         .filter(i=>i.vendorId===v.id&&i.status==="paid")
-        .reduce((s,i)=>s+i.amount,0);
+        .reduce((s,i)=>s+(+i.amount||0),0);
       const threshold = v.ytdThreshold||600;
       const needs1099 = paid>=threshold;
       const pct       = Math.min(100,Math.round((paid/threshold)*100));
@@ -11858,9 +11858,9 @@ function CashFlowModule({ finInvoices, finPayments, apInvoices, vendors, adpRuns
           const w = buildWeeks(horizon);
           const arOpen = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided");
           const apOpen = apInvoices.filter(i=>["approved","overdue","pending"].includes(i.status));
-          const totalCollected = finPayments.reduce((s,p)=>s+p.amount,0);
-          const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
-          const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+r.netPay,0);
+          const totalCollected = finPayments.reduce((s,p)=>s+(+p.amount||0),0);
+          const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
+          const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+(+r.netPay||0),0);
           let cash = totalCollected - totalApPaid - payrollPaid;
           const wPay = monthlyPayroll(roster) / 4.33;
           const arB = new Array(w.length).fill(0);
@@ -11935,7 +11935,7 @@ function expectedPayDate(issueDateStr, terms) {
 // Monthly payroll cost from roster
 function monthlyPayroll(roster) {
   return roster.filter(r=>r.type==="FTE").reduce((s,r)=>{
-    const base = (r.salary||0) / 12;
+    const base = (+r.salary||0) / 12;
     const burden = base * (7.65+0.6+2.7+0.5+3+1.5)/100 + 7200/12;
     return s + base + burden;
   }, 0);
@@ -11946,9 +11946,9 @@ function CFOverview({ finInvoices, finPayments, apInvoices, adpRuns, roster, hor
   const weeks = buildWeeks(horizon);
 
   // Current cash estimate: total collected - total paid out
-  const totalCollected = finPayments.reduce((s,p)=>s+p.amount,0);
-  const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
-  const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+r.netPay,0);
+  const totalCollected = (finPayments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+  const totalApPaid    = (apInvoices||[]).filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
+  const payrollPaid    = (adpRuns||[]).filter(r=>r.status==="processed").reduce((s,r)=>s+(+r.netPay||0),0);
   const cashOnHand     = totalCollected - totalApPaid - payrollPaid;
 
   // AR: unpaid invoices — bucket by expected collection
@@ -11967,12 +11967,12 @@ function CFOverview({ finInvoices, finPayments, apInvoices, adpRuns, roster, hor
   arOpen.forEach(inv => {
     const expectedDate = expectedPayDate(inv.issueDate, inv.paymentTerms||"Net 30");
     const idx = assignToWeek(weeks, expectedDate);
-    if (idx >= 0) arBuckets[idx] += inv.balance || (inv.amount - (inv.paid||0));
+    if (idx >= 0) arBuckets[idx] += (+inv.balance||0) || ((+inv.amount||0) - (+inv.paid||0));
   });
 
   apOpen.forEach(inv => {
     const idx = assignToWeek(weeks, inv.dueDate);
-    if (idx >= 0) apBuckets[idx] += inv.amount;
+    if (idx >= 0) apBuckets[idx] += (+inv.amount||0);
   });
 
   weeks.forEach((_, i) => {
@@ -12128,7 +12128,7 @@ function CFArForecast({ finInvoices, finPayments, fbInvoices }) {
   // From finInvoices
   finInvoices.forEach(inv => {
     if (inv.status === "paid" || inv.status === "voided") return;
-    const balance = inv.amount - (finPayments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0));
+    const balance = inv.amount - (finPayments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0));
     if (balance <= 0) return;
     const terms   = inv.paymentTerms || "Net 30";
     const expDate = expectedPayDate(inv.issueDate, terms);
@@ -12222,14 +12222,14 @@ function CFApObligs({ apInvoices, vendors, adpRuns, roster }) {
       const d = parseDate(inv.dueDate);
       return d && d >= w.start && d <= w.end;
     });
-    return { ...w, bills, billTotal: bills.reduce((s,i)=>s+i.amount,0) };
+    return { ...w, bills, billTotal: bills.reduce((s,i)=>s+(+i.amount||0),0) };
   });
 
   // Group by category
   const byCat = {};
   pendingAP.forEach(i=>{ byCat[i.category]=(byCat[i.category]||0)+i.amount; });
 
-  const totalPendingAP = pendingAP.reduce((s,i)=>s+i.amount,0);
+  const totalPendingAP = pendingAP.reduce((s,i)=>s+(+i.amount||0),0);
   const totalPayroll13w = weeklyPayroll * 13;
   const nextPayroll = addDays(TODAY, 7 - TODAY.getDay() + 5); // next Friday
 
@@ -12320,9 +12320,9 @@ function CFRunway({ finInvoices, finPayments, apInvoices, adpRuns, roster, cfOve
   const [scenarioName, setScenarioName] = useState("Base Case");
 
   // Auto-estimates
-  const totalCollected = finPayments.reduce((s,p)=>s+p.amount,0);
-  const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
-  const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+r.netPay,0);
+  const totalCollected = finPayments.reduce((s,p)=>s+(+p.amount||0),0);
+  const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
+  const payrollPaid    = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+(+r.netPay||0),0);
   const estCash        = totalCollected - totalApPaid - payrollPaid;
   const estAR          = finInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided").reduce((s,i)=>s+i.balance,0)
                        + (finPayments.length>0 ? 0 : 0);
@@ -12336,11 +12336,11 @@ function CFRunway({ finInvoices, finPayments, apInvoices, adpRuns, roster, cfOve
   const last3moBilled = finInvoices.filter(inv=>{
     const d = parseDate(inv.issueDate);
     return d && d >= addDays(TODAY, -90);
-  }).reduce((s,i)=>s+i.amount,0);
+  }).reduce((s,i)=>s+(+i.amount||0),0);
   const estMonthlyRevenue = last3moBilled / 3;
 
   // Monthly fixed costs
-  const monthlyAP = apInvoices.filter(i=>i.status!=="voided"&&i.status!=="draft").reduce((s,i)=>s+i.amount,0) / 3;
+  const monthlyAP = apInvoices.filter(i=>i.status!=="voided"&&i.status!=="draft").reduce((s,i)=>s+(+i.amount||0),0) / 3;
   const monthlyBurn = monthlyPayroll + monthlyAP + extraOut;
 
   // Build 24-month forecast
@@ -13301,8 +13301,8 @@ function PLProjectDrill({ enriched, selProj, setSelProj, changeOrders, finInvoic
   const projSow      = sows.find(s=>s.projectId===proj.id||s.name?.includes(proj.client||"XXXXX"));
   const projCOs      = pl.projCOs;
 
-  const totalInvoiced= projInvoices.reduce((s,i)=>s+i.amount,0);
-  const totalCollected=projInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+  const totalInvoiced= projInvoices.reduce((s,i)=>s+(+i.amount||0),0);
+  const totalCollected=projInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
 
   const marginColor = pl.grossMargin<20?"#f87171":pl.grossMargin<40?"#f59e0b":"#34d399";
   const burnColor   = pl.burnPct>100?"#f87171":pl.burnPct>85?"#f59e0b":"#34d399";
@@ -14725,7 +14725,7 @@ const ZT_FOOTER = `
 
 // ── Invoice PDF ───────────────────────────────────────────────────────────────
 function buildInvoicePDF(inv, payments) {
-  const paid    = payments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0);
+  const paid    = payments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0);
   const balance = inv.amount - paid;
   const statusBadge = inv.status==="paid"?"badge-green":inv.status==="overdue"?"badge-red":"badge-amber";
   const lineItems = inv.lineItems || [{ description: inv.description||"Professional Services", qty: 1, rate: inv.amount, amount: inv.amount }];
@@ -14898,8 +14898,8 @@ function buildProjectReportPDF(proj, roster, tasks, risks, changeOrders, finInvo
   const projCOs    = (changeOrders||[]).filter(c=>c.projectId===proj.id&&c.status!=="voided");
   const projInvs   = (finInvoices||[]).filter(i=>i.projectId===proj.id||i.clientId===proj.clientId);
   const burnPct    = proj.budget>0?Math.round((proj.spent||0)/proj.budget*100):0;
-  const invoiced   = projInvs.reduce((s,i)=>s+i.amount,0);
-  const collected  = projInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
+  const invoiced   = projInvs.reduce((s,i)=>s+(+i.amount||0),0);
+  const collected  = projInvs.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
   const hColor     = proj.health==="green"?"#15803d":proj.health==="amber"?"#b45309":"#dc2626";
   const hBadge     = proj.health==="green"?"badge-green":proj.health==="amber"?"badge-amber":"badge-red";
   const openTasks  = projTasks.filter(t=>t.status!=="done"&&t.status!=="completed");
@@ -19327,7 +19327,7 @@ function ClientPortal({ clients, finInvoices, finPayments, projects, sows, chang
               {clientInvoices.length===0&&<div style={{padding:"16px",textAlign:"center",fontSize:12,color:"#3d5a7a"}}>No invoices on record.</div>}
               {clientInvoices.slice(0,5).map(inv=>{
                 const amt = inv.lines?.reduce((s,l)=>s+l.amount,0)||inv.amount||0;
-                const paid = finPayments?.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0)||0;
+                const paid = finPayments?.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0)||0;
                 const bal  = amt-paid;
                 const sc   = inv.status==="paid"?"#34d399":inv.status==="overdue"?"#f87171":"#f59e0b";
                 return (
@@ -19406,7 +19406,7 @@ function ClientPortal({ clients, finInvoices, finPayments, projects, sows, chang
             {clientInvoices.length===0&&<div style={{padding:"24px",textAlign:"center",fontSize:12,color:"#3d5a7a"}}>No invoices for this client yet.</div>}
             {clientInvoices.map(inv=>{
               const amt  = inv.lines?.reduce((s,l)=>s+l.amount,0)||inv.amount||0;
-              const paid = finPayments?.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+p.amount,0)||0;
+              const paid = finPayments?.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0)||0;
               const bal  = amt-paid;
               const sc   = inv.status==="paid"?"#34d399":inv.status==="overdue"?"#f87171":"#f59e0b";
               return (
