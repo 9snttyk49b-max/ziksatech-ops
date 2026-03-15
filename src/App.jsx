@@ -2247,7 +2247,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="capacity"      && <CapacityPlanner {...shared}/>}
         {tab==="budget"        && <BudgetActual {...shared}/>}
         {tab==="onboarding"    && <OnboardingModule {...shared}/>}
-        {tab==="glexport"      && <GLExport {...shared}/>}
+        {tab==="glexport"      && <FreshBooksGL finInvoices={shared.finInvoices||[]} fbInvoices={shared.fbInvoices||[]} clients={shared.clients||[]}/>}
         {tab==="esign"         && <ESignature {...shared}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
         {tab==="timesheet"  && <TimesheetApproval {...shared}/>}
@@ -21020,7 +21020,7 @@ function MiniCalculator() {
 // ═══════════════════════════════════════════════════════════════════════
 // AI GENERATORS — shared Claude API helper
 // ═══════════════════════════════════════════════════════════════════════
-async function callClaude(systemPrompt, userPrompt, onChunk) {
+async function callClaude(systemPrompt, userPrompt, onChunk, maxTokens=1500) {
   // Route through Vercel serverless proxy to avoid CORS
   const storedKey = typeof localStorage !== "undefined" ? localStorage.getItem("zt-anthropic-key") : null;
   const res = await fetch("/api/claude", {
@@ -21028,7 +21028,7 @@ async function callClaude(systemPrompt, userPrompt, onChunk) {
     headers: { "Content-Type": "application/json", ...(storedKey ? {"x-api-key-override": storedKey} : {}) },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1500,
+      max_tokens: maxTokens,
       stream: true,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
