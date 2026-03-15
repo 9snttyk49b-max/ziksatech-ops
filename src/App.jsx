@@ -23557,14 +23557,7 @@ Include: Introduction, Project Overview, Scope, Technical Requirements, Vendor Q
               </label>
 
               <textarea className="inp" rows={10} value={rfpText} onChange={e=>setRfpText(e.target.value)}
-                placeholder="Paste the full text of the client's RFP here... (Request for Proposal, requirements, evaluation criteria, due date, etc.)"
-Example:
-Request for Proposal
-SAP S/4HANA Implementation Services
-Issued by: Capital One Financial Corp
-Due: April 30, 2026
-Background:
-Capital One is seeking qualified vendors...
+                placeholder="Paste the full RFP text from the client here..."
                 style={{fontFamily:"'DM Mono',monospace",fontSize:11,lineHeight:1.5}}/>
               <div style={{display:"flex",gap:8,marginTop:8}}>
                 <button className="btn bg" style={{fontSize:11,flex:1,justifyContent:"center"}}
