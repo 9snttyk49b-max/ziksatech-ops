@@ -21629,7 +21629,7 @@ ${text.slice(0, 4000)}`;
         <input className="inp" placeholder="Search by consultant name..." value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:300}}/>
         <button onClick={()=>{setEditRec(null);setForm({consultantName:"",docType:"I-797",docNumber:"",issueDate:"",expiryDate:"",physicalLocation:"",status:"current",notes:""});setModal(true);}} style={{padding:"7px 16px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:12,cursor:"pointer"}}>+ Add Manually</button>
         <div style={{marginLeft:"auto",fontSize:12,color:"#334155"}}>{records.length} records</div>
-      </div>
+      </div>}
 
       {/* Summary */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
