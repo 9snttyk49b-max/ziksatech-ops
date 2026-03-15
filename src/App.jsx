@@ -8787,7 +8787,7 @@ function ProjRisks({ projects, risks, setRisks, roster }) {
               <FF label="Project"><select className="inp" value={form.projectId} onChange={e=>setForm({...form,projectId:e.target.value})}>
                 <option value="">Select…</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
               </select></FF>
-              <FF label="Owner"><input className="inp" value={form.owner} onChange={e=>setForm({...form,owner:e.target.value})} placeholder="Manju / Suresh"/></FF>
+              <FF label="Owner"><input className="inp" value={form.owner} onChange={e=>setForm({...form,owner:e.target.value})} placeholder="e.g. Manju Murthy"/></FF>
               <FF label="Probability"><select className="inp" value={form.probability} onChange={e=>setForm({...form,probability:e.target.value})}>
                 {["low","medium","high"].map(v=><option key={v}>{v}</option>)}
               </select></FF>
@@ -10307,7 +10307,8 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                       <div><div style={{fontSize:12,color:"#e2e8f0",fontWeight:600}}>{s.periodLabel}</div><div style={{fontSize:10,color:"#475569"}}>{s.totalHours}h · ${s.totalRevenue.toLocaleString()}</div></div>
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
                         {s.invoiceId && <span style={{fontSize:10,color:"#f59e0b"}}>💰 {s.invoiceId}</span>}
-                        <span className="bdg" style={{backgr      {/* ══ CONSULTANT ENTRY — ADMIN ENTERS FOR EACH CONSULTANT ══════════ */}
+                        <span className="bdg" style={{background:stCfg(s.status).bg,color:stCfg(s.status).color,fontSize:10}}>{stCfg(s.status).icon} {stCfg(s.status).label}</span>
+      {/* ══ CONSULTANT ENTRY — ADMIN ENTERS FOR EACH CONSULTANT ══════════ */}
       {view==="entry" && isAdmin && (
         <div>
           <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>Enter Timesheet Per Consultant</div>
