@@ -618,19 +618,17 @@ const ROLE_TEMPLATES = {
 };
 
 const ORG_MEMBERS_SEED = [
-  { id:"org1",  rosterId:"",    name:"Manju",          title:"Owner / CEO",               email:"manju@ziksatech.com",         phone:"",            reportsTo:"",     role:"owner",        active:true, customPerms:{} },
-  { id:"org2",  rosterId:"r1",  name:"Suresh Menon",   title:"Sr. Consultant / Delivery Lead", email:"suresh@ziksatech.com",   phone:"",            reportsTo:"org1", role:"delivery_lead",active:true, customPerms:{} },
-  { id:"org3",  rosterId:"r2",  name:"Deepa Rao",      title:"SAP Functional Consultant",  email:"deepa@ziksatech.com",         phone:"",            reportsTo:"org2", role:"consultant",   active:true, customPerms:{} },
-  { id:"org4",  rosterId:"r3",  name:"Vikram Singh",   title:"SAP Technical Consultant",   email:"vikram@ziksatech.com",        phone:"",            reportsTo:"org2", role:"consultant",   active:true, customPerms:{} },
-  { id:"org5",  rosterId:"r4",  name:"Ananya Krishnan",title:"BRIM Consultant",            email:"ananya@ziksatech.com",        phone:"",            reportsTo:"org2", role:"consultant",   active:true, customPerms:{} },
-  { id:"org6",  rosterId:"r5",  name:"Arun Sharma",    title:"SAP Functional Consultant",  email:"arun@ziksatech.com",          phone:"",            reportsTo:"org2", role:"consultant",   active:true, customPerms:{} },
-  { id:"org7",  rosterId:"r6",  name:"Meena Iyer",     title:"BRIM Consultant",            email:"meena@ziksatech.com",         phone:"",            reportsTo:"org2", role:"consultant",   active:true, customPerms:{} },
-  { id:"org8",  rosterId:"r7",  name:"Rajesh Kumar",   title:"BRIM Architect (Contractor)", email:"rajesh@ziksatech.com",       phone:"",            reportsTo:"org1", role:"contractor",   active:true, customPerms:{} },
-  { id:"org9",  rosterId:"r8",  name:"Priya Nair",     title:"SAP IS-U Lead (Contractor)", email:"priya@ziksatech.com",         phone:"",            reportsTo:"org8", role:"contractor",   active:true, customPerms:{} },
-  { id:"org10", rosterId:"r9",  name:"Kiran Patel",    title:"Data Engineer (Contractor)", email:"kiran@ziksatech.com",         phone:"",            reportsTo:"org8", role:"contractor",   active:true, customPerms:{} },
-  { id:"org11", rosterId:"r10", name:"Sanjay Gupta",   title:"AWS Architect (Contractor)", email:"sanjay@ziksatech.com",        phone:"",            reportsTo:"org8", role:"contractor",   active:true, customPerms:{} },
+  { id:"org1",  rosterId:"",    name:"Manju Murthy",          title:"Owner / CEO",                       email:"mmurthy@ziksatech.com",   phone:"", reportsTo:"",     role:"super_admin", active:true, customPerms:{} },
+  { id:"org2",  rosterId:"r1",  name:"Nuthan Joshi",          title:"Sr. BRIM Consultant / Delivery Lead",email:"nuthan@ziksatech.com",    phone:"", reportsTo:"org1", role:"employee",    active:true, customPerms:{} },
+  { id:"org3",  rosterId:"r2",  name:"Malla Reddy",           title:"SAP Functional Architect",           email:"malla@ziksatech.com",     phone:"", reportsTo:"org1", role:"employee",    active:true, customPerms:{} },
+  { id:"org4",  rosterId:"r3",  name:"Sudheendra Mujamdhar",  title:"Master Data Governance",             email:"sudheendra@ziksatech.com",phone:"", reportsTo:"org2", role:"employee",    active:true, customPerms:{} },
+  { id:"org5",  rosterId:"r4",  name:"Vivek Khajuria",        title:"SAP SuccessFactors Consultant",      email:"vivek@ziksatech.com",     phone:"", reportsTo:"org2", role:"employee",    active:true, customPerms:{} },
+  { id:"org6",  rosterId:"r5",  name:"Kartheek",              title:"AI Consultant",                      email:"kartheek@ziksatech.com",  phone:"", reportsTo:"org2", role:"employee",    active:true, customPerms:{} },
+  { id:"org7",  rosterId:"r6",  name:"Gokul K",               title:"SAP MM Consultant",                  email:"gokul@ziksatech.com",     phone:"", reportsTo:"org2", role:"employee",    active:true, customPerms:{} },
+  { id:"org8",  rosterId:"r7",  name:"Ravi Soni",             title:"BRIM Consultant (Contractor)",       email:"ravi@ziksatech.com",      phone:"", reportsTo:"org2", role:"contractor",  active:true, customPerms:{} },
+  { id:"org9",  rosterId:"r8",  name:"Krishna Shastri",       title:"SAP Consultant (Contractor)",        email:"krishna@ziksatech.com",   phone:"", reportsTo:"org2", role:"contractor",  active:true, customPerms:{} },
+  { id:"org10", rosterId:"r9",  name:"Sagar M",               title:"SAP Consultant (Contractor)",        email:"sagar@ziksatech.com",     phone:"", reportsTo:"org2", role:"contractor",  active:true, customPerms:{} },
 ];
-
 
 
 
