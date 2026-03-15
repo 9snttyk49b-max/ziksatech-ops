@@ -9104,7 +9104,7 @@ function OrgChart({ orgMembers, setOrgMembers }) {
           background:isSel?(rt?.bg||"#0a1626"):"#070c18",
           border:`${isSel?"2px":"1px"} solid ${isSel?(rt?.color||"#38bdf8"):"#1a2d45"}`,
           transition:"all 0.15s",
-          minWidth:isRoot?160:130, maxWidth:isRoot?200:160,
+          minWidth:isRoot?150:120, maxWidth:isRoot?180:150,
           boxShadow:isSel?`0 0 0 3px ${rt?.color||"#38bdf8"}22`:"none",
         }}>
         <div style={{display:"flex",justifyContent:"center",marginBottom:6}}>
@@ -9140,7 +9140,7 @@ function OrgChart({ orgMembers, setOrgMembers }) {
         {lvl1.length > 0 && (
           <div style={{position:"relative"}}>
             {/* Horizontal connector rail across all L1 nodes */}
-            <div style={{display:"flex",justifyContent:"center",gap:20,flexWrap:"nowrap"}}>
+            <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap"}}>
               {lvl1.map((m1, idx) => {
                 const children = childrenOf(m1.id);
                 return (
