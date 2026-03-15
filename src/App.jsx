@@ -312,8 +312,8 @@ const store = (() => {
 const BURDEN = { fica: 0.0765, futa: 0.006, futaCap: 7000, suta: 0.027, sutaCap: 9000, wc: 0.005, health: 7200, retire: 0.03, other: 0.015, hoursPerYear: 1920 };
 
 const ROSTER_SEED = [
-  { id:"r1", skills:"SAP BRIM, ABAP, BTP", projects:"BRIM Phase 3, AT&T Portal", name:"Suresh Menon",   role:"BRIM Sr Consultant", type:"FTE",        client:"AT&T",        billRate:155, util:1.0,  baseSalary:120000, revShare:0,   fixedRate:155, thirdPartySplit:0,   insurance:7200 },
-  { id:"r2", skills:"SAP IS-U, S/4HANA, CPI", projects:"AT&T IS-U Migration, BRIM Phase 3", name:"Deepa Rao",      role:"SAP Functional",     type:"FTE",        client:"AT&T",        billRate:135, util:0.8,  baseSalary:98000,  revShare:0,   fixedRate:135, thirdPartySplit:0,   insurance:7200 },
+  { id:"r1", skills:"SAP BRIM, ABAP, BTP", projects:"PTC BRIM Phase 2, SAP Portal", name:"Nuthan Joshi",   role:"BRIM Sr Consultant", type:"FTE",        client:"PTC",         billRate:155, util:1.0,  baseSalary:120000, revShare:0,   fixedRate:155, thirdPartySplit:0,   insurance:7200 },
+  { id:"r2", skills:"SAP IS-U, S/4HANA, CPI", projects:"HPE IS-U Migration, S4 Upgrade", name:"Malla Reddy",      role:"SAP Functional Architect", type:"FTE",        client:"HPE",         billRate:135, util:0.8,  baseSalary:98000,  revShare:0,   fixedRate:135, thirdPartySplit:0,   insurance:7200 },
   { id:"r3", skills:"ABAP, CPI, BTP", projects:"AT&T ABAP Development, BRIM Phase 3", name:"Vikram Singh",   role:"SAP Technical",      type:"FTE",        client:"AT&T",        billRate:140, util:0.8,  baseSalary:102000, revShare:0,   fixedRate:140, thirdPartySplit:0,   insurance:7200 },
   { id:"r4", skills:"SAP BRIM, S/4HANA", projects:"AT&T BRIM Implementation", name:"Ananya Krishnan",role:"BRIM Consultant",    type:"FTE",        client:"AT&T",        billRate:130, util:0.6,  baseSalary:88000,  revShare:0.6, fixedRate:130, thirdPartySplit:0,   insurance:7200 },
   { id:"r5", skills:"SAP IS-U, S/4HANA", projects:"Misc SAP Support", name:"Arun Sharma",    role:"SAP Functional",     type:"FTE",        client:"Misc",        billRate:125, util:0.2,  baseSalary:85000,  revShare:0,   fixedRate:125, thirdPartySplit:0,   insurance:7200 },
@@ -9986,6 +9986,18 @@ const TS_STATUS_LABEL = {
 };
 const TS_FLOW = ["draft","submitted","pm_approved","approved","locked"];
 
+// ── US FEDERAL + OPTIONAL HOLIDAYS 2025-2027 ────────────────────────────────
+
+
+// Per-client holiday calendars — extra days beyond US federal
+const CLIENT_CALENDARS = {
+  "PTC":     { extraDays:["12-24","11-28","12-26"], name:"PTC",     note:"PTC: Christmas Eve, Day after Thanksgiving, Day after Christmas" },
+  "HPE":     { extraDays:["11-28","12-24"],         name:"HPE",     note:"HPE: Day after Thanksgiving + Christmas Eve" },
+  "AT&T":    { extraDays:["11-28"],                 name:"AT&T",    note:"AT&T: Day after Thanksgiving" },
+  "Naxon":   { extraDays:["12-24","12-31"],         name:"Naxon",   note:"Naxon: Christmas Eve + New Year's Eve" },
+  "NTTA":    { extraDays:["11-28"],                 name:"NTTA",    note:"NTTA: Day after Thanksgiving" },
+};
+
 function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoices, finInvoices, authProfile, addAudit }) {
   const isAdmin = ["super_admin","admin","hr_immigration"].includes(authProfile?.role);
   const isCons  = ["employee","contractor"].includes(authProfile?.role);
@@ -10008,6 +10020,99 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
   const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
+  // ── US Federal & Optional Holidays ──────────────────────────────────────
+  // Returns holidays for a given year as { "YYYY-MM-DD": { name, type, optional } }
+  const getUSHolidays = (year) => {
+    const h = {};
+    const add = (m, d, name, type="federal", optional=false) => {
+      const dt = `${year}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      h[dt] = { name, type, optional };
+    };
+    // Helper: nth weekday of month (0=Sun..6=Sat)
+    const nthWkday = (m, n, wd) => {
+      let d = 1;
+      const first = new Date(year, m-1, 1).getDay();
+      let diff = (wd - first + 7) % 7;
+      d += diff + (n-1)*7;
+      return d;
+    };
+    // Helper: last weekday of month
+    const lastWkday = (m, wd) => {
+      const last = new Date(year, m, 0);
+      let d = last.getDate();
+      const lastDay = last.getDay();
+      d -= (lastDay - wd + 7) % 7;
+      return d;
+    };
+
+    // FEDERAL HOLIDAYS
+    add(1,  1,  "New Year's Day");
+    // MLK Day: 3rd Monday of January
+    add(1,  nthWkday(1,3,1), "Martin Luther King Jr. Day");
+    // Presidents Day: 3rd Monday of February
+    add(2,  nthWkday(2,3,1), "Presidents' Day");
+    // Memorial Day: Last Monday of May
+    add(5,  lastWkday(5,1),  "Memorial Day");
+    // Juneteenth
+    add(6,  19, "Juneteenth National Independence Day");
+    add(7,  4,  "Independence Day");
+    // Labor Day: 1st Monday of September
+    add(9,  nthWkday(9,1,1), "Labor Day");
+    // Columbus Day: 2nd Monday of October
+    add(10, nthWkday(10,2,1),"Columbus Day");
+    add(11, 11, "Veterans Day");
+    // Thanksgiving: 4th Thursday of November
+    add(11, nthWkday(11,4,4),"Thanksgiving Day");
+    add(12, 25, "Christmas Day");
+
+    // OPTIONAL / COMMONLY OBSERVED
+    // Day after Thanksgiving
+    const thxDay = nthWkday(11,4,4);
+    add(11, thxDay+1, "Day After Thanksgiving", "optional", true);
+    add(12, 24, "Christmas Eve",   "optional", true);
+    add(12, 26, "Day After Christmas", "optional", true);
+    add(1,  2,  "New Year's Eve / Day 2", "optional", true);
+    // Black Friday = day after Thanksgiving
+    // Good Friday (Easter-2 days)
+    const easterY = year;
+    const a = easterY % 19, b = Math.floor(easterY/100), cc = easterY%100;
+    const d2 = Math.floor(b/4), e2 = b%4, f2 = Math.floor((b+8)/25);
+    const g2 = Math.floor((b-f2+1)/3), h2 = (19*a+b-d2-g2+15)%30;
+    const i2 = Math.floor(cc/4), k2 = cc%4, l2 = (32+2*e2+2*i2-h2-k2)%7;
+    const m2 = Math.floor((a+11*h2+22*l2)/451);
+    const eMonth = Math.floor((h2+l2-7*m2+114)/31);
+    const eDay   = ((h2+l2-7*m2+114)%31)+1;
+    const easterDate = new Date(year, eMonth-1, eDay);
+    const goodFriday = new Date(easterDate); goodFriday.setDate(easterDate.getDate()-2);
+    const gfStr = `${year}-${String(goodFriday.getMonth()+1).padStart(2,"0")}-${String(goodFriday.getDate()).padStart(2,"0")}`;
+    h[gfStr] = { name:"Good Friday", type:"optional", optional:true };
+
+    return h;
+  };
+
+  const US_HOLIDAYS = getUSHolidays(selYear);
+  const getHolidayInfo = (dateStr) => US_HOLIDAYS[dateStr] || null;
+
+  // Override state: { "YYYY-MM-DD": { reason, confirmedAt } }
+  const [holidayOverrides, setHolidayOverrides] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-ts-overrides")||"{}"); } catch { return {}; }
+  });
+  const [overrideModal, setOverrideModal] = useState(null); // { day, holiday, idx }
+  const [overrideReason, setOverrideReason] = useState("");
+
+  const saveOverrides = (o) => { setHolidayOverrides(o); localStorage.setItem("zt-ts-overrides",JSON.stringify(o)); };
+
+  const confirmOverride = () => {
+    if (!overrideReason.trim()) return alert("Please provide a reason for working on this holiday.");
+    const key = overrideModal.day.date;
+    saveOverrides({ ...holidayOverrides, [key]: { reason: overrideReason, confirmedAt: TODAY_STR, holiday: overrideModal.holiday.name } });
+    // Now apply the hours that were being entered
+    updateDay(overrideModal.idx, "type", "regular");
+    updateDay(overrideModal.idx, "holidayOverride", true);
+    setOverrideModal(null);
+    setOverrideReason("");
+  };
+
   const getDaysInMonth = (y, m) => new Date(y, m+1, 0).getDate();
   const getFirstDayOfMonth = (y, m) => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }; // Mon=0
 
@@ -10026,13 +10131,36 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
   // ── Build blank sheet for current month ───────────────────────────────────
   const buildBlankSheet = () => {
     const days = getDaysInMonth(selYear, selMonth);
-    const dayEntries = Array.from({length: days}, (_, i) => ({
-      day: i + 1,
-      date: `${selYear}-${String(selMonth+1).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`,
-      hours: 0,
-      notes: "",
-      type: "regular",  // regular | pto | sick | holiday
-    }));
+    const holidays = getUSHolidays(selYear);
+    // Add client-specific holidays
+    const clientKey = myConsultant?.client || "";
+    const clientCal = CLIENT_CALENDARS[clientKey] || null;
+    if (clientCal) {
+      clientCal.extraDays.forEach(mmdd => {
+        const dt = `${selYear}-${mmdd}`;
+        if (!holidays[dt]) {
+          holidays[dt] = { name: clientCal.name + " Holiday", type: "client", optional: false };
+        }
+      });
+    }
+    const dayEntries = Array.from({length: days}, (_, i) => {
+      const dateStrFixed = `${selYear}-${String(selMonth+1).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`;
+      const holiday = holidays[dateStrFixed];
+      const dow = new Date(selYear, selMonth, i+1).getDay(); // 0=Sun, 6=Sat
+      const isWeekend = dow === 0 || dow === 6;
+      return {
+        day: i + 1,
+        date: dateStrFixed,
+        hours: 0,
+        notes: "",
+        type: holiday && !holiday.optional ? "holiday" : isWeekend ? "weekend" : "regular",
+        holidayName: holiday?.name || null,
+        holidayType: holiday?.type || null,
+        isOptionalHoliday: holiday?.optional || false,
+        isWeekend,
+        overrideReason: null,
+      };
+    });
     return {
       id: "ts-" + Date.now(),
       consultantId: myConsultant?.id || authProfile?.id || authProfile?.email,
@@ -10072,9 +10200,28 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
     return { ...sh, totalHours, totalRevenue };
   };
 
+  const [overrideModal, setOverrideModal] = useState(null); // {dayIdx, hours}
+  const [overrideReason, setOverrideReason] = useState("");
+
   const updateDay = (dayIdx, field, value) => {
+    const day = activeSheet.days[dayIdx];
+    // If entering hours on a holiday or weekend, require an override reason
+    if (field === "hours" && +value > 0 && (day.type === "holiday" || day.isWeekend) && !day.overrideReason) {
+      setOverrideModal({ dayIdx, hours: +value });
+      setOverrideReason("");
+      return;
+    }
     const updated = { ...activeSheet, days: activeSheet.days.map((d, i) => i === dayIdx ? { ...d, [field]: field === "hours" ? Math.max(0, Math.min(24, +value || 0)) : value } : d) };
     setActiveSheet(recalc(updated));
+  };
+
+  const confirmOverride = () => {
+    if (!overrideReason.trim()) return alert("Please enter a reason for working on this day.");
+    const { dayIdx, hours } = overrideModal;
+    const updated = { ...activeSheet, days: activeSheet.days.map((d, i) => i === dayIdx ? { ...d, hours, overrideReason: overrideReason.trim(), type: "override" } : d) };
+    setActiveSheet(recalc(updated));
+    setOverrideModal(null);
+    setOverrideReason("");
   };
 
   const saveAsDraft = () => {
@@ -10225,6 +10372,9 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
         {(isCons || isAdmin) && <button onClick={()=>setView("my")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="my"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="my"?"#fff":"#475569"}}>
           {isCons ? "📋 My Monthly Timesheet" : "📋 My View"}
         </button>}
+        {isAdmin && <button onClick={()=>setView("entry")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="entry"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="entry"?"#fff":"#475569"}}>
+          👥 By Consultant
+        </button>}
         {isAdmin && <button onClick={()=>setView("admin")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="admin"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="admin"?"#fff":"#475569"}}>
           📊 All Submissions
         </button>}
@@ -10269,6 +10419,46 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
             ))}
           </div>
 
+          {/* Holiday Legend */}
+          <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
+            <span style={{fontSize:10,color:"#64748b",fontWeight:600}}>Legend:</span>
+            {[["#1a1005","#f59e0b","🇺🇸 Federal"],["#1a0a2e","#a78bfa","🏢 Client Holiday"],["#0f0f0f","#64748b","📅 Optional"],["#060d1c","#475569","⛔ Weekend"],["#0a1a10","#34d399","✅ Hours logged"]].map(([bg,c,l])=>(
+              <span key={l} style={{fontSize:9,padding:"2px 7px",borderRadius:6,background:bg,color:c,border:"1px solid "+c+"44"}}>{l}</span>
+            ))}
+            {activeSheet.clientName && CLIENT_CALENDARS[activeSheet.clientName] && (
+              <span style={{fontSize:9,color:"#3d5a7a",marginLeft:4}}>· {CLIENT_CALENDARS[activeSheet.clientName]?.note}</span>
+            )}
+          </div>
+
+          {/* Holiday / Weekend Override Modal */}
+          {overrideModal && (
+            <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setOverrideModal(null)}>
+              <div className="modal" style={{maxWidth:460}}>
+                <MH title="Override: Working on Holiday/Weekend" onClose={()=>setOverrideModal(null)}/>
+                <div style={{padding:"10px 14px",background:"#2d1a00",border:"1px solid #f59e0b55",borderRadius:8,marginBottom:14}}>
+                  <div style={{fontSize:12,color:"#f59e0b",fontWeight:700,marginBottom:4}}>
+                    ⚠️ {overrideModal.holidayName || "Weekend"} · {overrideModal.day?.date}
+                  </div>
+                  <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.5}}>
+                    You are logging <strong style={{color:"#f59e0b"}}>{overrideModal.hours} hours</strong> on a {overrideModal.holidayName?"holiday":"weekend"}.
+                    This requires a business justification and will be flagged for manager review.
+                  </div>
+                </div>
+                <div className="lbl">Business Reason for Working This Day *</div>
+                <textarea className="inp" rows={3} autoFocus value={overrideReason}
+                  onChange={e=>setOverrideReason(e.target.value)}
+                  placeholder="e.g. Critical go-live support for client, system emergency, pre-approved overtime, make-up hours..."/>
+                <div style={{fontSize:10,color:"#334155",marginTop:6,marginBottom:14}}>
+                  This note will appear on your submitted timesheet for manager review.
+                </div>
+                <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                  <button className="btn bg" onClick={()=>setOverrideModal(null)}>Cancel</button>
+                  <button className="btn bp" onClick={confirmOverride}>⚠️ Confirm Override</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Calendar grid */}
           <div className="card" style={{padding:"16px 18px",marginBottom:14}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:8}}>
@@ -10286,31 +10476,66 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                 const isWeekend = (firstDay + idx) % 7 >= 5;
                 const isToday   = day.date === TODAY_STR;
                 const hrs       = day.hours || 0;
+                                const isHoliday      = day.type === "holiday";
+                const isOptHol      = day.isOptionalHoliday;
+                const isOverridden  = day.overrideReason;
+                const hasHours      = hrs > 0;
+                const cellBg        = isToday ? "#0c2340"
+                                    : isOverridden && (isHoliday||day.isWeekend) ? "#1a0c00"
+                                    : isHoliday ? "#120820"
+                                    : isOptHol  ? "#0c1820"
+                                    : day.isWeekend ? "#060d1c"
+                                    : "#0a1120";
+                const cellBorder    = isToday ? "#0284c7"
+                                    : isHoliday ? "#7c3aed55"
+                                    : isOptHol  ? "#0369a155"
+                                    : day.isWeekend ? "#0a1626"
+                                    : "#1a2d45";
+                const hrColor       = isHoliday||day.isWeekend ? (isOverridden ? "#f59e0b" : "#f87171") : "#38bdf8";
                 cells.push(
-                  <div key={day.day} style={{border:`1px solid ${isToday?"#0284c7":"#1a2d45"}`,borderRadius:8,padding:"6px 8px",background:isToday?"#0c2340":isWeekend?"#060d1c":"#0a1120",minHeight:70}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:10,color:isToday?"#38bdf8":"#334155",fontWeight:isToday?700:400}}>{day.day}</span>
-                      {/* Type selector */}
-                      {!isLocked && <select value={day.type} onChange={e=>updateDay(idx,"type",e.target.value)}
-                        style={{fontSize:8,background:"transparent",border:"none",color:"#334155",cursor:"pointer",padding:0}}>
-                        <option value="regular">Work</option>
-                        <option value="pto">PTO</option>
-                        <option value="sick">Sick</option>
-                        <option value="holiday">Holiday</option>
-                      </select>}
-                      {isLocked && day.type !== "regular" && <span style={{fontSize:8,color:dayColor(day.type)}}>{day.type}</span>}
+                  <div key={day.day} style={{border:`1px solid ${cellBorder}`,borderRadius:8,padding:"5px 7px",background:cellBg,minHeight:72}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                      <span style={{fontSize:10,color:isToday?"#38bdf8":isHoliday?"#a78bfa":day.isWeekend?"#1e3a5f":"#334155",fontWeight:isToday||isHoliday?700:400}}>{day.day}</span>
+                      {/* Holiday/weekend indicator */}
+                      {(isHoliday||isOptHol) && !isOverridden &&
+                        <span title={day.holidayName||""} style={{fontSize:7,color:isHoliday?"#a78bfa":"#38bdf8",fontWeight:700,cursor:"default",overflow:"hidden",whiteSpace:"nowrap",maxWidth:50,textOverflow:"ellipsis"}}>
+                          {isHoliday?"🏛":"📌"}{day.holidayName?.split("'")[0]?.slice(0,8)}
+                        </span>}
+                      {isOverridden && <span style={{fontSize:7,color:"#f59e0b"}}>⚡OT</span>}
+                      {day.isWeekend && !isHoliday && !isOverridden && <span style={{fontSize:7,color:"#1e3a5f"}}>WE</span>}
                     </div>
+                    {/* Holiday name tooltip row */}
+                    {isHoliday && !isOverridden && !hasHours && (
+                      <div style={{fontSize:8,color:"#7c3aed",marginBottom:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{day.holidayName}</div>
+                    )}
+                    {isOptHol && !isOverridden && !hasHours && (
+                      <div style={{fontSize:8,color:"#38bdf8",marginBottom:2}}>Optional holiday</div>
+                    )}
+                    {/* Hours input */}
                     {isLocked ? (
-                      <div style={{fontSize:16,fontWeight:700,color:hrs>0?dayColor(day.type):"#1e3a5f",textAlign:"center"}}>{hrs>0?hrs:""}</div>
+                      <div style={{fontSize:16,fontWeight:700,color:hasHours?hrColor:"#1e3a5f",textAlign:"center",marginTop:4}}>{hasHours?hrs:""}</div>
                     ) : (
                       <input type="number" min={0} max={24} step={0.5} value={hrs||""}
-                        onChange={e=>updateDay(idx,"hours",e.target.value)}
-                        placeholder={isWeekend?"—":"0"}
-                        style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid #1a2d45",color:dayColor(day.type),fontSize:16,fontWeight:700,textAlign:"center",padding:"2px 0",outline:"none"}}/>
+                        onChange={e=>{
+                          const newHrs = parseFloat(e.target.value)||0;
+                          if (newHrs > 0 && (isHoliday || day.isWeekend) && !day.overrideReason) {
+                            setOverrideModal({day, idx, hours:newHrs, isHoliday, holidayName:day.holidayName});
+                          } else {
+                            updateDay(idx,"hours",e.target.value);
+                          }
+                        }}
+                        placeholder={(isHoliday&&!isOverridden)?"🏛":(day.isWeekend&&!isOverridden)?"—":"0"}
+                        style={{width:"100%",background:"transparent",border:"none",borderBottom:`1px solid ${isHoliday?"#7c3aed44":isOptHol?"#0369a144":"#1a2d45"}`,
+                          color:hrColor,fontSize:15,fontWeight:700,textAlign:"center",padding:"2px 0",outline:"none"}}/>
                     )}
-                    {/* Notes icon */}
-                    {!isLocked && hrs > 0 && <input value={day.notes} onChange={e=>updateDay(idx,"notes",e.target.value)}
-                      placeholder="notes" style={{width:"100%",background:"transparent",border:"none",color:"#334155",fontSize:8,marginTop:2,outline:"none"}}/>}
+                    {/* Override reason badge */}
+                    {isOverridden && <div style={{fontSize:7,color:"#f59e0b",marginTop:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer"}}
+                      title={day.overrideReason}>⚡ {day.overrideReason?.slice(0,20)}</div>}
+                    {/* Notes */}
+                    {!isLocked && hrs>0 && !isHoliday && !day.isWeekend && (
+                      <input value={day.notes||""} onChange={e=>updateDay(idx,"notes",e.target.value)}
+                        placeholder="notes" style={{width:"100%",background:"transparent",border:"none",color:"#334155",fontSize:8,marginTop:2,outline:"none"}}/>
+                    )}
                     {isLocked && day.notes && <div style={{fontSize:8,color:"#334155",marginTop:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{day.notes}</div>}
                   </div>
                 );
@@ -10396,7 +10621,58 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                       <div><div style={{fontSize:12,color:"#e2e8f0",fontWeight:600}}>{s.periodLabel}</div><div style={{fontSize:10,color:"#475569"}}>{s.totalHours}h · ${s.totalRevenue.toLocaleString()}</div></div>
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
                         {s.invoiceId && <span style={{fontSize:10,color:"#f59e0b"}}>💰 {s.invoiceId}</span>}
-                        <span className="bdg" style={{background:st.bg,color:st.color,fontSize:10}}>{st.icon} {st.label}</span>
+                        <span className="bdg" style={{backgr      {/* ══ CONSULTANT ENTRY — ADMIN ENTERS FOR EACH CONSULTANT ══════════ */}
+      {view==="entry" && isAdmin && (
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>Enter Timesheet Per Consultant</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            {(roster||[]).filter(r=>r.client&&r.client!=="Bench").map(r=>{
+              const clientCal = CLIENT_CALENDARS[r.client];
+              const consultantSheets = sheets.filter(s=>s.consultantId===r.id);
+              const thisMonth = consultantSheets.find(s=>s.period===currentSheetKey);
+              const st = stCfg(thisMonth?.status||"draft");
+              return (
+                <div key={r.id} className="card" style={{padding:"14px 16px",cursor:"pointer",border:`1px solid ${thisMonth?.status==="invoiced"?"#f59e0b33":thisMonth?.status==="approved"?"#34d39933":"#1a2d45"}`}}
+                  onClick={()=>{
+                    setSelMonth(new Date().getMonth());
+                    setSelYear(new Date().getFullYear());
+                    // Temporarily set "my consultant" context to this person for admin entry
+                    setActiveSheet(thisMonth || {
+                      ...buildBlankSheet(),
+                      consultantId: r.id,
+                      consultantName: r.name,
+                      clientName: r.client,
+                      clientId: r.clientId||"",
+                      project: r.projects?.split(",")[0]?.trim()||"",
+                      billRate: r.billRate||0,
+                    });
+                    setView("my");
+                  }}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div>
+                      <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role}</div>
+                    </div>
+                    <span className="bdg" style={{background:st.bg,color:st.color,fontSize:9}}>{st.icon}</span>
+                  </div>
+                  <div style={{display:"flex",gap:8,marginBottom:6}}>
+                    <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:10}}>🏢 {r.client}</span>
+                    <span className="bdg" style={{background:"#0a1626",color:"#f59e0b",fontSize:10}}>${r.billRate}/hr</span>
+                  </div>
+                  {clientCal && <div style={{fontSize:9,color:"#475569",marginBottom:4}}>📋 {clientCal.note}</div>}
+                  {thisMonth ? (
+                    <div style={{fontSize:10,color:"#94a3b8"}}>{thisMonth.totalHours}h · {fmt(thisMonth.totalRevenue)} · {st.label}</div>
+                  ) : (
+                    <div style={{fontSize:10,color:"#334155"}}>No timesheet yet — click to create</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      ound:st.bg,color:st.color,fontSize:10}}>{st.icon} {st.label}</span>
                       </div>
                     </div>
                   );
