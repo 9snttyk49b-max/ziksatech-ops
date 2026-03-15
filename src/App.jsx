@@ -1897,7 +1897,7 @@ export default function ZiksatechOps() {
   const [appSettings, setAppSettings] = useState({
     ownerName: "Manju",
     ownerEmail: "manju@ziksatech.com",
-    companyName: "Ziksatech LLC",
+    companyName: "Ziksatech, LLC",
     companyWebsite: "ziksatech.com",
     fiscalYearStart: "January",
     defaultBillRate: 150,
@@ -14632,7 +14632,7 @@ function SettingsPage({ appSettings, setAppSettings, addAudit }) {
         <div className="card" style={{padding:"20px 22px"}}>
           <div className="section-hdr" style={{marginBottom:18}}>Company Info</div>
           <F label="Company name">
-            <input className="inp" value={form.companyName} onChange={e=>setForm({...form,companyName:e.target.value})} placeholder="Ziksatech LLC"/>
+            <input className="inp" value={form.companyName} onChange={e=>setForm({...form,companyName:e.target.value})} placeholder="Ziksatech, LLC"/>
           </F>
           <F label="Company website">
             <input className="inp" value={form.companyWebsite} onChange={e=>setForm({...form,companyWebsite:e.target.value})} placeholder="ziksatech.com"/>
@@ -22222,105 +22222,197 @@ const loadScript = (src) => new Promise((resolve, reject) => {
 
 // ── PPTX Export ─────────────────────────────────────────────────────────────
 const exportToPPTX = async (data, type="deck") => {
-  await loadScript("https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.min.js");
-  const PptxGenJS = window.PptxGenJS || window.pptxgen;
-  if (!PptxGenJS) throw new Error("PptxGenJS library failed to initialize. Try again.");
-  const pptx = new PptxGenJS();
-  pptx.layout = "LAYOUT_WIDE";
+  // Uses jsPDF to generate a branded presentation-style PDF (slide per page)
+  // Much more reliable than pptxgenjs which has no stable browser CDN build
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) throw new Error("jsPDF failed to load.");
 
-  const NAVY = "0D1B2A", GOLD = "C9A84C", WHITE = "F0F4FA", BLUE = "1E6091", LIGHT = "E8F0F8";
+  const doc = new jsPDF({ orientation:"landscape", unit:"pt", format:[792,446] }); // 16:9 slide
+  const NAVY=[13,27,42], GOLD=[201,168,76], WHITE=[240,244,250], BLUE=[30,96,145], LGRAY=[200,214,228];
+  const W=792, H=446;
+
+  const slide = (bgColor=NAVY) => {
+    doc.addPage([W,H],"landscape");
+    doc.setFillColor(...bgColor); doc.rect(0,0,W,H,"F");
+    doc.setFillColor(...GOLD); doc.rect(0,0,W,5,"F"); // top gold strip
+    doc.setFillColor(...GOLD); doc.rect(0,H-5,W,5,"F"); // bottom gold strip
+  };
+  const title = (text,y,size=28,color=WHITE) => {
+    doc.setFont("helvetica","bold"); doc.setFontSize(size); doc.setTextColor(...color);
+    doc.text(text||"",40,y);
+  };
+  const body = (text,x,y,maxW,size=12,color=LGRAY) => {
+    doc.setFont("helvetica","normal"); doc.setFontSize(size); doc.setTextColor(...color);
+    doc.text(String(text||""),x,y,{maxWidth:maxW,lineHeightFactor:1.4});
+  };
+  const badge = (text,x,y,bgColor=BLUE) => {
+    doc.setFillColor(...bgColor); doc.roundedRect(x,y-11,doc.getTextWidth(text||"")+16,16,4,4,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...WHITE);
+    doc.text(text||"",x+8,y);
+  };
+  const footer = (pageN) => {
+    doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(80,100,120);
+    doc.text("Ziksatech, LLC | WBE/HUB/WOSB Certified SAP Consulting | manju@ziksatech.com",W/2,H-12,{align:"center"});
+    if(pageN) doc.text(String(pageN),W-20,H-12,{align:"right"});
+  };
+
+  // ── Delete the auto-added blank first page ──────────────────────────────
+  doc.deletePage(1);
 
   if(type==="deck" && data.sections) {
-    // Title slide
-    const title = pptx.addSlide();
-    title.background = {color:NAVY};
-    title.addShape(pptx.ShapeType.rect, {x:0,y:0,w:"100%",h:0.08,fill:{color:GOLD}});
-    title.addImage({path:"https://ziksatech-ops.vercel.app/favicon.ico",x:0.4,y:0.3,w:0.5,h:0.5}).catch(()=>{});
-    title.addText("ZIKSATECH", {x:1,y:0.25,w:5,h:0.5,fontSize:14,color:GOLD,bold:true,fontFace:"Calibri"});
-    title.addText(data.deckTitle||"Capability Overview", {x:0.4,y:1.1,w:8.5,h:1.2,fontSize:36,color:WHITE,bold:true,fontFace:"Calibri"});
-    title.addText(data.tagline||"", {x:0.4,y:2.4,w:8.5,h:0.6,fontSize:18,color:GOLD,italic:true,fontFace:"Calibri"});
-    title.addText(data.executiveSummary||"", {x:0.4,y:3.1,w:8.5,h:1.2,fontSize:13,color:WHITE,fontFace:"Calibri",valign:"top"});
-    title.addText("Confidential — Ziksatech Inc. · Plano, TX · WBE/HUB/WOSB Certified", {x:0.4,y:6.8,w:8.5,h:0.3,fontSize:9,color:"4A6F8A",fontFace:"Calibri"});
+    // TITLE SLIDE
+    doc.addPage([W,H],"landscape");
+    doc.setFillColor(...NAVY); doc.rect(0,0,W,H,"F");
+    doc.setFillColor(...GOLD); doc.rect(0,0,W,6,"F");
+    doc.setFillColor(...GOLD); doc.rect(0,H-6,W,6,"F");
+    doc.setFillColor(30,55,80); doc.rect(0,80,W,H-160,"F"); // content band
+    doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...GOLD);
+    doc.text("ZIKSATECH, LLC", 40, 50); doc.text("WBE | HUB | WOSB CERTIFIED", W-40, 50, {align:"right"});
+    doc.setFont("helvetica","bold"); doc.setFontSize(30); doc.setTextColor(...WHITE);
+    doc.text(data.deckTitle||"Capability Overview", 40, 130, {maxWidth:W-80});
+    doc.setFont("helvetica","italic"); doc.setFontSize(16); doc.setTextColor(...GOLD);
+    doc.text(data.tagline||"", 40, 170, {maxWidth:W-80});
+    doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(180,200,220);
+    doc.text(data.executiveSummary||"", 40, 210, {maxWidth:W-80, lineHeightFactor:1.5});
+    if(data._target) { badge(data._target, 40, 330, [3,105,161]); }
+    (data._focus||[]).slice(0,4).forEach((f,i) => badge(f, 40+i*150, 350, [20,50,80]));
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(80,100,120);
+    doc.text("Ziksatech, LLC | manju@ziksatech.com | Plano, TX", W/2, H-12, {align:"center"});
 
-    // Why Now slide
+    // WHY NOW SLIDE
     if(data.whyNow) {
-      const why = pptx.addSlide();
-      why.background = {color:NAVY};
-      why.addShape(pptx.ShapeType.rect, {x:0,y:0,w:"100%",h:0.06,fill:{color:GOLD}});
-      why.addText("WHY NOW", {x:0.4,y:0.2,w:8.5,h:0.5,fontSize:11,color:GOLD,bold:true,fontFace:"Calibri",charSpacing:3});
-      why.addText(`⚡ ${data._target||"Your Company"}`, {x:0.4,y:0.7,w:8.5,h:0.7,fontSize:28,color:WHITE,bold:true});
-      why.addShape(pptx.ShapeType.rect, {x:0.4,y:1.5,w:8.5,h:2.5,fill:{color:"0C2340"},line:{color:BLUE,width:1}});
-      why.addText(data.whyNow, {x:0.7,y:1.7,w:8,h:2.1,fontSize:16,color:WHITE,valign:"middle",fontFace:"Calibri"});
+      slide();
+      title("WHY NOW", 50, 11, [...GOLD]);
+      title(`Why ${data._target||"Your Organization"} — Now`, 90, 22);
+      doc.setFillColor(15,40,65); doc.roundedRect(30,105,W-60,200,8,8,"F");
+      body(data.whyNow, 50, 140, W-100, 14, [200,220,240]);
+      footer(2);
     }
 
-    // Content slides
-    (data.sections||[]).forEach((section, i) => {
-      const slide = pptx.addSlide();
-      slide.background = {color: i%2===0 ? NAVY : "0A1628"};
-      slide.addShape(pptx.ShapeType.rect, {x:0,y:0,w:"100%",h:0.06,fill:{color:GOLD}});
-      slide.addText(`0${i+2}`, {x:0.3,y:0.2,w:0.8,h:0.5,fontSize:28,color:GOLD,bold:true,opacity:0.3});
-      slide.addText(section.title||"", {x:1.1,y:0.15,w:7,h:0.5,fontSize:11,color:GOLD,bold:true,charSpacing:2});
-      slide.addText(section.headline||"", {x:0.4,y:0.65,w:8.5,h:0.8,fontSize:22,color:WHITE,bold:true});
-      const bullets = (section.bullets||[]).map(b=>({text:"• "+b,options:{color:LIGHT,fontSize:13,breakLine:true,bullet:false,paraSpaceAfter:6}}));
-      if(bullets.length) slide.addText(bullets, {x:0.4,y:1.55,w:8.5,h:3.8,fontFace:"Calibri",valign:"top"});
-      if(section.proof) {
-        slide.addShape(pptx.ShapeType.rect, {x:0.4,y:5.5,w:8.5,h:0.9,fill:{color:"021f14"},line:{color:"34d399",width:1}});
-        slide.addText("📊  "+section.proof, {x:0.7,y:5.6,w:8,h:0.7,fontSize:11,color:"34d399",valign:"middle"});
+    // CONTENT SLIDES
+    (data.sections||[]).forEach((s,i) => {
+      slide();
+      doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...GOLD);
+      doc.text(`0${i+2}`, 40, 50);
+      doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...GOLD);
+      doc.text((s.title||"").toUpperCase(), 65, 50);
+      title(s.headline||"", 85, 20);
+      const bullets = (s.bullets||[]);
+      bullets.forEach((b,j) => {
+        const y = 120 + j*24;
+        if(y < 360) {
+          doc.setFillColor(...BLUE); doc.rect(40,y-7,4,14,"F");
+          body(b, 52, y, W-100, 11, [210,225,240]);
+        }
+      });
+      if(s.proof) {
+        doc.setFillColor(2,31,20); doc.roundedRect(30,370,W-60,40,6,6,"F");
+        doc.setFillColor(52,211,153); doc.rect(30,370,4,40,"F");
+        body("📊  "+s.proof, 44, 396, W-80, 10, [52,211,153]);
       }
-      slide.addText(`${i+2} / ${(data.sections||[]).length+3}`, {x:8.8,y:6.8,w:0.9,h:0.3,fontSize:9,color:"4A6F8A",align:"right"});
+      footer(i+3);
     });
 
-    // Why Ziksatech
-    const why2 = pptx.addSlide();
-    why2.background = {color:NAVY};
-    why2.addShape(pptx.ShapeType.rect, {x:0,y:0,w:"100%",h:0.06,fill:{color:GOLD}});
-    why2.addText("WHY ZIKSATECH", {x:0.4,y:0.2,w:8.5,h:0.5,fontSize:11,color:GOLD,bold:true,charSpacing:3});
-    why2.addText("Your Competitive Advantage", {x:0.4,y:0.7,w:8.5,h:0.7,fontSize:26,color:WHITE,bold:true});
+    // WHY ZIKSATECH SLIDE
+    slide([10,20,35]);
+    title("WHY ZIKSATECH, LLC", 50, 14, [...GOLD]);
+    title("Your Competitive Advantage", 85, 22);
     (data.differentiators||[]).forEach((d,i) => {
-      why2.addShape(pptx.ShapeType.rect, {x:0.4,y:1.6+i*0.8,w:8.5,h:0.65,fill:{color:"0C2340"},line:{color:BLUE,width:1}});
-      why2.addText("✓  "+d, {x:0.7,y:1.65+i*0.8,w:8,h:0.55,fontSize:13,color:WHITE,valign:"middle"});
+      const y = 125 + i*42;
+      if(y < 400) {
+        doc.setFillColor(20,50,80); doc.roundedRect(30,y-18,W-60,34,6,6,"F");
+        doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...GOLD);
+        doc.text("✓", 50, y); 
+        doc.setFont("helvetica","normal"); doc.setTextColor(...WHITE);
+        doc.text(d||"", 68, y, {maxWidth:W-120});
+      }
     });
+    footer(""+((data.sections||[]).length+4));
 
-    // CTA slide
-    const cta = pptx.addSlide();
-    cta.background = {color:NAVY};
-    cta.addShape(pptx.ShapeType.rect, {x:0,y:0,w:"100%",h:"100%",fill:{color:"0C1E30"}});
-    cta.addShape(pptx.ShapeType.rect, {x:0,y:0,w:"100%",h:0.08,fill:{color:GOLD}});
-    cta.addText("NEXT STEPS", {x:0.4,y:0.8,w:8.5,h:0.5,fontSize:11,color:GOLD,bold:true,charSpacing:3,align:"center"});
-    cta.addText(data.callToAction||"Let's discuss how Ziksatech can help", {x:0.4,y:1.4,w:8.5,h:1.5,fontSize:24,color:WHITE,bold:true,align:"center"});
-    cta.addText(data.suggestedNextStep||"Schedule a 30-minute discovery call", {x:0.4,y:3.0,w:8.5,h:0.7,fontSize:16,color:GOLD,align:"center",italic:true});
-    cta.addShape(pptx.ShapeType.rect, {x:2.5,y:4.0,w:4.5,h:0.8,fill:{color:GOLD}});
-    cta.addText("📧 manju@ziksatech.com  ·  (972) 555-0100", {x:2.5,y:4.0,w:4.5,h:0.8,fontSize:13,color:NAVY,bold:true,align:"center",valign:"middle"});
-    cta.addText("Ziksatech Inc. · Plano, TX · WBE/HUB/WOSB Certified SAP Consulting", {x:0.4,y:6.5,w:8.5,h:0.5,fontSize:10,color:"4A6F8A",align:"center"});
-  }
+    // CTA SLIDE
+    slide([10,20,30]);
+    doc.setFillColor(3,105,161); doc.rect(0,H/2-60,W,120,"F");
+    title("NEXT STEPS", 170, 10, [...GOLD]);
+    title(data.callToAction||"Let's Build This Together", 210, 26);
+    doc.setFont("helvetica","italic"); doc.setFontSize(14); doc.setTextColor(...GOLD);
+    doc.text(data.suggestedNextStep||"Schedule a 30-minute discovery call", W/2, 260, {align:"center"});
+    doc.setFillColor(...GOLD); doc.roundedRect(W/2-160,290,320,36,8,8,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(...NAVY);
+    doc.text("manju@ziksatech.com  ·  (972) 555-0100", W/2, 313, {align:"center"});
+    footer("");
 
-  else if(type==="prospect" && data.company) {
-    // Prospect Intel report as PPTX
-    const s1 = pptx.addSlide();
-    s1.background = {color:NAVY};
-    s1.addShape(pptx.ShapeType.rect, {x:0,y:0,w:"100%",h:0.08,fill:{color:GOLD}});
-    s1.addText("PROSPECT INTELLIGENCE REPORT", {x:0.4,y:0.2,w:8.5,h:0.4,fontSize:10,color:GOLD,bold:true,charSpacing:3});
-    s1.addText(data.company, {x:0.4,y:0.7,w:8.5,h:1,fontSize:36,color:WHITE,bold:true});
-    s1.addText(`${data.industry||""} · ${data.headquarters||""} · ${data.employees||""} employees`, {x:0.4,y:1.75,w:8.5,h:0.5,fontSize:14,color:"7DD3FC"});
+  } else if(type==="prospect" && data.company) {
+    // PROSPECT INTEL SLIDES
+    // Slide 1: Overview
+    doc.addPage([W,H],"landscape");
+    doc.setFillColor(...NAVY); doc.rect(0,0,W,H,"F");
+    doc.setFillColor(...GOLD); doc.rect(0,0,W,6,"F"); doc.setFillColor(...GOLD); doc.rect(0,H-6,W,6,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...GOLD);
+    doc.text("PROSPECT INTELLIGENCE REPORT", 40, 35);
+    title(data.company||"", 70, 32); 
+    doc.setFont("helvetica","normal"); doc.setFontSize(12); doc.setTextColor(120,160,200);
+    doc.text(`${data.industry||""} · ${data.headquarters||""} · ${data.employees||""} employees · ${data.revenue||""}`, 40, 100);
+    // Fit scores bar chart
     const scores = data.fitScores||{};
-    const scoreItems = [["BRIM",scores.brim],["IS-U",scores.isU],["S/4HANA",scores.s4Migration],["Databricks",scores.databricks]].filter(s=>s[1]);
-    scoreItems.forEach(([k,v],i)=>{
-      s1.addText(`${k}: ${v}%`, {x:0.4+i*2.2,y:2.4,w:2,h:0.5,fontSize:14,color:v>=70?"#34d399":v>=50?"#f59e0b":"#f87171",bold:true});
+    const scoreItems = [["BRIM",scores.brim],["IS-U",scores.isU],["S/4HANA",scores.s4Migration],["Databricks",scores.databricks],["Managed Svcs",scores.managedServices]];
+    scoreItems.filter(s=>s[1]).forEach(([label,val],i) => {
+      const y = 130+i*40; const barW = (val||0)/100*(W-220);
+      const col = val>=70?[52,211,153]:val>=50?[245,158,11]:[248,113,113];
+      doc.setFillColor(15,30,50); doc.rect(40,y-14,W-80,24,"F");
+      doc.setFillColor(...col); doc.rect(40,y-14,barW,24,"F");
+      doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...WHITE);
+      doc.text(label,50,y); doc.text((val||0)+"%",W-50,y,{align:"right"});
     });
-    s1.addText(`ECC 2027 Risk: ${data.sapLandscape?.ecc2027Risk||"—"}`, {x:0.4,y:3.1,w:8.5,h:0.5,fontSize:14,color:"#f59e0b",bold:true});
-    s1.addText(data.outreachAngle||"", {x:0.4,y:3.7,w:8.5,h:1.5,fontSize:13,color:WHITE,valign:"top"});
-    s1.addText(`Estimated Deal: ${data.estimatedDealSize||"—"} · ${data.dealType||""} · ${data.urgency||""}`, {x:0.4,y:5.3,w:8.5,h:0.5,fontSize:12,color:GOLD,bold:true});
-    s1.addText(`Prepared by Ziksatech · ${new Date().toLocaleDateString()}`, {x:0.4,y:6.6,w:8.5,h:0.3,fontSize:9,color:"4A6F8A"});
+    doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(245,158,11);
+    doc.text("ECC 2027 Risk: "+(data.sapLandscape?.ecc2027Risk||"—"), 40, 360);
+    doc.text("Deal Est: "+(data.estimatedDealSize||"—")+" · "+(data.urgency||""), 40, 380);
+    footer(1);
+
+    // Slide 2: Outreach
+    slide();
+    title("OUTREACH STRATEGY", 50, 16, [...GOLD]);
+    doc.setFillColor(15,40,65); doc.roundedRect(30,70,W-60,70,6,6,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...GOLD); doc.text("EMAIL SUBJECT",50,95);
+    body(data.emailSubject||"",50,115,W-100,12,[200,220,240]);
+    doc.setFillColor(15,40,65); doc.roundedRect(30,150,W-60,120,6,6,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...GOLD); doc.text("OUTREACH ANGLE",50,175);
+    body(data.outreachAngle||"",50,200,W-100,11,[200,220,240]);
+    doc.setFillColor(3,105,161); doc.roundedRect(30,280,W-60,50,6,6,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...GOLD); doc.text("⚡ NEXT STEP:",50,308);
+    body(data.nextStep||"",180,308,W-240,12,[200,220,240]);
+    footer(2);
+
+  } else {
+    // Generic slides from content string
+    slide();
+    const lines = (data.content||data.sowTitle||"No content").split("\n");
+    let y = 60, page = 1;
+    lines.forEach(line => {
+      if(y > 400) { slide(); footer(++page); y = 60; }
+      if(line.startsWith("## ")) {
+        doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(...GOLD);
+        doc.text(line.replace("## ",""),40,y); y+=28;
+      } else if(line.startsWith("# ")) {
+        doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.setTextColor(...WHITE);
+        doc.text(line.replace("# ",""),40,y); y+=32;
+      } else if(line.trim()) {
+        doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(180,200,220);
+        const wrapped = doc.splitTextToSize(line,W-80);
+        doc.text(wrapped,40,y); y+=wrapped.length*14;
+      } else { y+=8; }
+    });
+    footer(page);
   }
 
-  const filename = `Ziksatech-${(data.deckTitle||data.company||"Report").replace(/[^a-zA-Z0-9]/g,"-")}-${new Date().toISOString().slice(0,10)}.pptx`;
-  await pptx.writeFile({fileName:filename});
+  const filename = `Ziksatech-${type}-${(data.deckTitle||data.company||data.sowTitle||"slides").replace(/[^a-zA-Z0-9]/g,"-").slice(0,40)}-${new Date().toISOString().slice(0,10)}.pdf`;
+  doc.save(filename);
   return filename;
 };
 
+
 // ── DOCX Export ─────────────────────────────────────────────────────────────
 const exportToDOCX = async (data, type="sow") => {
-  // Use docx.js from CDN
   await loadScript("https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.js");
   if (!window.docx) throw new Error("docx library failed to load. Try again.");
   const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
@@ -22328,130 +22420,125 @@ const exportToDOCX = async (data, type="sow") => {
 
   const GOLD_COLOR = "C9A84C", NAVY_COLOR = "0D1B2A", BLUE_COLOR = "1E6091";
 
-  const heading = (text, level=1) => new Paragraph({
-    text, heading: level===1?HeadingLevel.HEADING_1:level===2?HeadingLevel.HEADING_2:HeadingLevel.HEADING_3,
-    spacing:{before:240,after:120},
+  const h1 = (text) => new Paragraph({ text: text||"", heading: HeadingLevel.HEADING_1, spacing:{before:320,after:160} });
+  const h2 = (text) => new Paragraph({ text: text||"", heading: HeadingLevel.HEADING_2, spacing:{before:240,after:120} });
+  const h3 = (text) => new Paragraph({ text: text||"", heading: HeadingLevel.HEADING_3, spacing:{before:160,after:80} });
+  const body = (text) => new Paragraph({ children:[new TextRun({text:String(text||""),size:22,font:"Calibri"})], spacing:{after:160} });
+  const bullet = (text) => new Paragraph({ children:[new TextRun({text:"• "+String(text||""),size:22,font:"Calibri"})], spacing:{after:80}, indent:{left:360} });
+  const divider = () => new Paragraph({ border:{bottom:{color:GOLD_COLOR,space:1,style:BorderStyle.SINGLE,size:6}}, spacing:{after:240} });
+  const pageBreak = () => new Paragraph({ children:[new PageBreak()] });
+  const coverLine = (text,size,color,bold=false) => new Paragraph({
+    children:[new TextRun({text:String(text||""),size,bold,color:color||NAVY_COLOR,font:"Calibri"})],
+    alignment:AlignmentType.CENTER, spacing:{after:120}
   });
-  const body = (text) => new Paragraph({
-    children:[new TextRun({text,size:22,font:"Calibri"})],
-    spacing:{after:160},
-  });
-  const bullet = (text) => new Paragraph({
-    children:[new TextRun({text:"• "+text,size:22,font:"Calibri"})],
-    spacing:{after:80},indent:{left:360},
-  });
-  const divider = () => new Paragraph({border:{bottom:{color:"C9A84C",space:1,style:BorderStyle.SINGLE,size:6}},spacing:{after:240}});
+
+  // ── Parse markdown content into structured DOCX ──────────────────────────
+  // Handles both structured data objects AND plain markdown text (data.content)
+  const parseMarkdown = (text) => {
+    const children = [];
+    if(!text) return children;
+    const lines = text.split("\n");
+    lines.forEach(line => {
+      if(line.startsWith("# "))       children.push(h1(line.slice(2).trim()));
+      else if(line.startsWith("## ")) children.push(h2(line.slice(3).trim()));
+      else if(line.startsWith("### "))children.push(h3(line.slice(4).trim()));
+      else if(line.startsWith("- ")||line.startsWith("* ")) children.push(bullet(line.slice(2).trim()));
+      else if(line.startsWith("**")||line.startsWith("__")) children.push(body(line.replace(/\*\*|__/g,"").trim()));
+      else if(line.trim() === "---" || line.trim() === "___") children.push(divider());
+      else if(line.trim()) children.push(body(line.trim()));
+    });
+    return children;
+  };
 
   let children = [];
 
-  if(type==="sow" && data.sowTitle) {
-    // Cover
-    children.push(new Paragraph({children:[new TextRun({text:"ZIKSATECH INC.",size:48,bold:true,color:NAVY_COLOR,font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{before:480,after:240}}));
-    children.push(new Paragraph({children:[new TextRun({text:"Statement of Work",size:36,bold:true,color:GOLD_COLOR,font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{after:120}}));
-    children.push(new Paragraph({children:[new TextRun({text:data.sowTitle,size:28,bold:true,color:BLUE_COLOR,font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{after:480}}));
-    children.push(new Paragraph({children:[new TextRun({text:"WBE | HUB | WOSB Certified SAP Consulting Firm",size:18,italic:true,color:"666666",font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{after:240}}));
-    children.push(new Paragraph({children:[new TextRun({text:`Prepared: ${new Date().toLocaleDateString()}  ·  Plano, TX`,size:18,color:"888888",font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{after:960}}));
-    children.push(new Paragraph({children:[new PageBreak()]}));
+  // ── COVER PAGE (all doc types) ────────────────────────────────────────────
+  const docTitle = data.sowTitle || data.title || (type==="sow"?"Statement of Work":type==="rfp"?"RFP Response":"Document");
+  const clientName = data.company || "";
+  
+  children.push(new Paragraph({spacing:{before:720}}));
+  children.push(coverLine("ZIKSATECH, LLC", 48, NAVY_COLOR, true));
+  children.push(coverLine("WBE | HUB | WOSB Certified SAP Consulting", 20, "666666", false));
+  children.push(new Paragraph({spacing:{before:240}}));
+  children.push(coverLine(docTitle, 36, GOLD_COLOR, true));
+  if(clientName) children.push(coverLine(clientName, 24, BLUE_COLOR, true));
+  children.push(coverLine(`Prepared: ${new Date().toLocaleDateString()}  ·  Plano, TX`, 18, "888888"));
+  children.push(coverLine("manju@ziksatech.com  |  ziksatech.com", 18, "888888"));
+  children.push(pageBreak());
 
-    children.push(heading("1. Executive Summary"));
-    children.push(body(data.executiveSummary||""));
-    children.push(divider());
-
-    if(data.scope) {
-      children.push(heading("2. Scope of Work"));
-      children.push(body(data.scope));
+  // ── CONTENT: use markdown parser for content field, structured for parsed data ──
+  if(data.content && typeof data.content === "string" && data.content.length > 50) {
+    // AI-generated markdown text — parse it into proper Word formatting
+    children.push(...parseMarkdown(data.content));
+  } else {
+    // Structured data fields (prospect intel, etc.)
+    if(data.executiveSummary) {
+      children.push(h1("Executive Summary"));
+      children.push(body(data.executiveSummary));
+      children.push(divider());
     }
-
+    if(data.scope) { children.push(h1("Scope of Work")); children.push(body(data.scope)); }
     if(data.phases?.length) {
-      children.push(heading("3. Project Phases"));
+      children.push(h1("Project Phases"));
       data.phases.forEach((phase,i)=>{
-        children.push(heading(phase.name||`Phase ${i+1}`, 2));
-        if(phase.objectives?.length) {
-          children.push(heading("Objectives", 3));
-          phase.objectives.forEach(o=>children.push(bullet(o)));
-        }
-        if(phase.deliverables?.length) {
-          children.push(heading("Deliverables", 3));
-          phase.deliverables.forEach(d=>children.push(bullet(d)));
-        }
-        if(phase.duration) children.push(body(`Duration: ${phase.duration}`));
-        if(phase.fee) children.push(body(`Investment: ${phase.fee}`));
+        children.push(h2(phase.name||`Phase ${i+1}`));
+        (phase.objectives||[]).forEach(o=>children.push(bullet(o)));
+        (phase.deliverables||[]).forEach(d=>children.push(bullet(d)));
+        if(phase.duration) children.push(body("Duration: "+phase.duration));
       });
     }
-
     if(data.assumptions?.length) {
-      children.push(heading("4. Assumptions & Dependencies"));
+      children.push(h1("Assumptions"));
       data.assumptions.forEach(a=>children.push(bullet(a)));
     }
     if(data.exclusions?.length) {
-      children.push(heading("5. Exclusions"));
+      children.push(h1("Exclusions"));
       data.exclusions.forEach(e=>children.push(bullet(e)));
     }
+    // Prospect Intel fields
+    if(data.company) {
+      children.push(h1("Company Overview"));
+      [["Industry",data.industry],["Headquarters",data.headquarters],["Employees",data.employees],["Revenue",data.revenue]].filter(([,v])=>v).forEach(([k,v])=>children.push(body(`${k}: ${v}`)));
+    }
+    if(data.sapLandscape) {
+      children.push(h1("SAP Landscape & Risk"));
+      children.push(body("ECC 2027 Risk: "+(data.sapLandscape.ecc2027Risk||"—")));
+      children.push(body(data.sapLandscape.ecc2027RiskReason||""));
+    }
+    if(data.keyTargets?.length) {
+      children.push(h1("Key Contacts to Target"));
+      data.keyTargets.forEach(t=>children.push(bullet(`${t.title} (${t.dept}): ${t.why}`)));
+    }
+    if(data.outreachAngle) {
+      children.push(h1("Outreach Strategy"));
+      if(data.emailSubject) { children.push(h2("Email Subject Line")); children.push(body(data.emailSubject)); }
+      if(data.openingLine)  { children.push(h2("Opening Line"));       children.push(body(data.openingLine)); }
+      children.push(h2("Full Outreach Angle")); children.push(body(data.outreachAngle));
+    }
+    if(data.nextStep) { children.push(h1("Next Step")); children.push(body(data.nextStep)); }
+  }
 
-    children.push(heading("6. Why Ziksatech"));
-    children.push(body(data.whyZiksatech||"Ziksatech is a WBE/HUB/WOSB certified SAP consulting firm specializing in BRIM, IS-U, and S/4HANA transformations."));
-
-    children.push(new Paragraph({children:[new PageBreak()]}));
-    children.push(heading("Signature & Acceptance"));
-    children.push(body("By signing below, both parties agree to the terms and conditions outlined in this Statement of Work."));
-    [["Client",""],["Ziksatech Inc.","Manju Murthy, CEO"]].forEach(([party,name])=>{
-      children.push(new Paragraph({children:[new TextRun({text:`${party}: `,bold:true,font:"Calibri",size:22}),new TextRun({text:`${name}`,font:"Calibri",size:22})],spacing:{before:360}}));
-      children.push(new Paragraph({children:[new TextRun({text:"Signature: _____________________________    Date: ____________",font:"Calibri",size:20,color:"888888"})],spacing:{before:80,after:200}}));
+  // ── SIGNATURE (SOW only) ──────────────────────────────────────────────────
+  if(type==="sow") {
+    children.push(pageBreak());
+    children.push(h1("Acceptance & Signature"));
+    children.push(body("By signing below, both parties agree to the terms outlined in this Statement of Work."));
+    [["Client",clientName||""],["Ziksatech, LLC","Manju Murthy, CEO"]].forEach(([party,name])=>{
+      children.push(new Paragraph({children:[new TextRun({text:`${party}: `,bold:true,font:"Calibri",size:22}),new TextRun({text:name,font:"Calibri",size:22})],spacing:{before:400}}));
+      children.push(new Paragraph({children:[new TextRun({text:"Signature: ___________________________    Date: ____________",font:"Calibri",size:20,color:"888888"})],spacing:{before:80,after:240}}));
     });
   }
 
-  else if(type==="rfp") {
-    children.push(new Paragraph({children:[new TextRun({text:"RFP RESPONSE",size:44,bold:true,color:NAVY_COLOR,font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{before:480,after:120}}));
-    children.push(new Paragraph({children:[new TextRun({text:data.title||"RFP Response",size:28,color:GOLD_COLOR,font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{after:480}}));
-    children.push(new Paragraph({children:[new PageBreak()]}));
-    const sections = data.sections||data.content?.split("\n##")||[];
-    if(typeof sections[0]==="string") {
-      children.push(body(data.content||JSON.stringify(data)));
-    } else {
-      sections.forEach(s=>{
-        if(s.title) children.push(heading(s.title));
-        if(s.content) children.push(body(s.content));
-        if(s.bullets) s.bullets.forEach(b=>children.push(bullet(b)));
-      });
-    }
-  }
-
-  else if(type==="prospect") {
-    children.push(new Paragraph({children:[new TextRun({text:"PROSPECT INTELLIGENCE REPORT",size:44,bold:true,color:NAVY_COLOR,font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{before:480,after:120}}));
-    children.push(new Paragraph({children:[new TextRun({text:data.company||"",size:32,color:GOLD_COLOR,font:"Calibri"})],alignment:AlignmentType.CENTER,spacing:{after:480}}));
-    children.push(heading("Company Overview"));
-    [["Industry",data.industry],["Headquarters",data.headquarters],["Employees",data.employees],["Revenue",data.revenue]].filter(([,v])=>v).forEach(([k,v])=>children.push(body(`${k}: ${v}`)));
-    children.push(heading("SAP Landscape"));
-    children.push(body(`ECC 2027 Risk: ${data.sapLandscape?.ecc2027Risk||"—"}`));
-    children.push(body(data.sapLandscape?.ecc2027RiskReason||""));
-    children.push(heading("Fit Scores"));
-    const scores = data.fitScores||{};
-    [["BRIM",scores.brim],["IS-U",scores.isU],["S/4HANA",scores.s4Migration],["Databricks",scores.databricks],["Managed Services",scores.managedServices]].filter(([,v])=>v).forEach(([k,v])=>children.push(body(`${k}: ${v}%`)));
-    children.push(heading("Key Contacts to Target"));
-    (data.keyTargets||[]).forEach(t=>children.push(body(`${t.title} (${t.dept}): ${t.why}`)));
-    children.push(heading("Outreach Strategy"));
-    children.push(heading("Email Subject Line",2));
-    children.push(body(data.emailSubject||""));
-    children.push(heading("Opening Line",2));
-    children.push(body(data.openingLine||""));
-    children.push(heading("Full Outreach Angle",2));
-    children.push(body(data.outreachAngle||""));
-    children.push(heading("Deal Intelligence"));
-    [["Estimated Deal Size",data.estimatedDealSize],["Deal Type",data.dealType],["Urgency",data.urgency]].filter(([,v])=>v).forEach(([k,v])=>children.push(body(`${k}: ${v}`)));
-    children.push(heading("Next Step This Week"));
-    children.push(body(data.nextStep||""));
-    children.push(new Paragraph({children:[new TextRun({text:`Prepared by Ziksatech · ${new Date().toLocaleDateString()}`,size:18,italic:true,color:"888888"})],alignment:AlignmentType.CENTER,spacing:{before:480}}));
-  }
-
-  const doc = new Document({sections:[{children}], creator:"Ziksatech OPS Center", description:"Generated by Ziksatech AI"});
+  const doc = new Document({ sections:[{children}], creator:"Ziksatech OPS Center", description:"Generated by Ziksatech AI" });
   const buffer = await Packer.toBlob(doc);
   const url = URL.createObjectURL(buffer);
   const a = document.createElement("a");
-  const filename = `Ziksatech-${type}-${(data.sowTitle||data.company||"report").replace(/[^a-zA-Z0-9]/g,"-").slice(0,40)}-${new Date().toISOString().slice(0,10)}.docx`;
+  const filename = `Ziksatech-${type}-${(data.sowTitle||data.company||data.title||"doc").replace(/[^a-zA-Z0-9]/g,"-").slice(0,40)}-${new Date().toISOString().slice(0,10)}.docx`;
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
   return filename;
 };
+
 
 // ── XLSX Export ─────────────────────────────────────────────────────────────
 const exportToXLSX = async (data, type="prospect") => {
@@ -22541,8 +22628,8 @@ function ExportButtons({ data, type, label="Export" }) {
   };
 
   const formats = type==="deck"||type==="prospect"
-    ? [{f:"pptx",icon:"📊",label:"PPTX"},{f:"docx",icon:"📄",label:"DOCX"},{f:"xlsx",icon:"📋",label:"XLSX"}]
-    : [{f:"docx",icon:"📄",label:"DOCX"},{f:"pptx",icon:"📊",label:"PPTX"}];
+    ? [{f:"pptx",icon:"📊",label:"Slides PDF"},{f:"docx",icon:"📄",label:"DOCX"},{f:"xlsx",icon:"📋",label:"XLSX"}]
+    : [{f:"docx",icon:"📄",label:"DOCX"},{f:"pptx",icon:"📊",label:"Slides PDF"}];
 
   return (
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -22612,7 +22699,7 @@ const generateInvoicePDF = async (inv, clients, appSettings) => {
   doc.setFillColor(...NAVY); doc.rect(0,0,W,80,"F");
   doc.setFillColor(...GOLD);  doc.rect(0,78,W,3,"F");
   doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.setTextColor(...WHITE);
-  doc.text(co.companyName||"ZIKSATECH INC.", margin, 38);
+  doc.text(co.companyName||"ZIKSATECH, LLC", margin, 38);
   doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(180,200,220);
   doc.text("WBE | HUB | WOSB Certified SAP Consulting", margin, 52);
   doc.text(co.address||"Plano, TX 75024  |  manju@ziksatech.com", margin, 63);
@@ -22711,7 +22798,7 @@ const generateInvoicePDF = async (inv, clients, appSettings) => {
   const pageH=792;
   doc.setFillColor(...NAVY); doc.rect(0,pageH-30,W,30,"F");
   doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(150,180,200);
-  doc.text(`${co.companyName||"Ziksatech Inc."} | WBE/HUB/WOSB Certified | ${co.email||"manju@ziksatech.com"}`, W/2, pageH-12, {align:"center"});
+  doc.text(`${co.companyName||"Ziksatech, LLC"} | WBE/HUB/WOSB Certified | ${co.email||"manju@ziksatech.com"}`, W/2, pageH-12, {align:"center"});
 
   const filename=`${inv.id||"invoice"}-${client.name||"client"}.pdf`.replace(/[^a-zA-Z0-9.-]/g,"-");
   doc.save(filename);
@@ -22778,7 +22865,7 @@ const generateReportPDF = async (title, sections, filename) => {
   // Footer
   doc.setFillColor(...NAVY); doc.rect(0,762,W,30,"F");
   doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(150,180,200);
-  doc.text("Ziksatech Inc. | WBE/HUB/WOSB Certified | manju@ziksatech.com", W/2, 780, {align:"center"});
+  doc.text("Ziksatech, LLC | WBE/HUB/WOSB Certified | manju@ziksatech.com", W/2, 780, {align:"center"});
 
   doc.save(filename||`ziksatech-report-${Date.now()}.pdf`);
 };
