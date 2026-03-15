@@ -2607,6 +2607,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="home"       && <HomePage      {...shared} authProfile={authProfile} />}
         {tab==="rfpgen"     && <RFPGenerator   {...shared} />}
         {tab==="prospectintel" && <ProspectIntel crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} addAudit={shared.addAudit} />}
+        {tab==="soplibrary"   && <SOPLibrary roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} apInvoices={shared.apInvoices} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
         {tab==="sowgen"     && <SOWGenerator   {...shared} />}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
@@ -2636,7 +2637,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="timesheet"  && <TimesheetApproval {...shared}/>}
         {tab==="clients"    && <ClientPortfolio {...shared}/>}
         {tab==="pipeline"   && <Pipeline   {...shared}/>}
-        {tab==="ebitda"     && <EbitdaOpt  {...shared}/>}
+        {tab==="ebitda"     && <EbitdaOpt  ebitdaLevers={shared.ebitdaLevers} setEbitdaLevers={shared.setEbitdaLevers} finInvoices={shared.finInvoices} finPayments={shared.finPayments} finExpenses={shared.finExpenses} roster={shared.roster} apInvoices={shared.apInvoices} adpRuns={shared.adpRuns}/>}
         {tab==="pl"         && <PandL      {...shared}/>}
         {tab==="finance"    && <FinanceModule {...shared}/> }
         {tab==="cashflow"   && <CashFlowModule {...shared}/>}
@@ -3828,9 +3829,16 @@ function Pipeline({ pipeline, setPipeline }) {
   );
 }
 
-function EbitdaOpt({ ebitdaLevers, setEbitdaLevers }) {
+function EbitdaOpt({ ebitdaLevers, setEbitdaLevers, finInvoices, finPayments, finExpenses, roster, apInvoices, adpRuns }) {
   const BASE_REV = 2350000, BASE_EBITDA = 188000;
-  const toggle = id => setEbitdaLevers(ls=>ls.map(l=>l.id===id?{...l,done:!l.done}:l));
+  // Real revenue from finInvoices lines
+  const BASE_REV = (finInvoices||[]).reduce((s,inv)=>s+(inv.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0),0) || 2350000;
+  // Real collected
+  const collected = (finPayments||[]).reduce((s,p)=>s+(+p.amount||0),0) || 0;
+  // Real expenses: AP invoices paid + ADP payroll
+  const apPaid  = (apInvoices||[]).filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
+  const payroll = (adpRuns||[]).filter(r=>r.status==="processed").reduce((s,r)=>s+(+r.netPay||0),0);
+  const BASE_EBITDA = Math.max(0, (collected||BASE_REV*0.9) - apPaid - payroll - BASE_REV*0.08) || 188000;
   const active = ebitdaLevers.filter(l=>l.done);
   const revUplift = active.reduce((s,l)=>s+l.revImpact,0);
   const ebitdaUplift = active.reduce((s,l)=>s+l.ebitdaImpact,0);
