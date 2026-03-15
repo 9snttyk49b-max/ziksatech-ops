@@ -22082,8 +22082,7 @@ Next: ${r.nextStep}`,
               {/* Outreach section */}
               <div className="card" style={{padding:"18px 20px"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#f87171",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>📧 Outreach Script</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14"}}>
-                  <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>                  <div>
                     <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>EMAIL SUBJECT LINE</div>
                     <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,fontSize:13,fontWeight:600,color:"#e2e8f0",border:"1px solid #1a2d45"}}>
                       {display.emailSubject}
