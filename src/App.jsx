@@ -67,18 +67,18 @@ const RBAC = {
   vendors:      ["super_admin","admin","accounts"],
   glexport:     ["super_admin","admin","accounts"],
   budget:       ["super_admin","admin","accounts"],
-  taxcal:       ["super_admin","admin","accounts"],
-  benefits:     ["super_admin","admin","hr_immigration","employee"],
-  adpstubs:     ["super_admin","admin","accounts"],
-  reconcile:    ["super_admin","admin","accounts"],
+  taxcal:       ["super_admin","admin","accounts","employee","contractor"],
+  benefits:     ["super_admin","admin","hr_immigration","employee","contractor"],
+  adpstubs:     ["super_admin","admin","accounts","employee","contractor"],
+  reconcile:    ["super_admin","admin","accounts","employee","contractor"],
   bankanalyzer: ["super_admin","admin","accounts"],  // NEW: Bank & CC Analyzer
   recruiting:   ["super_admin","admin","hr_immigration"],
   pipeline:     ["super_admin","admin","hr_immigration"],
   resourceplan: ["super_admin","admin","hr_immigration"],
   consultanthub: ["super_admin","admin","hr_immigration","employee","contractor"],
   compliance:   ["super_admin","admin","hr_immigration"],
-  paffiles:     ["super_admin","admin","hr_immigration"],
-  minicalc:     ["super_admin","admin","accounts","hr_immigration"],
+  paffiles:     ["super_admin","admin","hr_immigration","employee","contractor"],
+  minicalc:     ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],           // settings — super_admin ONLY
@@ -2629,9 +2629,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
         {tab==="minicalc"   && <MiniCalculator />}
-        {tab==="paffiles"   && <PAFFiles       {...shared} />}
-        {tab==="adpstubs"   && <ADPPayStubs    {...shared} />}
-        {tab==="reconcile"  && <ReconcileReport {...shared} />}
+        {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
+        {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
+        {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
         {tab==="bankanalyzer" && <BankAnalyzer authProfile={authProfile}/>}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
@@ -21392,24 +21392,36 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
     { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn revenue share",                                                                color:"#f59e0b",  tab:"ideapad" },
   ];
 
-  // CONSULTANT tiles — timesheet, project, idea, PTO
-  const myConsultant = safeRoster.find(r => r.email?.toLowerCase() === authProfile?.email?.toLowerCase() || r.name?.toLowerCase().includes(authProfile?.full_name?.split(" ")[0]?.toLowerCase() || ""));
+  // CONSULTANT tiles — full self-service dashboard
+  const myConsultant = safeRoster.find(r => r.email?.toLowerCase() === authProfile?.email?.toLowerCase() || r.name?.toLowerCase().includes((authProfile?.full_name||"").split(" ")[0]?.toLowerCase() || "_"));
   const myClient     = myConsultant?.client || "—";
   const myUtil       = myConsultant ? `${Math.round((myConsultant.util||0)*100)}%` : "—";
   const myRate       = myConsultant ? `$${myConsultant.billRate||0}/hr` : "—";
-  const myPTO        = safePTO.filter(p => p.employeeName?.toLowerCase().includes(authProfile?.full_name?.split(" ")[0]?.toLowerCase()||"") || p.employeeId===authProfile?.id);
+  const myPTO        = safePTO.filter(p => p.employeeName?.toLowerCase().includes((authProfile?.full_name||"").split(" ")[0]?.toLowerCase()||"_") || p.employeeId===authProfile?.id);
   const pendingMyPTO = myPTO.filter(p=>p.status==="pending").length;
 
-  const consultantTiles = [
-    { icon:"⏱",  label:"My Timesheet",       value:"Submit",           sub:"Weekly hours & billing",                                                            color:"#38bdf8",  tab:"timesheet" },
-    { icon:"🏢", label:"My Client",           value:myClient,           sub:"Current engagement",                                                               color:"#34d399",  tab:"projects" },
-    { icon:"📈", label:"My Utilization",      value:myUtil,             sub:"This month",                                                                        color:myUtil!=="—"&&+myUtil.replace("%","")>=80?"#34d399":"#f59e0b", tab:"timesheet" },
-    { icon:"🏖",  label:"My PTO",             value:pendingMyPTO>0?`${pendingMyPTO} pending`:"Request", sub:"Time off balance",                                color:pendingMyPTO>0?"#f59e0b":"#38bdf8", tab:"pto" },
+  // Row 1: work essentials
+  const consultantTilesRow1 = [
+    { icon:"⏱",  label:"My Timesheet",       value:"Log Hours",        sub:"Weekly hours & billing",                                                             color:"#38bdf8",  tab:"timesheet" },
+    { icon:"🏢", label:"My Client",           value:myClient,           sub:"Current engagement",                                                                color:"#34d399",  tab:"consultanthub" },
+    { icon:"📈", label:"My Utilization",      value:myUtil,             sub:`${myRate} · this month`,                                                             color:(myConsultant&&(myConsultant.util||0)>=0.8)?"#34d399":"#f59e0b", tab:"timesheet" },
+    { icon:"🏖",  label:"My PTO",             value:pendingMyPTO>0?`${pendingMyPTO} pending`:"Request", sub:"Time off & balance",                                color:pendingMyPTO>0?"#f59e0b":"#38bdf8", tab:"pto" },
+  ];
+  // Row 2: self-service tools
+  const consultantTilesRow2 = [
+    { icon:"🧮", label:"Mini Calculator",     value:"Calculate",        sub:"Quick math tool",                                                                   color:"#a78bfa",  tab:"minicalc" },
+    { icon:"💊", label:"My Benefits",         value:"View",             sub:"Health, dental, 401k",                                                              color:"#38bdf8",  tab:"benefits" },
+    { icon:"💰", label:"Pay Stubs",           value:"View",             sub:"Salary & deductions",                                                               color:"#34d399",  tab:"adpstubs" },
+    { icon:"📋", label:"Tax Calculator",      value:"Estimate",         sub:"W-4 & tax savings",                                                                 color:"#f59e0b",  tab:"taxcal" },
+  ];
+  // Row 3: documents & ideas
+  const consultantTilesRow3 = [
+    { icon:"📁", label:"My PAF Files",        value:"View",             sub:"Personnel action forms",                                                            color:"#60a5fa",  tab:"paffiles" },
+    { icon:"🧾", label:"My Statements",       value:"View",             sub:"Pay & reconciliation",                                                              color:"#94a3b8",  tab:"reconcile" },
     { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn 10% revenue share",                                                            color:"#f59e0b",  tab:"ideapad" },
     { icon:"👤", label:"My Profile",         value:"View",             sub:"Info & documents",                                                                   color:"#a78bfa",  tab:"myprofile" },
-    { icon:"🎯", label:"Open Roles",         value:actCands>0?actCands+" openings":"Explore", sub:"Internal opportunities",                                     color:"#60a5fa",  tab:"pipeline" },
-    { icon:"📢", label:"Company Updates",    value:"Latest",           sub:"Announcements",                                                                      color:"#64748b",  tab:"home" },
   ];
+  const consultantTiles = [...consultantTilesRow1, ...consultantTilesRow2, ...consultantTilesRow3];
 
   // Pick tile set based on role
   const tiles = isConsultant ? consultantTiles
@@ -21458,16 +21470,16 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
       <div style={{ display:"grid", gridTemplateColumns:"1fr 310px", gap:18, alignItems:"start" }}>
         {/* LEFT */}
         <div>
-          {/* Role-based tiles — 4 per row × 2 rows */}
+          {/* Role-based tiles */}
           <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:16 }}>
             {tiles.map((t,i) => (
-              <div key={i} onClick={() => t.tab && setTab(t.tab)} style={tileStyle()}
+              <div key={i} onClick={() => t.tab && t.tab!=="home" && setTab(t.tab)} style={{...tileStyle(), opacity: t.tab==="home"?0.6:1}}
                 onMouseEnter={e => e.currentTarget.style.borderColor = "#2a4d75"}
                 onMouseLeave={e => e.currentTarget.style.borderColor = "#1a2d45"}>
-                <div style={{ fontSize:22, marginBottom:6 }}>{t.icon}</div>
-                <div style={{ fontSize:20, fontWeight:800, color:t.color||"#38bdf8", fontFamily:"'DM Mono',monospace", lineHeight:1.1 }}>{window.__ZT_MASK__!==false && typeof t.value==="string" && t.value.startsWith("$") ? "$ ●●●" : t.value}</div>
-                <div style={{ fontSize:12, fontWeight:600, color:"#cbd5e1", marginTop:4 }}>{t.label}</div>
-                <div style={{ fontSize:10, color:"#475569", marginTop:3 }}>{t.sub}</div>
+                <div style={{ fontSize:20, marginBottom:5 }}>{t.icon}</div>
+                <div style={{ fontSize:18, fontWeight:800, color:t.color||"#38bdf8", fontFamily:"'DM Mono',monospace", lineHeight:1.1 }}>{window.__ZT_MASK__!==false && typeof t.value==="string" && t.value.startsWith("$") ? "$ ●●●" : t.value}</div>
+                <div style={{ fontSize:11, fontWeight:600, color:"#cbd5e1", marginTop:4 }}>{t.label}</div>
+                <div style={{ fontSize:10, color:"#475569", marginTop:2 }}>{t.sub}</div>
               </div>
             ))}
           </div>
@@ -21533,7 +21545,9 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {isConsultant && [
                 ["⏱ Log Hours", "timesheet"], ["🏖 Request PTO", "pto"],
-                ["💡 Submit Idea", "ideapad"], ["👤 My Profile", "myprofile"],
+                ["💊 Benefits", "benefits"], ["💰 Pay Stubs", "adpstubs"],
+                ["🧮 Calculator", "minicalc"], ["📁 My PAF", "paffiles"],
+                ["💡 IdeaPad", "ideapad"], ["👤 My Profile", "myprofile"],
               ].map(([l,t]) => <button key={t} className="btn bg" style={{fontSize:11}} onClick={()=>setTab(t)}>{l}</button>)}
               {isHR && [
                 ["👥 Roster", "roster"], ["📋 Compliance", "compliance"],
@@ -24424,24 +24438,25 @@ function IdeaPad({ authProfile, addAudit }) {
         'Effort: '+idea.effort,
       ].filter(Boolean).join('. ');
 
-      await callClaude(
-        'You are a business idea evaluator for Ziksatech, a WBE/HUB/WOSB certified SAP consulting firm in Plano TX targeting $25M by 2030. Be specific and realistic. You MUST respond with ONLY a raw JSON object — no markdown, no code fences, no explanation. The JSON must be on a single conceptual structure with these exact keys: score (integer 0-100), verdict (one of: Strong Opportunity, Good Idea, Needs Work, Not Viable), revenueEstimate (string), timeToRevenue (string), implementationSteps (array of 3 strings), risks (array of 2 strings), strengths (array of 2 strings), recommendation (string under 100 words), revenueShare (string showing 10% estimate).',
-        'Evaluate this Ziksatech business idea and return ONLY the JSON object: '+ideaContext,
-        txt=>{ full+=txt; }, 900
-      );
-      // Robust JSON extraction — handles markdown fences, leading text, trailing text
-      let cleaned = full.trim();
-      // Strip markdown code fences
-      cleaned = cleaned.replace(/```json\s*/gi,'').replace(/```\s*/g,'');
-      // Find first { and last }
-      const start = cleaned.indexOf('{');
-      const end   = cleaned.lastIndexOf('}');
-      if(start === -1 || end === -1) throw new Error('No JSON object found in AI response');
-      cleaned = cleaned.slice(start, end+1);
-      // Fix common JSON issues: remove trailing commas before } or ]
-      cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
-      // Replace literal newlines inside string values with spaces
-      cleaned = cleaned.split('\n').join(' ').split('\r').join('');
+      // Use non-streaming fetch for reliable JSON response
+      const evalResp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 900,
+          system: 'You are a business idea evaluator for Ziksatech, a WBE/HUB/WOSB certified SAP consulting firm in Plano TX. Return ONLY a valid JSON object, no markdown, no explanation.',
+          messages: [{role:'user', content:'Evaluate this idea and return JSON with exactly these keys - score (integer 0-100), verdict (string: Strong Opportunity or Good Idea or Needs Work or Not Viable), revenueEstimate (string), timeToRevenue (string), implementationSteps (array of 3 strings), risks (array of 2 strings), strengths (array of 2 strings), recommendation (string), revenueShare (string showing 10% estimate). Idea: '+ideaContext}]
+        })
+      });
+      const evalData = await evalResp.json();
+      if (!evalResp.ok) throw new Error(evalData?.error?.message || 'API error '+evalResp.status);
+      full = (evalData?.content || []).map(b=>b.text||'').join('');
+      // Extract JSON object robustly
+      let cleaned = full.trim().replace(/```json|```/gi,'').trim();
+      const jStart = cleaned.indexOf('{'), jEnd = cleaned.lastIndexOf('}');
+      if(jStart === -1) throw new Error('No JSON returned. Try again.');
+      cleaned = cleaned.slice(jStart, jEnd+1).replace(/,(\s*[}\]])/g,'$1');
       const parsed = JSON.parse(cleaned);
       const updated = {...(evalResult||{}), [idea.id]: parsed};
       setEvalRes(updated);
@@ -25176,10 +25191,16 @@ Write an engaging LinkedIn post. Include relevant hashtags at the end (5-8 hasht
 // ═══════════════════════════════════════════════════════════════════════
 // PAF FILES — AI-powered immigration document auto-mapping from uploads
 // ═══════════════════════════════════════════════════════════════════════
-function PAFFiles({ roster }) {
+function PAFFiles({ roster, authProfile }) {
   const [records, setRecords] = useState(() => {
     try { return JSON.parse(localStorage.getItem("zt-paf2") || "[]"); } catch { return []; }
   });
+
+  const isEmployee = ["employee","contractor"].includes(authProfile?.role);
+  const myName = (authProfile?.full_name || "").toLowerCase();
+  const visibleRecords = isEmployee
+    ? records.filter(r => (r.employee||r.name||"").toLowerCase().includes(myName.split(" ")[0]||"_"))
+    : records;
   const [uploading, setUploading] = useState(false);
   const [aiResult, setAiResult] = useState("");
   const [parsed, setParsed] = useState([]);
@@ -25225,7 +25246,7 @@ ${text.slice(0, 4000)}`;
   const docTypes = ["I-797","I-94","I-20","OPT EAD","H-1B Petition","Green Card","Passport","Visa Stamp","I-539","I-485","I-140","EAD Card","Other"];
   const statusColor = {current:"#34d399",expiring:"#f59e0b",expired:"#f87171",pending:"#38bdf8"};
 
-  const filtered = records.filter(r => !search || (r.consultantName||"").toLowerCase().includes(search.toLowerCase()) || (r.docType||"").toLowerCase().includes(search.toLowerCase()));
+  const filtered = visibleRecords.filter(r=> !search || (r.consultantName||"").toLowerCase().includes(search.toLowerCase()) || (r.docType||"").toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div>
@@ -25245,14 +25266,14 @@ ${text.slice(0, 4000)}`;
             color:viewMode==="table"?"#fff":"#475569"}}>
           📋 All Records
         </button>
-        <span style={{marginLeft:"auto",fontSize:11,color:"#334155"}}>{records.length} documents · {(roster||[]).length} consultants</span>
+        <span style={{marginLeft:"auto",fontSize:11,color:"#334155"}}>{visibleRecords.length} documents · {(roster||[]).length} consultants</span>
       </div>
 
       {/* Consultant view */}
       {viewMode==="consultant" && (
         <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
           {(roster||[]).map(r => {
-            const docs = records.filter(d=>(d.consultantName||"").toLowerCase()===r.name.toLowerCase());
+            const docs = visibleRecords.filter(d=>(d.consultantName||"").toLowerCase()===r.name.toLowerCase());
             const isOpen = expandedCons[r.id] !== false; // default open
             const expiring = docs.filter(d=>{
               if(!d.expiryDate) return false;
@@ -25311,7 +25332,7 @@ ${text.slice(0, 4000)}`;
                               <div style={{display:"flex",gap:4,flexShrink:0}}>
                                 <button onClick={()=>{setEditRec(d);setForm({...d});setModal(true);}}
                                   style={{background:"none",border:"1px solid #1a2d45",color:"#38bdf8",fontSize:11,padding:"3px 8px",borderRadius:4,cursor:"pointer"}}>✏️</button>
-                                <button onClick={()=>{if(window.confirm("Delete this document?"))save(records.filter(x=>x.id!==d.id));}}
+                                <button onClick={()=>{if(window.confirm("Delete this document?"))save(visibleRecords.filter(x=>x.id!==d.id));}}
                                   style={{background:"none",border:"1px solid #7f1d1d",color:"#f87171",fontSize:11,padding:"3px 8px",borderRadius:4,cursor:"pointer"}}>🗑️</button>
                               </div>
                             </div>
@@ -25374,16 +25395,16 @@ ${text.slice(0, 4000)}`;
       {viewMode==="table" && <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"center"}}>
         <input className="inp" placeholder="Search by consultant name..." value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:300}}/>
         <button onClick={()=>{setEditRec(null);setForm({consultantName:"",docType:"I-797",docNumber:"",issueDate:"",expiryDate:"",physicalLocation:"",status:"current",notes:""});setModal(true);}} style={{padding:"7px 16px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:12,cursor:"pointer"}}>+ Add Manually</button>
-        <div style={{marginLeft:"auto",fontSize:12,color:"#334155"}}>{records.length} records</div>
+        <div style={{marginLeft:"auto",fontSize:12,color:"#334155"}}>{visibleRecords.length} records</div>
       </div>}
 
       {/* Summary */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
-          {l:"Total Docs",v:records.length,c:"#38bdf8"},
-          {l:"Expiring ≤60d",v:records.filter(r=>{if(!r.expiryDate)return false;const d=(new Date(r.expiryDate)-new Date())/86400000;return d>=0&&d<=60;}).length,c:"#f59e0b"},
-          {l:"Expired",v:records.filter(r=>r.status==="expired"||((new Date(r.expiryDate)-new Date())/86400000<0&&r.expiryDate)).length,c:"#f87171"},
-          {l:"Consultants",v:new Set(records.map(r=>r.consultantName)).size,c:"#34d399"},
+          {l:"Total Docs",v:visibleRecords.length,c:"#38bdf8"},
+          {l:"Expiring ≤60d",v:visibleRecords.filter(r=>{if(!r.expiryDate)return false;const d=(new Date(r.expiryDate)-new Date())/86400000;return d>=0&&d<=60;}).length,c:"#f59e0b"},
+          {l:"Expired",v:visibleRecords.filter(r=>r.status==="expired"||((new Date(r.expiryDate)-new Date())/86400000<0&&r.expiryDate)).length,c:"#f87171"},
+          {l:"Consultants",v:new Set(visibleRecords.map(r=>r.consultantName)).size,c:"#34d399"},
         ].map(t=>(
           <div key={t.l} className="card" style={{padding:"12px 14px"}}>
             <div style={{fontSize:20,fontWeight:800,color:t.c,fontFamily:"'DM Mono',monospace"}}>{t.v}</div>
@@ -25415,7 +25436,7 @@ ${text.slice(0, 4000)}`;
               <span style={{fontSize:10,fontWeight:700,color:statusColor[tag],textTransform:"capitalize"}}>{tag}</span>
               <div style={{display:"flex",gap:4}}>
                 <button onClick={()=>{setEditRec(r);setForm({...r});setModal(true);}} style={{background:"none",border:"1px solid #1a2d45",borderRadius:5,color:"#64748b",cursor:"pointer",padding:"3px 7px",fontSize:10}}>✏️</button>
-                <button onClick={()=>save(records.filter(x=>x.id!==r.id))} style={{background:"none",border:"1px solid #2d0a0a",borderRadius:5,color:"#f87171",cursor:"pointer",padding:"3px 7px",fontSize:10}}>🗑</button>
+                <button onClick={()=>save(visibleRecords.filter(x=>x.id!==r.id))} style={{background:"none",border:"1px solid #2d0a0a",borderRadius:5,color:"#f87171",cursor:"pointer",padding:"3px 7px",fontSize:10}}>🗑</button>
               </div>
             </div>
           );
@@ -25443,7 +25464,7 @@ ${text.slice(0, 4000)}`;
             <FF label="Notes"><textarea className="inp" rows={2} value={form.notes||""} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></FF>
             <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
               <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
-              <button className="btn bp" onClick={()=>{const rec={...form,id:editRec?editRec.id:"paf"+Date.now()};save(editRec?records.map(r=>r.id===editRec.id?rec:r):[...records,rec]);setModal(false);}}>Save</button>
+              <button className="btn bp" onClick={()=>{const rec={...form,id:editRec?editRec.id:"paf"+Date.now()};save(editRec?visibleRecords.map(r=>r.id===editRec.id?rec:r):[...records,rec]);setModal(false);}}>Save</button>
             </div>
           </div>
         </div>
@@ -26044,7 +26065,7 @@ function ConsultantHub({ roster, authProfile }) {
 // ═══════════════════════════════════════════════════════════════════════
 // ADP PAY STUBS — AI-powered auto-mapping from ADP export uploads
 // ═══════════════════════════════════════════════════════════════════════
-function ADPPayStubs({ roster }) {
+function ADPPayStubs({ roster, authProfile }) {
   const [stubs, setStubs] = useState(() => { try { return JSON.parse(localStorage.getItem("zt-adp-stubs2")||"[]"); } catch { return []; } });
   const [uploading, setUploading] = useState(false);
   const [parsed, setParsed] = useState([]);
@@ -26373,6 +26394,12 @@ Provide: Key Discrepancies, Missing Entries, Reconciliation Status, Action Items
               const n=(inv.clientName||inv.client||"").toLowerCase();
               return cliName && n && (n.includes(cliName.toLowerCase().split(/[, ]/)[0]) || cliName.toLowerCase().includes(n.split(/[, ]/)[0]));
             });
+
+  const isEmpAdp = ["employee","contractor"].includes(authProfile?.role);
+  const myNameAdp = (authProfile?.full_name || "").toLowerCase();
+  const visibleStubs = isEmpAdp
+    ? stubs.filter(s => (s.employeeName||s.name||"").toLowerCase().includes(myNameAdp.split(" ")[0]||"_"))
+    : stubs;
             const rInvoiced = rInvoices.reduce((s,i)=>{const amt=(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0)||i.amount||0;return s+amt;},0);
             const rCollected = (pymtForPeriod||finPayments||[]).filter(p=>rInvoices.some(i=>i.id===p.invoiceId)).reduce((s,p)=>s+(+p.amount||0),0);
             const rOutstanding = rInvoiced - rCollected;
