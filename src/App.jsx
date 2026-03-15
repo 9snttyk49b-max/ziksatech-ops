@@ -2641,7 +2641,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="glexport"      && <FreshBooksGL finInvoices={shared.finInvoices||[]} fbInvoices={shared.fbInvoices||[]} clients={shared.clients||[]}/>}
         {tab==="esign"         && <ESignature {...shared}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
-        {tab==="timesheet"  && <TimesheetApproval {...shared}/>}
+        {tab==="timesheet"  && <TimesheetApproval {...shared} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="clients"    && <ClientPortfolio {...shared}/>}
         {tab==="pipeline"   && <Pipeline   {...shared}/>}
         {tab==="ebitda"     && <EbitdaOpt  ebitdaLevers={shared.ebitdaLevers} setEbitdaLevers={shared.setEbitdaLevers} finInvoices={shared.finInvoices} finPayments={shared.finPayments} finExpenses={shared.finExpenses} roster={shared.roster} apInvoices={shared.apInvoices} adpRuns={shared.adpRuns}/>}
@@ -9986,51 +9986,543 @@ const TS_STATUS_LABEL = {
 };
 const TS_FLOW = ["draft","submitted","pm_approved","approved","locked"];
 
-function TimesheetApproval({ roster, setRoster, tsHours, setTsHours, tsSubmissions, setTsSubmissions, finInvoices, setFinInvoices, orgMembers, projects, clients, addAudit }) {
-  const [sub, setSub] = useState("overview");
-  const tabs = [
-    { id:"overview",    label:"Overview"         },
-    { id:"selfservice", label:"Log My Hours"      },
-    { id:"grid",        label:"Hours Grid"        },
-    { id:"approvals",   label:"Approval Queue"    },
-    { id:"history",     label:"History & Locked"  },
-  ];
-  const props = { roster, setRoster, tsHours, setTsHours, tsSubmissions, setTsSubmissions, finInvoices, setFinInvoices, orgMembers, projects, clients, addAudit };
+function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoices, finInvoices, authProfile, addAudit }) {
+  const isAdmin = ["super_admin","admin","hr_immigration"].includes(authProfile?.role);
+  const isCons  = ["employee","contractor"].includes(authProfile?.role);
 
-  // Badge count on Approval Queue tab
-  const pendingCount = tsSubmissions.filter(s=>["submitted","pm_approved"].includes(s.status)).length;
-  const rejectedCount = tsSubmissions.filter(s=>s.status==="rejected").length;
+  // ── State ────────────────────────────────────────────────────────────────
+  const [view, setView]               = useState(isCons ? "my" : "admin");
+  const [selMonth, setSelMonth]       = useState(new Date().getMonth());
+  const [selYear, setSelYear]         = useState(new Date().getFullYear());
+  const [sheets, setSheets]           = useState(() => { try { return JSON.parse(localStorage.getItem("zt-timesheets")||"[]"); } catch { return []; }});
+  const [uploadModal, setUploadModal] = useState(false);
+  const [invoiceModal, setInvoiceModal] = useState(null);   // sheet to convert
+  const [analyzing, setAnalyzing]     = useState(false);
+  const [uploadedDoc, setUploadedDoc] = useState(null);
+  const [extractedData, setExtractedData] = useState(null);
+  const [editSheet, setEditSheet]     = useState(null);     // sheet being edited
 
+  const saveSheets = (s) => { setSheets(s); localStorage.setItem("zt-timesheets", JSON.stringify(s)); };
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  const getDaysInMonth = (y, m) => new Date(y, m+1, 0).getDate();
+  const getFirstDayOfMonth = (y, m) => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }; // Mon=0
+
+  const myConsultant = roster?.find(r =>
+    r.email?.toLowerCase() === authProfile?.email?.toLowerCase() ||
+    r.name?.toLowerCase().includes((authProfile?.full_name||"").split(" ")[0]?.toLowerCase() || "_")
+  );
+
+  const mySheets = isCons
+    ? sheets.filter(s => s.consultantId === (myConsultant?.id || authProfile?.id || authProfile?.email))
+    : sheets;
+
+  const currentSheetKey = `${selYear}-${String(selMonth+1).padStart(2,"0")}`;
+  const currentSheet    = mySheets.find(s => s.period === currentSheetKey) || null;
+
+  // ── Build blank sheet for current month ───────────────────────────────────
+  const buildBlankSheet = () => {
+    const days = getDaysInMonth(selYear, selMonth);
+    const dayEntries = Array.from({length: days}, (_, i) => ({
+      day: i + 1,
+      date: `${selYear}-${String(selMonth+1).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`,
+      hours: 0,
+      notes: "",
+      type: "regular",  // regular | pto | sick | holiday
+    }));
+    return {
+      id: "ts-" + Date.now(),
+      consultantId: myConsultant?.id || authProfile?.id || authProfile?.email,
+      consultantName: myConsultant?.name || authProfile?.full_name || "",
+      clientId: myConsultant?.clientId || "",
+      clientName: myConsultant?.client || "",
+      project: myConsultant?.project || "",
+      billRate: myConsultant?.billRate || 0,
+      period: currentSheetKey,
+      periodLabel: `${MONTHS_SHORT[selMonth]} ${selYear}`,
+      days: dayEntries,
+      totalHours: 0,
+      totalRevenue: 0,
+      status: "draft",
+      submittedDate: null,
+      approvedDate: null,
+      approvedBy: null,
+      clientApproved: false,
+      clientApprovedDoc: null,
+      clientApprovedDate: null,
+      invoiceId: null,
+      notes: "",
+    };
+  };
+
+  const [activeSheet, setActiveSheet] = useState(currentSheet || buildBlankSheet());
+
+  // Sync activeSheet when month changes
+  useState(() => {
+    const existing = mySheets.find(s => s.period === currentSheetKey);
+    setActiveSheet(existing || buildBlankSheet());
+  });
+
+  const recalc = (sh) => {
+    const totalHours = sh.days.reduce((s, d) => s + (d.hours || 0), 0);
+    const totalRevenue = totalHours * (sh.billRate || 0);
+    return { ...sh, totalHours, totalRevenue };
+  };
+
+  const updateDay = (dayIdx, field, value) => {
+    const updated = { ...activeSheet, days: activeSheet.days.map((d, i) => i === dayIdx ? { ...d, [field]: field === "hours" ? Math.max(0, Math.min(24, +value || 0)) : value } : d) };
+    setActiveSheet(recalc(updated));
+  };
+
+  const saveAsDraft = () => {
+    const sh = recalc({ ...activeSheet, status: "draft" });
+    const existing = sheets.findIndex(s => s.id === sh.id);
+    const updated = existing >= 0 ? sheets.map((s, i) => i === existing ? sh : s) : [...sheets, sh];
+    saveSheets(updated);
+    setActiveSheet(sh);
+    addAudit?.("Timesheet", "Saved Draft", sh.periodLabel, sh.consultantName);
+  };
+
+  const submitSheet = () => {
+    if (activeSheet.totalHours === 0) return alert("Please enter hours before submitting.");
+    const sh = recalc({ ...activeSheet, status: "submitted", submittedDate: TODAY_STR });
+    const existing = sheets.findIndex(s => s.id === sh.id);
+    const updated = existing >= 0 ? sheets.map((s, i) => i === existing ? sh : s) : [...sheets, sh];
+    saveSheets(updated);
+    setActiveSheet(sh);
+    addAudit?.("Timesheet", "Submitted", sh.periodLabel, sh.consultantName);
+    alert(`✅ Timesheet for ${sh.periodLabel} submitted for approval.`);
+  };
+
+  // ── Admin actions ─────────────────────────────────────────────────────────
+  const adminApprove = (sheetId) => {
+    saveSheets(sheets.map(s => s.id === sheetId ? { ...s, status: "approved", approvedDate: TODAY_STR, approvedBy: authProfile?.full_name || "Admin" } : s));
+    addAudit?.("Timesheet", "Approved", sheetId, authProfile?.full_name);
+  };
+  const adminReject = (sheetId, reason) => {
+    saveSheets(sheets.map(s => s.id === sheetId ? { ...s, status: "rejected", notes: reason || "Rejected by admin" } : s));
+  };
+  const markClientApproved = (sheetId) => {
+    saveSheets(sheets.map(s => s.id === sheetId ? { ...s, clientApproved: true, clientApprovedDate: TODAY_STR } : s));
+  };
+
+  // ── Upload client-approved timesheet ─────────────────────────────────────
+  const handleUpload = async (file) => {
+    if (!file) return;
+    setAnalyzing(true);
+    const reader = new FileReader();
+    if (file.type === "application/pdf" || file.type.startsWith("image/")) {
+      reader.onload = async (e) => {
+        const base64 = e.target.result.split(",")[1];
+        const mediaType = file.type;
+        try {
+          const resp = await fetch("/api/claude", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "claude-sonnet-4-20250514",
+              max_tokens: 600,
+              system: "Extract timesheet data from this document. Return ONLY valid JSON.",
+              messages: [{
+                role: "user",
+                content: [
+                  { type: "document", source: { type: "base64", media_type: mediaType === "application/pdf" ? "application/pdf" : mediaType, data: base64 } },
+                  { type: "text", text: 'Extract: {"consultantName":"","clientName":"","period":"Mon YYYY","totalHours":0,"totalAmount":0,"startDate":"","endDate":"","approvedBy":"","projectName":"","notes":""}' }
+                ]
+              }]
+            })
+          });
+          const data = await resp.json();
+          const raw = (data?.content || []).map(b => b.text || "").join("");
+          const cleaned = raw.replace(/```json|```/gi, "").trim();
+          const start = cleaned.indexOf("{"), end = cleaned.lastIndexOf("}");
+          if (start >= 0) {
+            const parsed = JSON.parse(cleaned.slice(start, end + 1));
+            setExtractedData(parsed);
+          }
+        } catch (e) { console.error(e); }
+        setUploadedDoc({ name: file.name, base64, mediaType });
+        setAnalyzing(false);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      reader.onload = (e) => { setUploadedDoc({ name: file.name, text: e.target.result }); setAnalyzing(false); };
+      reader.readAsText(file);
+    }
+  };
+
+  // ── Convert approved sheet to invoice ─────────────────────────────────────
+  const convertToInvoice = (sheet) => {
+    const client = clients?.find(c => c.id === sheet.clientId) || { id: sheet.clientId, name: sheet.clientName };
+    const newInv = {
+      id: "INV-TS-" + Date.now().toString().slice(-6),
+      clientId: client.id,
+      projectName: sheet.project || `${sheet.consultantName} — ${sheet.periodLabel}`,
+      period: sheet.periodLabel,
+      issueDate: TODAY_STR,
+      dueDate: new Date(Date.now() + 30*86400000).toISOString().slice(0,10),
+      status: "draft",
+      paymentTerms: "Net 30",
+      source: "timesheet",
+      timesheetId: sheet.id,
+      lines: [{
+        id: "l1",
+        desc: `${sheet.consultantName} — ${sheet.periodLabel} (${sheet.totalHours} hrs @ $${sheet.billRate}/hr)`,
+        qty: sheet.totalHours,
+        rate: sheet.billRate,
+        amount: sheet.totalRevenue,
+      }],
+      amount: sheet.totalRevenue,
+      notes: `Generated from approved timesheet. Client: ${sheet.clientName}. Period: ${sheet.periodLabel}.`,
+    };
+    setFinInvoices(prev => [newInv, ...prev]);
+    saveSheets(sheets.map(s => s.id === sheet.id ? { ...s, invoiceId: newInv.id, status: "invoiced" } : s));
+    addAudit?.("Timesheet", "Converted to Invoice", newInv.id, sheet.consultantName);
+    setInvoiceModal(null);
+    alert(`✅ Invoice ${newInv.id} created for ${sheet.periodLabel} — $${sheet.totalRevenue.toLocaleString()}. Go to Finance to review and send.`);
+  };
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const statusConfig = {
+    draft:       { label: "Draft",            color: "#64748b", bg: "#64748b22", icon: "📝" },
+    submitted:   { label: "Submitted",        color: "#38bdf8", bg: "#38bdf822", icon: "📤" },
+    approved:    { label: "Admin Approved",   color: "#a78bfa", bg: "#a78bfa22", icon: "✅" },
+    rejected:    { label: "Rejected",         color: "#f87171", bg: "#f8717122", icon: "❌" },
+    client_approved:{ label: "Client Approved", color: "#34d399", bg: "#34d39922", icon: "🏢" },
+    invoiced:    { label: "Invoiced",         color: "#f59e0b", bg: "#f59e0b22", icon: "💰" },
+  };
+  const stCfg = (s) => statusConfig[s] || statusConfig.draft;
+
+  const totalBillable = activeSheet.days.filter(d => d.type === "regular").reduce((s, d) => s + d.hours, 0);
+  const totalPTO      = activeSheet.days.filter(d => d.type === "pto").reduce((s, d) => s + d.hours, 0);
+  const totalSick     = activeSheet.days.filter(d => d.type === "sick").reduce((s, d) => s + d.hours, 0);
+  const weeklyTotals  = (() => {
+    const weeks = [];
+    let wk = 0;
+    const firstDay = getFirstDayOfMonth(selYear, selMonth);
+    activeSheet.days.forEach((d, i) => {
+      const col = (firstDay + i) % 7;
+      if (!weeks[wk]) weeks[wk] = 0;
+      weeks[wk] += d.hours;
+      if (col === 6) wk++;
+    });
+    return weeks;
+  })();
+
+  const isLocked = ["submitted","approved","client_approved","invoiced"].includes(activeSheet.status) && !isAdmin;
+  const dayColor = (type) => type === "pto" ? "#38bdf8" : type === "sick" ? "#f87171" : type === "holiday" ? "#a78bfa" : "#e2e8f0";
+
+  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div>
-      <PH title="Timesheet Approval" sub="Log My Hours (self-service) → PM Approve → Owner Approve → Lock → Invoice"/>
-      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
-        {tabs.map(t=>(
-          <button key={t.id} onClick={()=>setSub(t.id)}
-            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
-              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
-              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s",position:"relative"}}>
-            {t.label}
-            {t.id==="approvals" && pendingCount>0 && (
-              <span style={{position:"absolute",top:4,right:6,background:"#f59e0b",color:"#000",borderRadius:"50%",width:16,height:16,fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{pendingCount}</span>
-            )}
-            {t.id==="selfservice" && rejectedCount>0 && (
-              <span style={{position:"absolute",top:4,right:6,background:"#f87171",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{rejectedCount}</span>
-            )}
-          </button>
-        ))}
+      <PH title="Timesheet" sub="Monthly submission · Client approval · Invoice conversion"/>
+
+      {/* Tab toggle */}
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {(isCons || isAdmin) && <button onClick={()=>setView("my")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="my"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="my"?"#fff":"#475569"}}>
+          {isCons ? "📋 My Monthly Timesheet" : "📋 My View"}
+        </button>}
+        {isAdmin && <button onClick={()=>setView("admin")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="admin"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="admin"?"#fff":"#475569"}}>
+          📊 All Submissions
+        </button>}
+        {isAdmin && <button onClick={()=>setView("annual")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="annual"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="annual"?"#fff":"#475569"}}>
+          📈 Annual Overview
+        </button>}
       </div>
-      {sub==="overview"    && <TSOverview   {...props}/>}
-      {sub==="selfservice" && <TSConsultant {...props}/>}
-      {sub==="grid"      && <TSGrid       {...props}/>}
-      {sub==="approvals" && <TSApprovals  {...props}/>}
-      {sub==="history"   && <TSHistory    {...props}/>}
+
+      {/* ══ MY MONTHLY TIMESHEET ════════════════════════════════════════════ */}
+      {view==="my" && (
+        <div>
+          {/* Month selector + stats */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button className="btn bg" onClick={()=>{const d=new Date(selYear,selMonth-1);setSelMonth(d.getMonth());setSelYear(d.getFullYear());const ex=mySheets.find(s=>s.period===`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);setActiveSheet(ex||buildBlankSheet());}}>‹</button>
+              <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0",minWidth:110,textAlign:"center"}}>{MONTHS_SHORT[selMonth]} {selYear}</div>
+              <button className="btn bg" onClick={()=>{const d=new Date(selYear,selMonth+1);setSelMonth(d.getMonth());setSelYear(d.getFullYear());const ex=mySheets.find(s=>s.period===`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);setActiveSheet(ex||buildBlankSheet());}}>›</button>
+              <span className="bdg" style={{background:stCfg(activeSheet.status).bg,color:stCfg(activeSheet.status).color,fontSize:11}}>
+                {stCfg(activeSheet.status).icon} {stCfg(activeSheet.status).label}
+              </span>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {/* Client + project info */}
+              {(myConsultant?.client||activeSheet.clientName) && <div style={{fontSize:11,color:"#3d5a7a"}}>🏢 {myConsultant?.client||activeSheet.clientName}</div>}
+              {(myConsultant?.billRate||activeSheet.billRate)>0 && <div style={{fontSize:11,color:"#f59e0b"}}>💰 ${myConsultant?.billRate||activeSheet.billRate}/hr</div>}
+            </div>
+          </div>
+
+          {/* Summary stats */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+            {[
+              {l:"Billable Hrs",   v:totalBillable,                        c:"#38bdf8"},
+              {l:"PTO Hrs",        v:totalPTO,                             c:"#60a5fa"},
+              {l:"Sick Hrs",       v:totalSick,                            c:"#f87171"},
+              {l:"Total Hrs",      v:activeSheet.totalHours,               c:"#e2e8f0"},
+              {l:"Est. Revenue",   v:`$${((myConsultant?.billRate||activeSheet.billRate||0)*totalBillable).toLocaleString()}`, c:"#34d399"},
+            ].map(s=>(
+              <div key={s.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>{s.l}</div>
+                <div style={{fontSize:18,fontWeight:800,color:s.c}}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar grid */}
+          <div className="card" style={{padding:"16px 18px",marginBottom:14}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:8}}>
+              {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:10,color:"#334155",fontWeight:700,padding:"4px 0"}}>{d}</div>)}
+            </div>
+
+            {/* Day cells */}
+            {(() => {
+              const firstDay = getFirstDayOfMonth(selYear, selMonth);
+              const cells = [];
+              // Empty cells before first day
+              for(let i=0; i<firstDay; i++) cells.push(<div key={`e${i}`}/>);
+              // Day cells
+              activeSheet.days.forEach((day, idx) => {
+                const isWeekend = (firstDay + idx) % 7 >= 5;
+                const isToday   = day.date === TODAY_STR;
+                const hrs       = day.hours || 0;
+                cells.push(
+                  <div key={day.day} style={{border:`1px solid ${isToday?"#0284c7":"#1a2d45"}`,borderRadius:8,padding:"6px 8px",background:isToday?"#0c2340":isWeekend?"#060d1c":"#0a1120",minHeight:70}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <span style={{fontSize:10,color:isToday?"#38bdf8":"#334155",fontWeight:isToday?700:400}}>{day.day}</span>
+                      {/* Type selector */}
+                      {!isLocked && <select value={day.type} onChange={e=>updateDay(idx,"type",e.target.value)}
+                        style={{fontSize:8,background:"transparent",border:"none",color:"#334155",cursor:"pointer",padding:0}}>
+                        <option value="regular">Work</option>
+                        <option value="pto">PTO</option>
+                        <option value="sick">Sick</option>
+                        <option value="holiday">Holiday</option>
+                      </select>}
+                      {isLocked && day.type !== "regular" && <span style={{fontSize:8,color:dayColor(day.type)}}>{day.type}</span>}
+                    </div>
+                    {isLocked ? (
+                      <div style={{fontSize:16,fontWeight:700,color:hrs>0?dayColor(day.type):"#1e3a5f",textAlign:"center"}}>{hrs>0?hrs:""}</div>
+                    ) : (
+                      <input type="number" min={0} max={24} step={0.5} value={hrs||""}
+                        onChange={e=>updateDay(idx,"hours",e.target.value)}
+                        placeholder={isWeekend?"—":"0"}
+                        style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid #1a2d45",color:dayColor(day.type),fontSize:16,fontWeight:700,textAlign:"center",padding:"2px 0",outline:"none"}}/>
+                    )}
+                    {/* Notes icon */}
+                    {!isLocked && hrs > 0 && <input value={day.notes} onChange={e=>updateDay(idx,"notes",e.target.value)}
+                      placeholder="notes" style={{width:"100%",background:"transparent",border:"none",color:"#334155",fontSize:8,marginTop:2,outline:"none"}}/>}
+                    {isLocked && day.notes && <div style={{fontSize:8,color:"#334155",marginTop:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{day.notes}</div>}
+                  </div>
+                );
+              });
+              return <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>{cells}</div>;
+            })()}
+
+            {/* Weekly totals */}
+            <div style={{marginTop:12,padding:"8px 0",borderTop:"1px solid #1a2d45",display:"flex",gap:8,flexWrap:"wrap"}}>
+              {weeklyTotals.map((wh,i)=>(
+                <div key={i} style={{fontSize:10,color:"#475569"}}>
+                  W{i+1}: <span style={{color:wh>0?"#38bdf8":"#334155",fontWeight:700}}>{wh}h</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          {!isLocked && (
+            <div style={{display:"flex",gap:10,marginBottom:14}}>
+              <button className="btn bg" style={{fontSize:12}} onClick={saveAsDraft}>💾 Save Draft</button>
+              <button className="btn bp" style={{fontSize:12}} onClick={submitSheet}>📤 Submit for Approval</button>
+            </div>
+          )}
+
+          {/* Client-Approved Timesheet Upload */}
+          {(activeSheet.status==="approved" || activeSheet.status==="client_approved" || isAdmin) && (
+            <div style={{padding:"14px 18px",background:"#0a1a0a",border:"1px solid #15803d",borderRadius:10,marginBottom:14}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#4ade80",marginBottom:8}}>🏢 Client-Approved Timesheet → Invoice</div>
+              <div style={{fontSize:11,color:"#7dd3fc",marginBottom:10,lineHeight:1.6}}>
+                Upload the client's signed/approved timesheet document. Once uploaded, convert it to an invoice with one click.
+              </div>
+              {!activeSheet.clientApproved ? (
+                <div>
+                  <label style={{display:"block",border:`2px dashed ${uploadedDoc?"#34d399":"#1a2d45"}`,borderRadius:8,padding:"14px",textAlign:"center",cursor:"pointer",marginBottom:8,background:uploadedDoc?"#021f14":"#070c18"}}>
+                    <input type="file" accept=".pdf,.png,.jpg,.jpeg" style={{display:"none"}} onChange={e=>handleUpload(e.target.files[0])}/>
+                    {analyzing ? <div style={{color:"#38bdf8",fontSize:12}}>🔍 AI extracting timesheet data...</div>
+                      : uploadedDoc ? <div><div style={{fontSize:12,color:"#34d399",fontWeight:600}}>✅ {uploadedDoc.name}</div>
+                          {extractedData && <div style={{fontSize:11,color:"#4ade80",marginTop:4}}>{extractedData.totalHours}h · ${extractedData.totalAmount?.toLocaleString?.()} · {extractedData.approvedBy?"Approved by: "+extractedData.approvedBy:""}</div>}
+                        </div>
+                      : <div><div style={{fontSize:12,color:"#3d5a7a"}}>📎 Drop or click to upload approved timesheet</div><div style={{fontSize:10,color:"#1e3a5f",marginTop:3}}>PDF, PNG, JPG accepted</div></div>}
+                  </label>
+                  {uploadedDoc && (
+                    <div style={{display:"flex",gap:8}}>
+                      <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:12}}
+                        onClick={()=>convertToInvoice({...activeSheet,
+                          clientApproved:true,
+                          clientApprovedDate:TODAY_STR,
+                          totalHours:extractedData?.totalHours||activeSheet.totalHours,
+                          totalRevenue:extractedData?.totalAmount||activeSheet.totalRevenue,
+                          clientName:extractedData?.clientName||activeSheet.clientName,
+                        })}>
+                        💰 Convert to Invoice
+                      </button>
+                      <button className="btn bg" style={{fontSize:12}} onClick={()=>{setUploadedDoc(null);setExtractedData(null);}}>✕</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{fontSize:12,color:"#34d399"}}>✅ Client approved on {activeSheet.clientApprovedDate}</div>
+                  {!activeSheet.invoiceId
+                    ? <button className="btn bp" style={{fontSize:12}} onClick={()=>convertToInvoice(activeSheet)}>💰 Convert to Invoice</button>
+                    : <div style={{fontSize:12,color:"#f59e0b"}}>💰 Invoice created: {activeSheet.invoiceId}</div>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* My history */}
+          {mySheets.filter(s=>s.period!==currentSheetKey).length > 0 && (
+            <div className="card" style={{padding:"14px 18px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📅 My Timesheet History</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {mySheets.filter(s=>s.period!==currentSheetKey).sort((a,b)=>b.period.localeCompare(a.period)).slice(0,8).map(s=>{
+                  const st = stCfg(s.status);
+                  return (
+                    <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",cursor:"pointer"}}
+                      onClick={()=>{
+                        const [y,m] = s.period.split("-").map(Number);
+                        setSelYear(y); setSelMonth(m-1); setActiveSheet(s);
+                      }}>
+                      <div><div style={{fontSize:12,color:"#e2e8f0",fontWeight:600}}>{s.periodLabel}</div><div style={{fontSize:10,color:"#475569"}}>{s.totalHours}h · ${s.totalRevenue.toLocaleString()}</div></div>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        {s.invoiceId && <span style={{fontSize:10,color:"#f59e0b"}}>💰 {s.invoiceId}</span>}
+                        <span className="bdg" style={{background:st.bg,color:st.color,fontSize:10}}>{st.icon} {st.label}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ ADMIN — ALL SUBMISSIONS ══════════════════════════════════════════ */}
+      {view==="admin" && isAdmin && (
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+            {[
+              {l:"Total Submitted", v:sheets.filter(s=>s.status!=="draft").length, c:"#38bdf8"},
+              {l:"Pending Approval",v:sheets.filter(s=>s.status==="submitted").length, c:"#f59e0b"},
+              {l:"Client Approved", v:sheets.filter(s=>s.clientApproved).length, c:"#34d399"},
+              {l:"Invoiced",        v:sheets.filter(s=>s.invoiceId).length, c:"#a78bfa"},
+            ].map(s=>(
+              <div key={s.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>{s.l}</div>
+                <div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Filter by status */}
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            {["all","submitted","approved","client_approved","invoiced","rejected"].map(f=>(
+              <button key={f} className="btn bg" style={{fontSize:10,padding:"4px 10px"}}>{f==="all"?"All":""+stCfg(f).icon+" "+stCfg(f).label} ({f==="all"?sheets.filter(s=>s.status!=="draft").length:sheets.filter(s=>s.status===f).length})</button>
+            ))}
+            <button className="btn bp" style={{fontSize:10,marginLeft:"auto"}} onClick={()=>setUploadModal(true)}>+ Upload Client Approved</button>
+          </div>
+
+          <div className="card">
+            <div className="tr" style={{gridTemplateColumns:"1fr 100px 80px 90px 90px 110px 180px",padding:"8px 18px"}}>
+              {["Consultant","Period","Hours","Revenue","Status","Client Appr.","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {sheets.filter(s=>s.status!=="draft").sort((a,b)=>b.period.localeCompare(a.period)).map(s=>{
+              const st = stCfg(s.status);
+              return (
+                <div key={s.id} className="tr" style={{gridTemplateColumns:"1fr 100px 80px 90px 90px 110px 180px"}}>
+                  <div><div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{s.consultantName}</div><div style={{fontSize:10,color:"#3d5a7a"}}>{s.clientName}</div></div>
+                  <span style={{fontSize:12,color:"#94a3b8"}}>{s.periodLabel}</span>
+                  <span className="mono" style={{fontSize:12,color:"#38bdf8"}}>{s.totalHours}h</span>
+                  <span className="mono" style={{fontSize:12,color:"#34d399"}}>{fmt(s.totalRevenue)}</span>
+                  <span className="bdg" style={{background:st.bg,color:st.color,fontSize:10}}>{st.icon} {st.label}</span>
+                  <span style={{fontSize:10,color:s.clientApproved?"#34d399":"#334155"}}>{s.clientApproved?`✅ ${s.clientApprovedDate}`:"—"}</span>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {s.status==="submitted"&&<button className="btn bp" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>adminApprove(s.id)}>✓ Approve</button>}
+                    {s.status==="submitted"&&<button className="btn br" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>adminReject(s.id,"Please resubmit with corrections")}>✗ Reject</button>}
+                    {s.status==="approved"&&!s.clientApproved&&<button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>markClientApproved(s.id)}>🏢 Client OK</button>}
+                    {(s.clientApproved||s.status==="approved")&&!s.invoiceId&&<button className="btn bg" style={{fontSize:9,padding:"2px 7px",color:"#f59e0b"}} onClick={()=>convertToInvoice(s)}>💰 Invoice</button>}
+                    {s.invoiceId&&<span style={{fontSize:9,color:"#f59e0b"}}>📄 {s.invoiceId}</span>}
+                  </div>
+                </div>
+              );
+            })}
+            {sheets.filter(s=>s.status!=="draft").length===0&&<div style={{padding:"32px",textAlign:"center",color:"#1e3a5f"}}>No timesheet submissions yet</div>}
+          </div>
+        </div>
+      )}
+
+      {/* ══ ANNUAL OVERVIEW ════════════════════════════════════════════════ */}
+      {view==="annual" && isAdmin && (
+        <div>
+          <PH title="Annual Timesheet Overview 2026" sub="Click any cell to edit hours"/>
+          <div className="card" style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid #111d2d"}}>
+                  <th style={{padding:"10px 14px",textAlign:"left"}} className="th">Consultant</th>
+                  <th className="th" style={{padding:"8px 6px",textAlign:"left"}}>Rate</th>
+                  {MONTHS_SHORT.map(m=><th key={m} className="th" style={{padding:"8px 10px",textAlign:"center",minWidth:44,fontSize:10}}>{m}</th>)}
+                  <th className="th" style={{padding:"8px 12px",textAlign:"right"}}>Total Hrs</th>
+                  <th className="th" style={{padding:"8px 12px",textAlign:"right"}}>Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(roster||[]).map(r => {
+                  const hrs = tsHours[r.id] || Array(12).fill(0);
+                  const totalH = hrs.reduce((s,v)=>s+v,0);
+                  const totalR = totalH * r.billRate;
+                  return (
+                    <tr key={r.id} style={{borderBottom:"1px solid #0a1626"}}>
+                      <td style={{padding:"6px 14px",minWidth:160}}>
+                        <div style={{fontWeight:600,color:"#cbd5e1",fontSize:12}}>{r.name}</div>
+                        <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role}</div>
+                      </td>
+                      <td style={{padding:"4px 6px",fontFamily:"'DM Mono',monospace",fontSize:11,color:"#38bdf8",minWidth:55}}>${r.billRate}</td>
+                      {hrs.map((h,mi)=>(
+                        <td key={mi} style={{padding:"4px 4px",textAlign:"center"}}>
+                          <input type="number" value={h||""}
+                            onChange={e=>setTsHours(prev=>({...prev,[r.id]:prev[r.id]?.map((v,i)=>i===mi?+e.target.value:v)||Array(12).fill(0).map((v,i)=>i===mi?+e.target.value:v)}))}
+                            style={{width:36,textAlign:"center",background:"transparent",border:"none",borderBottom:"1px solid #1a2d45",color:h?"#38bdf8":"#334155",fontSize:11,fontFamily:"'DM Mono',monospace",padding:"2px 0",outline:"none"}}
+                            placeholder="—"/>
+                        </td>
+                      ))}
+                      <td style={{padding:"6px 12px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:700,color:"#38bdf8"}}>{totalH}</td>
+                      <td style={{padding:"6px 12px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:700,color:"#34d399"}}>{fmt(totalR)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{borderTop:"2px solid #1a2d45",background:"#060d1c"}}>
+                  <td style={{padding:"8px 14px",fontWeight:700,color:"#64748b",fontSize:11}} colSpan={2}>TOTALS</td>
+                  {MONTHS_SHORT.map((_,mi)=>(
+                    <td key={mi} style={{textAlign:"center",fontFamily:"'DM Mono',monospace",fontSize:10,fontWeight:700,color:"#38bdf8"}}>
+                      {(roster||[]).reduce((s,r)=>s+(tsHours[r.id]?.[mi]||0),0)||""}
+                    </td>
+                  ))}
+                  <td style={{padding:"8px 12px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:800,color:"#38bdf8"}}>{(roster||[]).reduce((s,r)=>s+(tsHours[r.id]||[]).reduce((a,v)=>a+v,0),0)}</td>
+                  <td style={{padding:"8px 12px",textAlign:"right",fontFamily:"'DM Mono',monospace",fontWeight:800,color:"#34d399"}}>{fmt((roster||[]).reduce((s,r)=>s+(tsHours[r.id]||[]).reduce((a,v)=>a+v,0)*r.billRate,0))}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 
-// ── Consultant Self-Service Timesheet Entry ───────────────────────────────────
 function TSConsultant({ roster, tsSubmissions, setTsSubmissions, tsHours, setTsHours, projects, clients, addAudit }) {
   const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
   const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
