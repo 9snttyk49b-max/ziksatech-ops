@@ -1182,31 +1182,27 @@ const OFFERS_SEED = [
 
 // ─── COMPLIANCE SEED DATA ────────────────────────────────────────────────────
 const WORK_AUTH_SEED = [
-  { id:"wa1",  consultantId:"r1",  name:"Suresh Menon",    type:"H-1B",   status:"active",  startDate:"2024-01-15", expiryDate:"2027-01-14", petitionNo:"WAC2400112345", attorney:"Reddy & Assoc",   notes:"Renewal filed Jan 2027. Green." },
-  { id:"wa2",  consultantId:"r2",  name:"Deepa Rao",       type:"H-1B",   status:"active",  startDate:"2023-06-01", expiryDate:"2026-05-31", petitionNo:"WAC2300298765", attorney:"Reddy & Assoc",   notes:"Expires May 2026 — renewal needed Q1." },
-  { id:"wa3",  consultantId:"r3",  name:"Vikram Singh",    type:"GC",     status:"active",  startDate:"2022-03-10", expiryDate:"2032-03-09", petitionNo:"GC-2022-003",   attorney:"N/A",              notes:"GC holder. No action needed." },
-  { id:"wa4",  consultantId:"r4",  name:"Ananya Krishnan", type:"H-1B",   status:"active",  startDate:"2025-02-01", expiryDate:"2028-01-31", petitionNo:"WAC2500154321", attorney:"Singh Law Group", notes:"Recently renewed. Current." },
-  { id:"wa5",  consultantId:"r5",  name:"Arun Sharma",     type:"H-1B",   status:"expiring",startDate:"2023-04-15", expiryDate:"2026-04-14", petitionNo:"WAC2300312345", attorney:"Reddy & Assoc",   notes:"Expires in 34 days! Renewal in progress." },
-  { id:"wa6",  consultantId:"r6",  name:"Meena Iyer",      type:"GC",     status:"active",  startDate:"2021-07-20", expiryDate:"2031-07-19", petitionNo:"GC-2021-006",   attorney:"N/A",              notes:"GC holder." },
-  { id:"wa7",  consultantId:"r7",  name:"Rajesh Kumar",    type:"USC",    status:"active",  startDate:"2020-01-01", expiryDate:"2099-12-31", petitionNo:"USC",           attorney:"N/A",              notes:"US Citizen." },
-  { id:"wa8",  consultantId:"r8",  name:"Priya Nair",      type:"H-1B",   status:"expiring",startDate:"2024-03-01", expiryDate:"2026-04-30", petitionNo:"WAC2400287654", attorney:"Singh Law Group", notes:"Expires Apr 30 — 50 days out. Start renewal now." },
-  { id:"wa9",  consultantId:"r9",  name:"Kiran Patel",     type:"OPT",    status:"expiring",startDate:"2025-08-01", expiryDate:"2026-05-15", petitionNo:"OPT-2025-009",  attorney:"InHouse",          notes:"OPT expires May 15. H-1B petition must be filed by Apr 1." },
-  { id:"wa10", consultantId:"r10", name:"Sanjay Gupta",    type:"H-1B",   status:"active",  startDate:"2024-09-01", expiryDate:"2027-08-31", petitionNo:"WAC2400398765", attorney:"Reddy & Assoc",   notes:"Current. Renewal 2027." },
+  { id:"wa1",  consultantId:"", name:"Manju Murthy",         type:"USC",  status:"active",  startDate:"2020-01-01", expiryDate:"2099-12-31", petitionNo:"",      attorney:"", notes:"US Citizen" },
+  { id:"wa2",  consultantId:"", name:"Nuthan Joshi",         type:"H-1B", status:"active",  startDate:"2023-01-15", expiryDate:"2026-01-14", petitionNo:"WAC2300001", attorney:"", notes:"Renewal pending 2026" },
+  { id:"wa3",  consultantId:"", name:"Malla Reddy",          type:"GC",   status:"active",  startDate:"2022-03-10", expiryDate:"2032-03-09", petitionNo:"GC-2022-001", attorney:"", notes:"GC holder" },
+  { id:"wa4",  consultantId:"", name:"Sudheendra Mujamdhar", type:"H-1B", status:"active",  startDate:"2024-02-01", expiryDate:"2027-01-31", petitionNo:"WAC2400100", attorney:"", notes:"Recently renewed" },
+  { id:"wa5",  consultantId:"", name:"Vivek Khajuria",       type:"H-1B", status:"active",  startDate:"2023-09-01", expiryDate:"2026-08-31", petitionNo:"WAC2300200", attorney:"", notes:"Renewal needed Q3 2026" },
+  { id:"wa6",  consultantId:"", name:"Kartheek",             type:"H-1B", status:"expiring",startDate:"2023-04-15", expiryDate:"2026-04-14", petitionNo:"WAC2300312", attorney:"", notes:"Expires Apr 2026 — start renewal" },
+  { id:"wa7",  consultantId:"", name:"Gokul K",              type:"GC",   status:"active",  startDate:"2021-07-20", expiryDate:"2031-07-19", petitionNo:"GC-2021-006", attorney:"", notes:"GC holder" },
+  { id:"wa8",  consultantId:"", name:"Ravi Soni",            type:"H-1B", status:"active",  startDate:"2024-09-01", expiryDate:"2027-08-31", petitionNo:"WAC2400398", attorney:"", notes:"Contractor - H1B via Freeman" },
+  { id:"wa9",  consultantId:"", name:"Krishna Shastri",      type:"H-1B", status:"active",  startDate:"2024-06-01", expiryDate:"2027-05-31", petitionNo:"WAC2400210", attorney:"", notes:"H1B current" },
+  { id:"wa10", consultantId:"", name:"Sagar M",              type:"H-1B", status:"active",  startDate:"2023-11-01", expiryDate:"2026-10-31", petitionNo:"WAC2300450", attorney:"", notes:"Renewal needed Q4 2026" },
 ];
 
 const DOCUMENTS_SEED = [
-  { id:"doc1",  consultantId:"r1",  name:"Suresh Menon",    docType:"I-9",            issueDate:"2024-01-15", expiryDate:"2027-01-14", status:"current",  fileName:"i9_suresh.pdf",    notes:"" },
-  { id:"doc2",  consultantId:"r1",  name:"Suresh Menon",    docType:"AT&T Badge",     issueDate:"2024-02-01", expiryDate:"2026-09-30", status:"current",  fileName:"badge_att.pdf",    notes:"Client badge — renew with contract." },
-  { id:"doc3",  consultantId:"r2",  name:"Deepa Rao",       docType:"I-9",            issueDate:"2023-06-01", expiryDate:"2026-05-31", status:"expiring", fileName:"i9_deepa.pdf",     notes:"Tied to H-1B. Renew when visa renewed." },
-  { id:"doc4",  consultantId:"r2",  name:"Deepa Rao",       docType:"NDA — AT&T",     issueDate:"2023-07-01", expiryDate:"2026-06-30", status:"expiring", fileName:"nda_deepa_att.pdf",notes:"NDA expires with engagement." },
-  { id:"doc5",  consultantId:"r3",  name:"Vikram Singh",    docType:"I-9",            issueDate:"2022-03-10", expiryDate:"2032-03-09", status:"current",  fileName:"i9_vikram.pdf",    notes:"GC — long validity." },
-  { id:"doc6",  consultantId:"r5",  name:"Arun Sharma",     docType:"I-9",            issueDate:"2023-04-15", expiryDate:"2026-04-14", status:"expiring", fileName:"i9_arun.pdf",      notes:"Expires same day as H-1B." },
-  { id:"doc7",  consultantId:"r5",  name:"Arun Sharma",     docType:"Client B NDA",   issueDate:"2025-01-01", expiryDate:"2027-01-01", status:"current",  fileName:"nda_arun_clb.pdf", notes:"" },
-  { id:"doc8",  consultantId:"r8",  name:"Priya Nair",      docType:"I-9",            issueDate:"2024-03-01", expiryDate:"2026-04-30", status:"expiring", fileName:"i9_priya.pdf",     notes:"Expires Apr 30." },
-  { id:"doc9",  consultantId:"r9",  name:"Kiran Patel",     docType:"I-9 (OPT EAD)", issueDate:"2025-08-01", expiryDate:"2026-05-15", status:"expiring", fileName:"i9_kiran_opt.pdf", notes:"OPT EAD card expires May 15." },
-  { id:"doc10", consultantId:"r9",  name:"Kiran Patel",     docType:"H-1B Petition",  issueDate:"2026-03-01", expiryDate:"2026-04-01", status:"urgent",   fileName:"",                 notes:"H-1B must be FILED by Apr 1. Not yet filed!" },
-  { id:"doc11", consultantId:"r4",  name:"Ananya Krishnan", docType:"I-9",            issueDate:"2025-02-01", expiryDate:"2028-01-31", status:"current",  fileName:"i9_ananya.pdf",    notes:"" },
-  { id:"doc12", consultantId:"r10", name:"Sanjay Gupta",    docType:"I-9",            issueDate:"2024-09-01", expiryDate:"2027-08-31", status:"current",  fileName:"i9_sanjay.pdf",    notes:"" },
+  { id:"doc1",  consultantId:"", name:"Manju Murthy",   docType:"I-9",           issueDate:"2020-01-15", expiryDate:"", status:"current", fileName:"Manju_I9.pdf", notes:"US Citizen - no expiry" },
+  { id:"doc2",  consultantId:"", name:"Nuthan Joshi",   docType:"H-1B Petition", issueDate:"2023-01-15", expiryDate:"2026-01-14", status:"current", fileName:"Nuthan_H1B.pdf", notes:"" },
+  { id:"doc3",  consultantId:"", name:"Nuthan Joshi",   docType:"I-9",           issueDate:"2023-01-15", expiryDate:"2026-01-14", status:"current", fileName:"Nuthan_I9.pdf", notes:"" },
+  { id:"doc4",  consultantId:"", name:"Malla Reddy",    docType:"I-9",           issueDate:"2022-03-10", expiryDate:"2032-03-09", status:"current", fileName:"Malla_I9.pdf", notes:"GC-based I9" },
+  { id:"doc5",  consultantId:"", name:"Kartheek",       docType:"H-1B Petition", issueDate:"2023-04-15", expiryDate:"2026-04-14", status:"expiring", fileName:"Kartheek_H1B.pdf", notes:"Renewal needed" },
+  { id:"doc6",  consultantId:"", name:"Kartheek",       docType:"I-9",           issueDate:"2023-04-15", expiryDate:"2026-04-14", status:"expiring", fileName:"Kartheek_I9.pdf", notes:"Tied to H1B" },
+  { id:"doc7",  consultantId:"", name:"Vivek Khajuria", docType:"H-1B Petition", issueDate:"2023-09-01", expiryDate:"2026-08-31", status:"current", fileName:"Vivek_H1B.pdf", notes:"" },
+  { id:"doc8",  consultantId:"", name:"Ravi Soni",      docType:"I-9",           issueDate:"2024-09-01", expiryDate:"2027-08-31", status:"current", fileName:"Ravi_I9.pdf", notes:"Contractor" },
 ];
 
 
