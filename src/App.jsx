@@ -24413,32 +24413,38 @@ function IdeaPad({ authProfile, addAudit }) {
     setEvalId(idea.id); setEvalLoad(true);
     try {
       let full='';
-      await callClaude(
-        'You are a business idea evaluator for Ziksatech, a WBE/HUB/WOSB certified SAP consulting firm in Plano TX targeting $25M by 2030. Be specific, realistic, and focused on SAP consulting market. Return ONLY valid JSON.',
-        `Evaluate this business idea for Ziksatech:
-Title: ${idea.title}
-Category: ${idea.category}
-Description: ${idea.description}
-Problem Solved: ${idea.problem}
-Proposed Solution: ${idea.solution}
-Revenue Model: ${idea.revenueModel}
-Estimated Revenue: ${idea.estimatedRevenue}
-Effort: ${idea.effort}
+      const ideaContext = [
+        'Title: '+idea.title,
+        'Category: '+idea.category,
+        'Description: '+idea.description,
+        idea.problem?'Problem: '+idea.problem:'',
+        idea.solution?'Solution: '+idea.solution:'',
+        idea.revenueModel?'Revenue Model: '+idea.revenueModel:'',
+        idea.estimatedRevenue?'Estimated Revenue: '+idea.estimatedRevenue:'',
+        'Effort: '+idea.effort,
+      ].filter(Boolean).join('. ');
 
-Return JSON: {
-  "score": 0-100,
-  "verdict": "Strong Opportunity|Good Idea|Needs Work|Not Viable",
-  "revenueEstimate": "realistic annual estimate",
-  "timeToRevenue": "e.g. 3 months, 6-12 months",
-  "implementationSteps": ["step1","step2","step3"],
-  "risks": ["risk1","risk2"],
-  "strengths": ["strength1","strength2"],
-  "recommendation": "2-3 sentence recommendation",
-  "revenueShare": "estimated 10% share in dollars"
-}`,
-        txt=>{ full+=txt; }, 800
+      await callClaude(
+        'You are a business idea evaluator for Ziksatech, a WBE/HUB/WOSB certified SAP consulting firm in Plano TX targeting $25M by 2030. Be specific and realistic. You MUST respond with ONLY a raw JSON object — no markdown, no code fences, no explanation. The JSON must be on a single conceptual structure with these exact keys: score (integer 0-100), verdict (one of: Strong Opportunity, Good Idea, Needs Work, Not Viable), revenueEstimate (string), timeToRevenue (string), implementationSteps (array of 3 strings), risks (array of 2 strings), strengths (array of 2 strings), recommendation (string under 100 words), revenueShare (string showing 10% estimate).',
+        'Evaluate this Ziksatech business idea and return ONLY the JSON object: '+ideaContext,
+        txt=>{ full+=txt; }, 900
       );
-      const parsed = JSON.parse(full.replace(/\`\`\`json|\`\`\`/g,'').trim());
+      // Robust JSON extraction — handles markdown fences, leading text, trailing text
+      let cleaned = full.trim();
+      // Strip markdown code fences
+      cleaned = cleaned.replace(/```json\s*/gi,'').replace(/```\s*/g,'');
+      // Find first { and last }
+      const start = cleaned.indexOf('{');
+      const end   = cleaned.lastIndexOf('}');
+      if(start === -1 || end === -1) throw new Error('No JSON object found in AI response');
+      cleaned = cleaned.slice(start, end+1);
+      // Fix common JSON issues: remove trailing commas before } or ]
+      cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+      // Replace literal newlines inside string values with spaces
+      cleaned = cleaned.replace(/"([^"]*)"/g, (match) => match.replace(/
+/g, ' ').replace(/
+/g, ''));
+      const parsed = JSON.parse(cleaned);
       const updated = {...(evalResult||{}), [idea.id]: parsed};
       setEvalRes(updated);
       saveIdeas(ideas.map(i => i.id===idea.id ? {...i, aiScore:parsed.score, aiEval:parsed} : i));
@@ -24451,13 +24457,17 @@ Return JSON: {
   const isAdmin = ['super_admin','admin'].includes(authProfile?.role);
 
   // Stats
-  const totalIdeas = ideas.length;
-  const implemented = ideas.filter(i=>['launched','implementing'].includes(i.status));
-  const totalRevShare = ideas.reduce((s,i)=>s+(i.revenueShare||0),0);
-  const myIdeas = ideas.filter(i=>i.submitterName===userName);
+  const visibleForStats = isAdmin ? ideas : ideas.filter(i=>i.submitterName===userName);
+  const totalIdeas    = visibleForStats.length;
+  const implemented   = visibleForStats.filter(i=>['launched','implementing'].includes(i.status));
+  const totalRevShare = visibleForStats.reduce((s,i)=>s+(i.revenueShare||0),0);
+  const myIdeas       = ideas.filter(i=>i.submitterName===userName);
+
+  // Privacy: non-admins only see their own ideas
+  const visibleIdeas = isAdmin ? ideas : ideas.filter(i => i.submitterName === userName);
 
   // Filter + sort
-  const filtered = ideas
+  const filtered = visibleIdeas
     .filter(i => filter==='all'||i.status===filter||i.category===filter||(filter==='mine'&&i.submitterName===userName))
     .sort((a,b)=> sortBy==='votes'?(b.votes||0)-(a.votes||0) : sortBy==='newest'?b.id.localeCompare(a.id) : (b.aiScore||0)-(a.aiScore||0));
 
@@ -24478,6 +24488,7 @@ Return JSON: {
           <div style={{fontSize:11,color:'#3d5a7a',marginTop:6}}>
             Examples: new client referral → 10% of deal revenue | new product idea → 10% of product sales | process improvement that saves $X/yr → 10% of savings
           </div>
+          {!isAdmin&&<div style={{fontSize:10,color:'#334155',marginTop:4}}>🔒 You can only see your own submitted ideas. Admins review all submissions.</div>}
         </div>
         <button className="btn bp" style={{fontSize:13,flexShrink:0}} onClick={()=>setModal(true)}>
           + Submit Idea
