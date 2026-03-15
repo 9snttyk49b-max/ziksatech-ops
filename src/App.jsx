@@ -37,6 +37,12 @@ const RBAC = {
   crm:          ["super_admin","admin"],
   proposals:    ["super_admin","admin"],
   rfpgen:       ["super_admin","admin"],
+  prospectintel:["super_admin","admin"],
+  capdeck:      ["super_admin","admin"],
+  outreachtrk:  ["super_admin","admin"],
+  soplibrary:   ["super_admin","admin"],
+  certtracker:  ["super_admin","admin","hr_immigration"],
+  gridmind:     ["super_admin","admin"],
   sowgen:       ["super_admin","admin"],
   linkedin:     ["super_admin","admin"],
   contracts:    ["super_admin","admin","accounts"],
@@ -2160,6 +2166,11 @@ export default function ZiksatechOps() {
     { id:"pipeline",     label:"Hiring Pipeline",      icon:ICONS.pipeline, group:"Hiring"      },
     { id:"offboarding",  label:"Offboarding",           icon:ICONS.roster,   group:"Hiring"      },
     { id:"compliance",   label:"Compliance",           icon:ICONS.dash,     group:"Compliance"  },
+    { id:"capdeck",      label:"Capability Deck AI",     icon:ICONS.pl,       group:"Clients"     },
+    { id:"outreachtrk",  label:"Outreach Tracker",       icon:ICONS.pipeline, group:"Clients"     },
+    { id:"soplibrary",   label:"SOP & Exit Readiness",   icon:ICONS.pl,       group:"Delivery"    },
+    { id:"certtracker",  label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
+    { id:"gridmind",     label:"GridMind\u2122 ROI",     icon:ICONS.ebitda,   group:"Overview"    },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -2610,6 +2621,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="soplibrary"   && <SOPLibrary roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} apInvoices={shared.apInvoices} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
         {tab==="capdeck"      && <CapabilityDeck clients={shared.clients} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="certtracker"  && <CertTracker addAudit={shared.addAudit}/>}
+        {tab==="gridmind"     && <GridMindROI/>}
         {tab==="outreachtrk"  && <OutreachTracker crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="sowgen"     && <SOWGenerator   {...shared} />}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
@@ -5412,7 +5424,7 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
               <div style={{fontSize:11,color:"#3d5a7a"}}>{selInv.projectName}</div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-              {[["Issue Date",fmtDate(selInv.issueDate)],["Due Date",fmtDate(selInv.dueDate)],["Terms",selInv.paymentTerms],["Status",selInv.status.toUpperCase()]].map(([l,v])=>(
+              {[["Issue Date",fmtDate(selInv.issueDate)],["Due Date",fmtDate(selInv.dueDate)],["Terms",selInv.paymentTerms],["Status",(selInv.status||"").toUpperCase()]].map(([l,v])=>(
                 <div key={l}><div className="th" style={{marginBottom:2}}>{l}</div><div style={{fontSize:12,color:"#94a3b8"}}>{v}</div></div>
               ))}
             </div>
@@ -9388,7 +9400,7 @@ function getEffectivePerms(member) {
 }
 
 function Avatar({ name, role, size=36 }) {
-  const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const initials = (name||"").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
   const roleC = ROLE_TEMPLATES[role]?.color || "#64748b";
   return (
     <div style={{width:size,height:size,borderRadius:"50%",background:ROLE_TEMPLATES[role]?.bg||"#0a1626",
@@ -23456,6 +23468,199 @@ Timeline, Budget Guidelines, Terms & Conditions, Submission Instructions.`;
 // ═══════════════════════════════════════════════════════════════════════
 // RESOURCE PLANNER AI — Intelligent resource allocation
 // ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// GRIDMIND™ ROI CALCULATOR — Naxon Systems sales demo tool
+// ═══════════════════════════════════════════════════════════════════════════
+const GRIDMIND_PRESETS = {
+  "Electric Utility":  {outages:48,avgOutageCost:180000,operators:42,ticketsMonth:3200,compliance:250000,contract:1200000},
+  "Gas Utility":       {outages:32,avgOutageCost:120000,operators:28,ticketsMonth:2100,compliance:180000,contract:900000},
+  "Water Utility":     {outages:24,avgOutageCost:80000, operators:18,ticketsMonth:1400,compliance:120000,contract:650000},
+  "Telecom":           {outages:96,avgOutageCost:240000,operators:65,ticketsMonth:8500,compliance:150000,contract:1800000},
+  "Manufacturing":     {outages:60,avgOutageCost:95000, operators:35,ticketsMonth:2800,compliance:80000, contract:850000},
+  "Healthcare":        {outages:20,avgOutageCost:200000,operators:55,ticketsMonth:4200,compliance:400000,contract:1400000},
+};
+
+function GridMindROI() {
+  const [industry, setIndustry]   = useState("Electric Utility");
+  const [f, setF]                 = useState({...GRIDMIND_PRESETS["Electric Utility"]});
+  const [showROI, setShowROI]     = useState(false);
+  const [copied, setCopied]       = useState(false);
+
+  const upd = (k,v) => setF(p=>({...p,[k]:+v}));
+  const setPreset = ind => { setIndustry(ind); setF({...GRIDMIND_PRESETS[ind]}); setShowROI(false); };
+
+  // ROI Model — GridMind impact assumptions
+  const outageSavings   = f.outages * 0.40 * f.avgOutageCost;
+  const ticketSavings   = f.ticketsMonth * 12 * 0.35 * 85;
+  const complianceSave  = f.compliance * 0.60;
+  const opEfficiency    = f.operators * 85000 * 0.25;
+  const yr1             = outageSavings + ticketSavings + complianceSave + opEfficiency;
+  const yr2             = yr1 * 1.15;
+  const yr3             = yr2 * 1.12;
+  const totalBenefit    = yr1 + yr2 + yr3;
+  const totalInvestment = f.contract * 3;
+  const netROI          = totalBenefit - totalInvestment;
+  const roiPct          = totalInvestment > 0 ? Math.round(netROI / totalInvestment * 100) : 0;
+  const payback         = yr1 > 0 ? Math.round(f.contract / (yr1 / 12)) : 0;
+  const maxBar          = Math.max(outageSavings, ticketSavings, complianceSave, opEfficiency, 1);
+
+  const summary = `GridMind™ ROI Summary — ${industry}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Annual Investment: $${f.contract.toLocaleString()}
+Year 1 Benefits:   $${Math.round(yr1).toLocaleString()}
+Year 2 Benefits:   $${Math.round(yr2).toLocaleString()}
+Year 3 Benefits:   $${Math.round(yr3).toLocaleString()}
+3-Year Net ROI:    $${Math.round(netROI).toLocaleString()} (${roiPct}%)
+Payback Period:    ${payback} months
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Outage reduction (40%):     $${Math.round(outageSavings).toLocaleString()}/yr
+• Ticket automation (35%):    $${Math.round(ticketSavings).toLocaleString()}/yr
+• Compliance risk (60%):      $${Math.round(complianceSave).toLocaleString()}/yr
+• Operator efficiency (25%):  $${Math.round(opEfficiency).toLocaleString()}/yr
+
+Prepared by Naxon Systems | GridMind™ AI Operations Platform`;
+
+  const NF = ({label,k,pre=""}) => (
+    <div style={{marginBottom:10}}>
+      <div className="lbl">{label}</div>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        {pre&&<span style={{fontSize:12,color:"#475569",flexShrink:0}}>{pre}</span>}
+        <input className="inp" type="number" value={f[k]||0} onChange={e=>upd(k,e.target.value)} style={{flex:1}}/>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <PH title="GridMind™ ROI Calculator" sub="Naxon Systems · AI Operations Platform · 3-Year Return on Investment"/>
+      <div style={{padding:"10px 16px",background:"#0a1a0a",border:"1px solid #15803d",borderRadius:8,marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+        <div style={{fontSize:12,color:"#4ade80"}}>⚡ <strong>GridMind™</strong> — Intelligent Operations for Utilities, Telecom & Industrial</div>
+        <div style={{display:"flex",gap:6}}>
+          {showROI&&<button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
+            const rows=[["Metric","Value"],["Industry",industry],["Annual Investment","$"+f.contract.toLocaleString()],["Year 1 Benefit","$"+Math.round(yr1).toLocaleString()],["Year 2 Benefit","$"+Math.round(yr2).toLocaleString()],["Year 3 Benefit","$"+Math.round(yr3).toLocaleString()],["3-Year Net ROI","$"+Math.round(netROI).toLocaleString()+" ("+roiPct+"%)"],["Payback Period",payback+" months"],["",""],["Outage Reduction","$"+Math.round(outageSavings).toLocaleString()],["Ticket Automation","$"+Math.round(ticketSavings).toLocaleString()],["Compliance Savings","$"+Math.round(complianceSave).toLocaleString()],["Operator Efficiency","$"+Math.round(opEfficiency).toLocaleString()]];
+            await exportTableToXLSX(rows,["Metric","Value"],"GridMind ROI","Naxon-GridMind-ROI-"+TODAY_STR+".xlsx");
+          }}>📋 XLSX</button>}
+          {showROI&&<button className="btn bg" style={{fontSize:11,color:"#94a3b8"}} onClick={()=>{navigator.clipboard.writeText(summary);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>{copied?"✓ Copied":"📋 Copy"}</button>}
+          {showROI&&<button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
+            await generateReportPDF("GridMind™ ROI Analysis",[
+              {type:"heading",text:"GridMind™ ROI — "+industry},
+              {type:"text",text:summary},
+            ],"Naxon-GridMind-ROI-"+TODAY_STR+".pdf");
+          }}>📄 PDF</button>}
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:16,alignItems:"start"}}>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>⚙️ Customer Profile</div>
+            <div style={{marginBottom:12}}>
+              <div className="lbl">Industry Vertical</div>
+              <select className="inp" value={industry} onChange={e=>setPreset(e.target.value)}>
+                {Object.keys(GRIDMIND_PRESETS).map(i=><option key={i}>{i}</option>)}
+              </select>
+            </div>
+            <NF label="Annual Outages / Major Incidents" k="outages"/>
+            <NF label="Average Cost per Outage" k="avgOutageCost" pre="$"/>
+            <NF label="Operations Staff (operators)" k="operators"/>
+            <NF label="Support Tickets / Month" k="ticketsMonth"/>
+            <NF label="Annual Compliance Fine Exposure" k="compliance" pre="$"/>
+            <NF label="GridMind™ Annual License" k="contract" pre="$"/>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",marginTop:8,fontSize:13}} onClick={()=>setShowROI(true)}>
+              ⚡ Calculate 3-Year ROI
+            </button>
+          </div>
+          <div className="card" style={{padding:"14px 16px",background:"#0c2340",border:"1px solid #0369a1"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>GridMind™ AI Capabilities</div>
+            {["Predictive outage prevention — 40% reduction","Automated ticket routing & resolution — 35%","Real-time compliance monitoring — 60% fine reduction","Operator copilot — natural language to action","Anomaly detection with AI confidence scoring","ARIA contact center integration"].map(cap=>(
+              <div key={cap} style={{fontSize:10,color:"#7dd3fc",marginBottom:4}}>✓ {cap}</div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          {!showROI&&(
+            <div className="card" style={{padding:"60px 40px",textAlign:"center"}}>
+              <div style={{fontSize:40,marginBottom:12}}>⚡</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#334155",marginBottom:8}}>GridMind™ ROI Model</div>
+              <div style={{fontSize:12,color:"#1e3a5f",lineHeight:1.6,marginBottom:20}}>Configure your prospect's operational profile on the left,<br/>then calculate their 3-year return on GridMind™ investment.</div>
+              <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+                {["40% Fewer Outages","35% Ticket Reduction","60% Compliance Risk Reduction","25% Operator Efficiency"].map(t=>(
+                  <span key={t} className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:11}}>{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showROI&&(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                {[{l:"3-Year Net ROI",v:"$"+Math.round(netROI/1000)+"K",sub:roiPct+"% return",c:"#34d399"},{l:"Year 1 Benefits",v:"$"+Math.round(yr1/1000)+"K",sub:"vs $"+Math.round(f.contract/1000)+"K cost",c:"#38bdf8"},{l:"Payback Period",v:payback+"mo",sub:"break-even",c:"#a78bfa"}].map(s=>(
+                  <div key={s.l} className="card" style={{padding:"14px 18px",textAlign:"center"}}>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>{s.l}</div>
+                    <div style={{fontSize:26,fontWeight:900,color:s.c}}>{s.v}</div>
+                    <div style={{fontSize:10,color:"#475569"}}>{s.sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="card" style={{padding:"18px 20px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>Annual Benefit Breakdown</div>
+                {[
+                  {l:"Outage Reduction (40%)",v:outageSavings,c:"#34d399",d:f.outages+" outages × $"+(f.avgOutageCost/1000).toFixed(0)+"K × 40%"},
+                  {l:"Ticket Automation (35%)",v:ticketSavings,c:"#38bdf8",d:(f.ticketsMonth*12).toLocaleString()+" tickets/yr × 35% × $85 saved"},
+                  {l:"Compliance Risk (60%)",v:complianceSave,c:"#a78bfa",d:"$"+(f.compliance/1000).toFixed(0)+"K exposure × 60% reduction"},
+                  {l:"Operator Efficiency (25%)",v:opEfficiency,c:"#f59e0b",d:f.operators+" staff × $85K avg × 25% time saved"},
+                ].map(({l,v,c,d})=>(
+                  <div key={l} style={{marginBottom:14}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                      <span style={{fontSize:12,color:"#94a3b8"}}>{l}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:c}}>${Math.round(v).toLocaleString()}/yr</span>
+                    </div>
+                    <div style={{height:8,background:"#0a1626",borderRadius:4,marginBottom:3}}>
+                      <div style={{height:8,borderRadius:4,background:c,width:Math.round(v/maxBar*100)+"%",transition:"width 0.6s"}}/>
+                    </div>
+                    <div style={{fontSize:10,color:"#334155"}}>{d}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="card" style={{padding:"18px 20px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>3-Year Projection</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+                  {[[1,yr1],[2,yr2],[3,yr3]].map(([yr,val])=>(
+                    <div key={yr} style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",textAlign:"center"}}>
+                      <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>YEAR {yr}</div>
+                      <div style={{fontSize:20,fontWeight:800,color:"#34d399"}}>${Math.round(val/1000)}K</div>
+                      <div style={{fontSize:10,color:"#334155"}}>benefit</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{padding:"14px 16px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div><div style={{fontSize:10,color:"#0284c7"}}>3-YR INVESTMENT</div><div style={{fontSize:16,fontWeight:800,color:"#7dd3fc"}}>${Math.round(totalInvestment/1000)}K</div></div>
+                    <div style={{fontSize:24,color:"#0369a1"}}>→</div>
+                    <div style={{textAlign:"right"}}><div style={{fontSize:10,color:"#15803d"}}>3-YR TOTAL BENEFIT</div><div style={{fontSize:16,fontWeight:800,color:"#34d399"}}>${Math.round(totalBenefit/1000)}K</div></div>
+                  </div>
+                  <div style={{textAlign:"center",fontSize:15,fontWeight:900,color:"#34d399"}}>
+                    Net ROI: ${Math.round(netROI/1000)}K ({roiPct}%) · Payback in {payback} months
+                  </div>
+                </div>
+              </div>
+
+              <div className="card" style={{padding:"14px 16px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#475569",marginBottom:8,textTransform:"uppercase"}}>Shareable Summary</div>
+                <pre style={{fontSize:10,color:"#475569",whiteSpace:"pre-wrap",lineHeight:1.5,background:"#060d1c",padding:"12px",borderRadius:8,border:"1px solid #1a2d45",margin:0}}>{summary}</pre>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function ResourcePlanAI({ roster, clients, projects, crmDeals }) {
   const [form, setForm] = useState({
     project:"SAP S/4HANA Migration", duration:"9 months", skills:"SAP ABAP, BRIM, Finance module, integration", headcount:"4", budget:"800000",
@@ -23504,6 +23709,14 @@ Timeline & Ramp-up Plan, Risk Factors, Cost Estimate, Recommendations.`;
     <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:20,alignItems:"start"}}>
       <div>
         <PH title="Resource Planner AI" sub="Intelligent resource allocation from your team"/>
+      <div style={{display:"flex",gap:8,marginBottom:8,justifyContent:"flex-end"}}>
+        {output&&<button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
+          await generateReportPDF("Resource Plan",[{type:"heading",text:"Resource Allocation Plan"},{type:"text",text:output.slice(0,3000)}],`Ziksatech-ResourcePlan-${TODAY_STR}.pdf`);
+        }}>📄 PDF</button>}
+        {output&&<button className="btn bg" style={{fontSize:11,color:"#94a3b8"}} onClick={()=>{
+          const b=new Blob([output],{type:"text/plain"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`resource-plan-${TODAY_STR}.txt`;a.click();URL.revokeObjectURL(u);
+        }}>📝 TXT</button>}
+      </div>
         <div className="card" style={{padding:"20px"}}>
           <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>Project Requirements</div>
           <FF label="Project Name"><input className="inp" value={form.project} onChange={f("project")} placeholder="New BRIM Implementation - Client X"/></FF>
