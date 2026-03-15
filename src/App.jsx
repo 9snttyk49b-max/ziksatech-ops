@@ -6154,11 +6154,14 @@ function ComplianceModule({ workAuth, setWorkAuth, compDocs, setCompDocs, roster
 }
 
 const daysUntil = (dateStr) => {
-  const d = new Date(dateStr+"T00:00:00");
-  const today = new Date("2026-03-11T00:00:00");
+  if (!dateStr) return null;
+  const d = new Date(dateStr + "T00:00:00");
+  if (isNaN(d.getTime())) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
   return Math.floor((d - today) / 86400000);
 };
 const urgencyLevel = (days) => {
+  if (days === null || days === undefined) return { label:"N/A", color:"#334155", bg:"#0a1120" };
   if (days < 0)   return { label:"EXPIRED",  color:"#dc2626", bg:"#180404" };
   if (days <= 30) return { label:"URGENT",   color:"#f87171", bg:"#1a0808" };
   if (days <= 60) return { label:"WARNING",  color:"#f59e0b", bg:"#1a1005" };
@@ -6302,11 +6305,11 @@ function CompWorkAuth({ workAuth, setWorkAuth, roster, addAudit }) {
               <span style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{w.name}</span>
               <span className="bdg" style={{background:"#0a1626",color:visaColors[w.type]||"#64748b"}}>{w.type}</span>
               <span className="bdg" style={{background:urg.bg,color:urg.color}}>{urg.label}</span>
-              <span style={{fontSize:11,color:"#475569"}}>{fmtDate(w.startDate)}</span>
-              <span style={{fontSize:11,color:days<=60?"#f87171":"#64748b"}}>{fmtDate(w.expiryDate)}</span>
+              <span style={{fontSize:11,color:"#475569"}}>{fmtDate(w.startDate)||"—"}</span>
+              <span style={{fontSize:11,color:days!==null&&days<=60?"#f87171":"#64748b"}}>{fmtDate(w.expiryDate)||"—"}</span>
               <div>
                 <span className="mono" style={{fontSize:12,fontWeight:700,color:urg.color}}>
-                  {days<0?`${Math.abs(days)}d EXPIRED`:`${days} days`}
+                  {days===null?"—":days<0?`${Math.abs(days)}d EXPIRED`:`${days} days`}
                 </span>
                 <div style={{height:4,background:"#0a1626",borderRadius:2,marginTop:4,width:80}}>
                   <div style={{height:4,borderRadius:2,background:urg.color,width:`${Math.max(0,Math.min(100,(days/365)*100))}%`}}/>
