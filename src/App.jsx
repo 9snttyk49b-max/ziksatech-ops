@@ -11967,7 +11967,7 @@ function CFOverview({ finInvoices, finPayments, apInvoices, adpRuns, roster, hor
   arOpen.forEach(inv => {
     const expectedDate = expectedPayDate(inv.issueDate, inv.paymentTerms||"Net 30");
     const idx = assignToWeek(weeks, expectedDate);
-    if (idx >= 0) arBuckets[idx] += (+inv.balance||0) || ((+inv.amount||0) - (+inv.paid||0));
+    const invAmt = (+inv.amount||0) || (inv.lines||[]).reduce((s,l)=>s+(+l.amount||0),0); const invBal = (+inv.balance||0) || (invAmt - finPayments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0)); if (idx >= 0 && invBal > 0) arBuckets[idx] += invBal;
   });
 
   apOpen.forEach(inv => {
@@ -12128,7 +12128,9 @@ function CFArForecast({ finInvoices, finPayments, fbInvoices }) {
   // From finInvoices
   finInvoices.forEach(inv => {
     if (inv.status === "paid" || inv.status === "voided") return;
-    const balance = inv.amount - (finPayments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0));
+    const invAmount = (+inv.amount||0) || (inv.lines||[]).reduce((s,l)=>s+(+l.amount||0),0);
+    const invPaid = finPayments.filter(p=>p.invoiceId===inv.id).reduce((s,p)=>s+(+p.amount||0),0);
+    const balance = invAmount - invPaid;
     if (balance <= 0) return;
     const terms   = inv.paymentTerms || "Net 30";
     const expDate = expectedPayDate(inv.issueDate, terms);
@@ -12136,7 +12138,7 @@ function CFArForecast({ finInvoices, finPayments, fbInvoices }) {
     const isOverdue = daysOut !== null && daysOut < 0;
     allAR.push({
       id: inv.id, number: inv.number, client: inv.client||inv.clientId||"Unknown",
-      amount: inv.amount, balance, issued: inv.issueDate,
+      amount: invAmount, balance, issued: inv.issueDate,
       expDate, daysOut, isOverdue, terms, source: "Finance"
     });
   });
@@ -12144,14 +12146,14 @@ function CFArForecast({ finInvoices, finPayments, fbInvoices }) {
   // From fbInvoices (FreshBooks)
   fbInvoices.forEach(inv => {
     if (inv.status === "paid" || inv.status === "draft") return;
-    const balance = inv.amount - (inv.paid||0);
+    const balance = (+inv.amount||0) - (+inv.paid||0);
     if (balance <= 0) return;
     const expDate = expectedPayDate(inv.issueDate, "Net 30");
     const daysOut = expDate ? Math.round((expDate - TODAY)/MS_DAY) : null;
     const isOverdue = daysOut !== null && daysOut < 0;
     allAR.push({
       id: inv.id, number: inv.number, client: inv.client||inv.clientId||"Unknown",
-      amount: inv.amount, balance, issued: inv.issueDate,
+      amount: (+inv.amount||0), balance, issued: inv.issueDate,
       expDate, daysOut, isOverdue, terms: "Net 30", source: "FreshBooks"
     });
   });
@@ -12163,11 +12165,11 @@ function CFArForecast({ finInvoices, finPayments, fbInvoices }) {
   const due60        = allAR.filter(i=>!i.isOverdue&&(i.daysOut??999)>30&&(i.daysOut??999)<=60);
   const later        = allAR.filter(i=>!i.isOverdue&&(i.daysOut??999)>60);
 
-  const totalAR = allAR.reduce((s,i)=>s+i.balance,0);
+  const totalAR = allAR.reduce((s,i)=>s+(+i.balance||0),0);
 
   const bucket = (items, label, color, bg) => items.length === 0 ? null : (
     <div className="card" style={{marginBottom:14}}>
-      <div className="section-hdr" style={{color}}>{label} — {fmt(items.reduce((s,i)=>s+i.balance,0))}</div>
+      <div className="section-hdr" style={{color}}>{label} — {fmt(items.reduce((s,i)=>s+(+i.balance||0),0))}</div>
       <div className="tr" style={{gridTemplateColumns:"1fr 90px 80px 80px 80px 70px",padding:"8px 18px"}}>
         {["Invoice","Client","Balance","Issued","Exp. Payment","Source"].map(h=><span key={h} className="th">{h}</span>)}
       </div>
