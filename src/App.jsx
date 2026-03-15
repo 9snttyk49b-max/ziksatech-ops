@@ -21796,67 +21796,105 @@ function BankAnalyzer({ authProfile }) {
   const handleFile = async (file) => {
     if (!file) return;
     setUploading(true); setTransactions([]); setAnalysis(null); setAiSuggestions("");
-    const text = await file.text();
-    const system = `You are a financial analyst for Ziksatech, an IT consulting firm in Plano TX.
-Analyze this ${stmtType === "bank" ? "bank" : "credit card"} statement. Extract ALL transactions.
-Return ONLY a JSON object — no markdown, no explanation:
-{
-  "transactions": [{"date":"YYYY-MM-DD","description":"brief","amount":0.00,"type":"debit|credit","category":"Payroll|Software/SaaS|Cloud/Hosting|Travel|Meals & Entertainment|Office Supplies|Insurance|Legal & Professional|Utilities|Subscriptions|Taxes & Fees|Equipment|Marketing|Misc/Other","flag":"essential|review|avoidable","flagReason":"1 sentence","vendor":"name"}],
-  "summary": {"totalDebits":0,"totalCredits":0,"period":"Month YYYY","topVendor":"name","topCategory":"name"}
-}
-Flag: essential=payroll/insurance/taxes/critical software, review=meals/travel/unclear, avoidable=personal/duplicate/luxury.
-Be concise — keep flagReason under 8 words. Return valid JSON only.`;
-    const prompt = `Analyze this ${stmtType} statement:
 
-${text.slice(0,5000)}`;
+    const isPDF = file.type === "application/pdf" || file.name?.toLowerCase().endsWith(".pdf");
+    const system = `You are a financial analyst for Ziksatech, an IT consulting firm in Plano TX.
+Extract ALL transactions from this ${stmtType === "bank" ? "bank" : "credit card"} statement.
+Return ONLY a JSON object — no markdown, no explanation:
+{"transactions":[{"date":"YYYY-MM-DD","description":"brief","amount":0.00,"type":"debit|credit","category":"Payroll|Software/SaaS|Cloud/Hosting|Travel|Meals & Entertainment|Office Supplies|Insurance|Legal & Professional|Utilities|Subscriptions|Taxes & Fees|Equipment|Marketing|Misc/Other","flag":"essential|review|avoidable","flagReason":"1 sentence max","vendor":"name"}],"summary":{"totalDebits":0,"totalCredits":0,"period":"Month YYYY","topVendor":"name","topCategory":"name"}}
+Flag rules: essential=payroll/insurance/taxes/critical software; review=meals/travel/unclear purpose; avoidable=personal/duplicate/luxury.
+Return valid JSON only.`;
+
     let full = "";
-    await callClaude(system, prompt, txt => { full = txt; }, 4000);
     try {
-      const parsed = JSON.parse(full.replace(/\`\`\`json|\`\`\`/g,"").trim());
+      if (isPDF) {
+        // Read PDF as base64 and send to Claude via document API
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const storedKey = localStorage.getItem("zt-anthropic-key") || "";
+        const pdfRes = await fetch("/api/claude", {
+          method: "POST",
+          headers: {"Content-Type": "application/json", ...(storedKey ? {"x-api-key-override": storedKey} : {})},
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 4000,
+            stream: true,
+            system,
+            messages: [{
+              role: "user",
+              content: [
+                {type: "document", source: {type: "base64", media_type: "application/pdf", data: base64}},
+                {type: "text", text: "Extract all transactions from this bank/CC statement and return the JSON as instructed."}
+              ]
+            }]
+          })
+        });
+        if (!pdfRes.ok) {
+          const err = await pdfRes.text();
+          alert("PDF API error: " + err.slice(0, 200));
+          setUploading(false); return;
+        }
+        const reader = pdfRes.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          for (const line of chunk.split("\n")) {
+            if (line.startsWith("data: ")) {
+              try {
+                const d = JSON.parse(line.slice(6));
+                if (d.type === "content_block_delta" && d.delta?.text) full += d.delta.text;
+              } catch {}
+            }
+          }
+        }
+      } else {
+        // CSV/TXT: read as text and send normally
+        const text = await file.text();
+        await callClaude(system, `Analyze this ${stmtType} statement:\n\n${text.slice(0, 5000)}`, txt => { full = txt; }, 4000);
+      }
+    } catch(fetchErr) {
+      alert("Upload error: " + fetchErr.message + ". Check your internet connection.");
+      setUploading(false); return;
+    }
+
+    if (!full || full.trim().length < 10) {
+      alert("No response received. Make sure your Anthropic API key is set in Settings.");
+      setUploading(false); return;
+    }
+
+    try {
+      const clean = full.replace(/```json|```/g, "").trim();
+      const bracketStart = clean.indexOf("{");
+      const bracketEnd = clean.lastIndexOf("}");
+      const parsed = JSON.parse(bracketStart >= 0 ? clean.slice(bracketStart, bracketEnd + 1) : clean);
       const txns = parsed.transactions || [];
+      if (txns.length === 0) {
+        alert("AI extracted 0 transactions. Try uploading the CSV export from your bank instead of the PDF.");
+        setUploading(false); return;
+      }
       setTransactions(txns);
-      // Build analysis
       const catTotals = {};
       const flagTotals = { essential:0, review:0, avoidable:0 };
-      txns.filter(t=>t.type==="debit").forEach(t => {
-        catTotals[t.category] = (catTotals[t.category]||0) + (+t.amount||0);
-        if (t.flag) flagTotals[t.flag] = (flagTotals[t.flag]||0) + (+t.amount||0);
+      txns.filter(t => t.type === "debit").forEach(t => {
+        catTotals[t.category] = (catTotals[t.category] || 0) + (+t.amount || 0);
+        if (t.flag) flagTotals[t.flag] = (flagTotals[t.flag] || 0) + (+t.amount || 0);
       });
-      const total = Object.values(catTotals).reduce((s,v)=>s+v,0);
-      const sorted = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
-      setAnalysis({ catTotals, flagTotals, total, sorted, summary: parsed.summary||{} });
+      const total = Object.values(catTotals).reduce((s, v) => s + v, 0);
+      const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+      setAnalysis({ catTotals, flagTotals, total, sorted, summary: parsed.summary || {} });
       setActiveTab("breakdown");
     } catch(e) {
-      console.error("BankAnalyzer parse error:", e, "Raw response:", full.slice(0,200));
-      // Try to recover partial JSON
-      try {
-        const bracketStart = full.indexOf('{');
-        const bracketEnd = full.lastIndexOf('}');
-        if (bracketStart >= 0 && bracketEnd > bracketStart) {
-          const partial = JSON.parse(full.slice(bracketStart, bracketEnd+1));
-          if (partial.transactions?.length > 0) {
-            setTransactions(partial.transactions);
-            const catTotals = {};
-            const flagTotals = { essential:0, review:0, avoidable:0 };
-            partial.transactions.filter(t=>t.type==="debit").forEach(t => {
-              catTotals[t.category] = (catTotals[t.category]||0) + (+t.amount||0);
-              if (t.flag) flagTotals[t.flag] = (flagTotals[t.flag]||0) + (+t.amount||0);
-            });
-            const total = Object.values(catTotals).reduce((s,v)=>s+v,0);
-            setAnalysis({ catTotals, flagTotals, total, sorted:Object.entries(catTotals).sort((a,b)=>b[1]-a[1]), summary: partial.summary||{} });
-            setActiveTab("breakdown");
-          } else {
-            alert("AI returned incomplete data. Try with a smaller statement or check API key in Settings.");
-          }
-        } else {
-          alert("AI response could not be parsed. Ensure your Anthropic API key is set in Settings → API Key.");
-        }
-      } catch(e2) {
-        alert("Analysis failed. Check that your API key is set in Settings. Raw: " + full.slice(0,100));
-      }
+      console.error("Parse error:", e, "Raw (first 300):", full.slice(0, 300));
+      alert("Could not parse AI response. The PDF may be scanned/image-based (try CSV export from your bank). Error: " + e.message);
     }
     setUploading(false);
-  };
+    };
 
   const runAISuggestions = async () => {
     if (!transactions.length) return;
