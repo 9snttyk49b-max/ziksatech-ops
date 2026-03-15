@@ -2124,6 +2124,7 @@ export default function ZiksatechOps() {
     { id:"crm",          label:"Sales CRM",            icon:ICONS.clients,  group:"Clients"     },
     { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Clients"     },
     { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
+    { id:"prospectintel", label:"Prospect Intel",        icon:ICONS.pipeline, group:"Clients"     },
     { id:"sowgen",      label:"SOW Generator",         icon:ICONS.pl,       group:"Clients"     },
     { id:"linkedin",    label:"LinkedIn Posts",        icon:ICONS.pl,       group:"Clients"     },
     { id:"resourceplan",label:"Resource Planner AI",  icon:ICONS.roster,   group:"Delivery"    },
@@ -2605,6 +2606,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         )}
         {tab==="home"       && <HomePage      {...shared} authProfile={authProfile} />}
         {tab==="rfpgen"     && <RFPGenerator   {...shared} />}
+        {tab==="prospectintel" && <ProspectIntel crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} addAudit={shared.addAudit} />}
         {tab==="sowgen"     && <SOWGenerator   {...shared} />}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
@@ -21759,6 +21761,366 @@ Change Management Process, Acceptance Criteria, Signatures section.`;
 // ═══════════════════════════════════════════════════════════════════════
 // RFP GENERATOR — AI-powered Request for Proposal
 // ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// PROSPECT INTELLIGENCE ENGINE
+// AI-powered company research → SAP landscape → BRIM fit → outreach angle
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PI_INDUSTRIES = ["Utilities","Telecom","Healthcare","Financial Services","Manufacturing","Retail","Energy","Government","Technology","Insurance"];
+const PI_SAMPLE_COMPANIES = ["Capital One","Oncor Electric","CHRISTUS Health","Verizon","BNSF Railway","Celanese","Calpine Energy","Southwest Airlines","American Airlines","AT&T"];
+
+function ProspectIntel({ crmLeads, setCrmLeads, addAudit }) {
+  const [company,    setCompany]   = useState("");
+  const [context,    setContext]   = useState("");
+  const [loading,    setLoading]   = useState(false);
+  const [result,     setResult]    = useState(null);
+  const [history,    setHistory]   = useState(()=>{ try{ return JSON.parse(localStorage.getItem("zt-pi-history")||"[]"); }catch{ return []; } });
+  const [activeHist, setActiveHist]= useState(null);
+  const [savedMsg,   setSavedMsg]  = useState("");
+
+  const saveHistory = (item) => {
+    const updated = [item, ...history].slice(0,20);
+    setHistory(updated);
+    localStorage.setItem("zt-pi-history", JSON.stringify(updated));
+  };
+
+  const analyze = async () => {
+    if(!company.trim()) return alert("Enter a company name to analyze");
+    setLoading(true); setResult(null); setActiveHist(null);
+    const systemPrompt = `You are a senior SAP consulting BD analyst at Ziksatech, a certified WBE/HUB/WOSB SAP consulting firm in Plano TX specializing in SAP BRIM, IS-U, S/4HANA migrations, Databricks, and AI solutions.
+
+Analyze the prospect company and return ONLY valid JSON (no markdown):
+{
+  "company": "Company Name",
+  "industry": "Industry",
+  "headquarters": "City, State",
+  "employees": "estimated range",
+  "revenue": "estimated annual revenue",
+  "sapLandscape": {
+    "currentSystems": ["list of likely SAP/ERP systems in use"],
+    "ecc2027Risk": "Critical|High|Medium|Low",
+    "ecc2027RiskReason": "1-2 sentence explanation",
+    "s4Migration": "Planned|Likely|Unlikely|Unknown",
+    "sapModules": ["relevant SAP modules they likely use"]
+  },
+  "brimFitScore": 85,
+  "brimFitReason": "Why BRIM/IS-U/S4HANA is relevant to them",
+  "fitScores": {
+    "brim": 0-100,
+    "isU": 0-100,
+    "s4Migration": 0-100,
+    "databricks": 0-100,
+    "managedServices": 0-100
+  },
+  "keyTargets": [
+    {"title": "VP SAP Solutions", "dept": "IT", "why": "Decision maker for SAP roadmap"},
+    {"title": "CTO", "dept": "Technology", "why": "Budget authority for digital transformation"},
+    {"title": "Director, Revenue Management", "dept": "Finance", "why": "BRIM pain point owner"}
+  ],
+  "outreachAngle": "Specific, compelling 2-3 sentence outreach hook tailored to this company",
+  "emailSubject": "Specific email subject line that would get opened",
+  "openingLine": "Personalized opening sentence for cold outreach",
+  "painPoints": ["Pain point 1", "Pain point 2", "Pain point 3"],
+  "ziksatechValue": "What Ziksatech specifically brings that big 4 firms don't",
+  "competitiveAdvantage": "WBE/HUB angle if applicable to this company",
+  "estimatedDealSize": "$XXX,000 - $XXX,000",
+  "dealType": "Staff Augmentation|Project Implementation|Managed Services|Mixed",
+  "urgency": "Immediate|Q2 2026|H2 2026|2027",
+  "nextStep": "Specific recommended first action to take this week"
+}`;
+
+    const userPrompt = `Analyze this prospect for Ziksatech SAP consulting opportunities:
+Company: ${company.trim()}
+${context.trim() ? "Additional context: "+context.trim() : ""}
+Industry context: This is for a DFW-based SAP staffing & consulting firm targeting $5M+ companies that use or need SAP BRIM, IS-U, S/4HANA, or data engineering.`;
+
+    try {
+      let full = "";
+      await callClaude(systemPrompt, userPrompt, txt => { full = txt; }, 2000);
+      const clean = full.replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(clean);
+      parsed._timestamp = new Date().toISOString();
+      parsed._query = company.trim();
+      setResult(parsed);
+      saveHistory(parsed);
+      addAudit&&addAudit("CRM","Prospect Intel",company.trim(),"AI analysis completed");
+    } catch(e) {
+      setResult({_error: "Analysis failed: "+e.message, _query: company.trim()});
+    }
+    setLoading(false);
+  };
+
+  const saveAsLead = (r) => {
+    if(!r || r._error) return;
+    const newLead = {
+      id:"lead"+Date.now(), name:r.keyTargets?.[0]?.title||"Decision Maker",
+      company:r.company, title:r.keyTargets?.[0]?.title||"",
+      email:"", phone:"", industry:r.industry||"",
+      source:"Prospect Intel", score:r.brimFitScore||70, status:"new",
+      notes:`${r.outreachAngle}
+
+ECC Risk: ${r.sapLandscape?.ecc2027Risk} | Deal: ${r.estimatedDealSize}
+Next: ${r.nextStep}`,
+      linkedIn:"", assignedTo:"Manju", createdDate:TODAY_STR, lastContact:TODAY_STR,
+    };
+    setCrmLeads&&setCrmLeads(ls=>[...(ls||[]),newLead]);
+    setSavedMsg("✅ Saved to CRM Leads!");
+    addAudit&&addAudit("CRM","Lead Created",r.company,"From Prospect Intel");
+    setTimeout(()=>setSavedMsg(""),3000);
+  };
+
+  const display = activeHist || result;
+  const riskColor = {Critical:"#f87171",High:"#f59e0b",Medium:"#fbbf24",Low:"#34d399"};
+  const scoreColor = n => n>=80?"#34d399":n>=60?"#f59e0b":"#f87171";
+
+  return (
+    <div>
+      <PH title="Prospect Intelligence Engine" sub="AI-powered company research · SAP landscape · BRIM fit score · Outreach angles"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:16,alignItems:"start"}}>
+        {/* LEFT: Input + History */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {/* Search card */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🔍 Analyze a Prospect</div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Company Name</div>
+              <input className="inp" value={company} onChange={e=>setCompany(e.target.value)}
+                placeholder="e.g. Capital One, Oncor, CHRISTUS Health"
+                onKeyDown={e=>e.key==="Enter"&&!loading&&analyze()}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div className="lbl">Context (optional)</div>
+              <textarea className="inp" rows={3} value={context} onChange={e=>setContext(e.target.value)}
+                placeholder="e.g. They're on ECC 6.0, upgrading to cloud by 2027. Met at SAP Sapphire. Intro through Nuthan."/>
+            </div>
+            {/* Quick picks */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:10,color:"#3d5a7a",marginBottom:6}}>QUICK PICKS</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {PI_SAMPLE_COMPANIES.slice(0,6).map(co=>(
+                  <button key={co} className="btn bg" style={{fontSize:10,padding:"3px 8px"}}
+                    onClick={()=>setCompany(co)}>{co}</button>
+                ))}
+              </div>
+            </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:13}}
+              onClick={analyze} disabled={loading}>
+              {loading?"⚡ Analyzing...":"⚡ Analyze Prospect"}
+            </button>
+            {loading&&(
+              <div style={{marginTop:12,padding:"10px 14px",background:"#0c1e30",borderRadius:8,fontSize:11,color:"#38bdf8",textAlign:"center"}}>
+                AI is researching {company}…
+              </div>
+            )}
+          </div>
+
+          {/* History */}
+          {history.length>0&&(
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:10}}>RECENT ANALYSES</div>
+              {history.slice(0,8).map((h,i)=>(
+                <div key={i} onClick={()=>{ setActiveHist(h); setResult(null); }}
+                  style={{padding:"8px 10px",borderRadius:7,cursor:"pointer",marginBottom:4,
+                    background:activeHist===h?"#0a1a2e":"#060d1c",
+                    border:`1px solid ${activeHist===h?"#0369a1":"#1a2d45"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{h.company||h._query}</span>
+                    <span className="bdg" style={{fontSize:9,background:scoreColor(h.brimFitScore||0)+"22",color:scoreColor(h.brimFitScore||0)}}>
+                      {h.brimFitScore||"?"}pt
+                    </span>
+                  </div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{h.industry} · {h.sapLandscape?.ecc2027Risk||"?"} ECC Risk</div>
+                </div>
+              ))}
+              {history.length>0&&(
+                <button className="btn bg" style={{fontSize:10,width:"100%",marginTop:6,justifyContent:"center"}}
+                  onClick={()=>{ setHistory([]); localStorage.removeItem("zt-pi-history"); setActiveHist(null); }}>
+                  Clear History
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Results */}
+        <div>
+          {!display&&!loading&&(
+            <div className="card" style={{padding:"60px 40px",textAlign:"center"}}>
+              <div style={{fontSize:40,marginBottom:16}}>🎯</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#334155",marginBottom:8}}>Prospect Intelligence Engine</div>
+              <div style={{fontSize:13,color:"#1e3a5f",marginBottom:20,lineHeight:1.6}}>
+                Enter any company name and get instant AI-powered research:<br/>
+                SAP landscape · ECC 2027 risk · BRIM fit score · Key contacts · Outreach script
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+                {["SAP Landscape Analysis","ECC 2027 Risk Score","BRIM/IS-U Fit","Key Decision Makers","Personalized Outreach","Deal Size Estimate"].map(t=>(
+                  <span key={t} className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:11}}>{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {display&&!display._error&&(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {/* Header row */}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0"}}>{display.company}</div>
+                    <div style={{fontSize:12,color:"#3d5a7a",marginTop:2}}>{display.industry} · {display.headquarters} · {display.employees} employees · {display.revenue}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button className="btn bp" style={{fontSize:12}} onClick={()=>saveAsLead(display)}>
+                      + Save as Lead
+                    </button>
+                    <button className="btn bg" style={{fontSize:12}} onClick={()=>{
+                      setCompany(display.company||"");
+                      setContext(display.outreachAngle||"");
+                      window.setTimeout(()=>{ Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="SOW Generator")?.click(); },100);
+                    }}>→ SOW Gen</button>
+                  </div>
+                </div>
+                {savedMsg&&<div style={{marginTop:8,color:"#34d399",fontSize:12,fontWeight:600}}>{savedMsg}</div>}
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                {/* SAP Landscape */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>SAP Landscape</div>
+                  <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                    {(display.sapLandscape?.currentSystems||[]).map(s=>(
+                      <span key={s} className="bdg" style={{background:"#0c2340",color:"#7dd3fc",fontSize:10}}>{s}</span>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"8px 10px",background:"#070c18",borderRadius:8,marginBottom:8}}>
+                    <span style={{fontSize:12,color:"#94a3b8"}}>ECC 2027 Risk</span>
+                    <span style={{fontSize:13,fontWeight:700,color:riskColor[display.sapLandscape?.ecc2027Risk]||"#64748b"}}>
+                      {display.sapLandscape?.ecc2027Risk}
+                    </span>
+                  </div>
+                  <div style={{fontSize:11,color:"#475569",lineHeight:1.5}}>{display.sapLandscape?.ecc2027RiskReason}</div>
+                  <div style={{marginTop:10,fontSize:11}}>
+                    <span style={{color:"#3d5a7a"}}>S/4 Migration: </span>
+                    <span style={{color:"#94a3b8",fontWeight:600}}>{display.sapLandscape?.s4Migration}</span>
+                  </div>
+                  <div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {(display.sapLandscape?.sapModules||[]).map(m=>(
+                      <span key={m} className="bdg" style={{background:"#1a2d45",color:"#475569",fontSize:9}}>{m}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Fit Scores */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a78bfa",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>Fit Scores</div>
+                  {[
+                    ["BRIM / Revenue Mgmt", display.fitScores?.brim],
+                    ["IS-U / Utilities",    display.fitScores?.isU],
+                    ["S/4HANA Migration",   display.fitScores?.s4Migration],
+                    ["Databricks / Data",   display.fitScores?.databricks],
+                    ["Managed Services",    display.fitScores?.managedServices],
+                  ].map(([label,score])=>(
+                    <div key={label} style={{marginBottom:8}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                        <span style={{fontSize:11,color:"#64748b"}}>{label}</span>
+                        <span style={{fontSize:11,fontWeight:700,color:scoreColor(score||0)}}>{score||0}%</span>
+                      </div>
+                      <div style={{height:5,background:"#0a1626",borderRadius:3}}>
+                        <div style={{height:5,borderRadius:3,background:scoreColor(score||0),width:(score||0)+"%",transition:"width 0.5s"}}/>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{marginTop:10,padding:"8px 10px",background:"#0c1020",borderRadius:8,border:"1px solid #1a2d45"}}>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:2}}>Overall BRIM Fit</div>
+                    <div style={{fontSize:22,fontWeight:800,color:scoreColor(display.brimFitScore||0)}}>{display.brimFitScore||0}</div>
+                    <div style={{fontSize:10,color:"#475569",marginTop:2}}>{display.brimFitReason}</div>
+                  </div>
+                </div>
+
+                {/* Key Targets */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#34d399",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>Key Decision Makers to Target</div>
+                  {(display.keyTargets||[]).map((t,i)=>(
+                    <div key={i} style={{padding:"10px 12px",background:"#060d1c",borderRadius:8,marginBottom:8,border:"1px solid #1a2d45"}}>
+                      <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{t.title}</div>
+                      <div style={{fontSize:10,color:"#3d5a7a"}}>{t.dept}</div>
+                      <div style={{fontSize:10,color:"#475569",marginTop:4}}>{t.why}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Deal Intelligence */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>Deal Intelligence</div>
+                  {[
+                    ["Estimated Deal Size", display.estimatedDealSize],
+                    ["Deal Type",           display.dealType],
+                    ["Urgency",             display.urgency],
+                  ].map(([l,v])=>(
+                    <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
+                      <span style={{fontSize:11,color:"#475569"}}>{l}</span>
+                      <span style={{fontSize:11,fontWeight:600,color:"#94a3b8"}}>{v||"—"}</span>
+                    </div>
+                  ))}
+                  <div style={{marginTop:12}}>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>Pain Points</div>
+                    {(display.painPoints||[]).map((p,i)=>(
+                      <div key={i} style={{fontSize:11,color:"#475569",marginBottom:4}}>• {p}</div>
+                    ))}
+                  </div>
+                  <div style={{marginTop:10,padding:"8px 10px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a133"}}>
+                    <div style={{fontSize:10,color:"#0284c7",marginBottom:2}}>Ziksatech Advantage</div>
+                    <div style={{fontSize:11,color:"#38bdf8"}}>{display.ziksatechValue}</div>
+                    {display.competitiveAdvantage&&(
+                      <div style={{fontSize:10,color:"#0369a1",marginTop:4}}>🏅 {display.competitiveAdvantage}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Outreach section */}
+              <div className="card" style={{padding:"18px 20px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#f87171",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>📧 Outreach Script</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14"}}>
+                  <div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>EMAIL SUBJECT LINE</div>
+                    <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,fontSize:13,fontWeight:600,color:"#e2e8f0",border:"1px solid #1a2d45"}}>
+                      {display.emailSubject}
+                    </div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginTop:10,marginBottom:4}}>OPENING LINE</div>
+                    <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,fontSize:12,color:"#94a3b8",border:"1px solid #1a2d45",lineHeight:1.5}}>
+                      {display.openingLine}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>FULL OUTREACH ANGLE</div>
+                    <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,fontSize:12,color:"#94a3b8",border:"1px solid #1a2d45",lineHeight:1.6,height:"100%"}}>
+                      {display.outreachAngle}
+                    </div>
+                  </div>
+                </div>
+                <div style={{marginTop:14,padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8}}>
+                  <div style={{fontSize:10,color:"#0284c7",marginBottom:4}}>⚡ RECOMMENDED NEXT STEP THIS WEEK</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#38bdf8"}}>{display.nextStep}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {display&&display._error&&(
+            <div className="card" style={{padding:30,textAlign:"center",color:"#f87171"}}>
+              <div style={{fontSize:24,marginBottom:8}}>⚠️</div>
+              <div>{display._error}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:8}}>Check your API connection and try again</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RFPGenerator({ clients, roster }) {
   const [form, setForm] = useState({
     company:"Ziksatech", clientName:"", projectType:"SAP Implementation",
