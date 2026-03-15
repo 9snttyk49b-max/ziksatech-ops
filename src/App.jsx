@@ -24441,9 +24441,7 @@ function IdeaPad({ authProfile, addAudit }) {
       // Fix common JSON issues: remove trailing commas before } or ]
       cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
       // Replace literal newlines inside string values with spaces
-      cleaned = cleaned.replace(/"([^"]*)"/g, (match) => match.replace(/
-/g, ' ').replace(/
-/g, ''));
+      cleaned = cleaned.split('\n').join(' ').split('\r').join('');
       const parsed = JSON.parse(cleaned);
       const updated = {...(evalResult||{}), [idea.id]: parsed};
       setEvalRes(updated);
