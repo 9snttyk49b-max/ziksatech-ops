@@ -11489,6 +11489,7 @@ function APInvoices({ vendors, apInvoices, setApInvoices, projects, addAudit }) 
                   <button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>open(inv)}><I d={ICONS.edit} s={10}/></button>
                   {!["paid","voided"].includes(inv.status)&&<button className="btn br" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>setVoidModal({id:inv.id,number:inv.number,amount:inv.amount,vendor:v?.name||"Unknown"})}>Void</button>}
                 </div>
+                  <button className="btn br" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>{if(window.confirm("Delete "+inv.number+"? This cannot be undone.")) setApInvoices(aps=>aps.filter(a=>a.id!==inv.id));}}><I d={ICONS.trash} s={10}/></button>
               </div>
             );
           })}
