@@ -2085,6 +2085,7 @@ export default function ZiksatechOps() {
     { id:"benefits",     label:"Benefits Tracker",     icon:ICONS.pl,       group:"Finance"     },
     { id:"recruiting",   label:"Recruiting",           icon:ICONS.pipeline, group:"Hiring"      },
     { id:"pipeline",     label:"Hiring Pipeline",      icon:ICONS.pipeline, group:"Hiring"      },
+    { id:"offboarding",  label:"Offboarding",           icon:ICONS.roster,   group:"Hiring"      },
     { id:"compliance",   label:"Compliance",           icon:ICONS.dash,     group:"Compliance"  },
   ];
 
@@ -9242,6 +9243,7 @@ function OrgMembers({ orgMembers, setOrgMembers, roster }) {
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
   const [selected, setSelected] = useState(null);
+  const { dragProps: _dragOrg } = useDragSort(orgMembers, setOrgMembers);
 
   const empty = { rosterId:"", name:"", title:"", email:"", phone:"", reportsTo:"", role:"consultant", active:true, customPerms:{} };
   const open  = (m=null) => { setEditing(m?.id||null); setForm(m?{...m}:{...empty}); setModal(true); };
@@ -9285,7 +9287,7 @@ function OrgMembers({ orgMembers, setOrgMembers, roster }) {
             const manager = orgMembers.find(x=>x.id===m.reportsTo);
             const hasCustom = Object.keys(m.customPerms||{}).length > 0;
             return (
-              <div key={m.id} className="tr"
+              <div key={m.id} className="tr" {..._dragOrg(orgMembers.indexOf(m))}
                 style={{gridTemplateColumns:"2.5fr 1fr 1.5fr 80px 80px 70px",cursor:"pointer",
                   opacity:m.active?1:0.45,background:selected===m.id?"#0a1a2e":undefined}}
                 onClick={()=>setSelected(selected===m.id?null:m.id)}>
