@@ -24192,7 +24192,6 @@ ${CSV_SAMPLE_DATA[importType]?.[0]||""}`}
             <textarea className="inp" rows={5} value={genPrompt} onChange={e=>setGenPrompt(e.target.value)}
               placeholder="Examples: SAP decision makers at Fortune 500 manufacturing TX | VP IT at insurance/utilities | Companies doing S/4HANA migration | SAP consulting partners Southwest"
               style={{fontSize:12}}/>
-              style={{fontSize:12}}/>
             <div style={{display:"flex",gap:10,alignItems:"center",marginTop:10,marginBottom:12}}>
               <div className="lbl" style={{margin:0,whiteSpace:"nowrap"}}>Number of leads:</div>
               {[5,10,20,30].map(n=>(
