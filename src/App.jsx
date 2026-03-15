@@ -6317,6 +6317,7 @@ function CompWorkAuth({ workAuth, setWorkAuth, roster, addAudit }) {
                 <div style={{fontSize:10,color:"#1e3a5f",marginTop:2}}>{w.notes?.slice(0,60)}</div>
               </div>
               <button className="btn bg" style={{padding:"3px 8px",fontSize:11}} onClick={()=>open(w)}><I d={ICONS.edit} s={11}/>Edit</button>
+              <button className="btn" style={{padding:"3px 8px",fontSize:11,background:"none",border:"1px solid #7f1d1d",color:"#f87171",borderRadius:5,cursor:"pointer"}} onClick={()=>{if(window.confirm(`Delete work auth for ${w.name}?`)){setWorkAuth(ws=>ws.filter(x=>x.id!==w.id));}}}>🗑️</button>
             </div>
           );
         })}
@@ -6352,11 +6353,17 @@ function CompWorkAuth({ workAuth, setWorkAuth, roster, addAudit }) {
 
 function CompDocuments({ compDocs, setCompDocs, roster, addAudit }) {
   const [modal, setModal] = useState(false);
+  const [editDocId, setEditDocId] = useState(null);
   const [form, setForm]   = useState({ consultantId:"", name:"", docType:"I-9", issueDate:"", expiryDate:"", status:"current", fileName:"", notes:"" });
   const [filter, setFilter] = useState("all");
 
   const save = () => {
-    setCompDocs(ds=>[...ds,{...form,id:"doc"+uid()}]);
+    if(editDocId) {
+      setCompDocs(ds=>ds.map(d=>d.id===editDocId?{...form}:d));
+    } else {
+      setCompDocs(ds=>[...ds,{...form,id:"doc"+uid()}]);
+    }
+    setEditDocId(null);
     setModal(false);
     setForm({ consultantId:"", name:"", docType:"I-9", issueDate:"", expiryDate:"", status:"current", fileName:"", notes:"" });
   };
@@ -6400,11 +6407,13 @@ function CompDocuments({ compDocs, setCompDocs, roster, addAudit }) {
                 {days<0?`${Math.abs(days)}d past`:`${days}d`}
               </span>
               <span style={{fontSize:11,color:"#3d5a7a",lineHeight:1.4}}>{d.notes?.slice(0,70)||"—"}</span>
-              <div style={{display:"flex",gap:4}}>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
                 {d.fileName?
-                  <span className="bdg" style={{background:"#021f14",color:"#34d399",fontSize:9}}>✓ Filed</span>:
-                  <span className="bdg" style={{background:"#1a0808",color:"#f87171",fontSize:9}}>Missing</span>
+                  <span className="bdg" style={{background:"#021f14",color:"#34d399",fontSize:9}}>✓ Filed</span>
+                  :<span className="bdg" style={{background:"#1a0808",color:"#f87171",fontSize:9}}>Missing</span>
                 }
+                <button style={{background:"none",border:"1px solid #1a2d45",color:"#38bdf8",fontSize:10,padding:"2px 6px",borderRadius:4,cursor:"pointer"}} onClick={()=>{setForm({...d});setEditDocId(d.id);setModal(true);}}>✏️</button>
+                <button style={{background:"none",border:"1px solid #7f1d1d",color:"#f87171",fontSize:10,padding:"2px 6px",borderRadius:4,cursor:"pointer"}} onClick={()=>{if(window.confirm("Delete "+d.docType+" for "+d.name+"?")){setCompDocs(ds=>ds.filter(x=>x.id!==d.id));}}}>🗑️</button>
               </div>
             </div>
           );
@@ -6414,7 +6423,7 @@ function CompDocuments({ compDocs, setCompDocs, roster, addAudit }) {
       {modal && (
         <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
           <div className="modal" style={{maxWidth:500}}>
-            <MH title="Add Document" onClose={()=>setModal(false)}/>
+            <MH title={editDocId?"Edit Document":"Add Document"} onClose={()=>{setModal(false);setEditDocId(null);}}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Consultant"><select className="inp" value={form.consultantId} onChange={e=>{ const r=roster.find(r=>r.id===e.target.value); setForm({...form,consultantId:e.target.value,name:r?.name||""}); }}>
                 <option value="">Select…</option>{roster.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
@@ -21434,6 +21443,8 @@ function PAFFiles({ roster }) {
   const [form, setForm] = useState({});
   const [search, setSearch] = useState("");
   const fileRef = useRef();
+  const [viewMode, setViewMode] = useState("table"); // "table" | "consultant"
+  const [expandedCons, setExpandedCons] = useState({});
 
   const save = (newRecs) => { setRecords(newRecs); localStorage.setItem("zt-paf2", JSON.stringify(newRecs)); };
 
@@ -21473,6 +21484,104 @@ ${text.slice(0, 4000)}`;
   return (
     <div>
       <PH title="PAF Files — Immigration Documents" sub="AI-powered auto-extraction from uploaded documents"/>
+
+      {/* View toggle */}
+      <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
+        <button onClick={()=>setViewMode("consultant")}
+          style={{padding:"6px 16px",borderRadius:7,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+            background:viewMode==="consultant"?"linear-gradient(135deg,#0369a1,#0284c7)":"#0a1120",
+            color:viewMode==="consultant"?"#fff":"#475569"}}>
+          👤 By Consultant
+        </button>
+        <button onClick={()=>setViewMode("table")}
+          style={{padding:"6px 16px",borderRadius:7,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+            background:viewMode==="table"?"linear-gradient(135deg,#0369a1,#0284c7)":"#0a1120",
+            color:viewMode==="table"?"#fff":"#475569"}}>
+          📋 All Records
+        </button>
+        <span style={{marginLeft:"auto",fontSize:11,color:"#334155"}}>{records.length} documents · {(roster||[]).length} consultants</span>
+      </div>
+
+      {/* Consultant view */}
+      {viewMode==="consultant" && (
+        <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
+          {(roster||[]).map(r => {
+            const docs = records.filter(d=>(d.consultantName||"").toLowerCase()===r.name.toLowerCase());
+            const isOpen = expandedCons[r.id] !== false; // default open
+            const expiring = docs.filter(d=>{
+              if(!d.expiryDate) return false;
+              const days=(new Date(d.expiryDate)-new Date())/86400000;
+              return days>=0 && days<=90;
+            }).length;
+            const expired = docs.filter(d=>d.expiryDate && (new Date(d.expiryDate)-new Date())/86400000<0).length;
+            return (
+              <div key={r.id} style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
+                {/* Consultant header */}
+                <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer"}}
+                  onClick={()=>setExpandedCons(p=>({...p,[r.id]:!isOpen}))}>
+                  <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#7c3aed)",
+                    display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:700,flexShrink:0}}>
+                    {r.name?.split(" ").map(w=>w[0]).join("").slice(0,2)}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div>
+                    <div style={{fontSize:11,color:"#475569"}}>{r.role||r.type||""} {r.client ? "· "+r.client : ""}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:5,padding:"3px 10px",fontSize:11,color:"#38bdf8"}}>{docs.length} docs</span>
+                    {expired>0 && <span style={{background:"#1a0808",border:"1px solid #7f1d1d",borderRadius:5,padding:"3px 10px",fontSize:11,color:"#f87171"}}>{expired} expired</span>}
+                    {expiring>0 && <span style={{background:"#1a1005",border:"1px solid #78350f",borderRadius:5,padding:"3px 10px",fontSize:11,color:"#f59e0b"}}>{expiring} expiring</span>}
+                    <button onClick={e=>{e.stopPropagation();setEditRec(null);setForm({consultantName:r.name,docType:"I-797",docNumber:"",issueDate:"",expiryDate:"",physicalLocation:"",status:"current",notes:""});setModal(true);}}
+                      style={{background:"#0369a1",border:"none",borderRadius:5,color:"#fff",fontSize:11,padding:"4px 12px",cursor:"pointer"}}>+ Add Doc</button>
+                    <span style={{color:"#334155",fontSize:14}}>{isOpen?"▾":"▸"}</span>
+                  </div>
+                </div>
+                {/* Documents for this consultant */}
+                {isOpen && (
+                  <div style={{borderTop:"1px solid #0a1828",padding:"12px 16px"}}>
+                    {docs.length===0 ? (
+                      <div style={{textAlign:"center",padding:"16px",color:"#334155",fontSize:12}}>No documents attached — click + Add Doc to attach one</div>
+                    ) : (
+                      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                        {docs.map(d=>{
+                          const days = d.expiryDate ? Math.ceil((new Date(d.expiryDate)-new Date())/86400000) : null;
+                          const col = days===null?"#64748b":days<0?"#f87171":days<=60?"#f59e0b":days<=90?"#fb923c":"#34d399";
+                          return (
+                            <div key={d.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",
+                              background:"#040810",borderRadius:8,border:"1px solid #0a1828"}}>
+                              <span style={{fontSize:18}}>📄</span>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                                  <span style={{background:"#0c1e3d",color:"#7dd3fc",fontSize:11,padding:"2px 8px",borderRadius:4,fontWeight:600}}>{d.docType}</span>
+                                  {d.docNumber && <span style={{fontFamily:"monospace",fontSize:11,color:"#475569"}}>{d.docNumber}</span>}
+                                  {d.physicalLocation && <span style={{fontSize:10,color:"#334155"}}>📁 {d.physicalLocation}</span>}
+                                </div>
+                                <div style={{display:"flex",gap:12,marginTop:4,fontSize:10,color:"#475569"}}>
+                                  {d.issueDate && <span>Issued: {d.issueDate}</span>}
+                                  {d.expiryDate && <span style={{color:col}}>Expires: {d.expiryDate} ({days!==null?(days<0?`${Math.abs(days)}d expired`:`${days}d left`):""})</span>}
+                                  {d.notes && <span style={{color:"#334155"}}>{d.notes.slice(0,50)}</span>}
+                                </div>
+                              </div>
+                              <div style={{display:"flex",gap:4,flexShrink:0}}>
+                                <button onClick={()=>{setEditRec(d);setForm({...d});setModal(true);}}
+                                  style={{background:"none",border:"1px solid #1a2d45",color:"#38bdf8",fontSize:11,padding:"3px 8px",borderRadius:4,cursor:"pointer"}}>✏️</button>
+                                <button onClick={()=>{if(window.confirm("Delete this document?"))save(records.filter(x=>x.id!==d.id));}}
+                                  style={{background:"none",border:"1px solid #7f1d1d",color:"#f87171",fontSize:11,padding:"3px 8px",borderRadius:4,cursor:"pointer"}}>🗑️</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {viewMode==="consultant" && null /* hide table when in consultant view */}
 
       {/* Upload zone */}
       <div className="card" style={{padding:"20px",marginBottom:16}}>
@@ -21516,8 +21625,8 @@ ${text.slice(0, 4000)}`;
       </div>
 
       {/* Records table */}
-      <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"center"}}>
-        <input className="inp" placeholder="Search records..." value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:300}}/>
+      {viewMode==="table" && <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"center"}}>
+        <input className="inp" placeholder="Search by consultant name..." value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:300}}/>
         <button onClick={()=>{setEditRec(null);setForm({consultantName:"",docType:"I-797",docNumber:"",issueDate:"",expiryDate:"",physicalLocation:"",status:"current",notes:""});setModal(true);}} style={{padding:"7px 16px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#94a3b8",fontSize:12,cursor:"pointer"}}>+ Add Manually</button>
         <div style={{marginLeft:"auto",fontSize:12,color:"#334155"}}>{records.length} records</div>
       </div>
@@ -21572,7 +21681,12 @@ ${text.slice(0, 4000)}`;
           <div className="modal" style={{maxWidth:520}}>
             <MH title={editRec?"Edit Record":"Add Record"} onClose={()=>setModal(false)}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Consultant Name"><input className="inp" value={form.consultantName||""} onChange={e=>setForm(p=>({...p,consultantName:e.target.value}))}/></FF>
+              <FF label="Consultant">
+                <select className="inp" value={form.consultantName||""} onChange={e=>setForm(p=>({...p,consultantName:e.target.value}))}>
+                  <option value="">Select consultant…</option>
+                  {(roster||[]).map(r=><option key={r.id} value={r.name}>{r.name}</option>)}
+                </select>
+              </FF>
               <FF label="Doc Type"><select className="inp" value={form.docType||"I-797"} onChange={e=>setForm(p=>({...p,docType:e.target.value}))}>{docTypes.map(d=><option key={d}>{d}</option>)}</select></FF>
               <FF label="Doc Number"><input className="inp" value={form.docNumber||""} onChange={e=>setForm(p=>({...p,docNumber:e.target.value}))}/></FF>
               <FF label="Status"><select className="inp" value={form.status||"current"} onChange={e=>setForm(p=>({...p,status:e.target.value}))}>{["current","expiring","expired","pending"].map(s=><option key={s}>{s}</option>)}</select></FF>
