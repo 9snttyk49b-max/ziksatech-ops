@@ -21797,52 +21797,20 @@ function BankAnalyzer({ authProfile }) {
     if (!file) return;
     setUploading(true); setTransactions([]); setAnalysis(null); setAiSuggestions("");
     const text = await file.text();
-    const system = `You are a financial analyst for Ziksatech, an IT consulting firm based in Plano TX.
-Analyze this ${stmtType === "bank" ? "bank" : "credit card"} statement and extract ALL transactions.
-Return ONLY a JSON object with this exact structure:
+    const system = `You are a financial analyst for Ziksatech, an IT consulting firm in Plano TX.
+Analyze this ${stmtType === "bank" ? "bank" : "credit card"} statement. Extract ALL transactions.
+Return ONLY a JSON object — no markdown, no explanation:
 {
-  "transactions": [
-    {
-      "date": "YYYY-MM-DD",
-      "description": "merchant/payee name cleaned up",
-      "amount": 123.45,
-      "type": "debit|credit",
-      "category": "one of: ${["Payroll","Software/SaaS","Cloud/Hosting","Travel","Meals & Entertainment","Office Supplies","Insurance","Legal & Professional","Utilities","Subscriptions","Taxes & Fees","Equipment","Marketing","Misc/Other"].join("|")}",
-      "flag": "essential|review|avoidable",
-      "flagReason": "brief reason why this flag was assigned",
-      "vendor": "cleaned vendor name"
-    }
-  ],
-  "summary": {
-    "totalDebits": 0,
-    "totalCredits": 0,
-    "period": "Month YYYY",
-    "topVendor": "name",
-    "topCategory": "name"
-  }
+  "transactions": [{"date":"YYYY-MM-DD","description":"brief","amount":0.00,"type":"debit|credit","category":"Payroll|Software/SaaS|Cloud/Hosting|Travel|Meals & Entertainment|Office Supplies|Insurance|Legal & Professional|Utilities|Subscriptions|Taxes & Fees|Equipment|Marketing|Misc/Other","flag":"essential|review|avoidable","flagReason":"1 sentence","vendor":"name"}],
+  "summary": {"totalDebits":0,"totalCredits":0,"period":"Month YYYY","topVendor":"name","topCategory":"name"}
 }
-Flag rules:
-- essential: payroll, insurance, taxes, critical software (QuickBooks, Office365, AWS), utilities, legal
-- review: meals, travel, professional services — need to verify business purpose
-- avoidable: duplicate subscriptions, personal charges, luxury items, non-essential recurring fees
-Return ONLY valid JSON, no markdown, no explanation.`;
+Flag: essential=payroll/insurance/taxes/critical software, review=meals/travel/unclear, avoidable=personal/duplicate/luxury.
+Be concise — keep flagReason under 8 words. Return valid JSON only.`;
     const prompt = `Analyze this ${stmtType} statement:
 
 ${text.slice(0,5000)}`;
     let full = "";
-    // Use non-streaming for JSON analysis to ensure complete response
-    try {
-      const apiKey = localStorage.getItem('zt-anthropic-key') || '';
-      const apiRes = await fetch('/api/claude', {
-        method:'POST',
-        headers:{'Content-Type':'application/json', ...(apiKey ? {'x-api-key-override':apiKey}:{})},
-        body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:4000, stream:false, system, messages:[{role:'user',content:prompt}]})
-      });
-      const apiData = await apiRes.json();
-      if (apiData.error) { alert('API Error: ' + (apiData.error.message||apiData.error)); setUploading(false); return; }
-      full = apiData.content?.[0]?.text || apiData.content || '';
-      if (!full) { alert('No response from AI. Check API key in Settings.'); setUploading(false); return; }
-    } catch(fetchErr) { alert('Network error: ' + fetchErr.message); setUploading(false); return; }
+    await callClaude(system, prompt, txt => { full = txt; }, 4000);
     try {
       const parsed = JSON.parse(full.replace(/\`\`\`json|\`\`\`/g,"").trim());
       const txns = parsed.transactions || [];
