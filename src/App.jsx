@@ -4,71 +4,81 @@ import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "rea
 // RBAC — Role-based access control
 // ═══════════════════════════════════════════════════════════════════════
 const RBAC = {
-  // tab id → roles that can access it. Empty array = super_admin/admin only
+  // ── super_admin = Manju only (full access including AI Hub Agent) ──
+  // ── admin       = broad ops access, no AI Agent ──
+  // ── employee    = FTE staff: timesheet, PTO, profile ──
+  // ── contractor  = external consultant: timesheet, profile only ──
+  // ── hr_immigration = HR + visa/immigration: roster, compliance, PAF, NO finance ──
+  // ── accounts    = finance/billing only: NO roster salary details ──
+
   dashboard:    ["super_admin","admin","accounts"],
   reports:      ["super_admin","admin","accounts"],
-  portal:       ["super_admin","admin","sales","accounts"],
-  clients:      ["super_admin","admin","sales","accounts"],
-  crm:          ["super_admin","admin","sales"],
-  proposals:    ["super_admin","admin","sales"],
-  rfpgen:       ["super_admin","admin","sales"],
-  sowgen:       ["super_admin","admin","sales"],
-  linkedin:     ["super_admin","admin","sales"],
-  contracts:    ["super_admin","admin","sales"],
-  emailtpl:     ["super_admin","admin","sales"],
-  esign:        ["super_admin","admin","sales"],
-  roster:       ["super_admin","admin","hr_admin"],
-  timesheet:    ["super_admin","admin","hr_admin","consultant"],
-  pto:          ["super_admin","admin","hr_admin","consultant"],
-  onboarding:   ["super_admin","admin","hr_admin","recruiter"],
+  reportbuilder:["super_admin","admin","accounts"],
+  portal:       ["super_admin"],  // AI Hub — super_admin ONLY (has AI Agent)
+  home:         ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
+  clients:      ["super_admin","admin","accounts"],
+  crm:          ["super_admin","admin"],
+  proposals:    ["super_admin","admin"],
+  rfpgen:       ["super_admin","admin"],
+  sowgen:       ["super_admin","admin"],
+  linkedin:     ["super_admin","admin"],
+  contracts:    ["super_admin","admin","accounts"],
+  emailtpl:     ["super_admin","admin"],
+  esign:        ["super_admin","admin","accounts"],
+  roster:       ["super_admin","admin","hr_immigration"],
+  timesheet:    ["super_admin","admin","hr_immigration","employee","contractor"],
+  pto:          ["super_admin","admin","hr_immigration","employee"],   // contractors excluded from PTO
+  onboarding:   ["super_admin","admin","hr_immigration"],
   org:          ["super_admin","admin"],
-  projects:     ["super_admin","admin","hr_admin"],
+  projects:     ["super_admin","admin","hr_immigration"],
   profitability:["super_admin","admin","accounts"],
   changeorders: ["super_admin","admin"],
-  capacity:     ["super_admin","admin","hr_admin"],
+  capacity:     ["super_admin","admin","hr_immigration"],
   ebitda:       ["super_admin","admin","accounts"],
   finance:      ["super_admin","admin","accounts"],
   pl:           ["super_admin","admin","accounts"],
   cashflow:     ["super_admin","admin","accounts"],
-  adp:          ["super_admin","admin","accounts","hr_admin"],
+  adp:          ["super_admin","admin","accounts"],
   freshbooks:   ["super_admin","admin","accounts"],
   vendors:      ["super_admin","admin","accounts"],
   glexport:     ["super_admin","admin","accounts"],
   budget:       ["super_admin","admin","accounts"],
   taxcal:       ["super_admin","admin","accounts"],
-  benefits:     ["super_admin","admin","hr_admin"],
-  adpstubs:     ["super_admin","admin","accounts","hr_admin"],
+  benefits:     ["super_admin","admin","hr_immigration","employee"],
+  adpstubs:     ["super_admin","admin","accounts"],
   reconcile:    ["super_admin","admin","accounts"],
-  recruiting:   ["super_admin","admin","recruiter","hr_admin"],
-  pipeline:     ["super_admin","admin","recruiter","hr_admin"],
-  resourceplan: ["super_admin","admin","hr_admin"],
-  compliance:   ["super_admin","admin","hr_admin","recruiter"],
-  paffiles:     ["super_admin","admin","hr_admin","recruiter"],
-  minicalc:     ["super_admin","admin","sales","accounts"],
-  myprofile:    ["super_admin","admin","sales","accounts","hr_admin","recruiter","consultant"],
-  home:         ["super_admin","admin","sales","accounts","hr_admin","recruiter","consultant"],
-  auditlog:     ["super_admin","admin"],
-  settings:     ["super_admin","admin"],
-  notifications:["super_admin","admin","sales","accounts","hr_admin","recruiter","consultant"],
+  bankanalyzer: ["super_admin","admin","accounts"],  // NEW: Bank & CC Analyzer
+  recruiting:   ["super_admin","admin","hr_immigration"],
+  pipeline:     ["super_admin","admin","hr_immigration"],
+  resourceplan: ["super_admin","admin","hr_immigration"],
+  compliance:   ["super_admin","admin","hr_immigration"],
+  paffiles:     ["super_admin","admin","hr_immigration"],
+  minicalc:     ["super_admin","admin","accounts","hr_immigration"],
+  myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
+  auditlog:     ["super_admin"],           // audit log — super_admin ONLY
+  settings:     ["super_admin"],           // settings — super_admin ONLY
+  notifications:["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   pdfexport:    ["super_admin","admin","accounts"],
 };
 
 // Default landing tab per role
 const ROLE_HOME = {
-  super_admin: "dashboard", admin: "dashboard",
-  sales:       "crm",       accounts:  "finance",
-  hr_admin:    "roster",    recruiter: "recruiting",
-  consultant:  "timesheet",
+  super_admin:    "dashboard",
+  admin:          "dashboard",
+  accounts:       "finance",
+  hr_immigration: "roster",
+  employee:       "timesheet",
+  contractor:     "timesheet",
 };
 
 // Hub tile visibility per role
 const ROLE_HUB_TILES = {
-  super_admin: ["crm","ops"], admin: ["crm","ops"],
-  sales:       ["crm"],
-  accounts:    ["ops"],
-  hr_admin:    ["ops"],
-  recruiter:   ["ops"],
-  consultant:  ["ops"],
+  super_admin:    ["crm","ops"],   // full hub + AI Agent
+  admin:          ["crm","ops"],   // hub tiles but NO AI Agent
+  accounts:       ["ops"],
+  hr_immigration: ["ops"],
+  employee:       [],
+  contractor:     [],
 };
 
 function canAccess(tab, role) {
@@ -1769,6 +1779,7 @@ export default function ZiksatechOps() {
     { id:"paffiles",    label:"PAF Files",             icon:ICONS.dash,     group:"Compliance"  },
     { id:"adpstubs",    label:"ADP Pay Stubs",         icon:ICONS.adp,      group:"Finance"     },
     { id:"reconcile",   label:"Reconciliation",        icon:ICONS.pl,       group:"Finance"     },
+    { id:"bankanalyzer",label:"Bank & Card Analysis",   icon:ICONS.dash,     group:"Finance"     },
     { id:"contracts",    label:"Contracts & SOW",      icon:ICONS.clients,  group:"Clients"     },
     { id:"emailtpl",     label:"Email Templates",      icon:ICONS.dash,     group:"Clients"     },
     { id:"esign",        label:"E-Signature",          icon:ICONS.pl,       group:"Clients"     },
@@ -1936,7 +1947,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       </div>
 
       {/* AI Agent — floating across all OPS views */}
-      {authProfile && <AIAgent
+      {authProfile && authProfile.role === "super_admin" && <AIAgent
         authProfile={authProfile}
         roster={shared.roster}
         clients={shared.clients}
@@ -2221,6 +2232,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="paffiles"   && <PAFFiles       {...shared} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} />}
+        {tab==="bankanalyzer" && <BankAnalyzer authProfile={authProfile}/>}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
         {tab==="auditlog"      && <AuditLog {...shared}/>}
@@ -14133,6 +14145,39 @@ function SettingsPage({ appSettings, setAppSettings, addAudit }) {
           Get your key at console.anthropic.com · Alternatively, ask your system admin to set ANTHROPIC_API_KEY in Vercel environment variables.
         </div>
       </div>
+
+        {/* Role Management — super_admin only */}
+        <div className="card" style={{padding:"20px 22px",gridColumn:"span 2"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>
+            🔐 Role Management — User Permissions
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            {[
+              {role:"employee",icon:"👤",label:"Employee (FTE)",perms:["View own timesheet","Submit PTO","View benefits","View profile"],deny:["Finance","Roster","Compliance","AI Agent"]},
+              {role:"contractor",icon:"🤝",label:"Contractor",perms:["View own timesheet","View profile only","Notifications"],deny:["PTO/Benefits","Finance","Roster","Compliance","AI Agent"]},
+              {role:"hr_immigration",icon:"🛂",label:"HR & Immigration",perms:["Full Roster access","Compliance & PAF files","Work Authorization","Onboarding","PTO approval","Capacity planning"],deny:["Finance data","Invoices","Payroll amounts","AI Agent"]},
+              {role:"accounts",icon:"📊",label:"Accounts",perms:["Finance & invoices","ADP Payroll","FreshBooks","Reconciliation","Bank Analyzer","Vendors & AP","Budget","GL Export"],deny:["Roster/HR","Salary details","Compliance","AI Agent"]},
+              {role:"admin",icon:"⚙️",label:"Admin",perms:["Most modules","CRM & Sales","Reports","Client Portfolio","Settings"],deny:["AI Hub Agent","Audit Log view","Super Admin controls"]},
+              {role:"super_admin",icon:"👑",label:"Super Admin (You)",perms:["ALL modules","AI Hub Agent","Audit Log","Settings","Role assignment","Delete any record"],deny:[]},
+            ].map(r=>(
+              <div key={r.role} style={{background:"#040810",border:`1px solid ${r.role==="super_admin"?"#C9A84C":"#1a2d45"}`,borderRadius:10,padding:14}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <span style={{fontSize:18}}>{r.icon}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:r.role==="super_admin"?"#C9A84C":"#e2e8f0"}}>{r.label}</span>
+                </div>
+                <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:5}}>Can access:</div>
+                {r.perms.map((p,i)=><div key={i} style={{fontSize:11,color:"#34d399",marginBottom:2}}>✅ {p}</div>)}
+                {r.deny.length>0&&<>
+                  <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:8,marginBottom:5}}>Blocked:</div>
+                  {r.deny.map((p,i)=><div key={i} style={{fontSize:11,color:"#f87171",marginBottom:2}}>🚫 {p}</div>)}
+                </>}
+              </div>
+            ))}
+          </div>
+          <div style={{padding:"10px 14px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8,fontSize:11,color:"#38bdf8"}}>
+            💡 To assign a role to a user: Go to Supabase → user_profiles table → set the <strong style={{color:"#fff"}}>role</strong> field to one of: <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>employee</code>, <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>contractor</code>, <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>hr_immigration</code>, <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>accounts</code>, <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>admin</code>
+          </div>
+        </div>
     </div>
   );
 }
@@ -21701,6 +21746,379 @@ ${text.slice(0, 4000)}`;
               <button className="btn bp" onClick={()=>{const rec={...form,id:editRec?editRec.id:"paf"+Date.now()};save(editRec?records.map(r=>r.id===editRec.id?rec:r):[...records,rec]);setModal(false);}}>Save</button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// BANK & CC STATEMENT ANALYZER — AI-powered expense analysis
+// ═══════════════════════════════════════════════════════════════════════
+function BankAnalyzer({ authProfile }) {
+  const [stmtType, setStmtType] = useState("bank"); // bank | cc
+  const [uploading, setUploading] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [analysis, setAnalysis] = useState(null);
+  const [aiSuggestions, setAiSuggestions] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("upload"); // upload | breakdown | transactions | ai
+  const [filterCat, setFilterCat] = useState("all");
+  const [filterFlag, setFilterFlag] = useState("all");
+  const fileRef = useRef();
+
+  const CATEGORIES = ["Payroll","Software/SaaS","Cloud/Hosting","Travel","Meals & Entertainment",
+    "Office Supplies","Insurance","Legal & Professional","Utilities","Subscriptions","Taxes & Fees",
+    "Equipment","Marketing","Misc/Other"];
+  const FLAGS = { essential:"✅ Essential", review:"⚠️ Review", avoidable:"❌ Can Avoid" };
+  const FLAG_COLORS = { essential:"#34d399", review:"#f59e0b", avoidable:"#f87171" };
+  const FLAG_BG = { essential:"#021f14", review:"#1a1005", avoidable:"#1a0808" };
+  const CAT_COLORS = {
+    "Payroll":"#38bdf8","Software/SaaS":"#a78bfa","Cloud/Hosting":"#818cf8",
+    "Travel":"#fb923c","Meals & Entertainment":"#fbbf24","Office Supplies":"#34d399",
+    "Insurance":"#60a5fa","Legal & Professional":"#e879f9","Utilities":"#94a3b8",
+    "Subscriptions":"#c084fc","Taxes & Fees":"#f472b6","Equipment":"#4ade80",
+    "Marketing":"#f59e0b","Misc/Other":"#64748b",
+  };
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true); setTransactions([]); setAnalysis(null); setAiSuggestions("");
+    const text = await file.text();
+    const system = `You are a financial analyst for Ziksatech, an IT consulting firm based in Plano TX.
+Analyze this ${stmtType === "bank" ? "bank" : "credit card"} statement and extract ALL transactions.
+Return ONLY a JSON object with this exact structure:
+{
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD",
+      "description": "merchant/payee name cleaned up",
+      "amount": 123.45,
+      "type": "debit|credit",
+      "category": "one of: ${["Payroll","Software/SaaS","Cloud/Hosting","Travel","Meals & Entertainment","Office Supplies","Insurance","Legal & Professional","Utilities","Subscriptions","Taxes & Fees","Equipment","Marketing","Misc/Other"].join("|")}",
+      "flag": "essential|review|avoidable",
+      "flagReason": "brief reason why this flag was assigned",
+      "vendor": "cleaned vendor name"
+    }
+  ],
+  "summary": {
+    "totalDebits": 0,
+    "totalCredits": 0,
+    "period": "Month YYYY",
+    "topVendor": "name",
+    "topCategory": "name"
+  }
+}
+Flag rules:
+- essential: payroll, insurance, taxes, critical software (QuickBooks, Office365, AWS), utilities, legal
+- review: meals, travel, professional services — need to verify business purpose
+- avoidable: duplicate subscriptions, personal charges, luxury items, non-essential recurring fees
+Return ONLY valid JSON, no markdown, no explanation.`;
+    const prompt = `Analyze this ${stmtType} statement:
+
+${text.slice(0,5000)}`;
+    let full = "";
+    await callClaude(system, prompt, txt => { full = txt; });
+    try {
+      const parsed = JSON.parse(full.replace(/\`\`\`json|\`\`\`/g,"").trim());
+      const txns = parsed.transactions || [];
+      setTransactions(txns);
+      // Build analysis
+      const catTotals = {};
+      const flagTotals = { essential:0, review:0, avoidable:0 };
+      txns.filter(t=>t.type==="debit").forEach(t => {
+        catTotals[t.category] = (catTotals[t.category]||0) + (+t.amount||0);
+        if (t.flag) flagTotals[t.flag] = (flagTotals[t.flag]||0) + (+t.amount||0);
+      });
+      const total = Object.values(catTotals).reduce((s,v)=>s+v,0);
+      const sorted = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+      setAnalysis({ catTotals, flagTotals, total, sorted, summary: parsed.summary||{} });
+      setActiveTab("breakdown");
+    } catch(e) { console.error("Parse error:", e); }
+    setUploading(false);
+  };
+
+  const runAISuggestions = async () => {
+    if (!transactions.length) return;
+    setAiLoading(true); setAiSuggestions("");
+    const avoidable = transactions.filter(t=>t.flag==="avoidable");
+    const review = transactions.filter(t=>t.flag==="review");
+    const topCats = analysis?.sorted?.slice(0,5).map(([k,v])=>`${k}: $${v.toFixed(0)}`).join(", ") || "";
+    const system = `You are a CFO advisor for Ziksatech, an IT staffing and consulting firm. Be specific, practical, and direct.`;
+    const prompt = `Analyze these expenses and provide 5 specific actionable cost optimization recommendations:
+
+Total spend: $${analysis?.total?.toFixed(0)}
+Top categories: ${topCats}
+Avoidable expenses (${avoidable.length} items, $${analysis?.flagTotals?.avoidable?.toFixed(0)}):
+${avoidable.slice(0,10).map(t=>"- "+t.vendor+": $"+t.amount+" — "+t.flagReason).join("\n")}
+Review items (${review.length} items, $${analysis?.flagTotals?.review?.toFixed(0)}):
+${review.slice(0,8).map(t=>"- "+t.vendor+": $"+t.amount+" — "+t.flagReason).join("\n")}
+
+Provide numbered recommendations with:
+1. What to do specifically
+2. Estimated monthly savings
+3. How to implement it
+Format with markdown headers for each recommendation.`;
+    await callClaude(system, prompt, txt => setAiSuggestions(txt));
+    setAiLoading(false);
+    setActiveTab("ai");
+  };
+
+  const filteredTxns = transactions.filter(t => {
+    if (filterCat !== "all" && t.category !== filterCat) return false;
+    if (filterFlag !== "all" && t.flag !== filterFlag) return false;
+    return true;
+  });
+
+  return (
+    <div>
+      <PH title="Bank & CC Statement Analyzer" sub="AI-powered expense breakdown · flag avoidable costs · optimize spend"/>
+
+      {/* Tab bar */}
+      <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45"}}>
+        {[["upload","📤 Upload"],["breakdown","📊 Breakdown"],["transactions","📋 Transactions"],["ai","🤖 AI Suggestions"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setActiveTab(id)} disabled={id!=="upload"&&!analysis}
+            style={{flex:1,padding:"8px 12px",borderRadius:7,border:"none",cursor:analysis||id==="upload"?"pointer":"not-allowed",
+              fontSize:12,fontWeight:600,transition:"all 0.15s",
+              background:activeTab===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:activeTab===id?"#fff":analysis||id==="upload"?"#475569":"#1e3a5f"}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Upload Tab */}
+      {activeTab==="upload" && (
+        <div>
+          {/* Type selector */}
+          <div style={{display:"flex",gap:10,marginBottom:16}}>
+            {[["bank","🏦 Bank Statement"],["cc","💳 Credit Card Statement"]].map(([id,label])=>(
+              <button key={id} onClick={()=>setStmtType(id)}
+                style={{padding:"10px 20px",borderRadius:8,border:"1px solid",cursor:"pointer",fontSize:13,fontWeight:600,
+                  background:stmtType===id?"linear-gradient(135deg,#0369a1,#0284c7)":"#060d1c",
+                  borderColor:stmtType===id?"#0369a1":"#1a2d45",color:stmtType===id?"#fff":"#475569"}}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Drop zone */}
+          <div className="card" style={{padding:32,textAlign:"center",cursor:"pointer",border:"2px dashed #1a2d45",borderRadius:12}}
+            onClick={()=>fileRef.current?.click()}
+            onMouseEnter={e=>e.currentTarget.style.borderColor="#0369a1"}
+            onMouseLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+            onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="#0369a1";}}
+            onDragLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}
+            onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor="#1a2d45";handleFile(e.dataTransfer.files[0]);}}>
+            <div style={{fontSize:40,marginBottom:12}}>{stmtType==="bank"?"🏦":"💳"}</div>
+            <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>
+              Drop your {stmtType==="bank"?"bank":"credit card"} statement here
+            </div>
+            <div style={{fontSize:12,color:"#334155",marginBottom:4}}>or click to browse</div>
+            <div style={{fontSize:11,color:"#1e3a5f"}}>Supports: CSV, TXT, PDF · AI extracts and categorizes all transactions</div>
+            <input ref={fileRef} type="file" accept=".csv,.txt,.pdf,.xlsx" style={{display:"none"}}
+              onChange={e=>handleFile(e.target.files[0])}/>
+          </div>
+
+          {uploading && (
+            <div style={{marginTop:16,padding:"14px 18px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:10,display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:20,height:20,border:"2px solid #0369a1",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#38bdf8"}}>AI analyzing your statement…</div>
+                <div style={{fontSize:11,color:"#334155",marginTop:2}}>Extracting transactions, categorizing expenses, flagging avoidable costs</div>
+              </div>
+            </div>
+          )}
+
+          {/* Tips */}
+          <div style={{marginTop:16,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            {[
+              {icon:"📊",title:"Expense Breakdown",desc:"Visual breakdown by category with % of total spend"},
+              {icon:"🚩",title:"Smart Flagging",desc:"AI marks Essential ✅, Review ⚠️, and Avoidable ❌ expenses"},
+              {icon:"💡",title:"AI Recommendations",desc:"Specific actions to reduce costs with estimated savings"},
+            ].map(tip=>(
+              <div key={tip.title} style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"14px 16px"}}>
+                <div style={{fontSize:22,marginBottom:6}}>{tip.icon}</div>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{tip.title}</div>
+                <div style={{fontSize:11,color:"#334155"}}>{tip.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Breakdown Tab */}
+      {activeTab==="breakdown" && analysis && (
+        <div>
+          {/* KPI tiles */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+            {[
+              {l:"Total Spend",v:fmt(analysis.total),c:"#38bdf8"},
+              {l:"Essential",v:fmt(analysis.flagTotals.essential||0),c:"#34d399"},
+              {l:"Needs Review",v:fmt(analysis.flagTotals.review||0),c:"#f59e0b"},
+              {l:"Can Avoid",v:fmt(analysis.flagTotals.avoidable||0),c:"#f87171"},
+            ].map(t=>(
+              <div key={t.l} className="card" style={{padding:"14px 16px"}}>
+                <div style={{fontSize:22,fontWeight:800,color:t.c,fontFamily:"monospace"}}>{t.v}</div>
+                <div style={{fontSize:11,color:"#64748b",marginTop:3}}>{t.l}</div>
+                <div style={{height:3,background:"#0a1120",borderRadius:2,marginTop:8}}>
+                  <div style={{height:3,background:t.c,width:`${Math.min(100,((analysis.flagTotals[t.l?.toLowerCase().replace(" ","")]||analysis.total)/analysis.total)*100)}%`,borderRadius:2}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Category breakdown chart */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+            {/* Bar chart */}
+            <div className="card" style={{padding:20}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>Top Expense Categories</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {analysis.sorted.slice(0,8).map(([cat,amt])=>(
+                  <div key={cat}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                      <span style={{fontSize:11,color:"#94a3b8"}}>{cat}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:CAT_COLORS[cat]||"#64748b",fontFamily:"monospace"}}>{fmt(amt)} ({Math.round(amt/analysis.total*100)}%)</span>
+                    </div>
+                    <div style={{height:6,background:"#0a1120",borderRadius:3}}>
+                      <div style={{height:6,background:CAT_COLORS[cat]||"#64748b",borderRadius:3,width:`${Math.round(amt/analysis.sorted[0][1]*100)}%`,transition:"width 0.5s"}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Flag distribution */}
+            <div className="card" style={{padding:20}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>Expense Health</div>
+              {Object.entries(FLAGS).map(([key,label])=>{
+                const amt = analysis.flagTotals[key]||0;
+                const pct = analysis.total > 0 ? Math.round(amt/analysis.total*100) : 0;
+                return (
+                  <div key={key} style={{marginBottom:14}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <span style={{fontSize:13,color:FLAG_COLORS[key],fontWeight:600}}>{label}</span>
+                      <span style={{fontSize:12,fontFamily:"monospace",color:FLAG_COLORS[key]}}>{fmt(amt)} · {pct}%</span>
+                    </div>
+                    <div style={{height:8,background:"#0a1120",borderRadius:4}}>
+                      <div style={{height:8,background:FLAG_COLORS[key],borderRadius:4,width:`${pct}%`,opacity:0.85}}/>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* AI suggestions button */}
+              <button onClick={runAISuggestions} disabled={aiLoading}
+                style={{width:"100%",marginTop:16,padding:"10px",background:"linear-gradient(135deg,#7c3aed,#6d28d9)",
+                  border:"none",borderRadius:8,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                {aiLoading?"🤖 Generating recommendations…":"🤖 Get AI Cost Optimization Suggestions"}
+              </button>
+            </div>
+          </div>
+
+          {/* Top avoidable expenses */}
+          {transactions.filter(t=>t.flag==="avoidable").length > 0 && (
+            <div className="card" style={{padding:20,marginBottom:16,border:"1px solid #7f1d1d"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#f87171",marginBottom:12}}>❌ Avoidable Expenses — Consider Eliminating</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {transactions.filter(t=>t.flag==="avoidable").sort((a,b)=>b.amount-a.amount).slice(0,8).map((t,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:"#1a0808",borderRadius:7}}>
+                    <span style={{fontSize:18}}>❌</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:600,color:"#f87171"}}>{t.vendor||t.description}</div>
+                      <div style={{fontSize:10,color:"#7f1d1d",marginTop:1}}>{t.flagReason}</div>
+                    </div>
+                    <span style={{fontSize:13,fontWeight:800,color:"#f87171",fontFamily:"monospace"}}>{fmt(+t.amount)}</span>
+                    <span style={{fontSize:10,color:"#475569"}}>{t.date}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Transactions Tab */}
+      {activeTab==="transactions" && (
+        <div>
+          {/* Filters */}
+          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+            <select className="inp" value={filterCat} onChange={e=>setFilterCat(e.target.value)} style={{fontSize:12,padding:"6px 10px",width:180}}>
+              <option value="all">All Categories</option>
+              {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+            <select className="inp" value={filterFlag} onChange={e=>setFilterFlag(e.target.value)} style={{fontSize:12,padding:"6px 10px",width:150}}>
+              <option value="all">All Flags</option>
+              <option value="essential">✅ Essential</option>
+              <option value="review">⚠️ Needs Review</option>
+              <option value="avoidable">❌ Can Avoid</option>
+            </select>
+            <div style={{marginLeft:"auto",fontSize:12,color:"#334155"}}>{filteredTxns.length} transactions</div>
+          </div>
+
+          <div className="card" style={{overflowX:"auto"}}>
+            <div className="tr" style={{gridTemplateColumns:"100px 1.5fr 100px 120px 130px 1fr",padding:"8px 16px"}}>
+              {["Date","Description","Amount","Category","Flag","Reason"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {filteredTxns.length===0 && <div style={{textAlign:"center",padding:32,color:"#334155",fontSize:13}}>No transactions match the filter.</div>}
+            {filteredTxns.sort((a,b)=>b.amount-a.amount).map((t,i)=>(
+              <div key={i} className="tr" style={{gridTemplateColumns:"100px 1.5fr 100px 120px 130px 1fr",alignItems:"center"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#0a1120"}
+                onMouseLeave={e=>e.currentTarget.style.background=""}>
+                <span style={{fontSize:11,color:"#475569"}}>{t.date}</span>
+                <div>
+                  <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{t.vendor||t.description}</div>
+                  {t.vendor&&t.description!==t.vendor&&<div style={{fontSize:10,color:"#334155"}}>{t.description}</div>}
+                </div>
+                <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:t.type==="credit"?"#34d399":"#e2e8f0"}}>{t.type==="credit"?"+":"-"}{fmt(+t.amount)}</span>
+                <span style={{background:CAT_COLORS[t.category]?CAT_COLORS[t.category]+"22":"#1a2d45",color:CAT_COLORS[t.category]||"#64748b",fontSize:10,padding:"3px 7px",borderRadius:4,fontWeight:600}}>{t.category}</span>
+                <span style={{background:FLAG_BG[t.flag]||"#0a1120",color:FLAG_COLORS[t.flag]||"#64748b",fontSize:10,padding:"3px 7px",borderRadius:4,fontWeight:700}}>{FLAGS[t.flag]||t.flag}</span>
+                <span style={{fontSize:10,color:"#3d5a7a"}}>{t.flagReason}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* AI Suggestions Tab */}
+      {activeTab==="ai" && (
+        <div>
+          {aiLoading && (
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:20,background:"#0c2340",border:"1px solid #0369a1",borderRadius:10,marginBottom:16}}>
+              <div style={{width:20,height:20,border:"2px solid #7c3aed",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+              <div style={{fontSize:13,color:"#38bdf8"}}>AI analyzing your expenses and generating recommendations…</div>
+            </div>
+          )}
+          {!aiLoading && !aiSuggestions && (
+            <div style={{textAlign:"center",padding:48,color:"#334155"}}>
+              <div style={{fontSize:32,marginBottom:12}}>🤖</div>
+              <div style={{fontSize:14,fontWeight:600,color:"#475569",marginBottom:8}}>No AI suggestions yet</div>
+              <div style={{fontSize:12,marginBottom:20}}>Go to the Breakdown tab and click "Get AI Cost Optimization Suggestions"</div>
+              <button onClick={runAISuggestions} style={{padding:"10px 24px",background:"linear-gradient(135deg,#7c3aed,#6d28d9)",border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                🤖 Generate Suggestions Now
+              </button>
+            </div>
+          )}
+          {aiSuggestions && (
+            <div className="card" style={{padding:24}}>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:20}}>🤖</span> AI Cost Optimization Report
+              </div>
+              <div style={{fontSize:13,color:"#94a3b8",lineHeight:1.8,whiteSpace:"pre-wrap"}}>
+                {aiSuggestions.split("\n").map((line,i)=>{
+                  if(line.startsWith("##")) return <div key={i} style={{fontSize:14,fontWeight:700,color:"#38bdf8",marginTop:16,marginBottom:8}}>{line.replace(/^#+/,"").trim()}</div>;
+                  if(line.startsWith("**")) return <div key={i} style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginTop:4}}>{line.replace(/\*\*/g,"")}</div>;
+                  if(line.match(/^\d+\./)) return <div key={i} style={{fontSize:13,fontWeight:700,color:"#a78bfa",marginTop:12,marginBottom:4}}>{line}</div>;
+                  if(line.startsWith("- ")) return <div key={i} style={{fontSize:12,color:"#94a3b8",paddingLeft:16,marginBottom:2}}>• {line.slice(2)}</div>;
+                  return line.trim() ? <div key={i} style={{fontSize:12,color:"#94a3b8",marginBottom:4}}>{line}</div> : <div key={i} style={{height:4}}/>;
+                })}
+              </div>
+              <button onClick={runAISuggestions} style={{marginTop:16,padding:"8px 18px",background:"#0a1120",border:"1px solid #1a2d45",borderRadius:7,color:"#475569",fontSize:12,cursor:"pointer"}}>
+                🔄 Regenerate
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
