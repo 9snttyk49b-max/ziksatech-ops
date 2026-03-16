@@ -2442,7 +2442,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             <input
               className="inp"
               style={{fontSize:12,padding:"6px 10px 6px 28px",width:"100%"}}
-              placeholder="Search… (⌘K for commands)"
+              placeholder="Search modules, clients, deals... (⌘K)"
               id="global-search-input" value={globalSearch}
               onChange={e=>{setGlobalSearch(e.target.value);if(e.target.value.length>0)setSearchOpen(true);else setSearchOpen(false);}}
               onFocus={()=>{if(globalSearch.length>0)setSearchOpen(true);}}
@@ -31919,7 +31919,7 @@ Pain: ${form.pain||persona?.pain}
 Industry: ${form.industry||"enterprise"}
 Tone: ${form.tone}
 Goal: ${template?.desc||"Convert cold lead to discovery call"}
-Context: Ziksatech – SAP BRIM/S4HANA specialists, WBE/HUB/WOSB certified, won ${wonDeals.length} engagements
+Context: Ziksatech – multi-module SAP + Data/AI staff augmentation firm, WBE/HUB/WOSB certified, DFW, won ${wonDeals.length} engagements
 
 Format EACH email EXACTLY like this — no deviations:
 ---EMAIL---
@@ -37070,7 +37070,7 @@ function CapabilityDeck({ clients, crmAccounts, crmDeals, roster, addAudit }) {
     const prompt = `You are a senior SAP consulting BD strategist at Ziksatech (WBE/HUB/WOSB certified, Plano TX).
 Generate a compelling capability deck outline for: ${target} (${industry} industry)
 Focus areas: ${focus.join(", ")}
-Our team: ${activeConsultants.length} active consultants including SAP BRIM, IS-U, S/4HANA, Databricks specialists
+Our team: ${activeConsultants.length} active consultants spanning SAP BRIM, IS-U, S/4HANA, SuccessFactors, MDG, Finance, Data Engineering, AI/ML
 Our clients: ${(clients||[]).map(c=>c.name).join(", ")}
 
 Return ONLY valid JSON:
