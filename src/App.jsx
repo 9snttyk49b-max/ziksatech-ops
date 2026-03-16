@@ -648,6 +648,7 @@ const ALL_MODULES = [
   { id:"auditlog",    label:"Audit Log",             group:"Overview"    },
   { id:"pdfexport",   label:"PDF Export",            group:"Overview"    },
   { id:"settings",    label:"Settings",               group:"Overview"    },
+  { id:"help",        label:"Help & Training",        group:"Overview"    },
   { id:"proposals",   label:"Proposals",             group:"Sales"       },
   { id:"proposalv2", label:"AI Proposal Writer",    group:"Clients"    },
   { id:"emailtpl",    label:"Email Templates",        group:"Sales"       },
@@ -2204,6 +2205,7 @@ export default function ZiksatechOps() {
     { id:"soplibrary",   label:"SOP & Exit Readiness",   icon:ICONS.pl,       group:"Delivery"    },
     { id:"certtracker",  label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
     { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Overview"    },
+    { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Overview"    },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -35487,6 +35489,7 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
     { icon:"📄", label:"PAF Files",           value:"Manage",           sub:"Personnel action forms",                                                            color:"#a78bfa",  tab:"paffiles" },
     { icon:"🏢", label:"Onboarding",          value:safeRoster.filter(r=>r.status==="onboarding").length||"Active", sub:"New hires in progress",                color:"#34d399",  tab:"onboarding" },
     { icon:"💊", label:"Benefits",            value:"Tracker",          sub:"Health, dental, 401k",                                                              color:"#38bdf8",  tab:"benefits" },
+    { icon:"📖", label:"Help & Training",    value:"Guide",            sub:"Training docs & quick start",                                                               color:"#475569",  tab:"help"     },
     { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn revenue share",                                                                color:"#f59e0b",  tab:"ideapad" },
   ];
 
@@ -35499,6 +35502,7 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
     { icon:"🔍", label:"Prospect Intel",      value:"Research",         sub:"AI company analysis",                                                               color:"#38bdf8",  tab:"prospectintel" },
     { icon:"📝", label:"SOW Generator",       value:"Generate",         sub:"AI-powered SOW",                                                                    color:"#a78bfa",  tab:"sowgen" },
     { icon:"📥", label:"RFP Responder",       value:"Respond",          sub:"Win more RFPs",                                                                     color:"#f59e0b",  tab:"rfpgen" },
+    { icon:"📖", label:"Help & Training",    value:"Guide",            sub:"Training docs & quick start",                                                               color:"#475569",  tab:"help"     },
     { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn revenue share",                                                                color:"#f59e0b",  tab:"ideapad" },
   ];
 
