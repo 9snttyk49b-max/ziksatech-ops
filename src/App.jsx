@@ -616,6 +616,7 @@ const CRM_ACTIVITIES_SEED = [
 const ALL_MODULES = [
   { id:"dashboard",  label:"Executive Dashboard", group:"Overview"    },
   { id:"notifications",label:"Notifications",         group:"Overview"    },
+  { id:"notifhub",  label:"Teams / Slack",          group:"Overview"    },
   { id:"auditlog",    label:"Audit Log",             group:"Overview"    },
   { id:"pdfexport",   label:"PDF Export",            group:"Overview"    },
   { id:"settings",    label:"Settings",               group:"Overview"    },
@@ -2577,6 +2578,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
         {tab==="bankanalyzer" && <BankAnalyzer authProfile={authProfile}/>}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
+        {tab==="notifhub"     && <NotificationsHub roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} contracts={shared.contracts} workAuth={shared.workAuth} compDocs={shared.compDocs} crmDeals={shared.crmDeals} ptoRequests={shared.ptoRequests} tsSubmissions={shared.tsSubmissions} projects={shared.projects} finPayments={shared.finPayments} apInvoices={shared.apInvoices} sows={shared.sows} crmActivities={shared.crmActivities} ptoBalances={shared.ptoBalances} changeOrders={shared.changeOrders} vendors={shared.vendors} risks={shared.risks} offers={shared.offers} dismissedAlerts={shared.dismissedAlerts} addAudit={shared.addAudit} appSettings={shared.appSettings}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
         {tab==="auditlog"      && <AuditLog {...shared}/>}
         {tab==="pdfexport"     && <PDFExport {...shared}/>}
@@ -18004,6 +18006,588 @@ function SettingsPage({ appSettings, setAppSettings, addAudit }) {
             💡 To assign a role to a user: Go to Supabase → user_profiles table → set the <strong style={{color:"#fff"}}>role</strong> field to one of: <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>employee</code>, <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>contractor</code>, <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>hr_immigration</code>, <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>accounts</code>, <code style={{background:"#040810",padding:"1px 5px",borderRadius:3}}>admin</code>
           </div>
         </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEAMS / SLACK NOTIFICATION HUB
+// Webhook delivery · Daily digest · Alert routing · Send history
+// ═══════════════════════════════════════════════════════════════════════════
+function NotificationsHub({
+  roster, clients, finInvoices, contracts, workAuth, compDocs,
+  crmDeals, ptoRequests, tsSubmissions, projects, finPayments,
+  apInvoices, sows, crmActivities, ptoBalances, changeOrders,
+  vendors, risks, offers, dismissedAlerts, addAudit, appSettings
+}) {
+  // ── Persistent settings via localStorage ──────────────────────────────────
+  const loadSettings = () => {
+    try { return JSON.parse(localStorage.getItem("zt-notif-hub") || "{}"); } catch { return {}; }
+  };
+  const [settings, setSettings] = useState(() => ({
+    teamsWebhook:   "",
+    slackWebhook:   "",
+    teamsEnabled:   false,
+    slackEnabled:   false,
+    digestTime:     "08:00",
+    digestEnabled:  false,
+    channels: {
+      finance:    { teams: true,  slack: true,  label: "Finance Alerts",     emoji: "💰" },
+      compliance: { teams: true,  slack: true,  label: "Compliance Alerts",  emoji: "🛂" },
+      hr:         { teams: false, slack: true,  label: "HR / PTO Alerts",    emoji: "👥" },
+      deals:      { teams: true,  slack: false, label: "New Deals / CRM",    emoji: "🤝" },
+      contracts:  { teams: true,  slack: true,  label: "Contract Renewals",  emoji: "📋" },
+      bench:      { teams: true,  slack: true,  label: "Bench Alerts",       emoji: "🔴" },
+      invoices:   { teams: true,  slack: true,  label: "Invoice / Payment",  emoji: "📊" },
+    },
+    ...loadSettings()
+  }));
+  const [sub,       setSub]      = useState("overview"); // overview | settings | history | test
+  const [sending,   setSending]  = useState(null);
+  const [history,   setHistory]  = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-notif-history") || "[]"); } catch { return []; }
+  });
+  const [testResult, setTestResult] = useState(null);
+  const [tab,       setTabSel]   = useState("teams"); // teams | slack
+
+  const saveSettings = (patch) => {
+    const updated = { ...settings, ...patch };
+    setSettings(updated);
+    localStorage.setItem("zt-notif-hub", JSON.stringify(updated));
+  };
+
+  const saveHistory = (entry) => {
+    const updated = [entry, ...history].slice(0, 100); // keep last 100
+    setHistory(updated);
+    localStorage.setItem("zt-notif-history", JSON.stringify(updated));
+  };
+
+  // ── Generate alerts (reuse existing logic) ─────────────────────────────────
+  const today = new Date();
+  const daysUntil = d => d ? Math.ceil((new Date(d) - today) / 86400000) : null;
+  const fmt       = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${Math.round(v).toLocaleString()}`;
+
+  // Build a structured list of current alerts
+  const buildAlerts = () => {
+    const alerts = [];
+    const safeRoster = roster || [];
+
+    // Finance: overdue invoices
+    (finInvoices||[]).filter(i => i.status !== "paid" && i.status !== "voided").forEach(inv => {
+      const issued = inv.issueDate ? new Date(inv.issueDate) : null;
+      if (!issued) return;
+      const netDays = {" Net 15":15,"Net 30":30,"Net 45":45,"Net 60":60}[inv.paymentTerms||"Net 30"] ?? 30;
+      const dueDate = new Date(+issued + netDays*86400000);
+      const overdueDays = Math.ceil((today - dueDate)/86400000);
+      if (overdueDays > 0) alerts.push({ cat:"finance", sev:"critical", title:`Overdue Invoice: ${inv.id}`, body:`$${(inv.amount||0).toLocaleString()} — ${overdueDays} days overdue` });
+      else if (overdueDays > -7) alerts.push({ cat:"invoices", sev:"warning", title:`Invoice Due Soon: ${inv.id}`, body:`$${(inv.amount||0).toLocaleString()} — due in ${-overdueDays}d` });
+    });
+
+    // Compliance: work auth expiry
+    (workAuth||[]).forEach(wa => {
+      const days = daysUntil(wa.expiry);
+      if (days === null) return;
+      const name = safeRoster.find(r=>r.id===wa.memberId)?.name || wa.memberId;
+      if (days < 0)       alerts.push({ cat:"compliance", sev:"critical", title:`${wa.visaType} EXPIRED: ${name}`, body:`Work authorization expired ${Math.abs(days)} days ago` });
+      else if (days <= 30) alerts.push({ cat:"compliance", sev:"critical", title:`${wa.visaType} Expires in ${days}d: ${name}`, body:`Urgent: renew immediately` });
+      else if (days <= 90) alerts.push({ cat:"compliance", sev:"warning",  title:`${wa.visaType} Expiring: ${name}`, body:`Expires in ${days} days — schedule renewal` });
+    });
+
+    // Contracts: renewals
+    (contracts||[]).forEach(con => {
+      const days = daysUntil(con.endDate);
+      if (days === null) return;
+      if (days <= 30 && days >= 0)  alerts.push({ cat:"contracts", sev:"critical", title:`Contract Expiring: ${con.name}`, body:`${days} days remaining — initiate renewal now` });
+      else if (days <= 60 && days >= 0) alerts.push({ cat:"contracts", sev:"warning", title:`Contract Renewal: ${con.name}`, body:`${days} days until expiry` });
+    });
+
+    // Bench: low utilization
+    safeRoster.filter(r => (r.util||0) < 0.2).forEach(r => {
+      alerts.push({ cat:"bench", sev:"critical", title:`Consultant on Bench: ${r.name}`, body:`${r.role} — ${Math.round((r.util||0)*100)}% utilization · $${r.billRate}/hr not billing` });
+    });
+    safeRoster.filter(r => (r.util||0) >= 0.2 && (r.util||0) < 0.6).forEach(r => {
+      alerts.push({ cat:"bench", sev:"warning", title:`Low Utilization: ${r.name}`, body:`${Math.round((r.util||0)*100)}% utilized — find additional work` });
+    });
+
+    // HR: pending PTO
+    const pendingPTO = (ptoRequests||[]).filter(p => p.status === "pending");
+    if (pendingPTO.length > 0) alerts.push({ cat:"hr", sev:"info", title:`${pendingPTO.length} PTO Request${pendingPTO.length>1?"s":""} Pending Approval`, body:pendingPTO.map(p=>p.name||p.memberId).join(", ") });
+
+    // CRM: deals closing this month
+    const thisMonth = today.toISOString().slice(0,7);
+    (crmDeals||[]).filter(d => (d.closeDate||"").startsWith(thisMonth) && d.stage !== "closed_won" && d.stage !== "closed_lost").forEach(d => {
+      alerts.push({ cat:"deals", sev:"info", title:`Deal Closing This Month: ${d.name}`, body:`$${(d.value||0).toLocaleString()} · ${d.probability||50}% · Stage: ${d.stage}` });
+    });
+
+    return alerts;
+  };
+
+  const alerts = buildAlerts();
+  const criticalAlerts = alerts.filter(a => a.sev === "critical");
+  const warningAlerts  = alerts.filter(a => a.sev === "warning");
+
+  // ── Teams Message Builder ──────────────────────────────────────────────────
+  const buildTeamsPayload = (alertList, isDigest = false) => {
+    const company = appSettings?.companyName || "Ziksatech, LLC";
+    const title   = isDigest ? `📋 Daily Digest — ${new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}` : `🚨 ${company} — Alert Summary`;
+    const critical = alertList.filter(a => a.sev === "critical");
+    const warning  = alertList.filter(a => a.sev === "warning");
+    const info     = alertList.filter(a => a.sev === "info");
+
+    const facts = [];
+    if (critical.length) facts.push({ name:"🔴 Critical", value:`${critical.length} alert${critical.length>1?"s":""}` });
+    if (warning.length)  facts.push({ name:"🟡 Warning",  value:`${warning.length} alert${warning.length>1?"s":""}` });
+    if (info.length)     facts.push({ name:"ℹ️ Info",     value:`${info.length} item${info.length>1?"s":""}` });
+
+    const sections = Object.entries(
+      alertList.reduce((acc, a) => { if (!acc[a.cat]) acc[a.cat] = []; acc[a.cat].push(a); return acc; }, {})
+    ).map(([cat, catAlerts]) => {
+      const cfg = settings.channels[cat] || { emoji:"📌", label: cat };
+      return {
+        activityTitle: `${cfg.emoji} ${cfg.label}`,
+        activitySubtitle: `${catAlerts.length} alert${catAlerts.length>1?"s":""}`,
+        facts: catAlerts.slice(0,5).map(a => ({ name: a.title, value: a.body }))
+      };
+    });
+
+    return {
+      "@type": "MessageCard",
+      "@context": "http://schema.org/extensions",
+      themeColor: critical.length > 0 ? "FF0000" : "FFA500",
+      summary: title,
+      title,
+      sections: [
+        { facts, activityTitle:"Summary" },
+        ...sections.slice(0,8)
+      ],
+      potentialAction: [{
+        "@type": "OpenUri",
+        name: "Open Ziksatech Ops Center",
+        targets: [{ os:"default", uri:`${window.location.origin}` }]
+      }]
+    };
+  };
+
+  // ── Slack Message Builder ──────────────────────────────────────────────────
+  const buildSlackPayload = (alertList, isDigest = false) => {
+    const title   = isDigest ? `📋 *Daily Digest* — ${new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}` : `🚨 *Ziksatech Ops Alerts*`;
+    const critical = alertList.filter(a => a.sev === "critical");
+    const warning  = alertList.filter(a => a.sev === "warning");
+    const info     = alertList.filter(a => a.sev === "info");
+
+    const blocks = [
+      { type:"header", text:{ type:"plain_text", text: isDigest ? "📋 Daily Digest" : "🚨 Ziksatech Ops Alert" }},
+      { type:"section", text:{ type:"mrkdwn", text:`${title}\n*${critical.length}* critical · *${warning.length}* warnings · *${info.length}* info` }},
+      { type:"divider" }
+    ];
+
+    // Group by category
+    const grouped = alertList.reduce((acc,a) => { if(!acc[a.cat]) acc[a.cat]=[]; acc[a.cat].push(a); return acc; }, {});
+    Object.entries(grouped).slice(0, 8).forEach(([cat, catAlerts]) => {
+      const cfg = settings.channels[cat] || { emoji:"📌", label:cat };
+      blocks.push({
+        type:"section",
+        text:{ type:"mrkdwn", text:`*${cfg.emoji} ${cfg.label}*\n` + catAlerts.slice(0,4).map(a=>`• *${a.title}*: ${a.body}`).join("\n") }
+      });
+    });
+
+    blocks.push({ type:"divider" });
+    blocks.push({
+      type:"actions",
+      elements:[{ type:"button", text:{type:"plain_text",text:"🔗 Open Ops Center"}, url:`${window.location.origin}` }]
+    });
+
+    return { blocks, text: `${critical.length} critical alerts in Ziksatech Ops Center` };
+  };
+
+  // ── Send webhook ───────────────────────────────────────────────────────────
+  const sendWebhook = async (platform, alertList, isDigest=false, isTest=false) => {
+    const webhook = platform === "teams" ? settings.teamsWebhook : settings.slackWebhook;
+    if (!webhook) return { ok: false, error: `No ${platform === "teams" ? "Teams" : "Slack"} webhook URL configured` };
+
+    const payload = platform === "teams" ? buildTeamsPayload(alertList, isDigest) : buildSlackPayload(alertList, isDigest);
+
+    try {
+      // Use a CORS proxy approach — send via our /api/claude as relay, or direct
+      // For Teams/Slack incoming webhooks, we need to handle CORS
+      // Most Slack webhooks work with no-cors, Teams needs same
+      const resp = await fetch(webhook, {
+        method: "POST",
+        mode: "no-cors", // Required for cross-origin webhook delivery
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      // no-cors returns opaque response — treat as success if no throw
+      return { ok: true };
+    } catch(e) {
+      return { ok: false, error: e.message };
+    }
+  };
+
+  const sendAlerts = async (platform) => {
+    setSending(platform);
+    setTestResult(null);
+    const routedAlerts = alerts.filter(a => settings.channels[a.cat]?.[platform]);
+    if (routedAlerts.length === 0) {
+      setSending(null);
+      setTestResult({ platform, ok: false, error: "No active alerts routed to this channel" });
+      return;
+    }
+    const result = await sendWebhook(platform, routedAlerts);
+    setSending(null);
+    const entry = {
+      id: Date.now(),
+      ts: new Date().toISOString(),
+      platform,
+      alertCount: routedAlerts.length,
+      type: "manual",
+      ok: result.ok,
+      error: result.error
+    };
+    saveHistory(entry);
+    setTestResult({ platform, ...result, count: routedAlerts.length });
+    if (result.ok) addAudit?.("Notifications", `${platform} Alert Sent`, "Notifications Hub", `${routedAlerts.length} alerts`);
+  };
+
+  const sendDigest = async (platform) => {
+    setSending(platform + "_digest");
+    const result = await sendWebhook(platform, alerts, true);
+    setSending(null);
+    const entry = { id:Date.now(), ts:new Date().toISOString(), platform, alertCount:alerts.length, type:"digest", ok:result.ok, error:result.error };
+    saveHistory(entry);
+    setTestResult({ platform, ...result, count: alerts.length, isDigest: true });
+    if (result.ok) addAudit?.("Notifications", `${platform} Digest Sent`, "Notifications Hub", `${alerts.length} alerts`);
+  };
+
+  const sendTest = async (platform) => {
+    setSending(platform + "_test");
+    const webhook = platform === "teams" ? settings.teamsWebhook : settings.slackWebhook;
+    if (!webhook) { setSending(null); setTestResult({ platform, ok:false, error:"No webhook URL set" }); return; }
+    const testAlerts = [{ cat:"bench", sev:"info", title:"✅ Test Message from Ziksatech Ops Center", body:`Webhook connected! ${new Date().toLocaleTimeString()} — You'll receive alerts here.` }];
+    const result = await sendWebhook(platform, testAlerts);
+    setSending(null);
+    setTestResult({ platform, ...result, isTest:true });
+  };
+
+  const tabBtn = (id, label) => (
+    <button onClick={()=>setSub(id)}
+      style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569"}}>
+      {label}
+    </button>
+  );
+
+  const PLATFORM_CFG = {
+    teams: { label:"Microsoft Teams", emoji:"💬", color:"#6264A7", logoBg:"#464775" },
+    slack: { label:"Slack",           emoji:"💬", color:"#4A154B", logoBg:"#36C5F0" },
+  };
+
+  return (
+    <div>
+      <PH title="Notifications Hub" sub="Teams & Slack webhooks · Daily digest · Alert routing · Send history"/>
+
+      {/* Status bar */}
+      <div style={{display:"flex",gap:10,marginBottom:18}}>
+        {[
+          { platform:"teams", enabled:settings.teamsEnabled, webhook:settings.teamsWebhook, label:"Microsoft Teams" },
+          { platform:"slack", enabled:settings.slackEnabled, webhook:settings.slackWebhook, label:"Slack" },
+        ].map(p => (
+          <div key={p.platform} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 16px",borderRadius:10,
+            background:p.enabled&&p.webhook?"#021f14":"#060d1c",
+            border:`1px solid ${p.enabled&&p.webhook?"#15803d":"#1a2d45"}`}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:p.enabled&&p.webhook?"#34d399":"#334155",flexShrink:0}}/>
+            <span style={{fontSize:12,fontWeight:600,color:p.enabled&&p.webhook?"#34d399":"#475569"}}>{p.label}</span>
+            <span style={{fontSize:10,color:"#334155"}}>{p.enabled&&p.webhook?"Connected":"Not configured"}</span>
+          </div>
+        ))}
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 16px",borderRadius:10,background:"#060d1c",border:"1px solid #1a2d45"}}>
+          <span style={{fontSize:12,color:"#475569"}}>Active Alerts:</span>
+          <span style={{fontSize:14,fontWeight:700,color:criticalAlerts.length>0?"#f87171":"#34d399"}}>{criticalAlerts.length} critical</span>
+          <span style={{fontSize:12,color:"#475569"}}>/ {warningAlerts.length} warnings</span>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabBtn("overview",  "📊 Overview")}
+        {tabBtn("settings",  "⚙️ Setup")}
+        {tabBtn("routing",   "🔀 Routing")}
+        {tabBtn("history",   "📜 History")}
+      </div>
+
+      {/* ── OVERVIEW ───────────────────────────────────────────────────────── */}
+      {sub === "overview" && (
+        <div>
+          {/* KPIs */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+            {[
+              {l:"Total Active Alerts", v:alerts.length,              c:"#94a3b8"},
+              {l:"Critical",           v:criticalAlerts.length,       c:criticalAlerts.length>0?"#f87171":"#34d399"},
+              {l:"Warnings",           v:warningAlerts.length,        c:warningAlerts.length>0?"#f59e0b":"#34d399"},
+              {l:"Sent Today",         v:history.filter(h=>h.ts.startsWith(today.toISOString().slice(0,10))).length, c:"#38bdf8"},
+            ].map(k=>(
+              <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+                <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Send buttons */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+            {["teams","slack"].map(platform => {
+              const cfg = PLATFORM_CFG[platform];
+              const enabled = settings[platform+"Enabled"] && settings[platform+"Webhook"];
+              const routed  = alerts.filter(a => settings.channels[a.cat]?.[platform]).length;
+              return (
+                <div key={platform} className="card" style={{padding:"20px 24px",border:`1px solid ${enabled?"#1a2d45":"#0a1626"}`,opacity:enabled?1:0.6}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+                    <div style={{width:36,height:36,borderRadius:10,background:enabled?cfg.color:"#1a2d45",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>
+                      {platform==="teams"?"🟦":"💜"}
+                    </div>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{cfg.label}</div>
+                      <div style={{fontSize:10,color:enabled?"#34d399":"#334155"}}>{enabled ? `${routed} alerts queued` : "Not connected"}</div>
+                    </div>
+                  </div>
+
+                  {!enabled ? (
+                    <button className="btn bg" style={{width:"100%",justifyContent:"center",fontSize:12}} onClick={()=>setSub("settings")}>
+                      ⚙️ Configure Webhook
+                    </button>
+                  ) : (
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      <button className="btn bp" style={{justifyContent:"center",fontSize:12}}
+                        onClick={()=>sendAlerts(platform)} disabled={!!sending || routed===0}>
+                        {sending===platform ? "⏳ Sending..." : `📤 Send ${routed} Alerts Now`}
+                      </button>
+                      <button className="btn bg" style={{justifyContent:"center",fontSize:12}}
+                        onClick={()=>sendDigest(platform)} disabled={!!sending}>
+                        {sending===platform+"_digest" ? "⏳ Sending..." : "📋 Send Daily Digest"}
+                      </button>
+                      <button className="btn bg" style={{justifyContent:"center",fontSize:11,color:"#38bdf8"}}
+                        onClick={()=>sendTest(platform)} disabled={!!sending}>
+                        {sending===platform+"_test" ? "⏳ Testing..." : "🧪 Send Test Message"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Test result feedback */}
+          {testResult && (
+            <div style={{padding:"12px 16px",borderRadius:10,marginBottom:16,
+              background:testResult.ok?"#021f14":"#1a0808",
+              border:`1px solid ${testResult.ok?"#15803d":"#7f1d1d"}`}}>
+              <div style={{fontSize:13,fontWeight:700,color:testResult.ok?"#34d399":"#f87171",marginBottom:4}}>
+                {testResult.ok ? "✅ Message Sent Successfully" : "❌ Delivery Failed"}
+              </div>
+              <div style={{fontSize:11,color:testResult.ok?"#475569":"#f87171"}}>
+                {testResult.ok
+                  ? `${testResult.isTest?"Test message":"Alerts"} delivered to ${PLATFORM_CFG[testResult.platform]?.label}${testResult.count ? ` — ${testResult.count} alert${testResult.count>1?"s":""}` : ""}`
+                  : testResult.error}
+              </div>
+              {testResult.ok && (
+                <div style={{fontSize:10,color:"#334155",marginTop:4}}>
+                  Note: If using a browser-side webhook (no-cors mode), delivery is fire-and-forget. Check your Teams/Slack channel for the message.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Current alerts preview */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>📋 Current Alerts ({alerts.length})</div>
+            {alerts.length === 0 ? (
+              <div style={{padding:"30px",textAlign:"center",color:"#334155",fontSize:12}}>🎉 No active alerts — all systems normal</div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {alerts.slice(0,15).map((a, i) => {
+                  const col = a.sev==="critical"?"#f87171":a.sev==="warning"?"#fbbf24":"#38bdf8";
+                  const bg  = a.sev==="critical"?"#1a0808":a.sev==="warning"?"#1a1005":"#060d1c";
+                  const br  = a.sev==="critical"?"#7f1d1d":a.sev==="warning"?"#78350f":"#1a2d45";
+                  const cfg = settings.channels[a.cat];
+                  return (
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,background:bg,border:`1px solid ${br}`}}>
+                      <span style={{fontSize:14,flexShrink:0}}>{cfg?.emoji||"📌"}</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:11,fontWeight:600,color:col}}>{a.title}</div>
+                        <div style={{fontSize:10,color:"#475569"}}>{a.body}</div>
+                      </div>
+                      <div style={{display:"flex",gap:4,flexShrink:0}}>
+                        {settings.channels[a.cat]?.teams && <span style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#464775",color:"#c4b5fd"}}>Teams</span>}
+                        {settings.channels[a.cat]?.slack && <span style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#4A154B22",color:"#36C5F0",border:"1px solid #4A154B"}}>Slack</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+                {alerts.length > 15 && <div style={{fontSize:11,color:"#334155",textAlign:"center"}}>+{alerts.length-15} more alerts</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── SETTINGS ───────────────────────────────────────────────────────── */}
+      {sub === "settings" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          {/* Teams */}
+          <div className="card" style={{padding:"20px 24px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <div style={{width:32,height:32,borderRadius:8,background:"#6264A7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🟦</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>Microsoft Teams</div>
+            </div>
+            <div style={{fontSize:11,color:"#3d5a7a",marginBottom:14,padding:"8px 12px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1",lineHeight:1.7}}>
+              <strong style={{color:"#7dd3fc"}}>How to get Teams webhook:</strong><br/>
+              1. Open Teams → channel → ⋯ → Connectors<br/>
+              2. Search "Incoming Webhook" → Configure<br/>
+              3. Name it "Ziksatech Ops" → Create<br/>
+              4. Copy the URL and paste below
+            </div>
+            <div style={{marginBottom:12}}>
+              <div className="lbl">Webhook URL</div>
+              <input className="inp" value={settings.teamsWebhook} placeholder="https://ziksatech.webhook.office.com/..."
+                onChange={e=>saveSettings({teamsWebhook:e.target.value})}/>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <div style={{position:"relative",width:40,height:22,borderRadius:11,background:settings.teamsEnabled?"#0369a1":"#1a2d45",cursor:"pointer",transition:"background 0.2s"}}
+                onClick={()=>saveSettings({teamsEnabled:!settings.teamsEnabled})}>
+                <div style={{position:"absolute",width:18,height:18,borderRadius:"50%",background:"#fff",top:2,left:settings.teamsEnabled?20:2,transition:"left 0.2s"}}/>
+              </div>
+              <span style={{fontSize:12,color:"#94a3b8"}}>Enable Teams Notifications</span>
+            </div>
+            <button className="btn bg" style={{fontSize:11,justifyContent:"center",width:"100%"}} onClick={()=>sendTest("teams")} disabled={!settings.teamsWebhook||!!sending}>
+              {sending==="teams_test"?"⏳ Sending...":"🧪 Test Connection"}
+            </button>
+          </div>
+
+          {/* Slack */}
+          <div className="card" style={{padding:"20px 24px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <div style={{width:32,height:32,borderRadius:8,background:"#4A154B",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>💜</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>Slack</div>
+            </div>
+            <div style={{fontSize:11,color:"#3d5a7a",marginBottom:14,padding:"8px 12px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1",lineHeight:1.7}}>
+              <strong style={{color:"#7dd3fc"}}>How to get Slack webhook:</strong><br/>
+              1. Go to api.slack.com/apps → Create App<br/>
+              2. Choose "From scratch" → name + workspace<br/>
+              3. Features → Incoming Webhooks → Activate<br/>
+              4. Add to channel → Copy webhook URL below
+            </div>
+            <div style={{marginBottom:12}}>
+              <div className="lbl">Webhook URL</div>
+              <input className="inp" value={settings.slackWebhook} placeholder="https://hooks.slack.com/services/..."
+                onChange={e=>saveSettings({slackWebhook:e.target.value})}/>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <div style={{position:"relative",width:40,height:22,borderRadius:11,background:settings.slackEnabled?"#4A154B":"#1a2d45",cursor:"pointer",transition:"background 0.2s"}}
+                onClick={()=>saveSettings({slackEnabled:!settings.slackEnabled})}>
+                <div style={{position:"absolute",width:18,height:18,borderRadius:"50%",background:"#fff",top:2,left:settings.slackEnabled?20:2,transition:"left 0.2s"}}/>
+              </div>
+              <span style={{fontSize:12,color:"#94a3b8"}}>Enable Slack Notifications</span>
+            </div>
+            <button className="btn bg" style={{fontSize:11,justifyContent:"center",width:"100%"}} onClick={()=>sendTest("slack")} disabled={!settings.slackWebhook||!!sending}>
+              {sending==="slack_test"?"⏳ Sending...":"🧪 Test Connection"}
+            </button>
+          </div>
+
+          {/* Daily digest */}
+          <div className="card" style={{padding:"20px 24px",gridColumn:"1/-1"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📋 Daily Digest Settings</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+              <div>
+                <div className="lbl">Digest Time</div>
+                <input type="time" className="inp" value={settings.digestTime} onChange={e=>saveSettings({digestTime:e.target.value})}/>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10,paddingTop:18}}>
+                <div style={{position:"relative",width:40,height:22,borderRadius:11,background:settings.digestEnabled?"#0369a1":"#1a2d45",cursor:"pointer"}}
+                  onClick={()=>saveSettings({digestEnabled:!settings.digestEnabled})}>
+                  <div style={{position:"absolute",width:18,height:18,borderRadius:"50%",background:"#fff",top:2,left:settings.digestEnabled?20:2,transition:"left 0.2s"}}/>
+                </div>
+                <span style={{fontSize:12,color:"#94a3b8"}}>Auto-send daily digest</span>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center",paddingTop:14}}>
+                <button className="btn bg" style={{fontSize:11}} onClick={()=>sendDigest("teams")} disabled={!settings.teamsWebhook||!!sending}>
+                  {sending==="teams_digest"?"⏳":"📤"} Send to Teams Now
+                </button>
+                <button className="btn bg" style={{fontSize:11}} onClick={()=>sendDigest("slack")} disabled={!settings.slackWebhook||!!sending}>
+                  {sending==="slack_digest"?"⏳":"📤"} Send to Slack Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ROUTING ────────────────────────────────────────────────────────── */}
+      {sub === "routing" && (
+        <div className="card" style={{padding:"20px 24px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>🔀 Alert Routing</div>
+          <div style={{fontSize:11,color:"#475569",marginBottom:18}}>Configure which alert categories go to Teams, Slack, or both</div>
+
+          {/* Header */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:8,padding:"6px 12px",background:"#040810",borderRadius:6,marginBottom:8,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+            <div>Alert Category</div>
+            <div style={{textAlign:"center"}}>🟦 Teams</div>
+            <div style={{textAlign:"center"}}>💜 Slack</div>
+          </div>
+
+          {Object.entries(settings.channels).map(([key, ch]) => (
+            <div key={key} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px",gap:8,padding:"10px 12px",borderRadius:8,marginBottom:4,background:"#060d1c",border:"1px solid #0a1826",alignItems:"center"}}>
+              <div>
+                <span style={{fontSize:16,marginRight:8}}>{ch.emoji}</span>
+                <span style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{ch.label}</span>
+                <span style={{fontSize:10,color:"#334155",marginLeft:6}}>({alerts.filter(a=>a.cat===key).length} active)</span>
+              </div>
+              {["teams","slack"].map(platform=>(
+                <div key={platform} style={{display:"flex",justifyContent:"center"}}>
+                  <div style={{position:"relative",width:36,height:20,borderRadius:10,background:ch[platform]?"#0369a1":"#1a2d45",cursor:"pointer",transition:"background 0.2s"}}
+                    onClick={()=>{
+                      const updated = {...settings, channels:{...settings.channels, [key]:{...ch,[platform]:!ch[platform]}}};
+                      setSettings(updated);
+                      localStorage.setItem("zt-notif-hub", JSON.stringify(updated));
+                    }}>
+                    <div style={{position:"absolute",width:16,height:16,borderRadius:"50%",background:"#fff",top:2,left:ch[platform]?18:2,transition:"left 0.2s"}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── HISTORY ────────────────────────────────────────────────────────── */}
+      {sub === "history" && (
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📜 Send History (last {history.length})</div>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>{setHistory([]);localStorage.removeItem("zt-notif-history");}}>Clear</button>
+          </div>
+          {history.length === 0 ? (
+            <div style={{padding:"40px",textAlign:"center",color:"#334155",fontSize:12}}>No notifications sent yet</div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {history.map(h => (
+                <div key={h.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",borderRadius:8,
+                  background:h.ok?"#021f14":"#1a0808",border:`1px solid ${h.ok?"#15803d":"#7f1d1d"}`}}>
+                  <span style={{fontSize:14}}>{h.platform==="teams"?"🟦":"💜"}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:600,color:h.ok?"#34d399":"#f87171"}}>
+                      {h.ok?"✅":"❌"} {PLATFORM_CFG[h.platform]?.label} · {h.type === "digest"?"Daily Digest":h.type==="test"?"Test":"Alerts"} · {h.alertCount} item{h.alertCount>1?"s":""}
+                    </div>
+                    <div style={{fontSize:9,color:"#334155"}}>{new Date(h.ts).toLocaleString()}</div>
+                  </div>
+                  {!h.ok && <div style={{fontSize:10,color:"#f87171"}}>{h.error}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
