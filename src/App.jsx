@@ -354,8 +354,16 @@ const store = (() => {
 const BURDEN = { fica: 0.0765, futa: 0.006, futaCap: 7000, suta: 0.027, sutaCap: 9000, wc: 0.005, health: 7200, retire: 0.03, other: 0.015, hoursPerYear: 1920 };
 
 const ROSTER_SEED = [
-  { id:"r1", name:"Nuthan Joshi",  role:"BRIM Sr Consultant",      type:"FTE", client:"PTC",  billRate:155, util:1.0, baseSalary:120000, skills:"SAP BRIM, ABAP, BTP",    projects:"PTC BRIM Phase 2, SAP Portal", revShare:0, fixedRate:155, thirdPartySplit:0, insurance:7200 },
-  { id:"r2", name:"Malla Reddy",   role:"SAP Functional Architect", type:"FTE", client:"HPE",  billRate:135, util:0.8, baseSalary:98000,  skills:"SAP IS-U, S/4HANA, CPI",  projects:"HPE IS-U Migration, S4 Upgrade", revShare:0, fixedRate:135, thirdPartySplit:0, insurance:7200 },
+  { id:"r1",  name:"Nuthan Joshi",       role:"SAP BRIM Sr Consultant",        type:"FTE", client:"PTC",                billRate:155, util:1.0, baseSalary:120000, skills:"SAP BRIM, ABAP, BTP, S/4HANA",              projects:"PTC BRIM Phase 2, Tolling Billing",         revShare:0, fixedRate:155, thirdPartySplit:0, insurance:7200 },
+  { id:"r2",  name:"Malla Reddy",        role:"SAP Functional Architect",       type:"FTE", client:"HPE",                billRate:135, util:0.8, baseSalary:98000,  skills:"SAP IS-U, S/4HANA FI/CO, CPI, Integration",  projects:"HPE IS-U Migration, S4 Upgrade",            revShare:0, fixedRate:135, thirdPartySplit:0, insurance:7200 },
+  { id:"r3",  name:"Sudheendra Mujamdhar",role:"SAP Master Data Governance Lead",type:"FTE", client:"SCG",               billRate:145, util:1.0, baseSalary:110000, skills:"SAP MDG, Data Governance, S/4HANA, ABAP",    projects:"SCG Data Governance Program",               revShare:0, fixedRate:145, thirdPartySplit:0, insurance:7200 },
+  { id:"r4",  name:"Vivek Khajuria",     role:"SAP SuccessFactors Consultant",  type:"FTE", client:"Toyota",             billRate:130, util:1.0, baseSalary:95000,  skills:"SAP SuccessFactors, HCM, Payroll, EC",       projects:"Toyota HCM Transformation",                 revShare:0, fixedRate:130, thirdPartySplit:0, insurance:7200 },
+  { id:"r5",  name:"Kartheek",           role:"SAP AI / ML Consultant",         type:"FTE", client:"Arhasi",             billRate:140, util:1.0, baseSalary:105000, skills:"SAP BTP, AI/ML, Databricks, Python, AWS",    projects:"Arhasi AI Analytics Platform",              revShare:0, fixedRate:140, thirdPartySplit:0, insurance:7200 },
+  { id:"r6",  name:"Naveen",             role:"SAP Finance Consultant",          type:"FTE", client:"Freeman - Mouritech",billRate:125, util:1.0, baseSalary:90000,  skills:"SAP S/4HANA Finance, FSCM, TR, COPA",        projects:"Freeman Finance Transformation",             revShare:0, fixedRate:125, thirdPartySplit:0, insurance:7200 },
+  { id:"r7",  name:"Rajesh Kumar",       role:"SAP IS-U / Tolling Specialist",  type:"FTE", client:"NTTA",               billRate:185, util:1.0, baseSalary:130000, skills:"SAP IS-U, Device Mgmt, Tolling, ABAP, CCS",  projects:"NTTA Tolling System, Revenue Billing",      revShare:0, fixedRate:185, thirdPartySplit:0, insurance:7200 },
+  { id:"r8",  name:"Priya Rajan",        role:"SAP Data / Databricks Engineer", type:"FTE", client:"Toyota Connected",   billRate:150, util:0.8, baseSalary:112000, skills:"Databricks, AWS, SAP BTP, Data Engineering",  projects:"Toyota Data Pipeline, Connected Services",  revShare:0, fixedRate:150, thirdPartySplit:0, insurance:7200 },
+  { id:"r9",  name:"Arun Patel",         role:"SAP S/4HANA Functional Lead",    type:"FTE", client:"HOPE-IDI",           billRate:145, util:1.0, baseSalary:108000, skills:"SAP S/4HANA MM, SD, PP, Fiori, Integration",  projects:"HOPE-IDI S4 Rollout, BRIM Integration",     revShare:0, fixedRate:145, thirdPartySplit:0, insurance:7200 },
+  { id:"r10", name:"Deepa Krishnan",     role:"SAP Project Manager / Architect",type:"FTE", client:"HOPE-IDI",           billRate:160, util:1.0, baseSalary:125000, skills:"SAP PM, BRIM, S/4HANA, Architecture, PMP",   projects:"HOPE-IDI Phase 3, Oncor RFP",              revShare:0, fixedRate:160, thirdPartySplit:0, insurance:7200 },
 ];
 const PIPELINE_SEED = [
   { id:"p1",  name:"Arjun Reddy",      role:"SAP BRIM Consultant",     billRate:140, status:"Offer Pending",   readyIn:"2 weeks",  source:"Referral",  skills:"SAP BRIM, IS-U, ABAP",       visa:"H-1B" },
@@ -371,13 +379,15 @@ const PIPELINE_SEED = [
 ];
 
 const CLIENTS_SEED = [
-  { id:"cl1", name:"HOPE-IDI",             vertical:"Utilities",         engType:"Project",    annualRev:1200000, grossMargin:0.35, health:"Green", csmId:"", notes:"Core anchor. BRIM Phase 3 probe H2.", consultants:4, renewalDate:"2026-12-31" },
-  { id:"cl2", name:"Toyota",               vertical:"Financials",        engType:"Staff Aug",  annualRev:180000,  grossMargin:0.20, health:"Green", csmId:"", notes:"New Q1 2026. Positive signals.",    consultants:1, renewalDate:"2026-08-31" },
-  { id:"cl3", name:"HPE",                  vertical:"Manufacturing",      engType:"Staff Aug",  annualRev:180000,  grossMargin:0.25, health:"Green", csmId:"", notes:"Add more consultants. Rachel contact person.", consultants:1, renewalDate:"2026-08-31" },
-  { id:"cl4", name:"PTC",                  vertical:"Tolling",            engType:"Project",    annualRev:450000,  grossMargin:0.30, health:"Green", csmId:"", notes:"Stable. Expand to 3 consultants.",  consultants:2, renewalDate:"2026-09-30" },
-  { id:"cl5", name:"Arhasi",               vertical:"AI",                 engType:"Staff Aug",  annualRev:108000,  grossMargin:0.15, health:"Green", csmId:"", notes:"",                                 consultants:1, renewalDate:"2027-02-02" },
-  { id:"cl6", name:"SCG",                  vertical:"Gas Utilities",      engType:"Staff Aug",  annualRev:300000,  grossMargin:0.25, health:"Green", csmId:"", notes:"",                                 consultants:1, renewalDate:"2027-02-02" },
-  { id:"cl7", name:"Freeman - Mouritech",  vertical:"Media",              engType:"Staff Aug",  annualRev:180000,  grossMargin:0.15, health:"Green", csmId:"", notes:"Ravi Soni",                        consultants:1, renewalDate:"2027-06-30" },
+  { id:"cl1", name:"HOPE-IDI",             vertical:"Utilities / Energy",   engType:"Project",   annualRev:1200000, grossMargin:0.35, health:"Green", csmId:"", notes:"Core anchor. SAP BRIM Phase 3. Deepa + Arun on-site.", consultants:2, renewalDate:"2026-12-31" },
+  { id:"cl2", name:"Toyota",               vertical:"Automotive",           engType:"Staff Aug", annualRev:180000,  grossMargin:0.25, health:"Green", csmId:"", notes:"Vivek on SuccessFactors HCM. Expansion discussions Q3.", consultants:1, renewalDate:"2026-08-31" },
+  { id:"cl3", name:"HPE",                  vertical:"Technology",           engType:"Staff Aug", annualRev:180000,  grossMargin:0.28, health:"Green", csmId:"", notes:"Malla on IS-U/S4HANA. Rachel is primary contact.", consultants:1, renewalDate:"2026-08-31" },
+  { id:"cl4", name:"PTC",                  vertical:"Transportation / Tolling",engType:"Project", annualRev:450000,  grossMargin:0.30, health:"Green", csmId:"", notes:"Nuthan on BRIM tolling billing. Stable. Expand to 3.", consultants:1, renewalDate:"2026-09-30" },
+  { id:"cl5", name:"Arhasi",               vertical:"AI / Analytics",       engType:"Staff Aug", annualRev:108000,  grossMargin:0.20, health:"Green", csmId:"", notes:"Kartheek on AI/ML + BTP. Performance strong.", consultants:1, renewalDate:"2027-02-02" },
+  { id:"cl6", name:"SCG",                  vertical:"Gas Utilities",         engType:"Staff Aug", annualRev:300000,  grossMargin:0.28, health:"Green", csmId:"", notes:"Sudheendra on MDG/Data Governance program.", consultants:1, renewalDate:"2027-02-02" },
+  { id:"cl7", name:"Freeman - Mouritech",  vertical:"Media / Events",       engType:"Staff Aug", annualRev:180000,  grossMargin:0.18, health:"Green", csmId:"", notes:"Naveen on S/4HANA Finance. Ravi Soni stakeholder.", consultants:1, renewalDate:"2027-06-30" },
+  { id:"cl8", name:"NTTA",                 vertical:"Government / Tolling",  engType:"Staff Aug", annualRev:220000,  grossMargin:0.32, health:"Green", csmId:"", notes:"Rajesh at $185/hr. IS-U tolling specialist. Stable.", consultants:1, renewalDate:"2026-12-31" },
+  { id:"cl9", name:"Toyota Connected",     vertical:"Automotive / Data",    engType:"Staff Aug", annualRev:180000,  grossMargin:0.25, health:"Green", csmId:"", notes:"Priya on Databricks + AWS data pipeline.", consultants:1, renewalDate:"2026-09-30" },
 ];
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -564,16 +574,21 @@ const CRM_ORDERS_SEED = [
 
 
 const CRM_ACCOUNTS_SEED = [
-  { id:"acc1", name:"AT&T",              industry:"Telecom",          type:"customer",   website:"att.com",         phone:"214-555-1000", address:"Dallas, TX",      annualRevPotential:1400000, owner:"Manju",   health:"green",  notes:"Core anchor. BRIM Phase 3 upsell in H2. Renewal Dec 2026." },
-  { id:"acc2", name:"Client B",          industry:"Financial Services",type:"customer",  website:"clientb.com",     phone:"972-555-2000", address:"Irving, TX",      annualRevPotential:600000,  owner:"Manju",   health:"green",  notes:"Stable. Expand to 3 consultants discussion started." },
-  { id:"acc3", name:"Client C",          industry:"Healthcare",        type:"at-risk",   website:"clientc.com",     phone:"817-555-3000", address:"Fort Worth, TX",  annualRevPotential:320000,  owner:"Manju",   health:"amber",  notes:"Renewal June 2026. Need exec meeting by April." },
-  { id:"acc4", name:"Client D",          industry:"Energy",            type:"customer",  website:"clientd.com",     phone:"469-555-4000", address:"Plano, TX",       annualRevPotential:220000,  owner:"Manju",   health:"green",  notes:"New Q1 2026. Positive signals. Expansion likely H2." },
-  { id:"acc5", name:"Naxon Systems",     industry:"Technology",        type:"partner",   website:"naxon.com",       phone:"972-555-5000", address:"Richardson, TX",  annualRevPotential:250000,  owner:"Manju",   health:"green",  notes:"Overflow partner. Rajesh + Priya billing at cost+." },
-  { id:"acc6", name:"Verizon",           industry:"Telecom",           type:"prospect",  website:"verizon.com",     phone:"212-555-6000", address:"New York, NY",    annualRevPotential:800000,  owner:"Manju",   health:"green",  notes:"Warm intro via AT&T contact. SAP BRIM expansion planned." },
-  { id:"acc7", name:"Oncor Electric",    industry:"Energy",            type:"prospect",  website:"oncor.com",       phone:"214-555-7000", address:"Dallas, TX",      annualRevPotential:500000,  owner:"Manju",   health:"green",  notes:"SAP IS-U implementation RFP expected Q2 2026." },
-  { id:"acc8", name:"CHRISTUS Health",   industry:"Healthcare",        type:"prospect",  website:"christushealth.org",phone:"214-555-8000",address:"Irving, TX",      annualRevPotential:350000,  owner:"Manju",   health:"green",  notes:"S/4HANA migration interest. Initial call scheduled." },
-  { id:"acc9", name:"Toyota Connected",  industry:"Automotive",        type:"prospect",  website:"toyotaconnected.com",phone:"469-555-9000",address:"Plano, TX",     annualRevPotential:420000,  owner:"Manju",   health:"green",  notes:"Data engineering + AWS opportunity. Kiran fit." },
-  { id:"acc10",name:"NTTA",              industry:"Government",        type:"customer",  website:"ntta.org",        phone:"972-555-1010", address:"Dallas, TX",      annualRevPotential:180000,  owner:"Manju",   health:"green",  notes:"Rajesh placed. Billing at $185/hr. Stable." },
+  { id:"acc1",  name:"HOPE-IDI",          industry:"Utilities",         type:"customer",  website:"hope-idi.com",          phone:"214-555-1001", address:"Dallas, TX",      annualRevPotential:1400000, owner:"Manju", health:"green",  notes:"Core anchor. SAP BRIM Phase 3 + potential IS-U expansion. Deepa manages." },
+  { id:"acc2",  name:"PTC",               industry:"Transportation",     type:"customer",  website:"ptc.com",               phone:"972-555-1002", address:"Plano, TX",       annualRevPotential:600000,  owner:"Manju", health:"green",  notes:"BRIM tolling billing. Nuthan Jr. Expand to 3 consultants in H2." },
+  { id:"acc3",  name:"NTTA",              industry:"Government",         type:"customer",  website:"ntta.org",              phone:"972-555-1010", address:"Dallas, TX",       annualRevPotential:280000,  owner:"Manju", health:"green",  notes:"Rajesh on tolling system at $185/hr. Very stable. Explore more reqs." },
+  { id:"acc4",  name:"HPE",               industry:"Technology",         type:"customer",  website:"hpe.com",               phone:"281-555-1003", address:"Houston, TX",      annualRevPotential:500000,  owner:"Manju", health:"green",  notes:"Malla on IS-U/S4. Rachel primary contact. Add 1-2 more consultants." },
+  { id:"acc5",  name:"Toyota",            industry:"Automotive",         type:"customer",  website:"toyota.com",            phone:"469-555-1004", address:"Plano, TX",        annualRevPotential:420000,  owner:"Manju", health:"green",  notes:"Vivek on SuccessFactors. Priya on data. Expansion Q3 likely." },
+  { id:"acc6",  name:"SCG",               industry:"Gas Utilities",      type:"customer",  website:"scg.com",               phone:"817-555-1005", address:"Fort Worth, TX",   annualRevPotential:380000,  owner:"Manju", health:"green",  notes:"Sudheendra on MDG. Solid relationship. Cross-sell S/4HANA Finance." },
+  { id:"acc7",  name:"Arhasi",            industry:"Technology / AI",    type:"customer",  website:"arhasi.com",            phone:"972-555-1006", address:"Dallas, TX",       annualRevPotential:250000,  owner:"Manju", health:"green",  notes:"Kartheek on AI/ML/BTP. Growing account. Data engineering expansion." },
+  { id:"acc8",  name:"Freeman - Mouritech",industry:"Media / Events",    type:"customer",  website:"freemancompany.com",    phone:"214-555-1007", address:"Dallas, TX",       annualRevPotential:300000,  owner:"Manju", health:"green",  notes:"Naveen on S/4HANA Finance. Ravi Soni stakeholder. Add Finance lead." },
+  { id:"acc9",  name:"Naxon Systems",     industry:"Technology",         type:"partner",   website:"naxonsystems.com",      phone:"972-555-5000", address:"Richardson, TX",   annualRevPotential:250000,  owner:"Manju", health:"green",  notes:"Product + overflow partner. Rajesh + team billing at cost+." },
+  { id:"acc10", name:"Oncor Electric",    industry:"Energy / Utilities", type:"prospect",  website:"oncor.com",             phone:"214-555-7000", address:"Dallas, TX",       annualRevPotential:600000,  owner:"Manju", health:"green",  notes:"SAP IS-U + MDG implementation RFP expected Q2 2026. Deepa leading." },
+  { id:"acc11", name:"CHRISTUS Health",   industry:"Healthcare",         type:"prospect",  website:"christushealth.org",    phone:"214-555-8000", address:"Irving, TX",       annualRevPotential:450000,  owner:"Manju", health:"green",  notes:"S/4HANA migration assessment. Budget confirmed. Proposal due Mar 25." },
+  { id:"acc12", name:"AT&T",              industry:"Telecom",            type:"prospect",  website:"att.com",               phone:"214-555-1000", address:"Dallas, TX",       annualRevPotential:1200000, owner:"Manju", health:"green",  notes:"BRIM Phase 3 upsell. Warm. SOW redlines in progress." },
+  { id:"acc13", name:"Verizon",           industry:"Telecom",            type:"prospect",  website:"verizon.com",           phone:"212-555-6000", address:"New York, NY",     annualRevPotential:800000,  owner:"Manju", health:"green",  notes:"Warm intro via AT&T. BRIM capability deck sent. Discovery Apr." },
+  { id:"acc14", name:"TXU Energy",        industry:"Energy / Utilities", type:"prospect",  website:"txu.com",               phone:"972-555-9001", address:"Irving, TX",       annualRevPotential:500000,  owner:"Manju", health:"green",  notes:"IS-U + meter-to-cash transformation. Initial conversation Q2." },
+  { id:"acc15", name:"Lockheed Martin",   industry:"Defense / Mfg",     type:"prospect",  website:"lockheedmartin.com",    phone:"817-555-9002", address:"Fort Worth, TX",   annualRevPotential:400000,  owner:"Manju", health:"green",  notes:"S/4HANA ERP modernization. WBE/WOSB cert is a strong advantage here." },
 ];
 
 const CRM_CONTACTS_SEED = [
@@ -589,14 +604,16 @@ const CRM_CONTACTS_SEED = [
 ];
 
 const CRM_DEALS_SEED = [
-  { id:"deal1", accountId:"acc1", name:"AT&T BRIM Phase 3 Expansion",   stage:"proposal",     value:480000, closeDate:"2026-06-30", owner:"Manju", probability:70, type:"expansion",   notes:"Upsell 2 additional BRIM consultants for Phase 3. SOW in review.", nextStep:"Follow up on SOW redlines by Mar 20." },
-  { id:"deal2", accountId:"acc6", name:"Verizon SAP BRIM Initial",      stage:"qualified",    value:800000, closeDate:"2026-09-30", owner:"Manju", probability:40, type:"new",         notes:"Intro via AT&T. Need to understand their BRIM roadmap. Deck sent.", nextStep:"Discovery call with Robert Kim — schedule for Apr." },
-  { id:"deal3", accountId:"acc7", name:"Oncor IS-U Implementation",     stage:"prospecting",  value:500000, closeDate:"2026-12-31", owner:"Manju", probability:25, type:"new",         notes:"RFP expected Q2. Building relationship with Amanda Torres.", nextStep:"RFP response prep. Get Deepa + team on it." },
-  { id:"deal4", accountId:"acc2", name:"Client B Headcount Expansion",  stage:"negotiation",  value:120000, closeDate:"2026-04-30", owner:"Manju", probability:80, type:"expansion",   notes:"Adding 1 SAP Functional (Arun or candidate). Mark Davis approved in principle.", nextStep:"Send updated SOW with rate card by Mar 15." },
-  { id:"deal5", accountId:"acc8", name:"CHRISTUS S/4HANA Assessment",   stage:"qualified",    value:350000, closeDate:"2026-10-31", owner:"Manju", probability:35, type:"new",         notes:"Budget confirmed. Assessment phase first, then impl. Good cultural fit.", nextStep:"Proposal deck for assessment phase — due Mar 25." },
-  { id:"deal6", accountId:"acc9", name:"Toyota Data Pipeline Build",    stage:"prospecting",  value:420000, closeDate:"2026-11-30", owner:"Manju", probability:20, type:"new",         notes:"Kiran + Fatima fit. Need to position Databricks + AWS capability.", nextStep:"Capability deck + case studies to Priya Rajan." },
-  { id:"deal7", accountId:"acc3", name:"Client C Contract Renewal",     stage:"negotiation",  value:320000, closeDate:"2026-06-30", owner:"Manju", probability:60, type:"renewal",     notes:"Renewal at risk — need exec touchpoint. Rate discussion expected.", nextStep:"Exec meeting with Linda Park — schedule ASAP." },
-  { id:"deal8", accountId:"acc4", name:"Client D Phase 2 Expansion",   stage:"proposal",     value:100000, closeDate:"2026-08-31", owner:"Manju", probability:65, type:"expansion",   notes:"Tom Bradley keen on adding cloud architect. Sanjay Gupta fit when active.", nextStep:"Proposal with Sanjay profile — send by Mar 18." },
+  { id:"deal1",  accountId:"acc12", name:"AT&T BRIM Phase 3 — 2 Consultants",     stage:"proposal",    value:480000, closeDate:"2026-06-30", owner:"Manju", probability:70, type:"expansion",  notes:"SAP BRIM upsell. 2 additional consultants for Phase 3. SOW in review.", nextStep:"Follow up on SOW redlines by Mar 20." },
+  { id:"deal2",  accountId:"acc13", name:"Verizon SAP BRIM Initial Placement",     stage:"qualified",   value:800000, closeDate:"2026-09-30", owner:"Manju", probability:40, type:"new",        notes:"BRIM implementation. Intro via AT&T. Deck sent. Discovery needed.", nextStep:"Discovery call with Robert Kim — schedule Apr." },
+  { id:"deal3",  accountId:"acc10", name:"Oncor IS-U + MDG Implementation",        stage:"prospecting", value:600000, closeDate:"2026-12-31", owner:"Manju", probability:25, type:"new",        notes:"RFP expected Q2. Rajesh + Sudheendra best fit. Building relationship.", nextStep:"RFP response prep. Deepa to lead." },
+  { id:"deal4",  accountId:"acc4",  name:"HPE Headcount Expansion — FI Lead",      stage:"negotiation", value:180000, closeDate:"2026-04-30", owner:"Manju", probability:80, type:"expansion",  notes:"Add 1 SAP Finance consultant. Malla recommended Arun. Mark Davis approved.", nextStep:"Send updated SOW with rate card by Mar 15." },
+  { id:"deal5",  accountId:"acc11", name:"CHRISTUS Health S/4HANA Assessment",     stage:"qualified",   value:350000, closeDate:"2026-10-31", owner:"Manju", probability:35, type:"new",        notes:"Budget confirmed. Assessment first, then impl. Deepa + Arun proposal.", nextStep:"Proposal deck for assessment phase — due Mar 25." },
+  { id:"deal6",  accountId:"acc9",  name:"Naxon Product Development Staff Aug",    stage:"prospecting", value:200000, closeDate:"2026-08-31", owner:"Manju", probability:50, type:"new",        notes:"2 developers for naxon-product platform. Kartheek + new hire.", nextStep:"Capability deck + rates to Rajesh at Naxon." },
+  { id:"deal7",  accountId:"acc14", name:"TXU Energy SAP IS-U Transformation",    stage:"prospecting", value:500000, closeDate:"2026-12-31", owner:"Manju", probability:20, type:"new",        notes:"Meter-to-cash. IS-U + MDG + Finance. Rajesh + Sudheendra fit.", nextStep:"Initial discovery call scheduled Q2." },
+  { id:"deal8",  accountId:"acc5",  name:"Toyota SuccessFactors Expansion",        stage:"qualified",   value:240000, closeDate:"2026-08-31", owner:"Manju", probability:55, type:"expansion",  notes:"Vivek performing well. Toyota wants 1 more HCM consultant for global rollout.", nextStep:"Proposal for 2nd consultant. Target Apr close." },
+  { id:"deal9",  accountId:"acc15", name:"Lockheed Martin S/4HANA ERP Modernization",stage:"prospecting",value:400000,closeDate:"2026-12-31",owner:"Manju", probability:30, type:"new",        notes:"Large defense opportunity. WBE/WOSB is major differentiator for procurement.", nextStep:"Reach procurement contact. Submit WBE capability statement." },
+  { id:"deal10", accountId:"acc6",  name:"SCG MDG Expansion + S/4 Finance",        stage:"qualified",   value:280000, closeDate:"2026-07-31", owner:"Manju", probability:60, type:"expansion",  notes:"Sudheendra cross-sell opportunity. Add Finance module to current MDG scope.", nextStep:"Cross-sell meeting with SCG IT Director Q2." },
 ];
 
 const CRM_ACTIVITIES_SEED = [
@@ -31546,7 +31563,7 @@ function ContentGrader({ onGraded }) {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:"You are an expert marketing analyst specializing in B2B SAP consulting firm content. Grade content rigorously and provide actionable feedback. Return JSON only.",
+          system:"You are an expert marketing analyst specializing in B2B IT staff augmentation content for Ziksatech LLC — WBE/HUB/WOSB certified IT staff augmentation firm in Plano, TX (DFW). We place SAP consultants (BRIM, S/4HANA, IS-U, Finance/FSCM, SuccessFactors, MDG, MM/SD/PP, BTP) and Data/AI engineers (Databricks, AWS, ML) across all industries: Transportation/Tolling, Automotive (Toyota), Technology (HPE), Utilities, Healthcare, Defense, Media, and Telecom. Grade content rigorously and provide actionable feedback. Return JSON only.",
           messages:[{ role:"user", content:`Grade this ${platform} content for Ziksatech LLC (SAP consulting, WBE/HUB/WOSB certified):
 
 ---
@@ -31729,13 +31746,15 @@ function LeadNurtureBuilder({ clients, crmDeals, proposals, savedContent, addAud
   const copy = (text, key) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(key); setTimeout(()=>setCopied(""),2500); };
 
   const PERSONAS = [
-    { id:"cio-utility",    label:"CIO / Utility Company",      pain:"aging SAP IS-U, meter-to-cash inefficiency" },
-    { id:"cfo-enterprise", label:"CFO / Enterprise",           pain:"manual revenue recognition, billing errors" },
-    { id:"vp-it",          label:"VP IT / Tech Leader",        pain:"ECC end-of-life, S/4HANA migration pressure" },
-    { id:"pm-sap",         label:"SAP Program Manager",        pain:"need certified BRIM expertise fast" },
-    { id:"coo-services",   label:"COO / Professional Services", pain:"resource gaps on SAP project" },
-    { id:"procurement",    label:"Procurement / Supply Chain",  pain:"WBE/WOSB/HUB vendor diversity mandate" },
-    { id:"custom",         label:"Custom Persona",             pain:"" },
+    { id:"cio-utility",      label:"CIO / Energy & Utilities",     pain:"IS-U meter-to-cash, aging SAP ECC, tolling billing" },
+    { id:"cio-automotive",   label:"CIO / Automotive & Mfg",       pain:"S/4HANA upgrade, SuccessFactors rollout, data pipelines" },
+    { id:"cio-healthcare",   label:"CIO / Healthcare",              pain:"S/4HANA migration, HIPAA data governance, ERP consolidation" },
+    { id:"cfo-enterprise",   label:"CFO / Enterprise (any industry)",pain:"financial close automation, FSCM, S/4HANA Finance, reporting" },
+    { id:"vp-it",            label:"VP IT / Tech Leader",           pain:"ECC end-of-life deadline, S/4HANA migration, staff gaps" },
+    { id:"pm-sap",           label:"SAP Program Manager",           pain:"need certified consultants fast, staff augmentation for project" },
+    { id:"procurement",      label:"Procurement / Diversity Officer",pain:"WBE/WOSB/HUB vendor mandate, diverse supplier spend goals" },
+    { id:"coo-services",     label:"COO / Defense / Government",    pain:"WBE certified prime/sub, SAP ERP modernization, compliance" },
+    { id:"custom",           label:"Custom Persona",                pain:"" },
   ];
 
   const SEQUENCE_TEMPLATES = [
@@ -31759,7 +31778,7 @@ function LeadNurtureBuilder({ clients, crmDeals, proposals, savedContent, addAud
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:"You are a B2B email specialist for Ziksatech LLC (WBE/HUB/WOSB certified SAP consulting, Plano TX). Write nurture emails using EXACTLY the delimited format shown. Each email under 140 words. No JSON.",
+          system:"You are a B2B email specialist for Ziksatech LLC — WBE/HUB/WOSB certified IT staff augmentation firm in Plano, TX (DFW). We place SAP consultants (BRIM, S/4HANA, IS-U, Finance/FSCM, SuccessFactors, MDG, MM/SD/PP, BTP) and Data/AI engineers (Databricks, AWS, ML) across all industries: Transportation/Tolling, Automotive (Toyota), Technology (HPE), Utilities, Healthcare, Defense, Media, and Telecom. Write nurture emails using EXACTLY the delimited format shown. Each email under 140 words. No JSON.",
           messages:[{ role:"user", content:`Write a ${touchCount}-email nurture sequence.
 Persona: ${persona?.label}
 Pain: ${form.pain||persona?.pain}
@@ -32711,7 +32730,7 @@ function CampaignIntelligenceAI({ clients, crmDeals, roster, proposals, savedCon
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:`You are a B2B marketing intelligence expert for Ziksatech LLC, a WBE/HUB/WOSB certified SAP consulting firm in Plano, TX specializing in SAP BRIM, S/4HANA, IS-U implementations. You have deep knowledge of enterprise SAP sales cycles, procurement dynamics, and how to position a certified minority firm.${systemExtra?"\n"+systemExtra:""}`,
+          system:`You are a B2B marketing intelligence expert for Ziksatech LLC — WBE/HUB/WOSB certified IT staff augmentation firm in Plano, TX (DFW). We place SAP consultants (BRIM, S/4HANA, IS-U, Finance/FSCM, SuccessFactors, MDG, MM/SD/PP, BTP) and Data/AI engineers (Databricks, AWS, ML) across all industries: Transportation/Tolling, Automotive (Toyota), Technology (HPE), Utilities, Healthcare, Defense, Media, and Telecom. You have deep knowledge of enterprise IT staff aug sales cycles, multi-industry SAP implementations, procurement dynamics, and WBE/HUB/WOSB certification advantages.${systemExtra?"\n"+systemExtra:""}`,
           messages:[{ role:"user", content:prompt }]
         })
       });
@@ -32736,7 +32755,7 @@ Current Ziksatech context:
 - Active clients: ${safeClients.length} (industries: ${industries.join(", ")})
 - Pipeline: ${openPipe.length} open deals ($${openPipe.reduce((s,d)=>s+(d.value||0),0).toLocaleString()} total)
 - Won deals: ${wonDeals.length}
-- Team: ${(roster||[]).length} SAP consultants
+- Team: ${(roster||[]).length} consultants (SAP, Data, AI specializations)
 - Content library: ${safeSaved.length} saved pieces
 - Calendar items: ${safeCal.length}`;
   };
@@ -32841,7 +32860,7 @@ Current Ziksatech context:
               <div style={{marginBottom:10}}>
                 <div className="lbl">Target Audience</div>
                 <select className="inp" value={planForm.audience} onChange={e=>setPlanForm(p=>({...p,audience:e.target.value}))}>
-                  {[["enterprise-prospects","Enterprise Prospects (F500, large utilities)"],["mid-market","Mid-Market Companies"],["government","Government / Public Sector"],["existing-clients","Existing Clients (upsell)"],["sap-users","SAP Users Migrating to S/4"],["utilities","Utilities / Energy Sector"],["healthcare","Healthcare Systems"],["manufacturing","Manufacturing Companies"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                  {[["enterprise-prospects","Enterprise Prospects (DFW F500)"],["it-staff-aug","IT Hiring Managers (Staff Aug Buyers)"],["procurement","Procurement / Diversity Officers (WBE mandate)"],["existing-clients","Existing Clients (upsell / expand)"],["automotive","Automotive / Mfg (Toyota, OEMs)"],["utilities","Energy / Utilities / Tolling"],["healthcare","Healthcare Systems"],["government","Government / Defense (WBE advantage)"],["technology","Technology Companies (HPE, SAP users)"],["telecom","Telecom (AT&T, Verizon)"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
                 </select>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
@@ -32936,7 +32955,7 @@ Return JSON with this structure:
                 </div>
               ))}
               <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px",background:"linear-gradient(135deg,#a07830,#c9a84c)",color:"#0d1b2a",fontWeight:800,border:"none"}}
-                onClick={()=>ai(`Score this prospect for Ziksatech LLC SAP consulting services:
+                onClick={()=>ai(`Score this prospect for Ziksatech LLC IT staff augmentation and SAP consulting services:
 
 Company: ${audForm.companyName}
 Industry: ${audForm.industry}
@@ -33081,7 +33100,7 @@ Return JSON: {
             <div style={{marginBottom:14}}>
               <div className="lbl">Common SAP Competitors</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                {["Deloitte","Accenture","IBM","Infosys","Wipro","HCL","Cognizant","NTT DATA","Capgemini","Small Boutique"].map(name=>(
+                {["Deloitte","Accenture","IBM","Infosys","Wipro","HCL","Cognizant","NTT DATA","Capgemini","iGate/Mastech","Staffmark IT","Motion Recruitment","Robert Half Tech","Small SAP Boutique"].map(name=>(
                   <button key={name} className="btn bg" style={{fontSize:9,padding:"2px 7px",color:"#c9a84c"}}
                     onClick={()=>setCompForm(p=>({...p,competitor:name}))}>
                     {name}
@@ -33154,7 +33173,7 @@ Audience: ${predForm.audience || "SAP decision-makers"}
 Industry: ${predForm.industry || "enterprise"}
 
 ${contextSnapshot()}
-Note: SAP consulting is a high-value B2B service, average deal size $100k-$500k, long sales cycles (3-12 months).
+Note: IT staff augmentation and SAP consulting is high-value B2B. Average deal $100k-$500k+. Sales cycles 1-6 months for staff aug, 3-12 months for projects. Serve Dallas/DFW enterprise market across all industries.
 
 Return JSON: {
   "summary": "One-sentence prediction summary",
@@ -33408,31 +33427,36 @@ Outcome/Results: ${winForm.outcome || "Successful SAP implementation delivered o
 ${winForm.teamMembers ? "Team: "+winForm.teamMembers : ""}
 
 Highlight:
-- Ziksatech's expertise that made this possible
-- Business impact for the client
-- WBE/HUB/WOSB certified firm advantage if relevant
-- Ziksatech's commitment to delivering results
+- Ziksatech's multi-industry SAP + Data expertise
+- Business impact and ROI for the client
+- WBE/HUB/WOSB certification advantage (especially for procurement/government clients)
+- Ziksatech's flexible staff aug model: right consultant, right time, right rate
+- DFW-based with nationwide placement capability
 
 Make it specific, compelling, and client-focused. Avoid generic statements.`, null, setWinOutput, setWinLoad);
   };
 
   const POST_TYPE_OPTIONS = [
-    { id:"win",       icon:"🏆", label:"Project Win" },
-    { id:"milestone", icon:"🎯", label:"Milestone" },
-    { id:"insight",   icon:"💡", label:"Insight / Thought Leadership" },
-    { id:"hiring",    icon:"👥", label:"We're Hiring" },
-    { id:"service",   icon:"📢", label:"Service Promo" },
-    { id:"team",      icon:"🌟", label:"Team Spotlight" },
-    { id:"event",     icon:"📅", label:"Event / Webinar" },
-    { id:"tip",       icon:"🔧", label:"Quick SAP Tip" },
+    { id:"win",         icon:"🏆", label:"Project Win / Placement" },
+    { id:"milestone",   icon:"🎯", label:"Milestone / Go-Live" },
+    { id:"insight",     icon:"💡", label:"Insight / Thought Leadership" },
+    { id:"hiring",      icon:"👥", label:"We're Hiring — Consultant" },
+    { id:"available",   icon:"🙋", label:"Consultant Available Now" },
+    { id:"service",     icon:"📢", label:"Service / Capability Promo" },
+    { id:"team",        icon:"🌟", label:"Team / Consultant Spotlight" },
+    { id:"diversity",   icon:"🏅", label:"WBE / Diversity Partner" },
+    { id:"event",       icon:"📅", label:"Event / SAP User Group" },
+    { id:"tip",         icon:"🔧", label:"SAP / Tech Quick Tip" },
   ];
 
-  const CAMPAIGN_TYPES = ["newsletter","cold-outreach","follow-up","case-study","product-announcement","invitation"];
+  const CAMPAIGN_TYPES = ["newsletter","cold-outreach","follow-up","case-study","consultant-available","capability-statement","event-follow-up","referral-outreach","invitation"];
   const AUDIENCE_OPTIONS = [
-    { id:"prospects",  label:"New Prospects" },
-    { id:"existing",   label:"Existing Clients" },
-    { id:"warm-leads", label:"Warm Leads (CRM)" },
-    { id:"partners",   label:"Partners / Referrers" },
+    { id:"prospects",      label:"New Prospects (DFW Enterprise)" },
+    { id:"existing",       label:"Existing Clients" },
+    { id:"warm-leads",     label:"Warm Leads (CRM Pipeline)" },
+    { id:"hiring-managers",label:"Hiring Managers / IT Directors" },
+    { id:"procurement",    label:"Procurement / Diversity Officers" },
+    { id:"partners",       label:"Partners / Referrers / Subs" },
   ];
   const WIN_CHANNELS = [
     { id:"linkedin",  icon:"🔗", label:"LinkedIn Post" },
