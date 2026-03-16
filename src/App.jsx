@@ -20085,6 +20085,7 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
   ].slice(0, 8);
 
   const allResults = [...moduleResults, ...dataResults];
+  if (!q || q.length < 2) return null;
 
   React.useEffect(() => { setActiveIdx(0); }, [q]);
 
@@ -20097,7 +20098,7 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allResults, activeIdx]);
+  }, [allResults.length, activeIdx, onClose, setTab]);
 
   if (!allResults.length) return (
     <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:9999,background:"#0b1422",border:"1px solid #1a2d45",borderRadius:"0 0 12px 12px",padding:"20px",textAlign:"center",boxShadow:"0 12px 40px #00000088"}}>
