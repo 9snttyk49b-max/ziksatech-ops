@@ -47,6 +47,7 @@ const RBAC = {
   linkedin:     ["super_admin","admin"],
   contracts:    ["super_admin","admin","accounts"],
   emailtpl:     ["super_admin","admin"],
+  doctemplates: ["super_admin","admin","hr_immigration"],
   esign:        ["super_admin","admin","accounts"],
   roster:       ["super_admin","admin","hr_immigration"],
   timesheet:    ["super_admin","admin","hr_immigration","employee","contractor"],
@@ -2333,6 +2334,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="settings"      && <SettingsPage {...shared}/>}
         {tab==="proposals"     && <ProposalBuilder {...shared}/>}
         {tab==="emailtpl"      && <EmailTemplates {...shared}/>}
+        {tab==="doctemplates" && <DocTemplates roster={shared.roster} clients={shared.clients} authProfile={authProfile} appSettings={shared.appSettings}/>}
         {tab==="taxcal"        && <TaxCalendar {...shared}/>}
         {tab==="benefits"      && <BenefitsTracker {...shared}/>}
         {tab==="reports"       && <ReportBuilder {...shared}/>}
@@ -16827,6 +16829,616 @@ function applyFields(text, values) {
 }
 
 // ── Main Email Templates component ────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DOC TEMPLATES — Offer Letter, NDA, MSA, Verification, Resume Builder, etc.
+// Ziksatech branded. AI-powered form filling. PDF download.
+// ═══════════════════════════════════════════════════════════════════════════
+function DocTemplates({ roster, clients, authProfile, appSettings }) {
+  const [sub,        setSub]        = useState("library");
+  const [selTpl,     setSelTpl]     = useState(null);
+  const [form,       setForm]       = useState({});
+  const [aiLoading,  setAiLoading]  = useState(false);
+  const [preview,    setPreview]    = useState(false);
+  const [generated,  setGenerated]  = useState("");
+  const [copyDone,   setCopyDone]   = useState(false);
+  const [resumeSel,  setResumeSel]  = useState(null);
+
+  const company = {
+    name:    appSettings?.companyName || "Ziksatech, LLC",
+    addr:    "5400 Legacy Drive, Suite 100, Plano, TX 75024",
+    phone:   "(972) 555-0100",
+    email:   "hr@ziksatech.com",
+    web:     "www.ziksatech.com",
+    tagline: "WBE · HUB · WOSB Certified SAP Consulting",
+  };
+
+  // ── TEMPLATE LIBRARY ─────────────────────────────────────────────────────
+  const TEMPLATES = [
+    // HR
+    { id:"offer",    cat:"HR",     icon:"📋", title:"Offer Letter",
+      desc:"Employment offer with role, compensation & start date",
+      fields:["candidateName","candidateEmail","jobTitle","department","startDate","baseSalary","reportingTo","location"],
+    },
+    { id:"appt",     cat:"HR",     icon:"🎖", title:"Appointment Letter",
+      desc:"Formal appointment confirmation for FTE or contractor",
+      fields:["employeeName","jobTitle","employeeType","startDate","probationPeriod","reportingTo"],
+    },
+    { id:"verify",   cat:"HR",     icon:"✅", title:"Employment Verification",
+      desc:"Letter verifying current employment, role, and tenure",
+      fields:["employeeName","jobTitle","startDate","verifyingFor","requestedBy"],
+    },
+    { id:"promotion", cat:"HR",    icon:"🚀", title:"Promotion Letter",
+      desc:"Promotion with new title, effective date, and compensation",
+      fields:["employeeName","currentTitle","newTitle","effectiveDate","newSalary","reason"],
+    },
+    { id:"termination",cat:"HR",   icon:"📤", title:"Separation Letter",
+      desc:"Voluntary or involuntary separation documentation",
+      fields:["employeeName","jobTitle","lastDay","reason","severance","returnEquipment"],
+    },
+    { id:"warning",  cat:"HR",     icon:"⚠️", title:"Performance Warning",
+      desc:"Formal written warning with improvement plan",
+      fields:["employeeName","jobTitle","issueDate","incidentDesc","expectedBehavior","reviewDate"],
+    },
+    // Legal
+    { id:"nda",      cat:"Legal",  icon:"🔒", title:"NDA",
+      desc:"Mutual or one-way non-disclosure agreement",
+      fields:["partyName","partyTitle","partyCompany","purposeOfDisclosure","duration","state"],
+    },
+    { id:"msa",      cat:"Legal",  icon:"📜", title:"MSA",
+      desc:"Master Services Agreement — framework for ongoing engagements",
+      fields:["clientName","clientCompany","clientAddress","startDate","paymentTerms","state"],
+    },
+    { id:"contractor",cat:"Legal", icon:"🤝", title:"Contractor Agreement",
+      desc:"Independent contractor agreement with SOW reference",
+      fields:["contractorName","contractorEmail","projectName","billRate","startDate","endDate","clientName"],
+    },
+    { id:"noncompete",cat:"Legal", icon:"🛡", title:"Non-Compete / Non-Solicitation",
+      desc:"Post-employment restrictions on competition and client poaching",
+      fields:["employeeName","jobTitle","endDate","duration","territory"],
+    },
+    // Finance / Client
+    { id:"1099",     cat:"Finance",icon:"💰", title:"1099 Notice Letter",
+      desc:"Year-end 1099 information letter to contractors",
+      fields:["contractorName","contractorAddress","taxYear","totalPaid","tin"],
+    },
+    { id:"inv_cover",cat:"Finance",icon:"📊", title:"Invoice Cover Letter",
+      desc:"Professional cover letter accompanying an invoice",
+      fields:["clientName","clientContact","invoiceNo","invoiceDate","amount","projectName"],
+    },
+    // Compliance
+    { id:"visa_support",cat:"Compliance",icon:"🛂",title:"Visa Support Letter",
+      desc:"Employment support letter for H-1B, L1, or OPT verification",
+      fields:["employeeName","jobTitle","salary","startDate","visaType","uscisOffice"],
+    },
+  ];
+
+  const CATS = ["All", "HR", "Legal", "Finance", "Compliance"];
+  const [catFilter, setCatFilter] = useState("All");
+  const shown = TEMPLATES.filter(t => catFilter === "All" || t.cat === catFilter);
+
+  const fmtDate = d => d ? new Date(d).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : "___________";
+  const todayFmt = fmtDate(new Date().toISOString().slice(0,10));
+
+  // ── Build roster options ──────────────────────────────────────────────────
+  const rosterOptions = (roster||[]).map(r => ({label:r.name, value:r.name, data:r}));
+
+  // ── Generate via AI ───────────────────────────────────────────────────────
+  const generateDoc = async () => {
+    if (!selTpl) return;
+    setAiLoading(true);
+    setGenerated("");
+    try {
+      const fieldsStr = Object.entries(form).map(([k,v])=>`${k}: ${v}`).join('\n');
+      const resp = await fetch('/api/claude', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:1800,
+          system:`You are a professional HR and legal document writer for ${company.name}, a WBE/HUB/WOSB certified SAP consulting firm at ${company.addr}. Write formal, professional documents. Include proper letterhead structure in plain text. Do NOT use markdown headers or bullets — write like a real letter with proper paragraphs. Today's date: ${todayFmt}.`,
+          messages:[{role:'user',content:`Generate a complete, professional ${selTpl.title} for Ziksatech, LLC.
+
+Company: ${company.name}
+Address: ${company.addr}
+Phone: ${company.phone} | Email: ${company.email}
+
+Document fields:
+${fieldsStr}
+
+Write the complete document ready to send. Include: letterhead with company info, date, recipient address block, subject line, formal body (3-5 paragraphs), signature block with "Manju Murthy, Managing Partner, ${company.name}". Make it professional, complete, and legally appropriate.`}]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||'').join('');
+      setGenerated(text);
+      setPreview(true);
+    } catch(e) {
+      setGenerated("Error generating document: " + e.message);
+    }
+    setAiLoading(false);
+  };
+
+  // ── PDF Download ──────────────────────────────────────────────────────────
+  const downloadPDF = async () => {
+    if (!generated) return;
+    // Load jsPDF
+    if (!window.jspdf) {
+      await new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.onload = resolve;
+        document.head.appendChild(s);
+      });
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const maxW   = pageW - margin * 2;
+    let y = 20;
+
+    // Header bar
+    doc.setFillColor(13, 27, 42);
+    doc.rect(0, 0, pageW, 24, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(14);
+    doc.setTextColor(201, 168, 76);
+    doc.text('ZIKSATECH, LLC', margin, 10);
+    doc.setFontSize(7);
+    doc.setTextColor(100, 130, 160);
+    doc.text(company.tagline, margin, 16);
+    doc.setFontSize(7);
+    doc.setTextColor(100, 130, 160);
+    doc.text(company.addr + '  |  ' + company.phone + '  |  ' + company.email, margin, 21);
+    y = 34;
+
+    // Divider
+    doc.setDrawColor(201, 168, 76);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, pageW - margin, y);
+    y += 8;
+
+    // Body text
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10);
+    doc.setTextColor(20, 20, 20);
+
+    const lines = generated.split('\n');
+    for (const line of lines) {
+      if (y > 265) { doc.addPage(); y = 20; }
+      if (line.trim() === '') { y += 4; continue; }
+      const wrapped = doc.splitTextToSize(line, maxW);
+      for (const wl of wrapped) {
+        if (y > 265) { doc.addPage(); y = 20; }
+        const bold = line.match(/^(To:|From:|Date:|Subject:|Re:|SUBJECT:|Dear|Sincerely|Best regards)/);
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        doc.text(wl, margin, y);
+        y += 5;
+      }
+      doc.setFont('helvetica','normal');
+    }
+
+    // Footer
+    const pages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, 278, pageW - margin, 278);
+      doc.text(`${company.name}  ·  ${company.web}  ·  Confidential`, margin, 282);
+      doc.text(`Page ${i} of ${pages}`, pageW - margin, 282, {align:'right'});
+    }
+
+    const filename = `${selTpl.title.replace(/\s+/g,'_')}_${(form.candidateName||form.employeeName||form.contractorName||form.clientName||'').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+    doc.save(filename);
+  };
+
+  const setField = (k, v) => setForm(p => ({...p,[k]:v}));
+  const FIELD_LABELS = {
+    candidateName:"Candidate Full Name", candidateEmail:"Candidate Email",
+    jobTitle:"Job Title", department:"Department", startDate:"Start Date",
+    baseSalary:"Base Salary ($)", reportingTo:"Reports To",
+    location:"Work Location", employeeName:"Employee Full Name",
+    employeeType:"Employee Type", probationPeriod:"Probation Period",
+    verifyingFor:"Purpose of Verification", requestedBy:"Requested By",
+    currentTitle:"Current Title", newTitle:"New Title",
+    effectiveDate:"Effective Date", newSalary:"New Salary ($)", reason:"Reason/Context",
+    lastDay:"Last Working Day", severance:"Severance (if any)", returnEquipment:"Equipment to Return",
+    issueDate:"Issue Date", incidentDesc:"Incident Description",
+    expectedBehavior:"Expected Behavior/Improvement Plan", reviewDate:"Review Date",
+    partyName:"Other Party Name", partyTitle:"Other Party Title",
+    partyCompany:"Other Party Company", purposeOfDisclosure:"Purpose of Disclosure",
+    duration:"Agreement Duration", state:"Governing State",
+    clientName:"Client Name", clientCompany:"Client Company",
+    clientAddress:"Client Address", paymentTerms:"Payment Terms",
+    contractorName:"Contractor Name", contractorEmail:"Contractor Email",
+    projectName:"Project Name", billRate:"Bill Rate ($/hr)",
+    endDate:"End Date", clientName:"Client/Employer Name",
+    duration:"Non-Compete Duration", territory:"Territory",
+    contractorAddress:"Contractor Address", taxYear:"Tax Year",
+    totalPaid:"Total Paid ($)", tin:"TIN (last 4 only)",
+    clientContact:"Client Contact Name", invoiceNo:"Invoice Number",
+    invoiceDate:"Invoice Date", amount:"Invoice Amount ($)",
+    salary:"Annual Salary ($)", visaType:"Visa Type", uscisOffice:"USCIS Office Location",
+  };
+
+  // Auto-fill from roster when employee name is set
+  const autoFill = (name) => {
+    const match = (roster||[]).find(r => r.name.toLowerCase().includes(name.toLowerCase().split(' ')[0]||'_'));
+    if (match) {
+      setForm(p => ({
+        ...p,
+        jobTitle: p.jobTitle || match.role || '',
+        baseSalary: p.baseSalary || (match.baseSalary ? match.baseSalary.toString() : ''),
+        startDate: p.startDate || '',
+        location: p.location || 'Plano, TX (Remote)',
+      }));
+    }
+  };
+
+  // ── RESUME BUILDER ────────────────────────────────────────────────────────
+  const [resumeForm,    setResumeForm]    = useState({ name:'', title:'', summary:'', skills:'', certs:'' });
+  const [resumeAI,      setResumeAI]      = useState(false);
+  const [resumeResult,  setResumeResult]  = useState('');
+
+  const buildResume = async () => {
+    if (!resumeForm.name) return alert("Enter a name");
+    const selMember = (roster||[]).find(r => r.name.toLowerCase().includes(resumeForm.name.toLowerCase().split(' ')[0]||'_'));
+    setResumeAI(true);
+    setResumeResult('');
+    try {
+      const resp = await fetch('/api/claude', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:1800,
+          system:`You are a professional resume writer for Ziksatech consultants. Write clean, ATS-optimized resumes in plain text format. Focus on SAP consulting expertise, measurable achievements, and technical depth.`,
+          messages:[{role:'user',content:`Build a professional resume for this Ziksatech consultant:
+
+Name: ${resumeForm.name}
+Current Title: ${resumeForm.title || selMember?.role || ''}
+Skills: ${resumeForm.skills || selMember?.skills || ''}
+Projects: ${selMember?.projects || ''}
+Additional Info: ${resumeForm.summary || ''}
+Certifications: ${resumeForm.certs || ''}
+Company: Ziksatech, LLC (SAP consulting, Plano TX)
+
+Write a complete, professional resume with sections: CONTACT INFO | PROFESSIONAL SUMMARY | CORE COMPETENCIES | PROFESSIONAL EXPERIENCE (with Ziksatech as employer, infer 2-3 bullet points per project) | EDUCATION | CERTIFICATIONS. Make it ATS-friendly and compelling. Plain text format, no markdown.`}]
+        })
+      });
+      const data = await resp.json();
+      setResumeResult((data?.content||[]).map(b=>b.text||'').join(''));
+    } catch(e) { setResumeResult("Error: "+e.message); }
+    setResumeAI(false);
+  };
+
+  const downloadResumePDF = async () => {
+    if (!resumeResult) return;
+    if (!window.jspdf) {
+      await new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.onload = resolve;
+        document.head.appendChild(s);
+      });
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'letter' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 18;
+    const maxW = pageW - margin * 2;
+    let y = 18;
+
+    // Name header
+    doc.setFillColor(13, 27, 42);
+    doc.rect(0, 0, pageW, 28, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(18);
+    doc.setTextColor(201, 168, 76);
+    doc.text(resumeForm.name.toUpperCase(), margin, 14);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 160, 200);
+    doc.text((resumeForm.title || '').toUpperCase(), margin, 21);
+    doc.setFontSize(7);
+    doc.setTextColor(80, 120, 160);
+    doc.text(`Ziksatech, LLC  ·  ${company.addr}  ·  ${company.email}`, margin, 26);
+    y = 36;
+
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(20, 20, 20);
+
+    for (const line of resumeResult.split('\n')) {
+      if (y > 268) { doc.addPage(); y = 18; }
+      if (line.trim() === '') { y += 3; continue; }
+      const isHeader = line.match(/^[A-Z\s]{4,}:?\s*$/) || line.startsWith('---');
+      if (isHeader) {
+        y += 2;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(10);
+        doc.setTextColor(13, 100, 170);
+        doc.text(line.trim(), margin, y);
+        y += 1;
+        doc.setDrawColor(13, 100, 170);
+        doc.setLineWidth(0.2);
+        doc.line(margin, y+1, pageW-margin, y+1);
+        y += 5;
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(20, 20, 20);
+      } else {
+        const wrapped = doc.splitTextToSize(line, maxW);
+        for (const wl of wrapped) {
+          if (y > 268) { doc.addPage(); y = 18; }
+          doc.text(wl, margin, y);
+          y += 5;
+        }
+      }
+    }
+
+    // Footer
+    const pages = doc.internal.getNumberOfPages();
+    for (let i=1; i<=pages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(150);
+      doc.text(`${company.name}  ·  Confidential  ·  ${company.web}`, margin, 283);
+      doc.text(`Page ${i}/${pages}`, pageW-margin, 283, {align:'right'});
+    }
+
+    doc.save(`Resume_${resumeForm.name.replace(/\s+/g,'_')}.pdf`);
+  };
+
+  // ── RENDER ────────────────────────────────────────────────────────────────
+  const tabBtn = (id, label) => (
+    <button onClick={()=>{setSub(id);setSelTpl(null);setGenerated('');setPreview(false);}}
+      style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569"}}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="Document Templates" sub="Offer letters · NDAs · MSAs · Verification · Resume builder — AI-generated, Ziksatech branded"/>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:18,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabBtn("library","📚 Template Library")}
+        {tabBtn("resume","👤 Resume Builder")}
+      </div>
+
+      {/* ── TEMPLATE LIBRARY ─────────────────────────────────────────────── */}
+      {sub==="library" && (
+        <div style={{display:"grid",gridTemplateColumns:selTpl?"340px 1fr":"1fr",gap:16,alignItems:"start"}}>
+          {/* Left: Category filter + template grid */}
+          <div>
+            {/* Category pills */}
+            <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+              {CATS.map(cat=>(
+                <button key={cat} onClick={()=>setCatFilter(cat)}
+                  style={{padding:"4px 14px",borderRadius:20,border:`1px solid ${catFilter===cat?"#0284c7":"#1a2d45"}`,
+                    background:catFilter===cat?"#0369a1":"transparent",color:catFilter===cat?"#fff":"#475569",
+                    fontSize:11,cursor:"pointer",fontWeight:600}}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+            {/* Template cards */}
+            <div style={{display:"grid",gridTemplateColumns:selTpl?"1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+              {shown.map(tpl=>(
+                <div key={tpl.id} onClick={()=>{setSelTpl(tpl);setForm({});setGenerated('');setPreview(false);}}
+                  style={{padding:"14px 16px",borderRadius:10,cursor:"pointer",transition:"all 0.15s",
+                    background:selTpl?.id===tpl.id?"#0c2340":"#060d1c",
+                    border:`1px solid ${selTpl?.id===tpl.id?"#0369a1":"#1a2d45"}`}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor="#2a4d75"}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor=selTpl?.id===tpl.id?"#0369a1":"#1a2d45"}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                    <span style={{fontSize:18}}>{tpl.icon}</span>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{tpl.title}</div>
+                      <span style={{fontSize:9,color:"#3d5a7a",background:"#0a1626",padding:"1px 6px",borderRadius:10}}>{tpl.cat}</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:10,color:"#475569",lineHeight:1.5}}>{tpl.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: Form + Preview */}
+          {selTpl && (
+            <div>
+              {!preview ? (
+                <div className="card" style={{padding:"20px 24px"}}>
+                  {/* Header */}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                    <div>
+                      <div style={{fontSize:16,fontWeight:800,color:"#e2e8f0"}}>{selTpl.icon} {selTpl.title}</div>
+                      <div style={{fontSize:11,color:"#3d5a7a",marginTop:2}}>{selTpl.desc}</div>
+                    </div>
+                    <button className="btn bg" style={{fontSize:11}} onClick={()=>setSelTpl(null)}>✕ Close</button>
+                  </div>
+
+                  {/* Ziksatech brand note */}
+                  <div style={{padding:"8px 12px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8,marginBottom:16,fontSize:11,color:"#7dd3fc"}}>
+                    🏢 Will be generated on <strong>Ziksatech, LLC</strong> letterhead — {company.addr}
+                  </div>
+
+                  {/* Form fields */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                    {selTpl.fields.map(field=>(
+                      <div key={field}>
+                        <div className="lbl">{FIELD_LABELS[field]||field}</div>
+                        {field==="employeeName"||field==="candidateName"||field==="contractorName" ? (
+                          <div style={{position:"relative"}}>
+                            <input className="inp" value={form[field]||""} onChange={e=>{setField(field,e.target.value);autoFill(e.target.value);}}
+                              placeholder={`Start typing to auto-fill from roster`}/>
+                          </div>
+                        ) : field==="startDate"||field==="endDate"||field==="effectiveDate"||field==="lastDay"||field==="issueDate"||field==="reviewDate" ? (
+                          <input type="date" className="inp" value={form[field]||""} onChange={e=>setField(field,e.target.value)}/>
+                        ) : field==="employeeType" ? (
+                          <select className="inp" value={form[field]||""} onChange={e=>setField(field,e.target.value)}>
+                            <option value="">— select —</option>
+                            <option value="Full-Time Employee (FTE)">Full-Time Employee (FTE)</option>
+                            <option value="Part-Time Employee">Part-Time Employee</option>
+                            <option value="Independent Contractor (1099)">Independent Contractor (1099)</option>
+                            <option value="W2 Contract Employee">W2 Contract Employee</option>
+                          </select>
+                        ) : field==="state" ? (
+                          <select className="inp" value={form[field]||"Texas"} onChange={e=>setField(field,e.target.value)}>
+                            {["Texas","California","New York","Illinois","Washington","Florida","Georgia","New Jersey"].map(s=><option key={s}>{s}</option>)}
+                          </select>
+                        ) : field==="visaType" ? (
+                          <select className="inp" value={form[field]||""} onChange={e=>setField(field,e.target.value)}>
+                            <option value="">— select —</option>
+                            {["H-1B","H-4 EAD","L-1","OPT","STEM OPT","Green Card","US Citizen"].map(v=><option key={v}>{v}</option>)}
+                          </select>
+                        ) : field.toLowerCase().includes("desc")||field.toLowerCase().includes("improvement")||field.toLowerCase().includes("reason") ? (
+                          <textarea className="inp" rows={2} value={form[field]||""} onChange={e=>setField(field,e.target.value)} style={{resize:"vertical"}}/>
+                        ) : (
+                          <input className="inp" value={form[field]||""} onChange={e=>setField(field,e.target.value)} placeholder={FIELD_LABELS[field]||field}/>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:13}}
+                    onClick={generateDoc} disabled={aiLoading}>
+                    {aiLoading ? "⏳ Generating with AI..." : "✨ Generate Document"}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  {/* Preview */}
+                  <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+                    <button className="btn bg" onClick={()=>setPreview(false)}>← Edit Fields</button>
+                    <button className="btn bp" onClick={downloadPDF} style={{fontSize:12}}>⬇ Download PDF</button>
+                    <button className="btn bg" onClick={()=>{navigator.clipboard.writeText(generated);setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);}} style={{fontSize:12}}>
+                      {copyDone?"✓ Copied":"📋 Copy Text"}
+                    </button>
+                    <button className="btn bg" onClick={()=>{setGenerated('');setPreview(false);}} style={{fontSize:12}}>↺ Regenerate</button>
+                  </div>
+
+                  {/* Document preview */}
+                  <div style={{background:"#fff",borderRadius:12,padding:"40px 48px",boxShadow:"0 4px 32px rgba(0,0,0,0.4)",minHeight:400}}>
+                    {/* Letterhead */}
+                    <div style={{background:"#0d1b2a",padding:"14px 20px",marginBottom:20,borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:16,fontWeight:900,color:"#c9a84c",letterSpacing:"0.08em"}}>ZIKSATECH, LLC</div>
+                        <div style={{fontSize:8,color:"#64748b",marginTop:2}}>{company.tagline}</div>
+                      </div>
+                      <div style={{textAlign:"right",fontSize:8,color:"#64748b"}}>
+                        <div>{company.addr}</div>
+                        <div>{company.phone} · {company.email}</div>
+                        <div>{company.web}</div>
+                      </div>
+                    </div>
+                    <div style={{fontSize:12,color:"#1e293b",lineHeight:1.8,whiteSpace:"pre-wrap",fontFamily:"Georgia,serif"}}>
+                      {generated}
+                    </div>
+                    <div style={{marginTop:30,paddingTop:16,borderTop:"1px solid #e2e8f0",fontSize:9,color:"#94a3b8",textAlign:"center"}}>
+                      {company.name} · Confidential Document · {company.web}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── RESUME BUILDER ───────────────────────────────────────────────── */}
+      {sub==="resume" && (
+        <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:16,alignItems:"start"}}>
+          {/* Form */}
+          <div className="card" style={{padding:"20px 24px"}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:16}}>👤 Resume Builder</div>
+            <div style={{fontSize:11,color:"#3d5a7a",marginBottom:14,padding:"8px 12px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
+              Enter a consultant name to auto-fill from roster, then generate a polished resume
+            </div>
+
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <div className="lbl">Consultant Name *</div>
+                <select className="inp" value={resumeForm.name} onChange={e=>{
+                  const sel = (roster||[]).find(r=>r.name===e.target.value);
+                  setResumeForm(p=>({...p, name:e.target.value, title:sel?.role||p.title, skills:sel?.skills||p.skills}));
+                }}>
+                  <option value="">— Select or type —</option>
+                  {(roster||[]).map(r=><option key={r.id} value={r.name}>{r.name} · {r.role}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Job Title / Target Role</div>
+                <input className="inp" value={resumeForm.title} onChange={e=>setResumeForm(p=>({...p,title:e.target.value}))} placeholder="e.g. SAP BRIM Senior Consultant"/>
+              </div>
+              <div>
+                <div className="lbl">Key Skills (comma separated)</div>
+                <input className="inp" value={resumeForm.skills} onChange={e=>setResumeForm(p=>({...p,skills:e.target.value}))} placeholder="SAP BRIM, ABAP, BTP, S/4HANA..."/>
+              </div>
+              <div>
+                <div className="lbl">Certifications</div>
+                <input className="inp" value={resumeForm.certs} onChange={e=>setResumeForm(p=>({...p,certs:e.target.value}))} placeholder="SAP Certified, AWS, PMP..."/>
+              </div>
+              <div>
+                <div className="lbl">Additional Context (achievements, etc.)</div>
+                <textarea className="inp" rows={3} value={resumeForm.summary} onChange={e=>setResumeForm(p=>({...p,summary:e.target.value}))} placeholder="10+ years SAP BRIM, led AT&T migration..."/>
+              </div>
+              <button className="btn bp" style={{justifyContent:"center",fontSize:13}} onClick={buildResume} disabled={resumeAI}>
+                {resumeAI ? "⏳ Building Resume..." : "✨ Generate Resume"}
+              </button>
+            </div>
+          </div>
+
+          {/* Result */}
+          <div>
+            {!resumeResult && !resumeAI && (
+              <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:48,marginBottom:16}}>👤</div>
+                <div style={{fontSize:16,color:"#334155",marginBottom:8}}>Resume will appear here</div>
+                <div style={{fontSize:11,color:"#1e3a5f"}}>Select a consultant and click Generate Resume</div>
+              </div>
+            )}
+            {resumeAI && (
+              <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:32,marginBottom:12}}>⏳</div>
+                <div style={{color:"#38bdf8",fontSize:14}}>Building professional resume...</div>
+              </div>
+            )}
+            {resumeResult && !resumeAI && (
+              <div>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  <button className="btn bp" onClick={downloadResumePDF} style={{fontSize:12}}>⬇ Download PDF</button>
+                  <button className="btn bg" onClick={()=>{navigator.clipboard.writeText(resumeResult);setCopyDone(true);setTimeout(()=>setCopyDone(false),2000);}} style={{fontSize:12}}>
+                    {copyDone?"✓ Copied":"📋 Copy Text"}
+                  </button>
+                  <button className="btn bg" onClick={()=>setResumeResult('')} style={{fontSize:12}}>↺ Rebuild</button>
+                </div>
+                <div style={{background:"#fff",borderRadius:12,padding:"36px 48px",boxShadow:"0 4px 32px rgba(0,0,0,0.4)"}}>
+                  {/* Resume letterhead */}
+                  <div style={{background:"#0d1b2a",padding:"12px 20px",marginBottom:20,borderRadius:8}}>
+                    <div style={{fontSize:20,fontWeight:900,color:"#c9a84c",letterSpacing:"0.06em"}}>{resumeForm.name.toUpperCase()}</div>
+                    <div style={{fontSize:9,color:"#64748b",marginTop:2}}>{resumeForm.title.toUpperCase()} · ZIKSATECH, LLC · {company.addr}</div>
+                  </div>
+                  <div style={{fontSize:11,color:"#1e293b",lineHeight:1.9,whiteSpace:"pre-wrap",fontFamily:"Georgia,serif"}}>
+                    {resumeResult}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmailTemplates({ roster, finInvoices, proposals, crmContacts, clients }) {
   const [selCat,     setSelCat]     = useState("all");
   const [selId,      setSelId]      = useState(null);
@@ -24127,6 +24739,19 @@ function PAFFiles({ roster, authProfile }) {
   const [search, setSearch] = useState("");
   const fileRef = useRef();
   const [viewMode, setViewMode] = useState("table"); // "table" | "consultant"
+  const [oneDriveUrl, setOneDriveUrl] = useState(() => {
+    try { return localStorage.getItem("zt-paf-onedrive") || ""; } catch { return ""; }
+  });
+  const [showODSettings, setShowODSettings] = useState(false);
+  const saveOneDriveUrl = (url) => {
+    setOneDriveUrl(url);
+    localStorage.setItem("zt-paf-onedrive", url);
+  };
+  const getOneDriveLink = (consultantName) => {
+    if (!oneDriveUrl) return null;
+    const base = oneDriveUrl.replace(/\/$/, '');
+    return `${base}/${encodeURIComponent(consultantName || 'General')}`;
+  };
   const [expandedCons, setExpandedCons] = useState({});
 
   const save = (newRecs) => { setRecords(newRecs); localStorage.setItem("zt-paf2", JSON.stringify(newRecs)); };
@@ -24168,7 +24793,33 @@ ${text.slice(0, 4000)}`;
     <div>
       <PH title="PAF Files — Immigration Documents" sub="AI-powered auto-extraction from uploaded documents"/>
 
-      {/* View toggle */}
+      {/* OneDrive Settings */}
+      <div style={{marginBottom:14}}>
+        {!showODSettings ? (
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            {oneDriveUrl
+              ? <div style={{fontSize:11,color:"#34d399",padding:"5px 12px",background:"#021f14",border:"1px solid #15803d",borderRadius:8}}>
+                  📁 OneDrive linked: <a href={oneDriveUrl} target="_blank" rel="noreferrer" style={{color:"#4ade80"}}>{oneDriveUrl.slice(0,50)}{oneDriveUrl.length>50?"...":""}</a>
+                </div>
+              : <div style={{fontSize:11,color:"#475569",padding:"5px 12px",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:8}}>
+                  📁 No OneDrive folder linked yet
+                </div>
+            }
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>setShowODSettings(true)}>
+              {oneDriveUrl?"⚙ Change OneDrive":"🔗 Link OneDrive Folder"}
+            </button>
+          </div>
+        ) : (
+          <div style={{padding:"12px 16px",background:"#060d1c",border:"1px solid #0369a1",borderRadius:10,display:"flex",gap:10,alignItems:"center"}}>
+            <span style={{fontSize:11,color:"#38bdf8",flexShrink:0}}>📁 OneDrive Root URL:</span>
+            <input className="inp" style={{flex:1,fontSize:12}} value={oneDriveUrl}
+              onChange={e=>setOneDriveUrl(e.target.value)}
+              placeholder="https://ziksatech-my.sharepoint.com/:f:/g/personal/... (paste your OneDrive folder link)"/>
+            <button className="btn bp" style={{fontSize:11,flexShrink:0}} onClick={()=>{saveOneDriveUrl(oneDriveUrl);setShowODSettings(false);}}>Save</button>
+            <button className="btn bg" style={{fontSize:11,flexShrink:0}} onClick={()=>setShowODSettings(false)}>Cancel</button>
+          </div>
+        )}
+      </div>
       <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
         <button onClick={()=>setViewMode("consultant")}
           style={{padding:"6px 16px",borderRadius:7,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
@@ -24214,6 +24865,13 @@ ${text.slice(0, 4000)}`;
                     <span style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:5,padding:"3px 10px",fontSize:11,color:"#38bdf8"}}>{docs.length} docs</span>
                     {expired>0 && <span style={{background:"#1a0808",border:"1px solid #7f1d1d",borderRadius:5,padding:"3px 10px",fontSize:11,color:"#f87171"}}>{expired} expired</span>}
                     {expiring>0 && <span style={{background:"#1a1005",border:"1px solid #78350f",borderRadius:5,padding:"3px 10px",fontSize:11,color:"#f59e0b"}}>{expiring} expiring</span>}
+                    {oneDriveUrl && getOneDriveLink(r.name) && (
+                      <a href={getOneDriveLink(r.name)} target="_blank" rel="noreferrer"
+                        onClick={e=>e.stopPropagation()}
+                        style={{background:"#033568",border:"1px solid #0369a1",borderRadius:5,color:"#7dd3fc",fontSize:11,padding:"4px 10px",textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>
+                        📁 OneDrive
+                      </a>
+                    )}
                     <button onClick={e=>{e.stopPropagation();setEditRec(null);setForm({consultantName:r.name,docType:"I-797",docNumber:"",issueDate:"",expiryDate:"",physicalLocation:"",status:"current",notes:""});setModal(true);}}
                       style={{background:"#0369a1",border:"none",borderRadius:5,color:"#fff",fontSize:11,padding:"4px 12px",cursor:"pointer"}}>+ Add Doc</button>
                     <span style={{color:"#334155",fontSize:14}}>{isOpen?"▾":"▸"}</span>
