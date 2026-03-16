@@ -2336,7 +2336,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="portal"        && <ClientPortal {...shared}/>}
         {tab==="capacity"      && <CapacityPlanner {...shared}/>}
         {tab==="budget"        && <BudgetActual {...shared}/>}
-        {tab==="onboarding"    && <OnboardingModule {...shared}/>}
+        {tab==="onboarding"    && <OnboardingModule roster={shared.roster} onboardings={shared.onboardings} setOnboardings={shared.setOnboardings} addAudit={shared.addAudit}/>}
         {tab==="offboarding" && <OffboardingModule orgMembers={shared.orgMembers} setOrgMembers={shared.setOrgMembers} roster={shared.roster} setRoster={shared.setRoster} vendors={shared.vendors} setVendors={shared.setVendors} addAudit={shared.addAudit}/>}
         {tab==="glexport"      && <FreshBooksGL finInvoices={shared.finInvoices||[]} fbInvoices={shared.fbInvoices||[]} clients={shared.clients||[]}/>}
         {tab==="esign"         && <ESignature {...shared}/>}
@@ -10304,11 +10304,22 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                         const [y,m] = s.period.split("-").map(Number);
                         setSelYear(y); setSelMonth(m-1); setActiveSheet(s);
                       }}>
-                      <div><div style={{fontSize:12,color:"#e2e8f0",fontWeight:600}}>{s.periodLabel}</div><div style={{fontSize:10,color:"#475569"}}>{s.totalHours}h · ${s.totalRevenue.toLocaleString()}</div></div>
+                      <div>
+                        <div style={{fontSize:12,color:"#e2e8f0",fontWeight:600}}>{s.periodLabel}</div>
+                        <div style={{fontSize:10,color:"#475569"}}>{s.totalHours}h · ${s.totalRevenue.toLocaleString()}</div>
+                      </div>
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
                         {s.invoiceId && <span style={{fontSize:10,color:"#f59e0b"}}>💰 {s.invoiceId}</span>}
-                        <span className="bdg" style={{background:stCfg(s.status).bg,color:stCfg(s.status).color,fontSize:10}}>{stCfg(s.status).icon} {stCfg(s.status).label}</span>
-      {/* ══ CONSULTANT ENTRY — ADMIN ENTERS FOR EACH CONSULTANT ══════════ */}
+                        <span className="bdg" style={{background:st.bg,color:st.color,fontSize:10}}>{st.icon} {st.label}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {view==="entry" && isAdmin && (
         <div>
           <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>Enter Timesheet Per Consultant</div>
@@ -10359,16 +10370,6 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
         </div>
       )}
 
-      ound:st.bg,color:st.color,fontSize:10}}>{st.icon} {st.label}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ══ ADMIN — ALL SUBMISSIONS ══════════════════════════════════════════ */}
       {view==="admin" && isAdmin && (
@@ -10486,1077 +10487,214 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
 }
 
 
-function TSConsultant({ roster, tsSubmissions, setTsSubmissions, tsHours, setTsHours, projects, clients, addAudit }) {
-  const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
-  const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-  // Build list of Mon-starting weeks covering ±8 weeks from today
-  const buildWeeks = () => {
-    const today = new Date();
-    const day = today.getDay(); // 0=Sun, 1=Mon...
-    const base = new Date(today);
-    base.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); // nearest Monday
-    const weeks = [];
-    for (let i = -4; i <= 8; i++) {
-      const mon = new Date(base); mon.setDate(mon.getDate() + i*7);
-      const fri = new Date(mon); fri.setDate(fri.getDate() + 4);
-      const label = `${MONTHS_SHORT[mon.getMonth()]} ${mon.getDate()} – ${mon.getDate()+4}, ${mon.getFullYear()}`;
-      const key   = mon.toISOString().slice(0,10);
-      weeks.push({ key, label, mon, fri });
-    }
-    return weeks;
-  };
-  const WEEKS = buildWeeks();
+// ═══════════════════════════════════════════════════════════════════════════
+// ONBOARDING MODULE — New hire & contractor onboarding checklists
+// Data comes from `onboardings` state (Supabase) — ZERO hardcoded people
+// ═══════════════════════════════════════════════════════════════════════════
+function OnboardingModule({ roster, onboardings, setOnboardings, addAudit }) {
+  const [selId,    setSel]    = useState(onboardings?.[0]?.id || null);
+  const [newModal, setNew]    = useState(false);
+  const [newForm,  setNF]     = useState({ name:"", type:"FTE", startDate:"", rosterMemberId:"" });
 
-  // State
-  const [consultantId, setConsultantId] = useState(roster[0]?.id||"");
-  const [weekKey,      setWeekKey]      = useState(WEEKS[4].key); // default = current week
-  const [dayHours,     setDayHours]     = useState({Mon:8,Tue:8,Wed:8,Thu:8,Fri:8});
-  const [projectId,    setProjectId]    = useState("");
-  const [notes,        setNotes]        = useState("");
-  const [viewMode,     setViewMode]     = useState("entry"); // entry | history
-  const [successMsg,   setSuccessMsg]   = useState("");
-  const [error,        setError]        = useState("");
-  const [resubId,      setResubId]      = useState(null);
-  const [resubNote,    setResubNote]    = useState("");
-
-  // ── Live clock-in timer ──────────────────────────────────────
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [timerDay,     setTimerDay]     = useState("Mon");
-  const timerRef = useRef(null);
-
-  const startTimer = (day) => {
-    setTimerDay(day);
-    setTimerRunning(true);
-    timerRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000);
-  };
-  const stopTimer = () => {
-    clearInterval(timerRef.current);
-    setTimerRunning(false);
-    // Add elapsed hours to selected day (rounded to nearest 0.25h)
-    const hrs = Math.round((timerSeconds / 3600) * 4) / 4;
-    if (hrs >= 0.25) {
-      setDayHours(h => ({ ...h, [timerDay]: Math.min(24, (parseFloat(h[timerDay])||0) + hrs) }));
-    }
-    setTimerSeconds(0);
-  };
-  const fmtTimer = (s) => {
-    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
-    return `${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
-  };
-  useEffect(() => () => clearInterval(timerRef.current), []);
-
-  const consultant  = roster.find(r => r.id === consultantId);
-  const billRate    = consultant?.billRate || 0;
-  const totalHours  = Object.values(dayHours).reduce((s,h) => s + (parseFloat(h)||0), 0);
-  const totalRevenue = totalHours * billRate;
-  const selectedWeek = WEEKS.find(w => w.key === weekKey) || WEEKS[4];
-
-  // Period string: "Mar W2 2026" style
-  const weekLabel = selectedWeek.label;
-
-  // Check if this consultant+week already has a submission
-  const existingSub = tsSubmissions.find(s =>
-    s.rosterId === consultantId && s.weekKey === weekKey
-  );
-
-  const isSubmitted = existingSub && existingSub.status !== "draft" && existingSub.status !== "rejected";
-  const isRejected  = existingSub?.status === "rejected";
-
-  // When consultant or week changes, pre-fill hours if draft exists
-  useEffect(() => {
-    if (existingSub?.dayHours) {
-      setDayHours(existingSub.dayHours);
-    } else {
-      setDayHours({Mon:8,Tue:8,Wed:8,Thu:8,Fri:8});
-    }
-    setNotes(existingSub?.notes||"");
-    setProjectId(existingSub?.projectId||"");
-    setError("");
-    setSuccessMsg("");
-  }, [consultantId, weekKey]);
-
-  const setDay = (day, val) => {
-    const v = Math.max(0, Math.min(24, parseFloat(val)||0));
-    setDayHours(h => ({...h, [day]: v}));
+  const save = (updated) => {
+    setOnboardings(updated);
+    addAudit?.("Onboarding","Updated","checklist","");
   };
 
-  // Validate + submit
-  const handleSubmit = () => {
-    if (totalHours <= 0) { setError("Total hours must be greater than 0."); return; }
-    if (totalHours > 60) { setError("Total hours exceed 60 for the week — please review."); return; }
-    setError("");
+  const selected = onboardings?.find(o => o.id === selId) || null;
 
-    const period = weekLabel;
-    const newSub = {
-      id:          existingSub?.id || "tss" + uid(),
-      rosterId:    consultantId,
-      memberName:  consultant?.name || "",
-      weekKey,
-      period,
-      dayHours:    {...dayHours},
-      totalHours,
-      billRate,
-      totalRevenue,
-      projectId,
-      clientId:    projects.find(p=>p.id===projectId)?.clientId || consultant?.client || "",
-      notes,
-      status:      "submitted",
-      submittedAt: TODAY_STR,
-      pmApproverId:"", pmApprovedAt:"", ownerApprovedAt:"",
-      lockedAt:"", pmNotes:"", rejectionNote:"", invoiceRef:"",
-      monthIdx: selectedWeek.mon.getMonth(),
-      year:     selectedWeek.mon.getFullYear(),
+  const createOnboarding = () => {
+    if (!newForm.name.trim()) return alert("Enter the new hire's name");
+    const template = newForm.type === "FTE" ? OB_TEMPLATE_FTE : OB_TEMPLATE_CONTRACTOR;
+    const tasks = template.map(t => ({
+      ...t,
+      done: false,
+      doneDate: null,
+      doneBy: null,
+      note: "",
+    }));
+    const ob = {
+      id:        "ob-" + Date.now(),
+      name:      newForm.name.trim(),
+      type:      newForm.type,
+      startDate: newForm.startDate,
+      rosterId:  newForm.rosterMemberId || null,
+      tasks,
+      createdAt: TODAY_STR,
     };
-
-    if (existingSub) {
-      setTsSubmissions(ss => ss.map(s => s.id === existingSub.id ? newSub : s));
-    } else {
-      setTsSubmissions(ss => [...ss, newSub]);
-      // Sync with tsHours grid (monthly bucket)
-      const mi = newSub.monthIdx;
-      setTsHours(h => ({
-        ...h,
-        [consultantId]: (h[consultantId]||Array(12).fill(0)).map((v,i) => i===mi ? (v + totalHours) : v)
-      }));
-    }
-
-    addAudit && addAudit("Timesheets", "Consultant Submitted Timesheet", "Timesheet",
-      `${consultant?.name} submitted ${totalHours}h for ${period}`, {totalRevenue});
-
-    setSuccessMsg(`✓ Submitted ${totalHours}h for ${period}. Sent to PM for approval.`);
-    setTimeout(() => setSuccessMsg(""), 5000);
+    const updated = [...(onboardings||[]), ob];
+    save(updated);
+    setSel(ob.id);
+    setNew(false);
+    setNF({ name:"", type:"FTE", startDate:"", rosterMemberId:"" });
   };
 
-  // Resubmit after rejection
-  const handleResubmit = (sub) => {
-    setTsSubmissions(ss => ss.map(s => s.id === sub.id ? {
-      ...s, status:"submitted", submittedAt: TODAY_STR,
-      rejectionNote:"", pmNotes:"",
-    } : s));
-    addAudit && addAudit("Timesheets","Consultant Resubmitted","Timesheet",
-      `${sub.memberName} resubmitted ${sub.period} after rejection`);
-    setResubId(null);
-    setResubNote("");
+  const toggleTask = (obId, taskId) => {
+    save((onboardings||[]).map(o => o.id !== obId ? o : {
+      ...o,
+      tasks: o.tasks.map(t => t.id !== taskId ? t : {
+        ...t,
+        done: !t.done,
+        doneDate: !t.done ? TODAY_STR : null,
+        doneBy:   !t.done ? "Manju" : null,
+      })
+    }));
   };
 
-  // My submissions filtered to this consultant
-  const mySubs = tsSubmissions.filter(s => s.rosterId === consultantId)
-    .sort((a,b) => (b.weekKey||b.period||"").localeCompare(a.weekKey||a.period||""));
+  const deleteOnboarding = (obId) => {
+    if (!window.confirm("Remove this onboarding record?")) return;
+    const updated = (onboardings||[]).filter(o => o.id !== obId);
+    save(updated);
+    setSel(updated[0]?.id || null);
+  };
 
-  const statusColor = { submitted:"#f59e0b", pm_approved:"#38bdf8", approved:"#34d399", locked:"#a78bfa", rejected:"#f87171", draft:"#64748b" };
-  const statusBg    = { submitted:"#1a1000", pm_approved:"#020d1c", approved:"#021f14", locked:"#0d0b1a", rejected:"#1a0808", draft:"#0a0f1c" };
+  const pct = (ob) => {
+    if (!ob?.tasks?.length) return 0;
+    return Math.round(ob.tasks.filter(t=>t.done).length / ob.tasks.length * 100);
+  };
 
-  const clientProjects = projects.filter(p =>
-    p.status==="active" && (p.client === consultant?.client || !p.client)
-  );
+  const catColor = { "HR & Legal":"#38bdf8", Benefits:"#34d399", "IT & Access":"#a78bfa", Compliance:"#f59e0b", "Project Ramp":"#f87171", Finance:"#94a3b8" };
 
   return (
     <div>
-      <div style={{display:"flex",gap:8,marginBottom:18,alignItems:"center",flexWrap:"wrap"}}>
-        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45"}}>
-          {[["entry","Log Hours"],["history","My Submissions"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setViewMode(v)}
-              style={{padding:"5px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
-                background:viewMode===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
-                color:viewMode===v?"#fff":"#475569"}}>
-              {l}{v==="history"&&mySubs.filter(s=>s.status==="rejected").length>0?
-                <span style={{marginLeft:5,background:"#f87171",color:"#fff",borderRadius:"50%",padding:"1px 5px",fontSize:9}}>
-                  {mySubs.filter(s=>s.status==="rejected").length}
-                </span>:""}
-            </button>
-          ))}
-        </div>
-        {/* Consultant selector */}
-        <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
-          <span style={{fontSize:11,color:"#3d5a7a",fontWeight:700}}>CONSULTANT</span>
-          <select className="inp" style={{fontSize:12,padding:"3px 10px",width:"auto"}}
-            value={consultantId} onChange={e=>setConsultantId(e.target.value)}>
-            {roster.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        </div>
-      </div>
+      <PH title="Onboarding" sub="New hire & contractor onboarding checklists — track every step from day 0 to 30-day check-in"/>
 
-      {/* ── LOG HOURS VIEW ─────────────────────────────────────────────────── */}
-      {viewMode==="entry"&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 320px",gap:16,alignItems:"start"}}>
+      <div style={{display:"grid", gridTemplateColumns:"260px 1fr", gap:16, alignItems:"start"}}>
+        {/* Sidebar — person list */}
+        <div>
+          <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,marginBottom:12}}
+            onClick={()=>setNew(true)}>+ New Onboarding</button>
 
-          {/* Left: entry form */}
-          <div className="card" style={{padding:"20px 22px"}}>
-
-            {/* Consultant summary strip */}
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"12px 14px",
-              background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
-              <Avatar name={consultant?.name||"?"} size={40}/>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{consultant?.name}</div>
-                <div style={{fontSize:11,color:"#3d5a7a"}}>{consultant?.role} · {consultant?.client} · ${billRate}/hr</div>
-              </div>
-              {existingSub&&(
-                <span style={{fontSize:10,padding:"3px 8px",borderRadius:20,
-                  background:statusBg[existingSub.status],color:statusColor[existingSub.status],
-                  border:`1px solid ${statusColor[existingSub.status]}44`}}>
-                  {existingSub.status}
-                </span>
-              )}
+          {(!onboardings||onboardings.length===0) ? (
+            <div style={{padding:"30px 16px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:10}}>
+              <div style={{fontSize:24,marginBottom:8}}>🚀</div>
+              <div style={{fontSize:12,color:"#334155"}}>No onboardings yet</div>
+              <div style={{fontSize:11,color:"#1e3a5f",marginTop:4}}>Click "+ New Onboarding" to start tracking a new hire</div>
             </div>
-
-            {/* Week selector */}
-            <div style={{marginBottom:18}}>
-              <div className="lbl" style={{marginBottom:6}}>Work Week</div>
-              <select className="inp" value={weekKey} onChange={e=>setWeekKey(e.target.value)}>
-                {WEEKS.map(w=>{
-                  const hasSub = tsSubmissions.find(s=>s.rosterId===consultantId&&s.weekKey===w.key);
-                  const suffix = hasSub ? ` — ${hasSub.status}` : "";
-                  return <option key={w.key} value={w.key}>{w.label}{suffix}</option>;
-                })}
-              </select>
-            </div>
-
-            {/* Already submitted / locked notice */}
-            {isSubmitted&&!isRejected&&(
-              <div style={{padding:"12px 14px",background:"#021f14",borderRadius:8,border:"1px solid #063d28",
-                marginBottom:14,fontSize:12,color:"#34d399"}}>
-                ✓ This week is <strong>{existingSub.status}</strong> — {existingSub.totalHours}h submitted on {existingSub.submittedAt}.
-                {existingSub.status==="pm_approved"&&" Waiting for owner final approval."}
-                {existingSub.status==="approved"&&" Approved — will be locked and invoiced at month end."}
-                {existingSub.status==="locked"&&` Locked. Invoice ref: ${existingSub.invoiceRef||"—"}`}
-              </div>
-            )}
-
-            {/* Rejection notice */}
-            {isRejected&&(
-              <div style={{padding:"12px 14px",background:"#1a0808",borderRadius:8,border:"1px solid #3d1010",
-                marginBottom:14}}>
-                <div style={{fontSize:12,color:"#f87171",fontWeight:700,marginBottom:4}}>Timesheet Rejected</div>
-                <div style={{fontSize:11,color:"#f87171",marginBottom:8}}>{existingSub.rejectionNote||"Please review and resubmit."}</div>
-                <div style={{fontSize:11,color:"#3d5a7a"}}>Update your hours below and resubmit.</div>
-              </div>
-            )}
-
-            {/* Day-by-day hours */}
-            <div className="lbl" style={{marginBottom:10}}>Daily Hours — {selectedWeek.label}</div>
-            {/* Live timer banner */}
-            {timerRunning && (
-              <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",marginBottom:12,
-                background:"#021f14",border:"1px solid #34d39944",borderRadius:8}}>
-                <span style={{width:8,height:8,borderRadius:"50%",background:"#34d399",
-                  animation:"pulse 1s infinite",flexShrink:0}}/>
-                <span style={{fontSize:13,color:"#34d399",fontFamily:"'DM Mono',monospace",fontWeight:700}}>
-                  {fmtTimer(timerSeconds)}
-                </span>
-                <span style={{fontSize:11,color:"#64748b"}}>clocked in — {timerDay}</span>
-                <button className="btn br" style={{marginLeft:"auto",fontSize:11,padding:"4px 12px"}} onClick={stopTimer}>
-                  ⏹ Stop &amp; Add Hours
-                </button>
-              </div>
-            )}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
-              {DAYS.map(day=>(
-                <div key={day} style={{textAlign:"center"}}>
-                  <div style={{fontSize:11,color:"#3d5a7a",fontWeight:700,marginBottom:6,
-                    letterSpacing:"0.04em"}}>{day}</div>
-                  <input
-                    type="number" min="0" max="24" step="0.5"
-                    className="inp"
-                    style={{textAlign:"center",fontSize:18,fontWeight:700,fontFamily:"'DM Mono',monospace",
-                      color:"#38bdf8",padding:"8px 4px"}}
-                    value={dayHours[day]}
-                    disabled={isSubmitted&&!isRejected}
-                    onChange={e=>setDay(day, e.target.value)}
-                  />
-                  <div style={{fontSize:9,color:"#1e3a5f",marginTop:3}}>hrs</div>
-                  {!isSubmitted && (
-                    <button
-                      onClick={()=>timerRunning&&timerDay===day ? stopTimer() : (!timerRunning ? startTimer(day) : null)}
-                      style={{marginTop:4,fontSize:9,padding:"2px 6px",borderRadius:4,border:"none",cursor:"pointer",
-                        background: timerRunning&&timerDay===day ? "#1a0808" : timerRunning ? "#0a1626" : "#021f14",
-                        color: timerRunning&&timerDay===day ? "#f87171" : timerRunning ? "#1e3a5f" : "#34d399"}}>
-                      {timerRunning&&timerDay===day ? "⏹ stop" : "▶ clock"}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Project + notes */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}}>
-              <FF label="Project / Engagement">
-                <select className="inp" value={projectId} disabled={isSubmitted&&!isRejected}
-                  onChange={e=>setProjectId(e.target.value)}>
-                  <option value="">— General / {consultant?.client||"No client"} —</option>
-                  {clientProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </FF>
-              <FF label="Notes (optional)">
-                <input className="inp" value={notes} disabled={isSubmitted&&!isRejected}
-                  placeholder="e.g. Sprint 3 delivery, client travel..."
-                  onChange={e=>setNotes(e.target.value)}/>
-              </FF>
-            </div>
-
-            {/* Error / success */}
-            {error&&<div style={{marginBottom:12,padding:"8px 12px",background:"#1a0808",border:"1px solid #3d1010",borderRadius:6,fontSize:12,color:"#f87171"}}>{error}</div>}
-            {successMsg&&<div style={{marginBottom:12,padding:"8px 12px",background:"#021f14",border:"1px solid #063d28",borderRadius:6,fontSize:12,color:"#34d399"}}>{successMsg}</div>}
-
-            {/* Submit button */}
-            {(!isSubmitted||isRejected)&&(
-              <button className="btn bp" style={{width:"100%",padding:"12px",fontSize:14,fontWeight:700}}
-                onClick={handleSubmit} disabled={totalHours===0}>
-                {isRejected?"Resubmit Timesheet →":"Submit for Approval →"}
-              </button>
-            )}
-          </div>
-
-          {/* Right: summary panel */}
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-
-            {/* Week totals card */}
-            <div className="card" style={{padding:"18px 20px",overflowX:"auto"}}>
-              <div className="section-hdr" style={{marginBottom:14}}>Week Summary</div>
-              {DAYS.map(day=>{
-                const h = parseFloat(dayHours[day])||0;
-                const rev = h * billRate;
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {(onboardings||[]).map(ob => {
+                const p = pct(ob);
+                const isActive = ob.id === selId;
                 return (
-                  <div key={day} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-                    padding:"5px 0",borderBottom:"1px solid #070b14"}}>
-                    <span style={{fontSize:12,color:"#64748b",width:32}}>{day}</span>
-                    <div style={{flex:1,margin:"0 8px",height:4,background:"#1a2d45",borderRadius:2,overflow:"hidden"}}>
-                      <div style={{height:4,width:`${Math.min(100,h/12*100)}%`,background:"#0369a1",borderRadius:2}}/>
+                  <div key={ob.id} onClick={()=>setSel(ob.id)}
+                    style={{padding:"12px 14px",borderRadius:10,cursor:"pointer",
+                      background:isActive?"#0c2340":"#060d1c",
+                      border:`1px solid ${isActive?"#0369a1":"#1a2d45"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:"#1a2d45",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#38bdf8",flexShrink:0}}>
+                        {ob.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+                      </div>
+                      <span style={{fontSize:11,fontWeight:700,color:p===100?"#34d399":"#38bdf8"}}>{p}%</span>
                     </div>
-                    <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8",minWidth:28,textAlign:"right"}}>{h}h</span>
-                    <span style={{fontSize:11,color:"#3d5a7a",minWidth:56,textAlign:"right"}}>{fmt(rev)}</span>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{ob.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{ob.type} · starts {ob.startDate||"TBD"}</div>
+                    <div style={{height:4,background:"#0a1626",borderRadius:2,marginTop:6}}>
+                      <div style={{height:4,borderRadius:2,background:p===100?"#34d399":"#0284c7",width:p+"%",transition:"width 0.4s"}}/>
+                    </div>
                   </div>
                 );
               })}
-              <div style={{marginTop:10,paddingTop:10,borderTop:"2px solid #0369a1",
-                display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Total</span>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:20,fontWeight:800,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{totalHours}h</div>
-                  <div style={{fontSize:12,color:"#34d399",fontFamily:"monospace"}}>{fmt(totalRevenue)}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Workflow guide */}
-            <div className="card" style={{padding:"16px 18px"}}>
-              <div className="section-hdr" style={{marginBottom:10}}>Approval Flow</div>
-              {[
-                ["1","You submit","→ Sent to PM"],
-                ["2","PM reviews","→ Approves or rejects"],
-                ["3","Owner approves","→ Final sign-off"],
-                ["4","Locked","→ Invoice generated"],
-              ].map(([n,l,sub])=>(
-                <div key={n} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"5px 0",
-                  borderBottom:"1px solid #070b14"}}>
-                  <div style={{width:18,height:18,borderRadius:"50%",background:"#0369a1",
-                    display:"flex",alignItems:"center",justifyContent:"center",
-                    fontSize:9,fontWeight:800,color:"#fff",flexShrink:0,marginTop:1}}>{n}</div>
-                  <div>
-                    <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1"}}>{l}</div>
-                    <div style={{fontSize:10,color:"#3d5a7a"}}>{sub}</div>
-                  </div>
-                </div>
-              ))}
-              <div style={{marginTop:10,fontSize:10,color:"#1e3a5f"}}>
-                Questions? Contact Manju or check the Approval Queue tab.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── MY SUBMISSIONS VIEW ────────────────────────────────────────────── */}
-      {viewMode==="history"&&(
-        <div>
-          {mySubs.length===0&&(
-            <div style={{padding:"40px",textAlign:"center",background:"#060d1c",borderRadius:10,
-              border:"1px dashed #1a2d45",fontSize:12,color:"#1e3a5f"}}>
-              No timesheets submitted yet. Switch to "Log Hours" to submit your first one.
             </div>
           )}
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {mySubs.map(sub=>{
-              const sc = statusColor[sub.status]||"#64748b";
-              const sb = statusBg[sub.status]||"#0a0f1c";
-              const isRej = sub.status==="rejected";
-              return (
-                <div key={sub.id} className="card" style={{padding:"16px 20px",
-                  borderLeft:`4px solid ${sc}`,opacity:sub.status==="locked"?0.8:1}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                    <div>
-                      <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>
-                        {sub.period}
-                      </div>
-                      <div style={{fontSize:11,color:"#3d5a7a",marginTop:2}}>
-                        Submitted {sub.submittedAt||"—"}
-                        {sub.projectId&&projects.find(p=>p.id===sub.projectId)&&
-                          ` · ${projects.find(p=>p.id===sub.projectId).name}`}
-                      </div>
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{textAlign:"right"}}>
-                        <div style={{fontSize:16,fontWeight:800,color:"#38bdf8",fontFamily:"monospace"}}>{sub.totalHours}h</div>
-                        <div style={{fontSize:11,color:"#34d399",fontFamily:"monospace"}}>{fmt(sub.totalRevenue)}</div>
-                      </div>
-                      <span style={{fontSize:10,padding:"3px 10px",borderRadius:20,
-                        background:sb,color:sc,border:`1px solid ${sc}44`}}>{sub.status}</span>
-                    </div>
-                  </div>
-
-                  {/* Day breakdown if available */}
-                  {sub.dayHours&&(
-                    <div style={{display:"flex",gap:6,margin:"8px 0"}}>
-                      {DAYS.map(d=>(
-                        <div key={d} style={{textAlign:"center",flex:1,padding:"4px 2px",
-                          background:"#070c18",borderRadius:4}}>
-                          <div style={{fontSize:9,color:"#1e3a5f"}}>{d}</div>
-                          <div style={{fontSize:12,fontWeight:700,fontFamily:"monospace",color:"#38bdf8"}}>{sub.dayHours[d]||0}h</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Rejection note */}
-                  {isRej&&(
-                    <div style={{padding:"8px 12px",background:"#1a0808",borderRadius:6,
-                      border:"1px solid #3d1010",marginBottom:10}}>
-                      <div style={{fontSize:11,color:"#f87171",fontWeight:700}}>Rejected</div>
-                      <div style={{fontSize:11,color:"#f87171",marginTop:2}}>{sub.rejectionNote||"Please review and resubmit."}</div>
-                    </div>
-                  )}
-
-                  {/* PM notes */}
-                  {sub.pmNotes&&(
-                    <div style={{padding:"6px 10px",background:"#020d1c",borderRadius:4,
-                      fontSize:11,color:"#38bdf8",marginBottom:8}}>
-                      PM note: {sub.pmNotes}
-                    </div>
-                  )}
-
-                  {/* Invoice ref if locked */}
-                  {sub.status==="locked"&&sub.invoiceRef&&(
-                    <div style={{fontSize:11,color:"#a78bfa",padding:"4px 10px",background:"#0d0b1a",borderRadius:4}}>
-                      Invoice: {sub.invoiceRef}
-                    </div>
-                  )}
-
-                  {/* Resubmit button if rejected */}
-                  {isRej&&(
-                    resubId===sub.id ? (
-                      <div style={{marginTop:8}}>
-                        <div style={{fontSize:11,color:"#3d5a7a",marginBottom:4}}>Add a note to your resubmission (optional):</div>
-                        <div style={{display:"flex",gap:8}}>
-                          <input className="inp" style={{flex:1,fontSize:12}}
-                            placeholder="What changed..."
-                            value={resubNote} onChange={e=>setResubNote(e.target.value)}/>
-                          <button className="btn bp" style={{fontSize:11}}
-                            onClick={()=>handleResubmit({...sub,notes:resubNote||sub.notes})}>Resubmit</button>
-                          <button className="btn bg" style={{fontSize:11}}
-                            onClick={()=>setResubId(null)}>Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button className="btn bp" style={{fontSize:11,marginTop:6}}
-                        onClick={()=>{ setResubId(sub.id); setViewMode("history"); }}>
-                        Resubmit Timesheet →
-                      </button>
-                    )
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Overview ──────────────────────────────────────────────────────────────────
-function TSOverview({ tsSubmissions, roster, setTsSubmissions, finInvoices, setFinInvoices }) {
-  const pending    = tsSubmissions.filter(s=>s.status==="submitted");
-  const pmApproved = tsSubmissions.filter(s=>s.status==="pm_approved");
-  const approved   = tsSubmissions.filter(s=>s.status==="approved");
-  const locked     = tsSubmissions.filter(s=>s.status==="locked");
-  const rejected   = tsSubmissions.filter(s=>s.status==="rejected");
-  const drafts     = tsSubmissions.filter(s=>s.status==="draft");
-
-  const lockedRev  = locked.reduce((s,x)=>s+x.totalRevenue,0);
-  const pendingRev = [...pending,...pmApproved,...approved].reduce((s,x)=>s+x.totalRevenue,0);
-  const readyToInvoice = approved.filter(s=>!s.invoiceRef);
-
-  // Workflow funnel
-  const funnelSteps = [
-    { label:"Hours entered",  count:drafts.length,     color:"#475569" },
-    { label:"Submitted",      count:pending.length,    color:"#f59e0b" },
-    { label:"PM Approved",    count:pmApproved.length, color:"#38bdf8" },
-    { label:"Owner Approved", count:approved.length,   color:"#a78bfa" },
-    { label:"Locked & Invoiced", count:locked.length,  color:"#34d399" },
-  ];
-  const maxCount = Math.max(...funnelSteps.map(s=>s.count),1);
-
-  const quickApproveAll = (fromStatus, toStatus) => {
-    setTsSubmissions(ss=>ss.map(s=>{
-      if(s.status!==fromStatus) return s;
-      if(toStatus==="pm_approved") return {...s,status:"pm_approved",pmApprovedAt:TODAY_STR};
-      if(toStatus==="approved")    return {...s,status:"approved",ownerApprovedAt:TODAY_STR};
-      if(toStatus==="locked") {
-        return {...s,status:"locked",lockedAt:TODAY_STR};
-      }
-      return s;
-    }));
-  };
-
-  const generateInvoices = () => {
-    const ready = tsSubmissions.filter(s=>s.status==="approved"&&!s.invoiceRef);
-    if(!ready.length) return;
-    const newInvoices = ready.map(s=>{
-      const r = roster.find(x=>x.id===s.rosterId);
-      const ref = "FB-"+(2700+Math.floor(Math.random()*99));
-      return { id:"fi"+uid(), number:ref, clientId:s.clientId||"acc1", description:`Consulting services — ${r?.name} — ${s.period}`, amount:s.totalRevenue, status:"draft", date:TODAY_STR, dueDate:"2026-04-11", type:"timesheet", tsSubmissionId:s.id };
-    });
-    setFinInvoices(inv=>[...inv,...newInvoices]);
-    const refMap = {};
-    ready.forEach((s,i)=>{ refMap[s.id]=newInvoices[i].number; });
-    setTsSubmissions(ss=>ss.map(s=>refMap[s.id]?{...s,status:"locked",lockedAt:TODAY_STR,invoiceRef:refMap[s.id]}:s));
-  };
-
-  return (
-    <div>
-      {/* KPI row */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
-        {[
-          {l:"Drafts",        v:drafts.length,     c:"#475569"},
-          {l:"Awaiting PM",   v:pending.length,    c:"#f59e0b"},
-          {l:"PM Approved",   v:pmApproved.length, c:"#38bdf8"},
-          {l:"Owner Approved",v:approved.length,   c:"#a78bfa"},
-          {l:"Locked",        v:locked.length,     c:"#34d399"},
-          {l:"Rejected",      v:rejected.length,   c:"#f87171"},
-        ].map(k=>(
-          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
-            <div style={{fontSize:24,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
-            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:16,marginBottom:16}}>
-        {/* Workflow funnel */}
-        <div className="card" style={{padding:"18px 22px"}}>
-          <div className="section-hdr">Approval Pipeline</div>
-          {funnelSteps.map((step,i)=>(
-            <div key={step.label} style={{marginBottom:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <div style={{width:10,height:10,borderRadius:"50%",background:step.color,flexShrink:0}}/>
-                  <span style={{fontSize:12,color:"#94a3b8"}}>{step.label}</span>
-                </div>
-                <span style={{fontSize:13,fontWeight:700,color:step.color,fontFamily:"'DM Mono',monospace"}}>{step.count}</span>
-              </div>
-              <div style={{height:8,background:"#0a1626",borderRadius:4}}>
-                <div style={{height:8,borderRadius:4,background:step.color,width:`${(step.count/maxCount)*100}%`,opacity:0.85,transition:"width 0.4s"}}/>
-              </div>
-              {i<funnelSteps.length-1 && <div style={{marginLeft:5,paddingLeft:4,borderLeft:"2px dashed #1a2d45",height:8,marginTop:2}}/>}
-            </div>
-          ))}
         </div>
 
-        {/* Revenue status */}
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div className="card" style={{padding:"16px 18px"}}>
-            <div className="lbl" style={{marginBottom:8}}>Revenue by approval status</div>
-            {[
-              {l:"Locked & invoiced",  v:lockedRev,  c:"#34d399"},
-              {l:"Awaiting approval",  v:pendingRev, c:"#f59e0b"},
-              {l:"Ready to invoice",   v:readyToInvoice.reduce((s,x)=>s+x.totalRevenue,0), c:"#a78bfa"},
-            ].map(r=>(
-              <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
-                <span style={{fontSize:11,color:"#64748b"}}>{r.l}</span>
-                <span style={{fontSize:13,fontWeight:700,color:r.c,fontFamily:"'DM Mono',monospace"}}>{fmt(r.v)}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Action center */}
-          <div className="card" style={{padding:"16px 18px"}}>
-            <div className="lbl" style={{marginBottom:10}}>⚡ Quick Actions</div>
-            {pending.length>0 && (
-              <button className="btn bp" style={{width:"100%",justifyContent:"center",marginBottom:8,fontSize:12}}
-                onClick={()=>quickApproveAll("submitted","pm_approved")}>
-                PM Approve All ({pending.length}) →
-              </button>
-            )}
-            {pmApproved.length>0 && (
-              <button className="btn bp" style={{width:"100%",justifyContent:"center",marginBottom:8,fontSize:12}}
-                onClick={()=>quickApproveAll("pm_approved","approved")}>
-                Owner Approve All ({pmApproved.length}) →
-              </button>
-            )}
-            {readyToInvoice.length>0 && (
-              <button className="btn bs" style={{width:"100%",justifyContent:"center",fontSize:12}}
-                onClick={generateInvoices}>
-                <I d={ICONS.check} s={13}/>Generate {readyToInvoice.length} Invoice{readyToInvoice.length>1?"s":""} ({fmt(readyToInvoice.reduce((s,x)=>s+x.totalRevenue,0))})
-              </button>
-            )}
-            {pending.length===0&&pmApproved.length===0&&readyToInvoice.length===0 && (
-              <div style={{fontSize:11,color:"#1e3a5f",textAlign:"center",padding:"8px 0"}}>All caught up ✓</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Rejected — action needed */}
-      {rejected.length>0 && (
-        <div className="card">
-          <div className="section-hdr" style={{color:"#f87171"}}>⚠ Rejected — Consultant Action Required</div>
-          {rejected.map(s=>{
-            const r = roster.find(x=>x.id===s.rosterId);
-            return (
-              <div key={s.id} className="tr" style={{gridTemplateColumns:"1.5fr 90px 1fr 1fr 90px"}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r?.name}</div>
-                  <div style={{fontSize:10,color:"#3d5a7a"}}>{s.period}</div>
-                </div>
-                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#7dd3fc"}}>{s.totalHours}h</span>
-                <span style={{fontSize:11,color:"#f87171"}}>{s.rejectionNote?.slice(0,70)}</span>
-                <span style={{fontSize:11,color:"#475569"}}>Resubmit after corrections</span>
-                <button className="btn br" style={{fontSize:10,padding:"4px 10px"}}
-                  onClick={()=>setTsSubmissions(ss=>ss.map(x=>x.id===s.id?{...x,status:"draft",rejectionNote:"",submittedAt:""}:x))}>
-                  Reset to Draft
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Hours Grid ────────────────────────────────────────────────────────────────
-function TSGrid({ roster, setRoster, tsHours, setTsHours, tsSubmissions, setTsSubmissions }) {
-  const [editCell, setEditCell]   = useState(null);
-  const [editVal, setEditVal]     = useState("");
-  const [rejectModal, setRejectModal] = useState(null);
-  const [rejectNote, setRejectNote]   = useState("");
-
-  // Determine lock status per consultant per month
-  const isLocked = (rid, mi) => tsSubmissions.some(s=>s.rosterId===rid&&s.monthIdx===mi&&["locked","approved","pm_approved","submitted"].includes(s.status));
-  const submissionFor = (rid, mi) => tsSubmissions.find(s=>s.rosterId===rid&&s.monthIdx===mi);
-
-  const updateHrs = (rid, mi, val) => {
-    if(isLocked(rid, mi)) return;
-    setTsHours(h=>({...h,[rid]:h[rid].map((v,i)=>i===mi?+val:v)}));
-    // Keep draft submission in sync
-    setTsSubmissions(ss=>ss.map(s=>{
-      if(s.rosterId!==rid||s.monthIdx!==mi||s.status!=="draft") return s;
-      const hrs = tsHours[rid]?.map((v,i)=>i===mi?+val:v)||[];
-      const total = hrs.reduce((a,b)=>a+b,0);
-      const r = roster.find(x=>x.id===rid);
-      return {...s, totalHours:total, totalRevenue:total*(r?.billRate||0)};
-    }));
-  };
-
-  const submitMonth = (rid, mi) => {
-    const r = roster.find(x=>x.id===rid);
-    const hrs = tsHours[rid]||Array(12).fill(0);
-    const totalH = hrs[mi]||0;
-    const sub = submissionFor(rid, mi);
-    const period = `${MONTHS[mi]} 2026`;
-    if(sub) {
-      setTsSubmissions(ss=>ss.map(s=>s.id===sub.id?{...s,status:"submitted",submittedAt:TODAY_STR,totalHours:totalH,totalRevenue:totalH*(r?.billRate||0)}:s));
-    } else {
-      setTsSubmissions(ss=>[...ss,{
-        id:"tss"+uid(), rosterId:rid, period, monthIdx:mi, year:2026,
-        totalHours:totalH, billRate:r?.billRate||0, totalRevenue:totalH*(r?.billRate||0),
-        status:"submitted", clientId:"", projectId:"",
-        submittedAt:TODAY_STR, pmApproverId:"", pmApprovedAt:"",
-        ownerApprovedAt:"", lockedAt:"", pmNotes:"", rejectionNote:"", invoiceRef:""
-      }]);
-    }
-  };
-
-  const startEdit = (rid,field,val) => { setEditCell({rid,field}); setEditVal(val); };
-  const commitEdit = () => {
-    if(!editCell) return;
-    setRoster(rs=>rs.map(r=>r.id===editCell.rid?{...r,[editCell.field]:editCell.field==="billRate"?+editVal:editVal}:r));
-    setEditCell(null);
-  };
-  const isEditing = (rid,field) => editCell?.rid===rid && editCell?.field===field;
-  const EditCell = ({rid,field,value,style={}}) => isEditing(rid,field)
-    ? <input autoFocus className="inp" value={editVal}
-        onChange={e=>setEditVal(e.target.value)}
-        onBlur={commitEdit}
-        onKeyDown={e=>{if(e.key==="Enter")commitEdit();if(e.key==="Escape")setEditCell(null);}}
-        style={{width:"100%",padding:"3px 6px",fontSize:12,...style}}/>
-    : <div onClick={()=>startEdit(rid,field,value)} title="Click to edit"
-        style={{cursor:"text",padding:"2px 4px",borderRadius:4,transition:"background 0.15s",...style}}
-        onMouseEnter={e=>e.currentTarget.style.background="#0f1e30"}
-        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-        {value}
-      </div>;
-
-  const totalsByMonth   = MONTHS.map((_,mi)=>roster.reduce((s,r)=>s+(tsHours[r.id]?.[mi]||0),0));
-  const totalRevByMonth = MONTHS.map((_,mi)=>roster.reduce((s,r)=>s+(tsHours[r.id]?.[mi]||0)*r.billRate,0));
-
-  return (
-    <div>
-      <div style={{fontSize:11,color:"#475569",marginBottom:14}}>
-        Submitted/approved months are locked (grey). Click a cell to edit draft hours. Use "Submit" to send for approval.
-      </div>
-      <div className="card" style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-          <thead>
-            <tr style={{borderBottom:"1px solid #111d2d"}}>
-              <th style={{padding:"10px 14px",textAlign:"left"}} className="th">Consultant</th>
-              <th className="th" style={{padding:"8px 6px",textAlign:"left"}}>Rate</th>
-              {MONTHS.map((m,mi)=>(
-                <th key={m} className="th" style={{padding:"8px 6px",textAlign:"center",minWidth:58,fontSize:10}}>{m}</th>
-              ))}
-              <th className="th" style={{padding:"8px 12px",textAlign:"right"}}>Total Hrs</th>
-              <th className="th" style={{padding:"8px 12px",textAlign:"right"}}>Revenue</th>
-            </tr>
-          </thead>
-          <tbody>
-            {roster.map(r=>{
-              const hrs = tsHours[r.id]||Array(12).fill(0);
-              const totalH = hrs.reduce((s,v)=>s+v,0);
-              const totalR = totalH*r.billRate;
-              return (
-                <tr key={r.id} style={{borderBottom:"1px solid #0a1626"}}>
-                  <td style={{padding:"6px 14px",minWidth:160}}>
-                    <EditCell rid={r.id} field="name" value={r.name} style={{fontWeight:600,color:"#cbd5e1"}}/>
-                    <EditCell rid={r.id} field="role" value={r.role} style={{fontSize:10,color:"#3d5a7a"}}/>
-                  </td>
-                  <td style={{padding:"4px 6px",minWidth:55}}>
-                    <EditCell rid={r.id} field="billRate" value={`$${r.billRate}`} style={{fontFamily:"'DM Mono',monospace",color:"#7dd3fc",fontSize:12}}/>
-                  </td>
-                  {hrs.map((h,mi)=>{
-                    const locked = isLocked(r.id, mi);
-                    const sub    = submissionFor(r.id, mi);
-                    const sc     = sub ? TS_STATUS_COLOR[sub.status] : "#1a2d45";
-                    const canSubmit = !locked && h>0 && (!sub||sub.status==="draft"||sub.status==="rejected");
-                    return (
-                      <td key={mi} style={{padding:"3px 3px",textAlign:"center",position:"relative"}}>
-                        <input className="inp" type="number" value={h}
-                          onChange={e=>updateHrs(r.id,mi,e.target.value)}
-                          disabled={locked}
-                          style={{width:50,padding:"4px 5px",textAlign:"center",fontSize:12,
-                            background:locked?"#050910":h===0?"#0a0f1a":"#0c1e10",
-                            color:locked?"#1e3a5f":"#e2e8f0",
-                            border:`1px solid ${locked?sc+"55":"#1a2d45"}`,
-                            cursor:locked?"not-allowed":"text"}}/>
-                        {/* Status pip + submit */}
-                        {sub&&sub.status!=="draft" && (
-                          <div style={{position:"absolute",top:2,right:5,width:6,height:6,borderRadius:"50%",background:sc}}/>
-                        )}
-                        {canSubmit && (
-                          <button onClick={()=>submitMonth(r.id,mi)}
-                            title="Submit for approval"
-                            style={{position:"absolute",bottom:2,right:2,width:14,height:14,borderRadius:"50%",
-                              background:"#f59e0b",border:"none",cursor:"pointer",fontSize:8,color:"#000",fontWeight:800,
-                              display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>↑</button>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className="mono" style={{padding:"8px 12px",textAlign:"right",fontWeight:700,color:"#e2e8f0"}}>{totalH}h</td>
-                  <td className="mono" style={{padding:"8px 12px",textAlign:"right",color:"#38bdf8",fontWeight:600}}>{fmt(totalR)}</td>
-                </tr>
-              );
-            })}
-            <tr style={{background:"#0a1626",borderTop:"1px solid #1a2d45"}}>
-              <td style={{padding:"10px 14px",fontSize:11,fontWeight:800,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.07em"}} colSpan={2}>TOTALS</td>
-              {totalsByMonth.map((t,i)=>(
-                <td key={i} className="mono" style={{padding:"8px 6px",textAlign:"center",fontWeight:700,fontSize:11,color:t>0?"#34d399":"#3d5a7a"}}>{t}</td>
-              ))}
-              <td className="mono" style={{padding:"10px 12px",textAlign:"right",fontWeight:700,fontSize:13,color:"#e2e8f0"}}>{totalsByMonth.reduce((s,v)=>s+v,0)}h</td>
-              <td className="mono" style={{padding:"10px 12px",textAlign:"right",fontWeight:700,fontSize:13,color:"#38bdf8"}}>{fmt(totalRevByMonth.reduce((s,v)=>s+v,0))}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      {/* Legend */}
-      <div style={{display:"flex",gap:14,marginTop:12,flexWrap:"wrap"}}>
-        {Object.entries(TS_STATUS_COLOR).map(([k,c])=>(
-          <span key={k} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#475569"}}>
-            <span style={{width:8,height:8,borderRadius:"50%",background:c,display:"inline-block"}}/>
-            {TS_STATUS_LABEL[k]}
-          </span>
-        ))}
-        <span style={{fontSize:10,color:"#f59e0b"}}>↑ = submit this month</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Approval Queue ────────────────────────────────────────────────────────────
-function TSApprovals({ tsSubmissions, setTsSubmissions, roster, orgMembers, projects, finInvoices, setFinInvoices }) {
-  const [rejectModal, setRejectModal] = useState(null);
-  const [rejectNote, setRejectNote]   = useState("");
-  const [notesModal, setNotesModal]   = useState(null);
-  const [pmNote, setPmNote]           = useState("");
-
-  const pending    = tsSubmissions.filter(s=>s.status==="submitted");
-  const pmApproved = tsSubmissions.filter(s=>s.status==="pm_approved");
-  const readyToLock= tsSubmissions.filter(s=>s.status==="approved"&&!s.invoiceRef);
-
-  const pmApprove = (id, note="") => {
-    setTsSubmissions(ss=>ss.map(s=>s.id===id?{...s,status:"pm_approved",pmApproverId:"org2",pmApprovedAt:TODAY_STR,pmNotes:note}:s));
-    addAudit&&addAudit("Timesheets","PM Approve Timesheet","Timesheet Approval",`PM approved timesheet ${id}`);
-    setNotesModal(null);
-  };
-  const ownerApprove = (id) => {
-    setTsSubmissions(ss=>ss.map(s=>s.id===id?{...s,status:"approved",ownerApprovedAt:TODAY_STR}:s));
-    addAudit&&addAudit("Timesheets","Owner Approved","Timesheet Approval",`Final approval: ${id}`);
-  };
-  const reject = (id) => {
-    setTsSubmissions(ss=>ss.map(s=>s.id===id?{...s,status:"rejected",rejectionNote:rejectNote}:s));
-    addAudit&&addAudit("Timesheets","Reject Timesheet","Timesheet Approval",`Rejected: ${id} — ${rejectNote}`);
-    setRejectModal(null);
-    setRejectNote("");
-  };
-  const lockAndInvoice = (sub) => {
-    const r = roster.find(x=>x.id===sub.rosterId);
-    const ref = "FB-"+(2700+Math.floor(Math.random()*99));
-    const newInv = { id:"fi"+uid(), number:ref, clientId:sub.clientId||"acc1",
-      description:`Consulting — ${r?.name} — ${sub.period}`,
-      amount:sub.totalRevenue, status:"draft", date:TODAY_STR, dueDate:"2026-04-11", type:"timesheet" };
-    setFinInvoices(inv=>[...inv,newInv]);
-    setTsSubmissions(ss=>ss.map(s=>s.id===sub.id?{...s,status:"locked",lockedAt:TODAY_STR,invoiceRef:ref}:s));
-    addAudit&&addAudit("Timesheets","Invoice Created from Timesheet","Timesheet Approval",`Invoice ${ref} created`,{amount:newInv.amount});
-  };
-
-  const SubRow = ({s, actions}) => {
-    const r   = roster.find(x=>x.id===s.rosterId);
-    const proj= projects?.find(p=>p.id===s.projectId);
-    return (
-      <div className="tr" style={{gridTemplateColumns:"1.6fr 90px 80px 90px 110px 1fr"}}>
+        {/* Main checklist panel */}
         <div>
-          <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r?.name}</div>
-          <div style={{fontSize:10,color:"#3d5a7a"}}>{s.period} {proj?`· ${proj.name.slice(0,20)}`:""}</div>
-          {s.submittedAt&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:1}}>Submitted {fmtDate(s.submittedAt)}</div>}
-        </div>
-        <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0",fontFamily:"'DM Mono',monospace"}}>{s.totalHours}h</span>
-        <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#7dd3fc"}}>{fmt(s.totalRevenue)}</span>
-        <span className="bdg" style={{background:TS_STATUS_BG[s.status],color:TS_STATUS_COLOR[s.status],fontSize:9}}>{TS_STATUS_LABEL[s.status]}</span>
-        <div style={{fontSize:10,color:"#475569",lineHeight:1.3}}>{s.pmNotes?.slice(0,35)||""}</div>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{actions}</div>
-      </div>
-    );
-  };
-
-  const colHdr = <div className="tr" style={{gridTemplateColumns:"1.6fr 90px 80px 90px 110px 1fr",padding:"8px 18px"}}>
-    {["Consultant","Hours","Revenue","Status","PM Notes","Actions"].map(h=><span key={h} className="th">{h}</span>)}
-  </div>;
-
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:16}}>
-      {/* Step 1: PM Queue */}
-      <div className="card">
-        <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
-          <span style={{color:"#f59e0b"}}>Step 1 — PM Review: Awaiting PM Approval ({pending.length})</span>
-          {pending.length>0&&<button className="btn bp" style={{fontSize:11,padding:"4px 12px"}}
-            onClick={()=>pending.forEach(s=>pmApprove(s.id))}>Approve All</button>}
-        </div>
-        {pending.length===0 && <div style={{padding:"16px 18px",fontSize:11,color:"#1e3a5f"}}>No submissions awaiting PM review.</div>}
-        {pending.length>0&&<>{colHdr}{pending.map(s=>(
-          <SubRow key={s.id} s={s} actions={[
-            <button key="a" className="btn bs" style={{fontSize:10,padding:"4px 10px"}}
-              onClick={()=>{setNotesModal(s);setPmNote("");}}>Approve</button>,
-            <button key="r" className="btn br" style={{fontSize:10,padding:"4px 10px"}}
-              onClick={()=>{setRejectModal(s);setRejectNote("");}}>Reject</button>,
-          ]}/>
-        ))}</>}
-      </div>
-
-      {/* Step 2: Owner Queue */}
-      <div className="card">
-        <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
-          <span style={{color:"#38bdf8"}}>Step 2 — Owner Review: PM Approved ({pmApproved.length})</span>
-          {pmApproved.length>0&&<button className="btn bp" style={{fontSize:11,padding:"4px 12px"}}
-            onClick={()=>pmApproved.forEach(s=>ownerApprove(s.id))}>Approve All</button>}
-        </div>
-        {pmApproved.length===0 && <div style={{padding:"16px 18px",fontSize:11,color:"#1e3a5f"}}>No submissions awaiting owner approval.</div>}
-        {pmApproved.length>0&&<>{colHdr}{pmApproved.map(s=>(
-          <SubRow key={s.id} s={s} actions={[
-            <button key="a" className="btn bs" style={{fontSize:10,padding:"4px 10px"}}
-              onClick={()=>ownerApprove(s.id)}>Approve</button>,
-            <button key="r" className="btn br" style={{fontSize:10,padding:"4px 10px"}}
-              onClick={()=>{setRejectModal(s);setRejectNote("");}}>Reject</button>,
-          ]}/>
-        ))}</>}
-      </div>
-
-      {/* Step 3: Lock & Invoice */}
-      <div className="card">
-        <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
-          <span style={{color:"#a78bfa"}}>Step 3 — Lock & Invoice: Owner Approved ({readyToLock.length})</span>
-          {readyToLock.length>0&&<button className="btn bs" style={{fontSize:11,padding:"4px 12px"}}
-            onClick={()=>readyToLock.forEach(s=>lockAndInvoice(s))}>
-            <I d={ICONS.check} s={11}/>Lock All & Generate Invoices
-          </button>}
-        </div>
-        {readyToLock.length===0 && <div style={{padding:"16px 18px",fontSize:11,color:"#1e3a5f"}}>No approved timesheets ready to lock.</div>}
-        {readyToLock.length>0&&<>{colHdr}{readyToLock.map(s=>(
-          <SubRow key={s.id} s={s} actions={[
-            <button key="l" className="btn bs" style={{fontSize:10,padding:"4px 10px"}}
-              onClick={()=>lockAndInvoice(s)}>
-              <I d={ICONS.check} s={10}/>Lock & Invoice
-            </button>,
-          ]}/>
-        ))}</>}
-      </div>
-
-      {/* PM Approve modal with notes */}
-      {notesModal&&(
-        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setNotesModal(null)}>
-          <div className="modal" style={{maxWidth:440}}>
-            <MH title="PM Approval" onClose={()=>setNotesModal(null)}/>
-            <div style={{fontSize:13,color:"#94a3b8",marginBottom:12}}>
-              Approving: <b style={{color:"#e2e8f0"}}>{roster.find(x=>x.id===notesModal.rosterId)?.name}</b> — {notesModal.period} — {notesModal.totalHours}h — {fmt(notesModal.totalRevenue)}
+          {!selected ? (
+            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:36,marginBottom:12}}>🚀</div>
+              <div style={{fontSize:14,color:"#334155"}}>Select an onboarding on the left, or create a new one</div>
             </div>
-            <FF label="PM Notes (optional)">
-              <textarea className="inp" rows={2} value={pmNote} onChange={e=>setPmNote(e.target.value)} placeholder="Looks good. Hours match project tracker."/>
-            </FF>
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
-              <button className="btn bg" onClick={()=>setNotesModal(null)}>Cancel</button>
-              <button className="btn bs" onClick={()=>pmApprove(notesModal.id,pmNote)}><I d={ICONS.check} s={13}/>Approve</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reject modal */}
-      {rejectModal&&(
-        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setRejectModal(null)}>
-          <div className="modal" style={{maxWidth:440}}>
-            <MH title="Reject Timesheet" onClose={()=>setRejectModal(null)}/>
-            <div style={{fontSize:13,color:"#94a3b8",marginBottom:12}}>
-              Rejecting: <b style={{color:"#e2e8f0"}}>{roster.find(x=>x.id===rejectModal.rosterId)?.name}</b> — {rejectModal.period}
-            </div>
-            <FF label="Rejection Reason (required)">
-              <textarea className="inp" rows={3} value={rejectNote} onChange={e=>setRejectNote(e.target.value)} placeholder="Please explain why this timesheet is being rejected…"/>
-            </FF>
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
-              <button className="btn bg" onClick={()=>setRejectModal(null)}>Cancel</button>
-              <button className="btn br" disabled={!rejectNote.trim()} onClick={()=>reject(rejectModal.id)}>Reject & Notify</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── History & Locked ──────────────────────────────────────────────────────────
-function TSHistory({ tsSubmissions, setTsSubmissions, roster, finInvoices }) {
-  const [filter, setFilter] = useState("all");
-
-  const historical = tsSubmissions
-    .filter(s=>["locked","approved","pm_approved","rejected"].includes(s.status))
-    .filter(s=>filter==="all"||s.status===filter)
-    .sort((a,b)=>b.period.localeCompare(a.period));
-
-  const lockedRev   = tsSubmissions.filter(s=>s.status==="locked").reduce((s,x)=>s+x.totalRevenue,0);
-  const invoiced    = tsSubmissions.filter(s=>s.status==="locked"&&s.invoiceRef).length;
-  const pendingInv  = tsSubmissions.filter(s=>s.status==="locked"&&!s.invoiceRef).length;
-
-  // Group by period
-  const byPeriod = historical.reduce((acc,s)=>{
-    (acc[s.period]=acc[s.period]||[]).push(s);
-    return acc;
-  },{});
-
-  return (
-    <div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
-        {[
-          {l:"Total Locked Revenue", v:fmt(lockedRev),                c:"#34d399"},
-          {l:"Invoiced",             v:invoiced,                      c:"#34d399"},
-          {l:"Locked, Not Invoiced", v:pendingInv,                    c:pendingInv>0?"#f59e0b":"#34d399"},
-          {l:"Rejected (total)",     v:tsSubmissions.filter(s=>s.status==="rejected").length, c:"#f87171"},
-        ].map(k=>(
-          <div key={k.l} className="card" style={{padding:"12px 14px"}}>
-            <div className="th" style={{marginBottom:4}}>{k.l}</div>
-            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
-        {["all","locked","approved","pm_approved","rejected"].map(f=>(
-          <button key={f} className="btn bg" style={{fontSize:11,padding:"5px 10px",
-            borderColor:filter===f?"#0284c7":"#1a2d45",color:filter===f?"#38bdf8":"#475569"}}
-            onClick={()=>setFilter(f)}>
-            {TS_STATUS_LABEL[f]||"All"} ({f==="all"?historical.length:tsSubmissions.filter(s=>s.status===f).length})
-          </button>
-        ))}
-      </div>
-
-      {Object.entries(byPeriod).map(([period,subs])=>{
-        const periodRev = subs.reduce((s,x)=>s+x.totalRevenue,0);
-        return (
-          <div key={period} className="card" style={{marginBottom:14}}>
-            <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
-              <span>{period}</span>
-              <span style={{fontFamily:"'DM Mono',monospace",color:"#38bdf8",fontSize:12}}>{fmt(periodRev)}</span>
-            </div>
-            <div className="tr" style={{gridTemplateColumns:"1.5fr 70px 90px 90px 100px 110px 80px",padding:"8px 18px"}}>
-              {["Consultant","Hours","Revenue","Status","PM Approved","Invoice Ref","Actions"].map(h=><span key={h} className="th">{h}</span>)}
-            </div>
-            {subs.map(s=>{
-              const r = roster.find(x=>x.id===s.rosterId);
-              const inv = finInvoices?.find(i=>i.number===s.invoiceRef);
-              return (
-                <div key={s.id} className="tr" style={{gridTemplateColumns:"1.5fr 70px 90px 90px 100px 110px 80px"}}>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r?.name}</div>
-                    <div style={{fontSize:10,color:"#3d5a7a"}}>{r?.role}</div>
-                  </div>
-                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#e2e8f0"}}>{s.totalHours}h</span>
-                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#7dd3fc"}}>{fmt(s.totalRevenue)}</span>
-                  <span className="bdg" style={{background:TS_STATUS_BG[s.status],color:TS_STATUS_COLOR[s.status],fontSize:9}}>{TS_STATUS_LABEL[s.status]}</span>
-                  <span style={{fontSize:11,color:"#475569"}}>{s.pmApprovedAt?fmtDate(s.pmApprovedAt):"—"}</span>
-                  <div>
-                    {s.invoiceRef
-                      ? <span className="bdg" style={{background:"#021f14",color:"#34d399",fontSize:9}}>{s.invoiceRef}</span>
-                      : <span style={{fontSize:11,color:"#1e3a5f"}}>—</span>}
-                  </div>
-                  <div style={{display:"flex",gap:4}}>
-                    {s.status==="locked"&&(
-                      <button className="btn br" style={{fontSize:9,padding:"3px 7px"}}
-                        title="Unlock (admin)"
-                        onClick={()=>setTsSubmissions(ss=>ss.map(x=>x.id===s.id?{...x,status:"approved",lockedAt:"",invoiceRef:""}:x))}>
-                        Unlock
-                      </button>
-                    )}
-                    {s.status==="rejected"&&(
-                      <button className="btn bg" style={{fontSize:9,padding:"3px 7px"}}
-                        onClick={()=>setTsSubmissions(ss=>ss.map(x=>x.id===s.id?{...x,status:"draft",rejectionNote:"",submittedAt:""}:x))}>
-                        Reset
-                      </button>
-                    )}
-                  </div>
+          ) : (
+            <div>
+              {/* Header */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+                <div>
+                  <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0"}}>{selected.name}</div>
+                  <div style={{fontSize:12,color:"#3d5a7a"}}>{selected.type} · Start date: {selected.startDate||"TBD"}</div>
                 </div>
-              );
-            })}
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <div style={{fontSize:28,fontWeight:900,color:pct(selected)===100?"#34d399":"#38bdf8"}}>{pct(selected)}%</div>
+                  {pct(selected)===100 && <span className="bdg" style={{background:"#34d39922",color:"#34d399"}}>COMPLETED</span>}
+                  <button className="btn br" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>deleteOnboarding(selected.id)}>🗑</button>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{height:8,background:"#0a1626",borderRadius:4,marginBottom:20}}>
+                <div style={{height:8,borderRadius:4,background:"linear-gradient(90deg,#0284c7,#34d399)",width:pct(selected)+"%",transition:"width 0.5s"}}/>
+              </div>
+
+              {/* Tasks grouped by category */}
+              {[...new Set(selected.tasks.map(t=>t.cat))].map(cat => (
+                <div key={cat} className="card" style={{padding:"14px 18px",marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontSize:11,fontWeight:700,color:catColor[cat]||"#94a3b8",textTransform:"uppercase"}}>{cat}</div>
+                    <span style={{fontSize:10,color:"#334155"}}>
+                      {selected.tasks.filter(t=>t.cat===cat&&t.done).length}/{selected.tasks.filter(t=>t.cat===cat).length}
+                    </span>
+                  </div>
+                  {selected.tasks.filter(t=>t.cat===cat).map(task => (
+                    <div key={task.id} onClick={()=>toggleTask(selected.id,task.id)}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,cursor:"pointer",marginBottom:4,
+                        background:task.done?"#021f14":"#060d1c",border:`1px solid ${task.done?"#34d39333":"#1a2d45"}`}}>
+                      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,
+                        border:`2px solid ${task.done?"#34d399":"#334155"}`,
+                        background:task.done?"#34d399":"transparent",
+                        display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {task.done&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:12,color:task.done?"#34d399":"#94a3b8",textDecoration:task.done?"line-through":"none"}}>{task.title}</div>
+                        {task.doneDate&&<div style={{fontSize:9,color:"#334155"}}>✓ {task.doneDate} by {task.doneBy}</div>}
+                      </div>
+                      <span className="bdg" style={{fontSize:9,background:"#0a1626",color:"#334155"}}>Day {task.days}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* New Onboarding Modal */}
+      {newModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setNew(false)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <MH title="New Onboarding" onClose={()=>setNew(false)}/>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div><div className="lbl">Full Name *</div>
+                <input className="inp" value={newForm.name} onChange={e=>setNF(p=>({...p,name:e.target.value}))} placeholder="New hire's full name"/></div>
+              <div><div className="lbl">Employment Type</div>
+                <select className="inp" value={newForm.type} onChange={e=>setNF(p=>({...p,type:e.target.value}))}>
+                  <option value="FTE">FTE (Full-Time Employee)</option>
+                  <option value="Contractor">Contractor</option>
+                </select></div>
+              <div><div className="lbl">Start Date</div>
+                <input className="inp" type="date" value={newForm.startDate} onChange={e=>setNF(p=>({...p,startDate:e.target.value}))}/></div>
+              <div><div className="lbl">Link to Roster Member (optional)</div>
+                <select className="inp" value={newForm.rosterMemberId} onChange={e=>setNF(p=>({...p,rosterMemberId:e.target.value}))}>
+                  <option value="">— select —</option>
+                  {(roster||[]).map(r=><option key={r.id} value={r.id}>{r.name} ({r.type})</option>)}
+                </select></div>
+              <div style={{fontSize:11,color:"#334155",padding:"8px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+                {newForm.type==="FTE" ? `✓ FTE checklist: ${OB_TEMPLATE_FTE.length} tasks (HR, Benefits, IT, Compliance, Project Ramp)` : `✓ Contractor checklist: ${OB_TEMPLATE_CONTRACTOR.length} tasks (HR, Compliance, IT, Finance)`}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setNew(false)}>Cancel</button>
+              <button className="btn bp" onClick={createOnboarding}>🚀 Create Onboarding</button>
+            </div>
           </div>
-        );
-      })}
-      {Object.keys(byPeriod).length===0&&(
-        <div style={{padding:"24px",textAlign:"center",fontSize:12,color:"#1e3a5f"}}>No records match this filter.</div>
+        </div>
       )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// CHANGE ORDER MODULE
-// ═══════════════════════════════════════════════════════════════════════════════
 function ChangeOrderModule({ changeOrders, setChangeOrders, projects, contracts, sows, roster, crmAccounts, finInvoices, setFinInvoices }) {
   const [sub, setSub] = useState("dashboard");
   const tabs = [
