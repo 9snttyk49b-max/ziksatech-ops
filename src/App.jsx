@@ -2280,7 +2280,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         *{box-sizing:border-box;margin:0;padding:0}
         ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:#0b1120}::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:4px}
         input,select,textarea{font-family:inherit}
-        .navi{display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:9px;cursor:pointer;transition:all 0.15s;color:#475569;font-size:13px;font-weight:500;border:none;background:none;width:100%;text-align:left;white-space:nowrap}
+        .navi{display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:9px;cursor:pointer;transition:all 0.15s;color:#94a3b8;font-size:13px;font-weight:500;border:none;background:none;width:100%;text-align:left;white-space:nowrap}
         .navi:hover{background:#0f1e30;color:#7dd3fc}
         .navi.on{background:linear-gradient(135deg,#0c2340,#0d1f38);color:#38bdf8;border-left:2px solid #0284c7}
         .btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px}
@@ -2430,7 +2430,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         <div style={{padding:"8px 14px 18px",borderBottom:"1px solid #0f1e30",marginBottom:6}}>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
             <button onClick={()=>goToView("hub")} title="Back to Portal Hub"
-              style={{background:"none",border:"1px solid #0f1e30",borderRadius:6,color:"#1e3a5f",
+              style={{background:"none",border:"1px solid #0f1e30",borderRadius:6,color:"#475569",
                 fontSize:10,padding:"3px 8px",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",gap:4,width:"100%",textAlign:"left"}}
               onMouseEnter={e=>e.currentTarget.style.borderColor="#1a4a6b"}
               onMouseLeave={e=>e.currentTarget.style.borderColor="#0f1e30"}>
@@ -2440,7 +2440,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:6}}>
             <div>
               <div onClick={()=>setTab("home")} title="Home" style={{fontSize:16,fontWeight:800,color:"#38bdf8",letterSpacing:"-0.03em",cursor:"pointer"}}>⬡ ZIKSATECH</div>
-              <div style={{fontSize:10,color:"#1e3a5f",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ops Center</div>
+              <div style={{fontSize:10,color:"#475569",marginTop:1,letterSpacing:"0.1em",textTransform:"uppercase"}}>Ops Center</div>
             </div>
             {supaAuth && authProfile && <ProfileMenu authProfile={authProfile} authSession={authSession} setAuthSession={setAuthSession} setAuthProfile={setAuthProfile} setTab={setTab}/>}
           </div>
@@ -2510,11 +2510,11 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                   padding:"8px 14px 4px", textAlign:"left",
                 }}
               >
-                <span style={{fontSize:9,color: hasActive ? "#38bdf8" : "#1e3a5f",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>
+                <span style={{fontSize:9,color: hasActive ? "#38bdf8" : "#64748b",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>
                   {group}
                   {isCollapsed && hasActive && <span style={{marginLeft:5,fontSize:9,color:"#38bdf8"}}>●</span>}
                 </span>
-                <span style={{fontSize:8,color:"#1e3a5f",transition:"transform 0.2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>
+                <span style={{fontSize:8,color:"#64748b",transition:"transform 0.2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>
               </button>
               {!isCollapsed && items.map(n => (
                 <button key={n.id} className={`navi${tab===n.id?" on":""}`} onClick={()=>setTabSafe(n.id, authProfile?.role)}>
@@ -2534,7 +2534,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
               </span>
             </div>
             {lastSaved && (
-              <div style={{fontSize:10,color:"#1e3a5f",paddingLeft:13}}>
+              <div style={{fontSize:10,color:"#475569",paddingLeft:13}}>
                 Last: {lastSaved.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}
               </div>
             )}
@@ -2542,7 +2542,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
 
           {/* Drive backup */}
           <div style={{padding:"10px 14px",borderTop:"1px solid #0f1e30"}}>
-            <div style={{fontSize:10,color:"#1e3a5f",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Google Drive Backup</div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Google Drive Backup</div>
             <button
               onClick={()=>setBackupModal(true)}
               style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"#050e1c",border:"1px solid #1a2d45",borderRadius:8,cursor:"pointer",color:"#7dd3fc",fontSize:12,fontWeight:600,transition:"background 0.15s"}}
@@ -2556,7 +2556,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
 
           {/* Integrations */}
           <div style={{padding:"10px 14px 0",borderTop:"1px solid #0f1e30"}}>
-            <div style={{fontSize:10,color:"#1e3a5f",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em"}}>Integrations</div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em"}}>Integrations</div>
             <div style={{display:"flex",gap:6}}>
               <span className="adp-badge">ADP</span>
               <span className="fb-badge">FreshBooks</span>
@@ -2595,7 +2595,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                       3. Upload the <code style={{color:"#38bdf8",fontSize:10}}>ziksatech_ops_backup_*.json</code> file<br/>
                       4. To restore: download from Drive → click "Restore from File" below
                     </div>
-                    <div style={{fontSize:10,color:"#1e3a5f",marginTop:6}}>
+                    <div style={{fontSize:10,color:"#475569",marginTop:6}}>
                       💡 Live Drive sync coming soon — connect Google Drive in Claude settings to enable
                     </div>
                   </div>
@@ -2610,7 +2610,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                     {lastSaved ? `Last saved: ${lastSaved.toLocaleString()}` : "Not yet saved this session"}
                   </div>
                 </div>
-                <div style={{fontSize:10,color:"#1e3a5f",textAlign:"right"}}>
+                <div style={{fontSize:10,color:"#475569",textAlign:"right"}}>
                   Saves to<br/>browser storage
                 </div>
               </div>
@@ -2642,7 +2642,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="3"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
                   Restore from File…
                 </button>
-                <div style={{fontSize:10,color:"#1e3a5f",marginTop:8,textAlign:"center"}}>
+                <div style={{fontSize:10,color:"#475569",marginTop:8,textAlign:"center"}}>
                   ⚠ Restoring will overwrite all current data
                 </div>
               </div>
@@ -2659,7 +2659,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
               color:colorMode==="light"?"#f59e0b":"#64748b",transition:"all 0.2s"}}>
             <span style={{fontSize:16}}>{colorMode==="light"?"☀️":"🌙"}</span>
             {colorMode==="light" ? "Light Mode" : "Dark Mode"}
-            <span style={{marginLeft:"auto",fontSize:9,color:"#1e3a5f",padding:"2px 5px",
+            <span style={{marginLeft:"auto",fontSize:9,color:"#475569",padding:"2px 5px",
               background:"#060d1c",borderRadius:3,border:"1px solid #111d2d"}}>click to toggle</span>
           </button>
           <div onClick={()=>window.open('https://naxon-product.vercel.app','_blank')}
