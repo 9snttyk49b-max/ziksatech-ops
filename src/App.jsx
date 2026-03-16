@@ -3740,10 +3740,10 @@ function ClientHealthScorecard({ clients, setClients, finInvoices, finPayments, 
               {/* Score breakdown */}
               <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:10}}>
                 {[
-                  {l:"Payment",cl.payPts,max:30},
-                  {l:"Engagement",cl.engPts,max:25},
-                  {l:"Revenue Stability",cl.revPts,max:25},
-                  {l:"Renewal Risk",cl.renewPts,max:20},
+                  {l:"Payment",v:cl.payPts,max:30},
+                  {l:"Engagement",v:cl.engPts,max:25},
+                  {l:"Revenue Stability",v:cl.revPts,max:25},
+                  {l:"Renewal Risk",v:cl.renewPts,max:20},
                 ].map((item,i)=>{
                   const pts = [cl.payPts,cl.engPts,cl.revPts,cl.renewPts][i];
                   const mx  = [30,25,25,20][i];
