@@ -64,6 +64,9 @@ const RBAC = {
   changeorders: ["super_admin","admin"],
   capacity:     ["super_admin","admin","hr_immigration"],
   bench:        ["super_admin","admin","accounts"],
+  meetingnotes: ["super_admin","admin","accounts","hr_immigration"],
+  skillsgap:    ["super_admin","admin"],
+  certtracker:  ["super_admin","admin","hr_immigration"],
   ebitda:       ["super_admin","admin","accounts"],
   finance:      ["super_admin","admin","accounts"],
   pl:           ["super_admin","admin","accounts"],
@@ -2132,6 +2135,9 @@ export default function ZiksatechOps() {
     { id:"changeorders", label:"Change Orders",        icon:ICONS.edit,     group:"Delivery"    },
     { id:"capacity",     label:"Capacity Planner",     icon:ICONS.dash,     group:"Delivery"    },
     { id:"bench",       label:"Bench Management",       icon:ICONS.ebitda,   group:"Delivery"    },
+    { id:"meetingnotes", label:"AI Meeting Notes",        icon:ICONS.dash,     group:"Delivery"    },
+    { id:"skillsgap",   label:"Skills Gap Analyzer",      icon:ICONS.roster,   group:"Delivery"    },
+    { id:"certtracker", label:"Training & Certs",         icon:ICONS.dash,     group:"Team"        },
     { id:"ebitda",       label:"EBITDA Optimizer",     icon:ICONS.ebitda,   group:"Delivery"    },
     { id:"finance",      label:"Finance",              icon:ICONS.pl,       group:"Finance"     },
     { id:"pl",           label:"P&L / Income",         icon:ICONS.pl,       group:"Finance"     },
@@ -2682,6 +2688,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="benefits"      && <BenefitsTracker {...shared}/>}
         {tab==="reports"       && <ReportBuilder {...shared}/>}
         {tab==="portal"        && <ClientPortal {...shared}/>}
+        {tab==="meetingnotes" && <MeetingNotes projects={shared.projects} setProjects={shared.setProjects} roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
+        {tab==="skillsgap"    && <SkillsGapAnalyzer roster={shared.roster} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} workAuth={shared.workAuth} addAudit={shared.addAudit}/>}
+        {tab==="certtracker"  && <CertificationTracker roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="bench"         && <BenchManagement roster={shared.roster} clients={shared.clients} projects={shared.projects} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} contracts={shared.contracts} tsHours={shared.tsHours} addAudit={shared.addAudit} setTab={setTab}/>}
         {tab==="capacity"      && <CapacityPlanner {...shared}/>}
         {tab==="budget"        && <BudgetActual {...shared}/>}
@@ -18667,6 +18676,1115 @@ function SettingsPage({ appSettings, setAppSettings, addAudit }) {
 // TEAMS / SLACK NOTIFICATION HUB
 // Webhook delivery · Daily digest · Alert routing · Send history
 // ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// AI MEETING NOTES → ACTION ITEMS
+// Paste transcript · AI extracts decisions/actions/dates · Creates tasks
+// ═══════════════════════════════════════════════════════════════════════════
+function MeetingNotes({ projects, setProjects, roster, clients, crmDeals, addAudit }) {
+  const [sub,          setSub]        = useState("new");       // new | history | task-preview
+  const [transcript,   setTranscript] = useState("");
+  const [meetingMeta,  setMeta]       = useState({ title:"", client:"", date: new Date().toISOString().slice(0,10), attendees:"" });
+  const [loading,      setLoading]    = useState(false);
+  const [result,       setResult]     = useState(null);        // AI parsed result
+  const [meetings,     setMeetings]   = useState(() => { try { return JSON.parse(localStorage.getItem("zt-meetings")||"[]"); } catch { return []; } });
+  const [draftEmail,   setDraftEmail] = useState("");
+  const [emailLoading, setEmailLoad]  = useState(false);
+  const [copied,       setCopied]     = useState("");
+
+  const saveMeetings = (data) => { setMeetings(data); localStorage.setItem("zt-meetings", JSON.stringify(data)); };
+  const ff = (k,v) => setMeta(p=>({...p,[k]:v}));
+
+  const analyzeMeeting = async () => {
+    if (!transcript.trim()) return alert("Paste a meeting transcript first");
+    setLoading(true); setResult(null); setDraftEmail("");
+    try {
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: `You are an expert meeting analyst for Ziksatech LLC, a SAP consulting firm. Extract structured information from meeting transcripts. Today: ${new Date().toISOString().slice(0,10)}. Always respond with valid JSON only — no markdown, no preamble.`,
+          messages: [{ role: "user", content: `Analyze this meeting transcript and extract structured data.
+
+Meeting: ${meetingMeta.title || "Untitled Meeting"}
+Client: ${meetingMeta.client || "Unknown"}
+Date: ${meetingMeta.date}
+Attendees: ${meetingMeta.attendees || "Unknown"}
+
+TRANSCRIPT:
+${transcript.slice(0, 4000)}
+
+Return JSON with this exact structure:
+{
+  "summary": "2-3 sentence summary of meeting purpose and outcome",
+  "decisions": ["decision 1", "decision 2"],
+  "actionItems": [
+    { "task": "task description", "owner": "person name", "dueDate": "YYYY-MM-DD or TBD", "priority": "high|medium|low", "category": "client|internal|technical|billing" }
+  ],
+  "followUpDates": [{ "event": "description", "date": "YYYY-MM-DD or TBD" }],
+  "risks": ["risk 1", "risk 2"],
+  "clientSentiment": "positive|neutral|concerned|negative",
+  "nextSteps": "brief next steps paragraph"
+}` }]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(text);
+      setResult(parsed);
+      setSub("preview");
+    } catch(e) { alert("AI analysis failed: " + e.message); }
+    setLoading(false);
+  };
+
+  const generateFollowUpEmail = async () => {
+    if (!result) return;
+    setEmailLoad(true);
+    try {
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: "You are a professional business email writer for Ziksatech LLC. Write concise, professional follow-up emails. Plain text only.",
+          messages: [{ role: "user", content: `Write a follow-up email for this meeting:
+
+Meeting: ${meetingMeta.title}
+Client: ${meetingMeta.client}
+Date: ${meetingMeta.date}
+Summary: ${result.summary}
+Decisions: ${result.decisions?.join("; ")}
+Action Items: ${result.actionItems?.map(a=>`${a.task} (${a.owner}, due ${a.dueDate})`).join("; ")}
+Next Steps: ${result.nextSteps}
+
+Write a professional follow-up email from Manju Murthy (mmurthy@ziksatech.com) to the client. Include all action items with owners and due dates. Keep it concise and professional.` }]
+        })
+      });
+      const data = await resp.json();
+      setDraftEmail((data?.content||[]).map(b=>b.text||"").join(""));
+    } catch(e) { alert("Email draft failed: " + e.message); }
+    setEmailLoad(false);
+  };
+
+  const createTasksInProjects = () => {
+    if (!result?.actionItems?.length) return;
+    const newTasks = result.actionItems.map((ai, idx) => ({
+      id: `mt-${Date.now()}-${idx}`,
+      title: ai.task,
+      description: `From meeting: ${meetingMeta.title} (${meetingMeta.date})`,
+      assignee: ai.owner,
+      dueDate: ai.dueDate === "TBD" ? "" : ai.dueDate,
+      priority: ai.priority,
+      status: "todo",
+      source: "meeting-notes",
+      meetingTitle: meetingMeta.title,
+      client: meetingMeta.client,
+      category: ai.category,
+      createdAt: new Date().toISOString(),
+    }));
+    // Save meeting record
+    const rec = { id: `m-${Date.now()}`, ...meetingMeta, summary: result.summary, actionItems: newTasks, decisions: result.decisions, risks: result.risks, followUpDates: result.followUpDates, nextSteps: result.nextSteps, clientSentiment: result.clientSentiment, createdAt: new Date().toISOString() };
+    saveMeetings([rec, ...meetings]);
+    addAudit?.("Meetings", "Meeting Notes Saved", meetingMeta.client||"Internal", `${newTasks.length} action items`);
+    alert(`✅ ${newTasks.length} tasks saved! View in Meeting History.`);
+    setSub("history");
+  };
+
+  const copy = (text, key) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(key); setTimeout(()=>setCopied(""),2000); };
+
+  const SENTIMENT_COLOR = { positive:"#34d399", neutral:"#38bdf8", concerned:"#f59e0b", negative:"#f87171" };
+  const PRIORITY_COLOR  = { high:"#f87171", medium:"#f59e0b", low:"#34d399" };
+
+  const tabBtn = (id, label, badge) => (
+    <button onClick={()=>setSub(id)}
+      style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,position:"relative",
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569"}}>
+      {label}{badge?<span style={{position:"absolute",top:2,right:4,fontSize:8,background:"#f87171",color:"#fff",borderRadius:8,padding:"0 4px"}}>{badge}</span>:null}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="AI Meeting Notes" sub="Paste transcript → AI extracts decisions, action items, follow-ups → Auto-creates tasks"/>
+
+      <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabBtn("new",     "✏️ New Meeting")}
+        {tabBtn("preview", "🧠 AI Analysis", result?null:null)}
+        {tabBtn("history", "📋 History", meetings.length||null)}
+      </div>
+
+      {/* ── NEW MEETING ── */}
+      {sub==="new" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 380px",gap:16,alignItems:"start"}}>
+          <div>
+            {/* Meta */}
+            <div className="card" style={{padding:"16px 20px",marginBottom:14}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>📅 Meeting Details</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {[["Meeting Title","title","text"],["Client / Account","client","text"],["Date","date","date"],["Attendees","attendees","text"]].map(([label,key,type])=>(
+                  <div key={key}>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase",fontWeight:600}}>{label}</div>
+                    <input type={type} className="inp" value={meetingMeta[key]} onChange={e=>ff(key,e.target.value)}
+                      placeholder={key==="attendees"?"Manju, Client PM, Dev Lead...":""}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Transcript */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📝 Meeting Transcript</div>
+                <div style={{fontSize:10,color:"#334155"}}>{transcript.length} chars</div>
+              </div>
+              <textarea className="inp" rows={16} value={transcript}
+                onChange={e=>setTranscript(e.target.value)}
+                placeholder={`Paste your meeting transcript here...\n\nExample:\nManju: Good morning everyone. Let's start with the project status.\nClient PM: We're behind on the BRIM integration by about 2 weeks...\nManju: I'll assign Nuthan to accelerate that. We should be done by March 30th.\nClient PM: Also, we need the invoice for February submitted by end of week...`}
+                style={{resize:"vertical",minHeight:280}}/>
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",marginTop:12,fontSize:13,padding:"10px"}}
+                onClick={analyzeMeeting} disabled={loading||!transcript.trim()}>
+                {loading ? "⏳ Analyzing..." : "🧠 Analyze with AI"}
+              </button>
+            </div>
+          </div>
+
+          {/* Tips panel */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>💡 Tips for Best Results</div>
+            {[
+              ["Include speaker names", "Label each speaker: 'Manju:', 'Client PM:', etc."],
+              ["Be specific on dates", "Say 'by March 30th' rather than 'next week'"],
+              ["Name action owners", "Assign tasks clearly: 'Nuthan will handle...'"],
+              ["Include decisions", "Explicitly state outcomes: 'We agreed to...'"],
+              ["AI works with audio summaries too", "Paste auto-generated transcripts from Teams/Zoom"],
+            ].map(([title, desc]) => (
+              <div key={title} style={{padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+                <div style={{fontSize:11,fontWeight:600,color:"#38bdf8"}}>{title}</div>
+                <div style={{fontSize:10,color:"#475569",marginTop:2}}>{desc}</div>
+              </div>
+            ))}
+            {meetings.length > 0 && (
+              <div style={{marginTop:16}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>Recent Meetings</div>
+                {meetings.slice(0,3).map(m=>(
+                  <div key={m.id} style={{padding:"6px 8px",borderRadius:6,background:"#060d1c",marginBottom:4,cursor:"pointer",border:"1px solid #1a2d45"}}
+                    onClick={()=>setSub("history")}>
+                    <div style={{fontSize:10,fontWeight:600,color:"#94a3b8"}}>{m.title||"Untitled"}</div>
+                    <div style={{fontSize:9,color:"#334155"}}>{m.client} · {m.date} · {m.actionItems?.length||0} tasks</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI ANALYSIS PREVIEW ── */}
+      {sub==="preview" && !result && (
+        <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+          <div style={{fontSize:32,marginBottom:12}}>🧠</div>
+          <div style={{fontSize:14,color:"#334155"}}>No analysis yet — paste a transcript on the New Meeting tab and click Analyze</div>
+          <button className="btn bp" style={{marginTop:16}} onClick={()=>setSub("new")}>← New Meeting</button>
+        </div>
+      )}
+
+      {sub==="preview" && result && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {/* Left column */}
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {/* Summary + sentiment */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📋 Meeting Summary</div>
+                <span style={{fontSize:10,padding:"2px 10px",borderRadius:8,background:(SENTIMENT_COLOR[result.clientSentiment]||"#94a3b8")+"22",
+                  color:SENTIMENT_COLOR[result.clientSentiment]||"#94a3b8",border:`1px solid ${(SENTIMENT_COLOR[result.clientSentiment]||"#94a3b8")}44`,fontWeight:700}}>
+                  {result.clientSentiment} sentiment
+                </span>
+              </div>
+              <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.7,marginBottom:12}}>{result.summary}</div>
+              {result.decisions?.length > 0 && (
+                <div>
+                  <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>✅ Decisions Made</div>
+                  {result.decisions.map((d,i)=>(
+                    <div key={i} style={{display:"flex",gap:8,padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                      <span style={{color:"#34d399",flexShrink:0}}>✓</span>
+                      <span style={{color:"#94a3b8"}}>{d}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Risks */}
+            {result.risks?.length > 0 && (
+              <div className="card" style={{padding:"14px 18px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#fbbf24",marginBottom:8}}>⚠️ Risks Identified</div>
+                {result.risks.map((r,i)=>(
+                  <div key={i} style={{display:"flex",gap:8,padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                    <span style={{color:"#f59e0b",flexShrink:0}}>!</span>
+                    <span style={{color:"#94a3b8"}}>{r}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Next Steps */}
+            {result.nextSteps && (
+              <div className="card" style={{padding:"14px 18px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🎯 Next Steps</div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.7}}>{result.nextSteps}</div>
+              </div>
+            )}
+
+            {/* Follow-up dates */}
+            {result.followUpDates?.length > 0 && (
+              <div className="card" style={{padding:"14px 18px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>📅 Key Dates</div>
+                {result.followUpDates.map((fd,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                    <span style={{color:"#94a3b8"}}>{fd.event}</span>
+                    <span style={{color:"#38bdf8",fontFamily:"monospace"}}>{fd.date}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right column — action items + email */}
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {/* Action Items */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>⚡ Action Items ({result.actionItems?.length||0})</div>
+                <button className="btn bp" style={{fontSize:11}} onClick={createTasksInProjects}>
+                  💾 Save All Tasks
+                </button>
+              </div>
+              {(result.actionItems||[]).map((ai, i)=>(
+                <div key={i} style={{padding:"10px 12px",borderRadius:8,marginBottom:6,background:"#040810",border:"1px solid #0a1826"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:4}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0",flex:1}}>{ai.task}</div>
+                    <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:(PRIORITY_COLOR[ai.priority]||"#94a3b8")+"22",
+                      color:PRIORITY_COLOR[ai.priority]||"#94a3b8",border:`1px solid ${(PRIORITY_COLOR[ai.priority]||"#94a3b8")}44`,flexShrink:0}}>{ai.priority}</span>
+                  </div>
+                  <div style={{display:"flex",gap:12,fontSize:10,color:"#475569"}}>
+                    <span>👤 {ai.owner}</span>
+                    <span>📅 {ai.dueDate}</span>
+                    <span style={{background:"#0c1e3d",color:"#7dd3fc",padding:"1px 6px",borderRadius:6,border:"1px solid #1a2d45"}}>{ai.category}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Follow-up Email */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📧 Follow-Up Email</div>
+                <button className="btn bg" style={{fontSize:11}} onClick={generateFollowUpEmail} disabled={emailLoading}>
+                  {emailLoading ? "⏳ Drafting..." : "✨ Generate Draft"}
+                </button>
+              </div>
+              {!draftEmail && !emailLoading && (
+                <div style={{padding:"20px",textAlign:"center",color:"#334155",fontSize:11,background:"#040810",borderRadius:8}}>
+                  Click "Generate Draft" to create a follow-up email with all action items
+                </div>
+              )}
+              {emailLoading && <div style={{padding:"20px",textAlign:"center",color:"#38bdf8",fontSize:11}}>⏳ Writing email...</div>}
+              {draftEmail && (
+                <div>
+                  <pre style={{fontSize:10,color:"#94a3b8",whiteSpace:"pre-wrap",background:"#040810",borderRadius:8,padding:"12px",lineHeight:1.7,maxHeight:240,overflowY:"auto"}}>{draftEmail}</pre>
+                  <div style={{display:"flex",gap:8,marginTop:8}}>
+                    <button className="btn bg" style={{fontSize:11,flex:1,justifyContent:"center"}} onClick={()=>copy(draftEmail,"email")}>
+                      {copied==="email"?"✅ Copied!":"📋 Copy Email"}
+                    </button>
+                    <a href={`mailto:?subject=Follow-Up: ${meetingMeta.title}&body=${encodeURIComponent(draftEmail)}`}
+                      style={{flex:1,padding:"6px 12px",background:"#0369a1",color:"#fff",borderRadius:8,fontSize:11,textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600}}>
+                      📤 Open in Mail
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── HISTORY ── */}
+      {sub==="history" && (
+        <div>
+          {meetings.length===0 ? (
+            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:32,marginBottom:8}}>📋</div>
+              <div style={{fontSize:14,color:"#334155"}}>No meeting notes yet — analyze your first transcript</div>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {meetings.map(m=>(
+                <div key={m.id} className="card" style={{padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{m.title||"Untitled Meeting"}</div>
+                      <div style={{fontSize:11,color:"#475569"}}>{m.client||"—"} · {m.date} · {m.attendees||"—"}</div>
+                    </div>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:(SENTIMENT_COLOR[m.clientSentiment]||"#94a3b8")+"22",color:SENTIMENT_COLOR[m.clientSentiment]||"#94a3b8",border:`1px solid ${(SENTIMENT_COLOR[m.clientSentiment]||"#94a3b8")}44`}}>{m.clientSentiment}</span>
+                      <button className="btn bg" style={{fontSize:9,color:"#f87171"}} onClick={()=>saveMeetings(meetings.filter(x=>x.id!==m.id))}>✕</button>
+                    </div>
+                  </div>
+                  <div style={{fontSize:11,color:"#94a3b8",marginBottom:10,lineHeight:1.6}}>{m.summary}</div>
+                  {m.actionItems?.length>0&&(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {m.actionItems.slice(0,4).map((ai,i)=>(
+                        <span key={i} style={{fontSize:9,padding:"2px 8px",borderRadius:8,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45"}}>
+                          {ai.task?.slice(0,35)}{ai.task?.length>35?"...":""}
+                        </span>
+                      ))}
+                      {m.actionItems.length>4&&<span style={{fontSize:9,color:"#334155"}}>+{m.actionItems.length-4} more</span>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSULTANT SKILLS GAP ANALYZER
+// Map skills to opportunities · Show gaps · Training investment needed
+// ═══════════════════════════════════════════════════════════════════════════
+function SkillsGapAnalyzer({ roster, crmDeals, crmAccounts, workAuth, addAudit }) {
+  const [selDeal,   setSelDeal]   = useState(null);
+  const [sub,       setSub]       = useState("matrix"); // matrix | deal | training
+  const [aiLoading, setAiLoad]    = useState(false);
+  const [aiResult,  setAiResult]  = useState(null);
+  const [selConsultant, setSelCon] = useState(null);
+
+  const safeRoster = roster    || [];
+  const safeDeals  = crmDeals  || [];
+  const safeAccts  = crmAccounts || [];
+  const openDeals  = safeDeals.filter(d => d.stage !== "closed_won" && d.stage !== "closed_lost");
+
+  // Parse skills from roster (comma-separated string or array)
+  const getSkills = (r) => {
+    const raw = Array.isArray(r.skills) ? r.skills : (r.skills||"").split(",").map(s=>s.trim()).filter(Boolean);
+    return raw;
+  };
+
+  // Score a consultant against a deal
+  const scoreDeal = (consultant, deal) => {
+    const cSkills  = getSkills(consultant).map(s=>s.toLowerCase());
+    const dText    = `${deal.name} ${deal.notes||""} ${safeAccts.find(a=>a.id===deal.accountId)?.industry||""} ${deal.description||""}`.toLowerCase();
+    const matched  = cSkills.filter(sk => dText.includes(sk.split(" ")[0]));
+    const score    = cSkills.length > 0 ? Math.round((matched.length / Math.max(cSkills.length, 1)) * 100) : 0;
+    return { matched, score };
+  };
+
+  // All deal skill requirements (extracted from deal text)
+  const extractDealSkills = (deal) => {
+    const text = `${deal.name} ${deal.notes||""} ${deal.description||""}`.toLowerCase();
+    const SAP_SKILLS = ["sap brim","s/4hana","sap abap","sap fiori","sap basis","sap mm","sap sd","sap hr","sap bw","sap cpi","sap integration","btp","sap is-u","cloud","azure","python","java","agile","scrum","project management"];
+    return SAP_SKILLS.filter(s => text.includes(s.split("/")[0].split(" ")[0]));
+  };
+
+  // Training recommendations
+  const getTrainingRecs = (consultant, deal) => {
+    const { matched } = scoreDeal(consultant, deal);
+    const dealSkills  = extractDealSkills(deal);
+    const cSkills     = getSkills(consultant).map(s=>s.toLowerCase());
+    const gaps = dealSkills.filter(ds => !cSkills.some(cs => cs.includes(ds.split(" ")[0])));
+    return gaps.map(gap => ({
+      skill: gap,
+      course: `SAP Learning Hub — ${gap.toUpperCase()} Fundamentals`,
+      cost: Math.round(800 + Math.random() * 1200),
+      duration: "2-4 weeks",
+      priority: matched.length === 0 ? "high" : "medium",
+    }));
+  };
+
+  const MATCH_COLOR = (score) => score >= 70 ? "#34d399" : score >= 40 ? "#f59e0b" : "#f87171";
+  const MATCH_BG    = (score) => score >= 70 ? "#021f14" : score >= 40 ? "#1a1005" : "#1a0808";
+
+  const analyzeWithAI = async (consultant, deal) => {
+    setAiLoad(true); setAiResult(null);
+    try {
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: "You are an SAP staffing expert. Analyze consultant-to-opportunity fit. Return JSON only, no markdown.",
+          messages: [{ role: "user", content: `Analyze this match and give detailed recommendations:
+
+CONSULTANT: ${consultant.name}
+Role: ${consultant.role}
+Skills: ${getSkills(consultant).join(", ")}
+Current utilization: ${Math.round((consultant.util||0)*100)}%
+Bill Rate: $${consultant.billRate}/hr
+
+OPPORTUNITY: ${deal.name}
+Value: $${(deal.value||0).toLocaleString()}
+Close Date: ${deal.closeDate}
+Details: ${deal.notes||"Standard SAP consulting engagement"}
+
+Return JSON: { "fitScore": 0-100, "fitSummary": "2 sentences", "strengths": ["..."], "gaps": ["..."], "trainingPlan": [{"skill":"...","weeks":2,"cost":1200,"source":"SAP Learning Hub / Coursera / Internal"}], "recommendation": "Assign immediately | Train first | Not a match", "estimatedRevenue": "$X for Y months", "rampTime": "X weeks" }` }]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      setAiResult(JSON.parse(text));
+    } catch(e) { setAiResult({ error: e.message }); }
+    setAiLoad(false);
+  };
+
+  const tabBtn = (id, label) => (
+    <button onClick={()=>setSub(id)} style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+      background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:sub===id?"#fff":"#475569"}}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="Skills Gap Analyzer" sub="Map consultant skills to open opportunities · Identify training investments · Maximize deal capture"/>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Open Opportunities",  v: openDeals.length,             c:"#38bdf8" },
+          { l:"Consultants Available", v: safeRoster.filter(r=>(r.util||0)<0.8).length, c:"#f59e0b" },
+          { l:"High Match (≥70%)",  v: safeRoster.filter(r=>openDeals.some(d=>scoreDeal(r,d).score>=70)).length, c:"#34d399" },
+          { l:"Skills Gap Alert",  v: safeRoster.filter(r=>openDeals.every(d=>scoreDeal(r,d).score<40)).length, c:"#f87171" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",gap:4,marginBottom:18,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabBtn("matrix",  "📊 Skills Matrix")}
+        {tabBtn("deal",    "🎯 Deal Analysis")}
+        {tabBtn("training","📚 Training Plan")}
+      </div>
+
+      {/* ── SKILLS MATRIX ── */}
+      {sub==="matrix" && (
+        <div className="card" style={{padding:"18px 20px",overflowX:"auto"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:16}}>📊 Consultant × Opportunity Match Matrix</div>
+          {/* Header */}
+          <div style={{display:"grid",gridTemplateColumns:`180px repeat(${Math.min(openDeals.length,6)},1fr)`,gap:4,marginBottom:6}}>
+            <div style={{fontSize:9,color:"#334155"}}/>
+            {openDeals.slice(0,6).map(d=>(
+              <div key={d.id} style={{fontSize:8,color:"#475569",textAlign:"center",padding:"4px",background:"#040810",borderRadius:4}}>
+                {d.name?.slice(0,20)}{d.name?.length>20?"...":""}
+              </div>
+            ))}
+          </div>
+          {safeRoster.map(r=>(
+            <div key={r.id} style={{display:"grid",gridTemplateColumns:`180px repeat(${Math.min(openDeals.length,6)},1fr)`,gap:4,marginBottom:4,alignItems:"center"}}>
+              <div style={{cursor:"pointer"}} onClick={()=>{setSelCon(r);setSub("deal");}}>
+                <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{r.name}</div>
+                <div style={{fontSize:9,color:"#475569"}}>{r.role?.slice(0,22)}</div>
+              </div>
+              {openDeals.slice(0,6).map(d=>{
+                const { score } = scoreDeal(r, d);
+                return (
+                  <div key={d.id} style={{textAlign:"center",padding:"6px 4px",borderRadius:6,cursor:"pointer",
+                    background:MATCH_BG(score),border:`1px solid ${MATCH_COLOR(score)}33`}}
+                    onClick={()=>{setSelCon(r);setSelDeal(d);setSub("deal");}}>
+                    <div style={{fontSize:12,fontWeight:700,color:MATCH_COLOR(score)}}>{score}%</div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+          <div style={{display:"flex",gap:16,marginTop:14,fontSize:10}}>
+            {[["🟢","≥70% Strong match"],["🟡","40-69% Partial"],["🔴","<40% Needs training"]].map(([e,l])=>(
+              <div key={l} style={{display:"flex",gap:4,alignItems:"center",color:"#475569"}}><span>{e}</span>{l}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── DEAL ANALYSIS ── */}
+      {sub==="deal" && (
+        <div style={{display:"grid",gridTemplateColumns:"240px 1fr",gap:14,alignItems:"start"}}>
+          {/* Deal picker */}
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>Select Opportunity</div>
+            {openDeals.map(d=>(
+              <div key={d.id} onClick={()=>setSelDeal(d)}
+                style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",marginBottom:4,
+                  background:selDeal?.id===d.id?"#0c2340":"#060d1c",border:`1px solid ${selDeal?.id===d.id?"#0369a1":"#1a2d45"}`}}>
+                <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{d.name?.slice(0,28)}</div>
+                <div style={{fontSize:9,color:"#475569"}}>${(d.value||0).toLocaleString()} · {d.stage}</div>
+              </div>
+            ))}
+            {openDeals.length===0&&<div style={{fontSize:11,color:"#334155",textAlign:"center",padding:"20px 0"}}>No open pipeline deals</div>}
+          </div>
+
+          {/* Deal analysis */}
+          {!selDeal ? (
+            <div style={{padding:"40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:14,color:"#334155"}}>Select an opportunity on the left</div>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {/* Deal header */}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{selDeal.name}</div>
+                <div style={{display:"flex",gap:20,fontSize:11,color:"#475569"}}>
+                  <span>Value: <span style={{color:"#38bdf8",fontFamily:"monospace"}}>${(selDeal.value||0).toLocaleString()}</span></span>
+                  <span>Close: {selDeal.closeDate||"TBD"}</span>
+                  <span>Probability: {selDeal.probability||50}%</span>
+                </div>
+                <div style={{marginTop:8,fontSize:11,color:"#334155"}}>{selDeal.notes||"No additional details"}</div>
+              </div>
+
+              {/* Consultant rankings */}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🏆 Consultant Rankings for this Opportunity</div>
+                {[...safeRoster].sort((a,b)=>scoreDeal(b,selDeal).score-scoreDeal(a,selDeal).score).map((r,i)=>{
+                  const { score, matched } = scoreDeal(r, selDeal);
+                  const isSelected = selConsultant?.id === r.id;
+                  return (
+                    <div key={r.id} onClick={()=>setSelCon(r)}
+                      style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:8,marginBottom:6,cursor:"pointer",
+                        background:isSelected?"#0c2340":MATCH_BG(score),border:`1px solid ${isSelected?"#0369a1":MATCH_COLOR(score)+"33"}`}}>
+                      <div style={{width:28,height:28,borderRadius:"50%",background:MATCH_COLOR(score)+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:MATCH_COLOR(score),flexShrink:0}}>{i+1}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{r.name} <span style={{fontSize:9,color:"#475569"}}>({r.utilPct||Math.round((r.util||0)*100)}% util)</span></div>
+                        <div style={{fontSize:9,color:"#475569"}}>Matched: {matched.join(", ")||"—"}</div>
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <div style={{fontSize:18,fontWeight:900,color:MATCH_COLOR(score)}}>{score}%</div>
+                        <div style={{fontSize:8,color:"#334155"}}>match</div>
+                      </div>
+                      {i===0&&<span style={{fontSize:9,background:"#0369a1",color:"#fff",padding:"2px 6px",borderRadius:6}}>Best</span>}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* AI Deep Dive */}
+              {selConsultant && (
+                <div className="card" style={{padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>🧠 AI Deep Dive — {selConsultant.name}</div>
+                    <button className="btn bp" style={{fontSize:11}} onClick={()=>analyzeWithAI(selConsultant,selDeal)} disabled={aiLoading}>
+                      {aiLoading?"⏳ Analyzing...":"✨ AI Analyze"}
+                    </button>
+                  </div>
+                  {aiResult && !aiResult.error && (
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                      <div>
+                        <div style={{fontSize:11,color:"#94a3b8",marginBottom:8}}>{aiResult.fitSummary}</div>
+                        <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Strengths</div>
+                        {aiResult.strengths?.map((s,i)=><div key={i} style={{fontSize:10,color:"#34d399",padding:"2px 0"}}>✓ {s}</div>)}
+                        <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,margin:"8px 0 4px",textTransform:"uppercase"}}>Gaps</div>
+                        {aiResult.gaps?.map((g,i)=><div key={i} style={{fontSize:10,color:"#f87171",padding:"2px 0"}}>✕ {g}</div>)}
+                      </div>
+                      <div>
+                        <div style={{padding:"10px 12px",background:aiResult.recommendation?.includes("Assign")?"#021f14":aiResult.recommendation?.includes("Train")?"#1a1005":"#1a0808",borderRadius:8,marginBottom:8}}>
+                          <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:2}}>Recommendation</div>
+                          <div style={{fontSize:12,fontWeight:700,color:aiResult.recommendation?.includes("Assign")?"#34d399":aiResult.recommendation?.includes("Train")?"#fbbf24":"#f87171"}}>{aiResult.recommendation}</div>
+                          <div style={{fontSize:10,color:"#475569",marginTop:2}}>Ramp: {aiResult.rampTime} · {aiResult.estimatedRevenue}</div>
+                        </div>
+                        {aiResult.trainingPlan?.length>0&&(
+                          <div>
+                            <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Training Plan</div>
+                            {aiResult.trainingPlan.map((t,i)=>(
+                              <div key={i} style={{fontSize:10,color:"#94a3b8",padding:"3px 0",borderBottom:"1px solid #0a1626"}}>
+                                {t.skill} · {t.weeks}wk · ${t.cost?.toLocaleString()} · {t.source}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TRAINING PLAN ── */}
+      {sub==="training" && (
+        <div>
+          <div style={{fontSize:12,color:"#475569",marginBottom:16,padding:"8px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
+            📚 Training investments needed to close skills gaps and capture open pipeline opportunities
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {safeRoster.map(r => {
+              const allGaps = openDeals.flatMap(d => getTrainingRecs(r, d));
+              const uniqueGaps = [...new Map(allGaps.map(g=>[g.skill, g])).values()];
+              if (uniqueGaps.length === 0) return null;
+              const totalCost = uniqueGaps.reduce((s,g)=>s+g.cost,0);
+              return (
+                <div key={r.id} className="card" style={{padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div>
+                      <div style={{fontSize:10,color:"#475569"}}>{r.role} · {uniqueGaps.length} skill gap{uniqueGaps.length>1?"s":""}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:18,fontWeight:900,color:"#f59e0b",fontFamily:"monospace"}}>${totalCost.toLocaleString()}</div>
+                      <div style={{fontSize:9,color:"#334155"}}>training investment</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {uniqueGaps.map((g,i)=>(
+                      <div key={i} style={{padding:"6px 10px",background:"#0c1e3d",borderRadius:8,border:"1px solid #1a2d45"}}>
+                        <div style={{fontSize:10,fontWeight:700,color:"#7dd3fc"}}>{g.skill}</div>
+                        <div style={{fontSize:9,color:"#334155"}}>{g.duration} · ${g.cost}</div>
+                        <div style={{fontSize:8,color:"#475569"}}>{g.course?.slice(0,30)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }).filter(Boolean)}
+            {safeRoster.every(r=>openDeals.flatMap(d=>getTrainingRecs(r,d)).length===0)&&(
+              <div style={{padding:"40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:32,marginBottom:8}}>🎉</div>
+                <div style={{fontSize:14,color:"#34d399"}}>No critical skills gaps for current pipeline!</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TRAINING & CERTIFICATION TRACKER
+// Required certs per role · Budget · Expiry alerts · Reimbursement workflow
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CERT_REQUIREMENTS = {
+  "SAP BRIM Consultant":     ["SAP BRIM (CC&B)","SAP S/4HANA Finance","SAP Integration Suite"],
+  "SAP Functional Architect":["SAP S/4HANA","SAP Solution Manager","SAP TOGAF"],
+  "SAP Technical Architect": ["SAP ABAP","SAP BTP","SAP Integration Suite","SAP S/4HANA"],
+  "SAP IS-U Consultant":     ["SAP IS-U/CCS","SAP BRIM (CC&B)","SAP S/4HANA"],
+  "SAP Consultant":          ["SAP S/4HANA","SAP Activate"],
+  "Project Manager":         ["PMP","SAP Activate","Agile/Scrum"],
+};
+
+const CERT_CATALOG = [
+  { id:"c1",  name:"SAP S/4HANA Finance",     provider:"SAP",      cost:1500, durationWeeks:4,  link:"https://training.sap.com", category:"SAP Core" },
+  { id:"c2",  name:"SAP BRIM (CC&B)",          provider:"SAP",      cost:2000, durationWeeks:6,  link:"https://training.sap.com", category:"SAP Billing" },
+  { id:"c3",  name:"SAP BTP",                  provider:"SAP",      cost:1200, durationWeeks:3,  link:"https://training.sap.com", category:"SAP Cloud" },
+  { id:"c4",  name:"SAP Integration Suite",    provider:"SAP",      cost:1400, durationWeeks:4,  link:"https://training.sap.com", category:"SAP Integration" },
+  { id:"c5",  name:"SAP ABAP",                 provider:"SAP",      cost:1800, durationWeeks:8,  link:"https://training.sap.com", category:"SAP Technical" },
+  { id:"c6",  name:"SAP IS-U/CCS",             provider:"SAP",      cost:1600, durationWeeks:5,  link:"https://training.sap.com", category:"SAP IS-U" },
+  { id:"c7",  name:"SAP Activate",             provider:"SAP",      cost:800,  durationWeeks:2,  link:"https://training.sap.com", category:"Methodology" },
+  { id:"c8",  name:"PMP",                      provider:"PMI",      cost:600,  durationWeeks:12, link:"https://www.pmi.org",      category:"Project Management" },
+  { id:"c9",  name:"AWS Cloud Practitioner",   provider:"AWS",      cost:300,  durationWeeks:2,  link:"https://aws.amazon.com",   category:"Cloud" },
+  { id:"c10", name:"Azure Fundamentals (AZ-900)",provider:"Microsoft",cost:165,durationWeeks:2,  link:"https://learn.microsoft.com", category:"Cloud" },
+  { id:"c11", name:"Agile/Scrum",              provider:"Scrum.org",cost:400,  durationWeeks:1,  link:"https://www.scrum.org",    category:"Methodology" },
+  { id:"c12", name:"SAP Solution Manager",     provider:"SAP",      cost:1200, durationWeeks:4,  link:"https://training.sap.com", category:"SAP Core" },
+];
+
+function CertificationTracker({ roster, addAudit }) {
+  const [certData,    setCertData]   = useState(() => { try { return JSON.parse(localStorage.getItem("zt-certifications")||"{}"); } catch { return {}; } });
+  const [budgetData,  setBudgetData] = useState(() => { try { return JSON.parse(localStorage.getItem("zt-cert-budgets")||"{}"); } catch { return {}; } });
+  const [reimbReqs,   setReimbReqs]  = useState(() => { try { return JSON.parse(localStorage.getItem("zt-cert-reimb")||"[]"); } catch { return []; } });
+  const [sub,         setSub]        = useState("overview");
+  const [selConsultant, setSelCon]   = useState(null);
+  const [modal,       setModal]      = useState(null);
+  const [form,        setForm]       = useState({});
+  const [reimbModal,  setReimbModal] = useState(false);
+  const [reimbForm,   setReimbForm]  = useState({});
+
+  const safeRoster = roster || [];
+  const TODAY = new Date();
+  const daysUntil = d => d ? Math.ceil((new Date(d) - TODAY) / 86400000) : null;
+  const fmtDate   = d => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
+
+  const save = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+
+  // Get consultant certifications
+  const getConsultantCerts = (consultantId) => certData[consultantId] || [];
+
+  // Get required certs for a consultant's role
+  const getRequiredCerts = (consultant) => {
+    const roleKey = Object.keys(CERT_REQUIREMENTS).find(r => consultant.role?.toLowerCase().includes(r.toLowerCase().split(" ")[0]));
+    return CERT_REQUIREMENTS[roleKey] || ["SAP S/4HANA","SAP Activate"];
+  };
+
+  // Compliance score: certs held vs required
+  const getComplianceScore = (consultant) => {
+    const required = getRequiredCerts(consultant);
+    const held     = getConsultantCerts(consultant.id).filter(c => c.status === "active" || c.status === "completed");
+    const matched  = required.filter(r => held.some(h => h.certName?.toLowerCase().includes(r.toLowerCase().split(" ")[0])));
+    return required.length > 0 ? Math.round((matched.length / required.length) * 100) : 100;
+  };
+
+  // All expiring certs in next 90 days
+  const expiring = Object.entries(certData).flatMap(([cid, certs]) => {
+    const consultant = safeRoster.find(r => r.id === cid);
+    return (certs || []).filter(c => {
+      const days = daysUntil(c.expiryDate);
+      return days !== null && days >= 0 && days <= 90;
+    }).map(c => ({ ...c, consultantName: consultant?.name || cid, consultantId: cid }));
+  }).sort((a,b) => (daysUntil(a.expiryDate)||999) - (daysUntil(b.expiryDate)||999));
+
+  const addCert = () => {
+    if (!form.certName || !selConsultant) return;
+    const existing = getConsultantCerts(selConsultant.id);
+    const newCert  = { id: `cert-${Date.now()}`, ...form, addedAt: new Date().toISOString() };
+    const updated  = { ...certData, [selConsultant.id]: [...existing, newCert] };
+    setCertData(updated); save("zt-certifications", updated);
+    addAudit?.("Training","Certification Added", selConsultant.name, form.certName);
+    setModal(null); setForm({});
+  };
+
+  const deleteCert = (consultantId, certId) => {
+    const updated = { ...certData, [consultantId]: (certData[consultantId]||[]).filter(c=>c.id!==certId) };
+    setCertData(updated); save("zt-certifications", updated);
+  };
+
+  const submitReimb = () => {
+    if (!reimbForm.consultantId || !reimbForm.certName || !reimbForm.amount) return alert("Fill all required fields");
+    const rec = { id:`reimb-${Date.now()}`, ...reimbForm, status:"pending", submittedAt:new Date().toISOString() };
+    const updated = [rec, ...reimbReqs];
+    setReimbReqs(updated); save("zt-cert-reimb", updated);
+    addAudit?.("Training","Reimbursement Request", reimbForm.consultantName||"—", `$${reimbForm.amount}`);
+    setReimbModal(false); setReimbForm({});
+  };
+
+  const approveReimb = (id) => {
+    const updated = reimbReqs.map(r => r.id===id ? {...r, status:"approved", approvedAt:new Date().toISOString()} : r);
+    setReimbReqs(updated); save("zt-cert-reimb", updated);
+  };
+
+  const STATUS_COLOR = { active:"#34d399", completed:"#34d399", expired:"#f87171", "in-progress":"#f59e0b", planned:"#38bdf8" };
+  const REIMB_COLOR  = { pending:"#f59e0b", approved:"#34d399", rejected:"#f87171" };
+
+  const tabBtn = (id, label, badge) => (
+    <button onClick={()=>setSub(id)} style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,position:"relative",
+      background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:sub===id?"#fff":"#475569"}}>
+      {label}{badge?<span style={{position:"absolute",top:2,right:4,fontSize:8,background:"#f87171",color:"#fff",borderRadius:8,padding:"0 4px"}}>{badge}</span>:null}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="Training & Certification Tracker" sub="Required certs per role · Budget tracking · Expiry alerts · Reimbursement workflow"/>
+
+      {/* Expiry alerts */}
+      {expiring.length > 0 && (
+        <div style={{padding:"10px 16px",background:"#1a0808",border:"1px solid #7f1d1d",borderRadius:10,marginBottom:14,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>⚠️ Expiring Soon</span>
+          {expiring.slice(0,4).map(c=>(
+            <span key={c.id} style={{fontSize:11,color:"#f87171",background:"#7f1d1d22",padding:"2px 10px",borderRadius:8,border:"1px solid #7f1d1d"}}>
+              {c.consultantName}: {c.certName} — {daysUntil(c.expiryDate)}d
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Team Avg Compliance", v: safeRoster.length > 0 ? Math.round(safeRoster.reduce((s,r)=>s+getComplianceScore(r),0)/safeRoster.length)+"%" : "—", c:"#38bdf8" },
+          { l:"Certs Expiring ≤90d", v: expiring.length, c: expiring.length>0?"#f87171":"#34d399" },
+          { l:"Active Certifications", v: Object.values(certData).flat().filter(c=>c.status==="active"||c.status==="completed").length, c:"#34d399" },
+          { l:"Pending Reimbursement", v: reimbReqs.filter(r=>r.status==="pending").length, c:"#f59e0b" },
+          { l:"Total Budget Allocated", v: `$${Object.values(budgetData).reduce((s,b)=>s+(b||0),0).toLocaleString()}`, c:"#a78bfa" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:20,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+          {tabBtn("overview","📊 Overview")}
+          {tabBtn("roster",  "👥 Consultant View")}
+          {tabBtn("catalog", "📚 Cert Catalog")}
+          {tabBtn("reimb",   "💰 Reimbursements", reimbReqs.filter(r=>r.status==="pending").length||null)}
+        </div>
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>setReimbModal(true)}>+ Reimbursement Request</button>
+      </div>
+
+      {/* ── OVERVIEW ── */}
+      {sub==="overview" && (
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {safeRoster.map(r => {
+            const score    = getComplianceScore(r);
+            const required = getRequiredCerts(r);
+            const held     = getConsultantCerts(r.id).filter(c=>c.status==="active"||c.status==="completed");
+            const missing  = required.filter(req => !held.some(h => h.certName?.toLowerCase().includes(req.toLowerCase().split(" ")[0])));
+            const expCerts = getConsultantCerts(r.id).filter(c=>{const d=daysUntil(c.expiryDate);return d!==null&&d>=0&&d<=90;});
+            const budget   = budgetData[r.id] || 0;
+            return (
+              <div key={r.id} className="card" style={{padding:"14px 18px",cursor:"pointer",border:`1px solid ${score>=80?"#1a2d45":score>=50?"#78350f":"#7f1d1d"}`}}
+                onClick={()=>{setSelCon(r);setSub("roster");}}>
+                <div style={{display:"grid",gridTemplateColumns:"200px 80px 1fr 160px 120px",gap:12,alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div>
+                    <div style={{fontSize:10,color:"#475569"}}>{r.role?.slice(0,28)}</div>
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:20,fontWeight:900,color:score>=80?"#34d399":score>=50?"#f59e0b":"#f87171"}}>{score}%</div>
+                    <div style={{fontSize:8,color:"#334155"}}>compliant</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:4}}>HELD ({held.length}/{required.length})</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+                      {held.slice(0,3).map(h=>(
+                        <span key={h.id} style={{fontSize:8,padding:"1px 6px",borderRadius:6,background:"#021f14",color:"#34d399",border:"1px solid #15803d"}}>{h.certName?.slice(0,18)}</span>
+                      ))}
+                      {held.length>3&&<span style={{fontSize:8,color:"#334155"}}>+{held.length-3}</span>}
+                    </div>
+                    {missing.length>0&&(
+                      <div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:3}}>
+                        {missing.slice(0,2).map((m,i)=>(
+                          <span key={i} style={{fontSize:8,padding:"1px 6px",borderRadius:6,background:"#1a0808",color:"#f87171",border:"1px solid #7f1d1d"}}>⚠ {m.slice(0,16)}</span>
+                        ))}
+                        {missing.length>2&&<span style={{fontSize:8,color:"#f87171"}}>+{missing.length-2} missing</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    {expCerts.length>0&&(
+                      <div style={{fontSize:10,color:"#f87171"}}>⚠ {expCerts.length} expiring soon</div>
+                    )}
+                    <div style={{fontSize:10,color:"#475569"}}>Budget: <span style={{color:"#a78bfa",fontFamily:"monospace"}}>${budget.toLocaleString()}</span></div>
+                  </div>
+                  <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+                    <button className="btn bg" style={{fontSize:10}} onClick={e=>{e.stopPropagation();setSelCon(r);setModal("add");setForm({consultantId:r.id});}}>+ Add Cert</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── CONSULTANT VIEW ── */}
+      {sub==="roster" && (
+        <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:14,alignItems:"start"}}>
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>Select Consultant</div>
+            {safeRoster.map(r=>{
+              const score = getComplianceScore(r);
+              return (
+                <div key={r.id} onClick={()=>setSelCon(r)}
+                  style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",marginBottom:4,
+                    background:selConsultant?.id===r.id?"#0c2340":"#060d1c",border:`1px solid ${selConsultant?.id===r.id?"#0369a1":"#1a2d45"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{r.name}</div>
+                    <span style={{fontSize:10,fontWeight:700,color:score>=80?"#34d399":score>=50?"#f59e0b":"#f87171"}}>{score}%</span>
+                  </div>
+                  <div style={{fontSize:9,color:"#475569"}}>{r.role?.slice(0,22)}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {!selConsultant ? (
+            <div style={{padding:"40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:14,color:"#334155"}}>Select a consultant to view their certifications</div>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {/* Header */}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{selConsultant.name}</div>
+                    <div style={{fontSize:11,color:"#475569"}}>{selConsultant.role}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <div style={{textAlign:"center",padding:"8px 16px",background:"#040810",borderRadius:8}}>
+                      <div style={{fontSize:22,fontWeight:900,color:getComplianceScore(selConsultant)>=80?"#34d399":getComplianceScore(selConsultant)>=50?"#f59e0b":"#f87171"}}>{getComplianceScore(selConsultant)}%</div>
+                      <div style={{fontSize:9,color:"#334155"}}>compliant</div>
+                    </div>
+                    <div>
+                      <div className="lbl">Training Budget</div>
+                      <input type="number" className="inp" style={{width:120}} value={budgetData[selConsultant.id]||0}
+                        onChange={e=>{const upd={...budgetData,[selConsultant.id]:+e.target.value};setBudgetData(upd);save("zt-cert-budgets",upd);}}/>
+                    </div>
+                    <button className="btn bp" style={{fontSize:11}} onClick={()=>{setModal("add");setForm({consultantId:selConsultant.id});}}>+ Add Cert</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Required vs held */}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Required Certifications</div>
+                {getRequiredCerts(selConsultant).map((req, i) => {
+                  const held = getConsultantCerts(selConsultant.id).find(h=>h.certName?.toLowerCase().includes(req.toLowerCase().split(" ")[0]));
+                  return (
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+                      <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                        <span style={{fontSize:14,color:held?"#34d399":"#f87171"}}>{held?"✅":"❌"}</span>
+                        <div>
+                          <div style={{fontSize:12,color:"#e2e8f0"}}>{req}</div>
+                          {held && <div style={{fontSize:9,color:"#475569"}}>Expires: {fmtDate(held.expiryDate)}</div>}
+                        </div>
+                      </div>
+                      {!held && (
+                        <span style={{fontSize:10,color:"#f87171",background:"#1a0808",padding:"2px 8px",borderRadius:6,border:"1px solid #7f1d1d"}}>Missing</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* All certs held */}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>All Certifications ({getConsultantCerts(selConsultant.id).length})</div>
+                </div>
+                {getConsultantCerts(selConsultant.id).length === 0 ? (
+                  <div style={{padding:"20px",textAlign:"center",color:"#334155",fontSize:11}}>No certifications recorded yet</div>
+                ) : getConsultantCerts(selConsultant.id).map(cert => {
+                  const days = daysUntil(cert.expiryDate);
+                  const isExpiring = days !== null && days >= 0 && days <= 90;
+                  return (
+                    <div key={cert.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{cert.certName}</div>
+                        <div style={{fontSize:10,color:"#475569"}}>{cert.provider} · #{cert.certNumber||"—"}</div>
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        {isExpiring&&<span style={{fontSize:9,color:"#f87171"}}>⚠ {days}d left</span>}
+                        <span style={{fontSize:10,padding:"1px 8px",borderRadius:6,background:(STATUS_COLOR[cert.status]||"#94a3b8")+"22",color:STATUS_COLOR[cert.status]||"#94a3b8",border:`1px solid ${(STATUS_COLOR[cert.status]||"#94a3b8")}44`}}>{cert.status}</span>
+                        <span style={{fontSize:10,color:"#475569",fontFamily:"monospace"}}>{fmtDate(cert.expiryDate)}</span>
+                        <button className="btn bg" style={{fontSize:9,color:"#f87171",padding:"2px 6px"}} onClick={()=>deleteCert(selConsultant.id,cert.id)}>✕</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CATALOG ── */}
+      {sub==="catalog" && (
+        <div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+            {CERT_CATALOG.map(cert=>(
+              <div key={cert.id} className="card" style={{padding:"14px 16px",width:"calc(33% - 10px)",minWidth:220}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",flex:1,marginRight:8}}>{cert.name}</div>
+                  <span style={{fontSize:8,padding:"2px 6px",borderRadius:6,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45",flexShrink:0}}>{cert.category}</span>
+                </div>
+                <div style={{fontSize:10,color:"#475569",marginBottom:8}}>{cert.provider} · {cert.durationWeeks} weeks</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:13,fontWeight:700,color:"#a78bfa",fontFamily:"monospace"}}>${cert.cost.toLocaleString()}</span>
+                  <a href={cert.link} target="_blank" rel="noopener noreferrer"
+                    style={{fontSize:10,color:"#38bdf8",textDecoration:"none"}}>SAP Learning Hub →</a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── REIMBURSEMENTS ── */}
+      {sub==="reimb" && (
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>💰 Reimbursement Requests</div>
+          {reimbReqs.length===0 ? (
+            <div style={{padding:"30px",textAlign:"center",color:"#334155",fontSize:12}}>No reimbursement requests yet</div>
+          ) : reimbReqs.map(r=>(
+            <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",borderRadius:8,marginBottom:6,background:"#060d1c",border:"1px solid #1a2d45"}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{r.certName}</div>
+                <div style={{fontSize:10,color:"#475569"}}>{r.consultantName} · {r.submittedAt?.slice(0,10)}</div>
+              </div>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <span style={{fontSize:14,fontWeight:700,color:"#a78bfa",fontFamily:"monospace"}}>${(+r.amount||0).toLocaleString()}</span>
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:(REIMB_COLOR[r.status]||"#94a3b8")+"22",color:REIMB_COLOR[r.status]||"#94a3b8",border:`1px solid ${(REIMB_COLOR[r.status]||"#94a3b8")}44`}}>{r.status}</span>
+                {r.status==="pending"&&<button className="btn bg" style={{fontSize:10,color:"#34d399"}} onClick={()=>approveReimb(r.id)}>✓ Approve</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add Cert Modal */}
+      {modal==="add" && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title="Add Certification" onClose={()=>{setModal(null);setForm({});}}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[["Certification Name *","certName","text"],["Provider","provider","text"],["Cert Number","certNumber","text"],["Issue Date","issueDate","date"],["Expiry Date","expiryDate","date"],["Cost ($)","cost","number"]].map(([label,key,type])=>(
+                <div key={key}>
+                  <div className="lbl">{label}</div>
+                  <input type={type} className="inp" value={form[key]||""} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))}/>
+                </div>
+              ))}
+              <div style={{gridColumn:"span 2"}}>
+                <div className="lbl">Status</div>
+                <select className="inp" value={form.status||"active"} onChange={e=>setForm(p=>({...p,status:e.target.value}))}>
+                  {["active","completed","in-progress","planned","expired"].map(s=><option key={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>{setModal(null);setForm({});}}>Cancel</button>
+              <button className="btn bp" onClick={addCert}>💾 Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reimbursement Modal */}
+      {reimbModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setReimbModal(false)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <MH title="Reimbursement Request" onClose={()=>setReimbModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{gridColumn:"span 2"}}>
+                <div className="lbl">Consultant</div>
+                <select className="inp" value={reimbForm.consultantId||""} onChange={e=>{const r=safeRoster.find(r=>r.id===e.target.value);setReimbForm(p=>({...p,consultantId:e.target.value,consultantName:r?.name||""}));}}>
+                  <option value="">— select —</option>
+                  {safeRoster.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              {[["Certification Name *","certName","text"],["Provider","provider","text"],["Amount ($) *","amount","number"],["Completion Date","completedAt","date"],["Receipt/Invoice #","receiptNo","text"]].map(([label,key,type])=>(
+                <div key={key}>
+                  <div className="lbl">{label}</div>
+                  <input type={type} className="inp" value={reimbForm[key]||""} onChange={e=>setReimbForm(p=>({...p,[key]:e.target.value}))}/>
+                </div>
+              ))}
+              <div style={{gridColumn:"span 2"}}>
+                <div className="lbl">Notes</div>
+                <textarea className="inp" rows={2} value={reimbForm.notes||""} onChange={e=>setReimbForm(p=>({...p,notes:e.target.value}))}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setReimbModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={submitReimb}>📤 Submit Request</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function NotificationsHub({
   roster, clients, finInvoices, contracts, workAuth, compDocs,
   crmDeals, ptoRequests, tsSubmissions, projects, finPayments,
