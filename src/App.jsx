@@ -2585,7 +2585,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="esign"         && <ESignature {...shared}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
         {tab==="timesheet"  && <TimesheetApproval {...shared} authProfile={authProfile} addAudit={shared.addAudit}/>}
-        {tab==="clients"    && <ClientPortfolio {...shared}/>
+        {tab==="clients"    && <ClientPortfolio {...shared}/>}
         {tab==="healthscore" && <ClientHealthScorecard clients={shared.clients} setClients={shared.setClients} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} roster={shared.roster} contracts={shared.contracts} addAudit={shared.addAudit}/>}}
         {tab==="pipeline"   && <Pipeline   {...shared}/>}
         {tab==="ebitda"     && <EbitdaOpt  ebitdaLevers={shared.ebitdaLevers} setEbitdaLevers={shared.setEbitdaLevers} finInvoices={shared.finInvoices} finPayments={shared.finPayments} finExpenses={shared.finExpenses} roster={shared.roster} apInvoices={shared.apInvoices} adpRuns={shared.adpRuns}/>}
