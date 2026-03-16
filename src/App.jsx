@@ -20317,8 +20317,25 @@ Return JSON with this exact structure:
         })
       });
       const data = await resp.json();
-      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(text);
+      let text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      // Attempt to fix truncated JSON by closing any open structures
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch(e) {
+        // Try to repair truncated JSON — find last complete email object and close arrays
+        const lastComplete = text.lastIndexOf('}');
+        if (lastComplete > 100) {
+          let repaired = text.slice(0, lastComplete + 1);
+          // Count open brackets to know what to close
+          const opens = (repaired.match(/\[/g)||[]).length - (repaired.match(/\]/g)||[]).length;
+          const openBraces = (repaired.match(/\{/g)||[]).length - (repaired.match(/\}/g)||[]).length;
+          for (let i=0; i<opens; i++) repaired += ']';
+          for (let i=0; i<openBraces; i++) repaired += '}';
+          try { parsed = JSON.parse(repaired); }
+          catch(e2) { throw new Error("JSON truncated — try fewer emails or shorter tone"); }
+        } else { throw e; }
+      }
       setResult(parsed);
       setSub("preview");
     } catch(e) { alert("AI analysis failed: " + e.message); }
@@ -31739,8 +31756,8 @@ function LeadNurtureBuilder({ clients, crmDeals, proposals, savedContent, addAud
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:"You are a B2B email marketing specialist for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. You write high-performing nurture sequences for enterprise SAP buyers. Each email must feel personal, be under 200 words, and drive toward a discovery call. Return JSON only.",
+          model:"claude-sonnet-4-20250514", max_tokens:8000,
+          system:"You are a B2B email marketing specialist for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. You write high-performing nurture sequences for enterprise SAP buyers. Each email must feel personal, be under 150 words, and drive toward a discovery call. Return compact JSON only — no whitespace, no newlines in strings.",
           messages:[{ role:"user", content:`Create a ${form.touchCount}-email B2B nurture sequence for Ziksatech LLC.
 
 Sequence: ${form.name}
