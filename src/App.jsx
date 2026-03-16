@@ -2605,7 +2605,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="org"          && <OrgAccessModule {...shared}/>}
         {tab==="contracts"   && <ContractsModule {...shared}/> }
         {tab==="renewals"    && <ContractRenewalTracker contracts={shared.contracts} setContracts={shared.setContracts} clients={shared.clients} crmDeals={shared.crmDeals} roster={shared.roster} addAudit={shared.addAudit} setTab={setTab}/>}
-        {{tab==="renewaltrk"  && <ContractRenewal contracts={shared.contracts} setContracts={shared.setContracts} sows={shared.sows} clients={shared.clients} roster={shared.roster} addAudit={shared.addAudit} setTab={setTab}/>}
+        {tab==="renewaltrk"  && <ContractRenewal contracts={shared.contracts} setContracts={shared.setContracts} sows={shared.sows} clients={shared.clients} roster={shared.roster} addAudit={shared.addAudit} setTab={setTab}/>}
         {tab==="projects"    && <ProjectTracker {...shared}/>}
         {tab==="profitability"&& <ProjectProfitability {...shared}/>}
         {tab==="changeorders" && <ChangeOrderModule {...shared}/>}
