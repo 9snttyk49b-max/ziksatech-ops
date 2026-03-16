@@ -1776,7 +1776,7 @@ export default function ZiksatechOps() {
   const [submissions, setSubmissions] = useState(SUBMISSIONS_SEED);
   const [interviews, setInterviews]   = useState(INTERVIEWS_SEED);
   const [offers, setOffers]           = useState(OFFERS_SEED);
-  const [jobReqs,      setJobReqs]      = useState(() => loadState("jobReqs",     []));
+  const [jobReqs,      setJobReqs]      = useState([]);
   // Compliance
   const [workAuth, setWorkAuth]       = useState(WORK_AUTH_SEED);
   const [compDocs, setCompDocs]       = useState(DOCUMENTS_SEED);
