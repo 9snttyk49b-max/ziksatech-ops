@@ -31752,51 +31752,75 @@ function LeadNurtureBuilder({ clients, crmDeals, proposals, savedContent, addAud
     setLoading(true); setResult(null);
     const persona = PERSONAS.find(p=>p.id===form.personaType);
     const wonDeals = (crmDeals||[]).filter(d=>d.stage==="closed_won");
+    const touchCount = parseInt(form.touchCount)||5;
     try {
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:8000,
-          system:"You are a B2B email marketing specialist for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. You write high-performing nurture sequences for enterprise SAP buyers. Each email must feel personal, be under 150 words, and drive toward a discovery call. Return compact JSON only — no whitespace, no newlines in strings.",
-          messages:[{ role:"user", content:`Create a ${form.touchCount}-email B2B nurture sequence for Ziksatech LLC.
+          system:"You are a B2B email marketing specialist for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm in Plano TX. Write high-performing nurture sequences for enterprise SAP buyers. Use the EXACT format specified — no deviations.",
+          messages:[{ role:"user", content:`Write a ${touchCount}-email nurture sequence for Ziksatech LLC.
 
-Sequence: ${form.name}
-Persona: ${persona?.label}
-Pain Point: ${form.pain || persona?.pain}
+Target: ${persona?.label} — ${form.pain || persona?.pain}
 Industry: ${form.industry || "enterprise"}
 Tone: ${form.tone}
-Sequence Goal: ${form.sequenceType ? SEQUENCE_TEMPLATES.find(t=>t.id===form.sequenceType)?.desc : "Convert lead to discovery call"}
+Goal: ${form.sequenceType ? SEQUENCE_TEMPLATES.find(t=>t.id===form.sequenceType)?.desc : "Convert lead to discovery call"}
+Context: WBE/HUB/WOSB certified SAP firm, ${wonDeals.length} client wins, BRIM/S4/IS-U expertise
 
-Context:
-- Ziksatech specializes in SAP BRIM, S/4HANA, IS-U implementations
-- WBE/HUB/WOSB certified — procurement diversity advantage
-- Plano TX, proven delivery team
-- Won ${wonDeals.length} engagements
+IMPORTANT: Use EXACTLY this format for each email, separated by "---EMAIL---":
 
-Return JSON: {
-  "sequenceName": "${form.name}",
-  "persona": "${persona?.label}",
-  "goal": "one sentence",
-  "bestSendDays": "e.g. Tuesday-Thursday",
-  "emails": [
-    {
-      "touch": 1,
-      "dayOffset": 0,
-      "subjectLine": "...",
-      "previewText": "...",
-      "body": "full email body (150-220 words, conversational, no generic AI phrases)",
-      "ctaText": "Call-to-action button text",
-      "sendTiming": "Day 1 — first impression",
-      "psychologyNote": "why this works at this stage"
-    }
-  ],
-  "tips": ["sequence-level tip 1", "tip 2"]
-}` }]
+---EMAIL---
+TOUCH: [number]
+DAY: [day offset from start, e.g. 0]
+SUBJECT: [subject line under 60 chars]
+PREVIEW: [preview text under 80 chars]
+TIMING: [e.g. "Day 1 - First impression"]
+BODY:
+[Email body, 80-120 words, conversational, personal, no generic phrases. Sign as Manju Murthy, Ziksatech.]
+CTA: [button text, e.g. "Schedule 20 min call"]
+WHY: [One sentence on the psychology behind this email]
+---EMAIL---
+
+Write all ${touchCount} emails now. Keep each body to 80-120 words max.` }]
         })
       });
       const data = await resp.json();
-      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(text);
+      const raw = (data?.content||[]).map(b=>b.text||"").join("").trim();
+
+      // Parse delimited format — resilient to partial responses
+      const blocks = raw.split(/---EMAIL---/).map(b=>b.trim()).filter(b=>b.length>50);
+      if (blocks.length === 0) throw new Error("No email blocks found in response");
+
+      const emails = blocks.map((block, i) => {
+        const get = (key) => {
+          const m = block.match(new RegExp(key + ":\s*(.+?)(?=\n[A-Z]+:|$)", "s"));
+          return m ? m[1].trim() : "";
+        };
+        const bodyMatch = block.match(/BODY:
+([\s\S]*?)(?=
+CTA:|$)/);
+        const body = bodyMatch ? bodyMatch[1].trim() : "";
+        return {
+          touch:       parseInt(get("TOUCH")) || i+1,
+          dayOffset:   parseInt(get("DAY"))   || i*7,
+          subjectLine: get("SUBJECT"),
+          previewText: get("PREVIEW"),
+          sendTiming:  get("TIMING"),
+          body,
+          ctaText:     get("CTA"),
+          psychologyNote: get("WHY"),
+        };
+      });
+
+      const parsed = {
+        sequenceName: form.name,
+        persona:      persona?.label || "",
+        goal:         SEQUENCE_TEMPLATES.find(t=>t.id===form.sequenceType)?.desc || "Convert lead to discovery call",
+        bestSendDays: "Tuesday–Thursday",
+        emails,
+        tips: [`Personalize each email with their company name before sending`, `Test subject lines — aim for 25-35% open rate`],
+      };
+
       setResult(parsed);
       setSelEmail(0);
       setView("preview");
