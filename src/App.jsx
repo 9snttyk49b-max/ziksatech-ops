@@ -35,6 +35,7 @@ const RBAC = {
   home:         ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   clients:      ["super_admin","admin","accounts"],
   healthscore:  ["super_admin","admin","accounts"],
+  revforecast:  ["super_admin","admin","accounts"],
   crm:          ["super_admin","admin"],
   proposals:    ["super_admin","admin"],
   rfpgen:       ["super_admin","admin"],
@@ -2060,6 +2061,7 @@ export default function ZiksatechOps() {
     { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Overview"    },
     { id:"clients",      label:"Client Portfolio",     icon:ICONS.clients,  group:"Clients"     },
     { id:"healthscore",  label:"Client Health ♥",       icon:ICONS.ebitda,   group:"Clients"     },
+    { id:"revforecast",  label:"Revenue Forecast",         icon:ICONS.ebitda,   group:"Clients"     },
     { id:"crm",          label:"Sales CRM",            icon:ICONS.clients,  group:"Clients"     },
     { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Clients"     },
     { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
@@ -2586,6 +2588,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="roster"     && <Roster     {...shared}/>}
         {tab==="timesheet"  && <TimesheetApproval {...shared} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="clients"    && <ClientPortfolio {...shared}/>}
+        {tab==="revforecast"  && <RevenueForecast clients={shared.clients} roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} addAudit={shared.addAudit} setTab={setTab}/>}
         {tab==="healthscore" && <ClientHealthScorecard clients={shared.clients} setClients={shared.setClients} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} roster={shared.roster} contracts={shared.contracts} addAudit={shared.addAudit}/>}}
         {tab==="pipeline"   && <Pipeline   {...shared}/>}
         {tab==="ebitda"     && <EbitdaOpt  ebitdaLevers={shared.ebitdaLevers} setEbitdaLevers={shared.setEbitdaLevers} finInvoices={shared.finInvoices} finPayments={shared.finPayments} finExpenses={shared.finExpenses} roster={shared.roster} apInvoices={shared.apInvoices} adpRuns={shared.adpRuns}/>}
@@ -3523,6 +3526,477 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 }
 
 // ─── CLIENT PORTFOLIO ─────────────────────────────────────────────────────────
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REVENUE FORECASTING & COMMISSION TRACKER
+// ═══════════════════════════════════════════════════════════════════════════
+function RevenueForecast({ clients, roster, finInvoices, finPayments, crmDeals, addAudit, setTab }) {
+  const [sub, setSub] = useState("forecast"); // forecast | commission | milestone
+  const [commEdit, setCommEdit] = useState({}); // overrides for commission rates
+  const [bonusMonth, setBonusMonth] = useState(new Date().getMonth());
+
+  const safeInv    = finInvoices  || [];
+  const safePay    = finPayments  || [];
+  const safeDeals  = crmDeals     || [];
+  const safeRoster = roster       || [];
+  const safeClients = clients     || [];
+
+  const TODAY     = new Date();
+  const CUR_YEAR  = TODAY.getFullYear();
+  const CUR_MONTH = TODAY.getMonth(); // 0-based
+  const MONTHS    = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const GOAL_25M  = 25_000_000;
+
+  const fmt  = v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${Math.round(v).toLocaleString()}`;
+  const fmtS = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${(v/1e3).toFixed(0)}k`;
+  const pct  = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
+
+  // ── Actuals: monthly revenue from finInvoices ─────────────────────────────
+  const monthlyActuals = MONTHS.map((m, i) => {
+    const key = `${CUR_YEAR}-${String(i+1).padStart(2,'0')}`;
+    const invs = safeInv.filter(inv => (inv.issueDate||"").startsWith(key));
+    const rev  = invs.reduce((s, inv) => s + (inv.amount || inv.lines?.reduce((ss,l)=>ss+l.amount,0) || 0), 0);
+    const collected = safePay.filter(p => (p.date||"").startsWith(key)).reduce((s,p)=>s+p.amount,0);
+    return { month: m, idx: i, key, rev, collected, invoiceCount: invs.length };
+  });
+
+  const ytdRevenue  = monthlyActuals.slice(0, CUR_MONTH + 1).reduce((s,m)=>s+m.rev, 0);
+  const ytdCollected= monthlyActuals.slice(0, CUR_MONTH + 1).reduce((s,m)=>s+m.collected, 0);
+  const runRate     = CUR_MONTH > 0 ? (ytdRevenue / (CUR_MONTH + 1)) * 12 : ytdRevenue;
+
+  // ── Pipeline-weighted forecast (next 6 months) ────────────────────────────
+  const pipelineForecast = Array.from({length: 6}, (_, i) => {
+    const mIdx  = (CUR_MONTH + 1 + i) % 12;
+    const yr    = CUR_YEAR + (CUR_MONTH + 1 + i >= 12 ? 1 : 0);
+    const key   = `${yr}-${String(mIdx+1).padStart(2,'0')}`;
+    // Base: existing client ARR / 12
+    const baseRev = safeClients.reduce((s, cl) => s + (cl.annualRev || 0), 0) / 12;
+    // Pipeline upside: deals closing this month weighted by probability
+    const pipeRev = safeDeals
+      .filter(d => (d.closeDate||"").startsWith(key) && d.stage !== "closed_lost")
+      .reduce((s, d) => s + (d.value || 0) * ((d.probability || 50) / 100) / 12, 0);
+    return { month: MONTHS[mIdx], idx: mIdx, key, baseRev, pipeRev, total: baseRev + pipeRev };
+  });
+
+  const forecastAnnual = (pipelineForecast.reduce((s,m)=>s+m.total,0) / 6) * 12;
+
+  // ── Consultant revenue contribution ───────────────────────────────────────
+  const consultantRevenue = safeRoster.map(r => {
+    // Revenue: billRate × utilization × working hours per year
+    const annualBillable = (r.billRate || 0) * (r.util || 0) * 2000;
+    // Cost: salary + insurance + overhead (20%)
+    const annualCost     = (r.baseSalary || 0) + (r.insurance || 0) + (r.baseSalary || 0) * 0.20;
+    // Actual invoiced YTD (from finInvoices lines)
+    const ytdInvoiced = safeInv.reduce((s, inv) => {
+      const lines = (inv.lines || []).filter(l => l.desc?.toLowerCase().includes(r.name.split(" ")[0].toLowerCase()));
+      return s + lines.reduce((ss, l) => ss + l.amount, 0);
+    }, 0);
+    const grossMargin = annualBillable > 0 ? ((annualBillable - annualCost) / annualBillable) : 0;
+    // Commission rate: 0% for FTE salaried, set by admin for contractors
+    const commRate = commEdit[r.id] !== undefined ? commEdit[r.id] : (r.type === "contractor" ? 0.02 : 0);
+    const ytdComm  = ytdInvoiced * commRate;
+    return { ...r, annualBillable, annualCost, ytdInvoiced, grossMargin, commRate, ytdComm };
+  });
+
+  const totalAnnualBillable = consultantRevenue.reduce((s,r)=>s+r.annualBillable,0);
+  const totalAnnualCost     = consultantRevenue.reduce((s,r)=>s+r.annualCost,0);
+  const totalGrossMargin    = totalAnnualBillable > 0 ? (totalAnnualBillable - totalAnnualCost) / totalAnnualBillable : 0;
+
+  // ── $25M Milestone tracker ─────────────────────────────────────────────────
+  const milestones = [
+    { year: 2026, target: 3_000_000,  label: "Foundation",   desc: "Stabilize $3M ARR, 10 consultants" },
+    { year: 2027, target: 5_000_000,  label: "Growth I",     desc: "5 clients, $5M ARR, 18 consultants" },
+    { year: 2028, target: 9_000_000,  label: "Growth II",    desc: "Govt contracts, $9M ARR, 28 consultants" },
+    { year: 2029, target: 15_000_000, label: "Scale",        desc: "SAP CoE, $15M ARR, staffing division" },
+    { year: 2030, target: 25_000_000, label: "$25M Goal",    desc: "Full ops platform, $25M ARR" },
+  ];
+  // Estimate current ARR from clients
+  const currentARR = safeClients.reduce((s,c)=>s+c.annualRev,0) || runRate;
+  const currentYear = CUR_YEAR;
+
+  const tabBtn = (id, label, icon) => (
+    <button onClick={()=>setSub(id)}
+      style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569"}}>
+      {icon} {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="Revenue Forecasting & Commission Tracker" sub="Rolling forecast · Pipeline revenue · Consultant contribution · $25M roadmap"/>
+
+      {/* Tab bar */}
+      <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabBtn("forecast",  "Revenue Forecast",     "📈")}
+        {tabBtn("commission","Commission Tracker",    "💰")}
+        {tabBtn("milestone", "$25M Roadmap",         "🎯")}
+      </div>
+
+      {/* ── FORECAST TAB ───────────────────────────────────────────────────── */}
+      {sub === "forecast" && (
+        <div>
+          {/* KPI row */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+            {[
+              {l:"YTD Revenue",     v:fmt(ytdRevenue),    sub:`${CUR_MONTH+1} months`,     c:"#38bdf8"},
+              {l:"YTD Collected",   v:fmt(ytdCollected),  sub:`${pct(ytdCollected,ytdRevenue)}% collection`, c:"#34d399"},
+              {l:"Annual Run Rate", v:fmt(runRate),       sub:"annualized",                c:"#a78bfa"},
+              {l:"Forecast ARR",    v:fmt(forecastAnnual),sub:"w/ pipeline",               c:"#f59e0b"},
+              {l:"Current ARR",     v:fmt(currentARR),    sub:"active contracts",          c:"#fb7185"},
+            ].map(k=>(
+              <div key={k.l} className="card" style={{padding:"14px 16px"}}>
+                <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:4}}>{k.l}</div>
+                <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+                <div style={{fontSize:10,color:"#334155",marginTop:2}}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Two-panel chart area */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+            {/* Actuals chart */}
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📊 {CUR_YEAR} Monthly Actuals</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {monthlyActuals.slice(0, CUR_MONTH + 2).map((m, i) => {
+                  const maxRev = Math.max(...monthlyActuals.map(x=>x.rev), 1);
+                  const barW   = pct(m.rev, maxRev);
+                  const isCur  = i === CUR_MONTH;
+                  const isFut  = i > CUR_MONTH;
+                  return (
+                    <div key={m.month} style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{fontSize:10,color:isCur?"#38bdf8":"#475569",width:26,flexShrink:0,fontWeight:isCur?700:400}}>{m.month}</div>
+                      <div style={{flex:1,height:16,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",borderRadius:3,
+                          background:isFut?"#1a2d45":isCur?"linear-gradient(90deg,#0369a1,#38bdf8)":"#0369a1",
+                          width:barW+"%",transition:"width 0.4s"}}/>
+                      </div>
+                      <div style={{fontSize:10,color:m.rev>0?"#94a3b8":"#334155",width:60,textAlign:"right",fontFamily:"monospace",flexShrink:0}}>
+                        {m.rev > 0 ? fmtS(m.rev) : isFut ? "—" : "$0"}
+                      </div>
+                      {m.invoiceCount > 0 && <span style={{fontSize:8,color:"#1e3a5f"}}>{m.invoiceCount}inv</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Forecast chart */}
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🔮 6-Month Pipeline Forecast</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {pipelineForecast.map((m, i) => {
+                  const maxTotal = Math.max(...pipelineForecast.map(x=>x.total), 1);
+                  const baseW = pct(m.baseRev, maxTotal);
+                  const pipeW = pct(m.pipeRev, maxTotal);
+                  return (
+                    <div key={m.month+i} style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{fontSize:10,color:"#475569",width:26,flexShrink:0}}>{m.month}</div>
+                      <div style={{flex:1,height:16,background:"#0a1626",borderRadius:3,overflow:"hidden",display:"flex"}}>
+                        <div style={{height:"100%",background:"#0369a1",width:baseW+"%",transition:"width 0.4s"}}/>
+                        <div style={{height:"100%",background:"#f59e0b",width:pipeW+"%",transition:"width 0.4s"}}/>
+                      </div>
+                      <div style={{fontSize:10,color:"#94a3b8",width:60,textAlign:"right",fontFamily:"monospace",flexShrink:0}}>{fmtS(m.total)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{display:"flex",gap:16,marginTop:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#475569"}}>
+                  <div style={{width:10,height:10,background:"#0369a1",borderRadius:2}}/> Contracted
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#475569"}}>
+                  <div style={{width:10,height:10,background:"#f59e0b",borderRadius:2}}/> Pipeline upside
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Client revenue breakdown */}
+          <div className="card" style={{padding:"18px 20px",marginBottom:20}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🏢 Revenue by Client</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+              {safeClients.sort((a,b)=>(b.annualRev||0)-(a.annualRev||0)).map(cl => {
+                const clPct = pct(cl.annualRev||0, currentARR);
+                const hc = cl.health==="Green"?"#34d399":cl.health==="Amber"?"#f59e0b":"#f87171";
+                return (
+                  <div key={cl.id} style={{padding:"12px 14px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{cl.name}</span>
+                      <span style={{fontSize:11,fontFamily:"monospace",color:"#38bdf8"}}>{fmt(cl.annualRev||0)}</span>
+                    </div>
+                    <div style={{height:4,background:"#0a1626",borderRadius:2,marginBottom:6}}>
+                      <div style={{height:"100%",background:hc,borderRadius:2,width:clPct+"%"}}/>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#475569"}}>
+                      <span>{cl.vertical} · {cl.engType}</span>
+                      <span style={{color:hc}}>{clPct}% of ARR</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Pipeline deals affecting forecast */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🎯 Pipeline Deals in Forecast Window</div>
+            {safeDeals.filter(d=>d.stage!=="closed_lost"&&d.stage!=="closed_won").length === 0
+              ? <div style={{textAlign:"center",padding:"20px",color:"#334155",fontSize:12}}>No open pipeline deals. Add deals in Sales CRM →</div>
+              : (
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:8}}>
+                {safeDeals.filter(d=>d.stage!=="closed_lost").map(d=>{
+                  const weightedVal = (d.value||0) * ((d.probability||50)/100);
+                  const stageColor  = d.stage==="closed_won"?"#34d399":d.stage==="negotiation"?"#f59e0b":d.stage==="proposal"?"#38bdf8":"#a78bfa";
+                  return (
+                    <div key={d.id} style={{padding:"10px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                        <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0",flex:1,marginRight:8}}>{d.name}</div>
+                        <span style={{fontSize:9,padding:"2px 7px",borderRadius:8,background:stageColor+"22",color:stageColor,flexShrink:0}}>{d.stage}</span>
+                      </div>
+                      <div style={{display:"flex",gap:12,fontSize:10,color:"#475569"}}>
+                        <span>Value: <span style={{color:"#94a3b8",fontFamily:"monospace"}}>{fmtS(d.value||0)}</span></span>
+                        <span>Prob: <span style={{color:stageColor}}>{d.probability||50}%</span></span>
+                        <span>Weighted: <span style={{color:"#38bdf8",fontFamily:"monospace"}}>{fmtS(weightedVal)}</span></span>
+                      </div>
+                      <div style={{fontSize:9,color:"#334155",marginTop:3}}>Close: {d.closeDate||"TBD"}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── COMMISSION TAB ─────────────────────────────────────────────────── */}
+      {sub === "commission" && (
+        <div>
+          {/* Summary */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+            {[
+              {l:"Total Billable Cap",  v:fmt(totalAnnualBillable), c:"#38bdf8"},
+              {l:"Total Annual Cost",   v:fmt(totalAnnualCost),     c:"#f87171"},
+              {l:"Blended Gross Margin",v:Math.round(totalGrossMargin*100)+"%", c:totalGrossMargin>0.3?"#34d399":totalGrossMargin>0.15?"#f59e0b":"#f87171"},
+              {l:"Total YTD Commissions",v:fmt(consultantRevenue.reduce((s,r)=>s+r.ytdComm,0)), c:"#fbbf24"},
+            ].map(k=>(
+              <div key={k.l} className="card" style={{padding:"14px 16px",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:4}}>{k.l}</div>
+                <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="card" style={{padding:"18px 20px",marginBottom:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>👥 Consultant Revenue & Commission</div>
+              <div style={{fontSize:11,color:"#334155"}}>Edit commission % per consultant</div>
+            </div>
+
+            {/* Table header */}
+            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr 80px",gap:8,padding:"6px 12px",borderRadius:6,background:"#040810",marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+              <div>Consultant</div><div style={{textAlign:"right"}}>Bill Rate</div><div style={{textAlign:"right"}}>Annual Cap</div>
+              <div style={{textAlign:"right"}}>YTD Invoiced</div><div style={{textAlign:"right"}}>Gross Margin</div>
+              <div style={{textAlign:"right"}}>Comm %</div><div style={{textAlign:"right"}}>YTD Comm</div>
+            </div>
+
+            {consultantRevenue.map(r => (
+              <div key={r.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr 80px",gap:8,
+                padding:"10px 12px",borderRadius:8,marginBottom:4,background:"#060d1c",border:"1px solid #0a1826",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{r.name}</div>
+                  <div style={{fontSize:9,color:"#475569"}}>{r.role} · {r.type} · {Math.round((r.util||0)*100)}% util</div>
+                </div>
+                <div style={{textAlign:"right",fontSize:12,fontFamily:"monospace",color:"#94a3b8"}}>${r.billRate}/hr</div>
+                <div style={{textAlign:"right",fontSize:12,fontFamily:"monospace",color:"#38bdf8"}}>{fmtS(r.annualBillable)}</div>
+                <div style={{textAlign:"right",fontSize:12,fontFamily:"monospace",color:r.ytdInvoiced>0?"#a78bfa":"#334155"}}>{r.ytdInvoiced>0?fmtS(r.ytdInvoiced):"—"}</div>
+                <div style={{textAlign:"right",fontSize:12,color:r.grossMargin>0.3?"#34d399":r.grossMargin>0.15?"#f59e0b":"#f87171"}}>
+                  {Math.round(r.grossMargin*100)}%
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <input type="number" min="0" max="20" step="0.5"
+                    value={commEdit[r.id] !== undefined ? Math.round(commEdit[r.id]*100) : Math.round(r.commRate*100)}
+                    onChange={e=>setCommEdit(p=>({...p,[r.id]:+e.target.value/100}))}
+                    style={{width:48,background:"#0a1626",border:"1px solid #1a2d45",borderRadius:4,color:"#f59e0b",
+                      textAlign:"right",padding:"2px 4px",fontSize:11,fontFamily:"monospace"}}/>
+                  <span style={{fontSize:9,color:"#334155",marginLeft:2}}>%</span>
+                </div>
+                <div style={{textAlign:"right",fontSize:12,fontFamily:"monospace",color:r.ytdComm>0?"#fbbf24":"#334155"}}>
+                  {r.ytdComm > 0 ? fmtS(r.ytdComm) : "$0"}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Monthly bonus calculator */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🏆 Monthly Performance Bonus Calculator</div>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+              <div style={{fontSize:12,color:"#475569"}}>Month:</div>
+              <select value={bonusMonth} onChange={e=>setBonusMonth(+e.target.value)}
+                style={{background:"#0a1626",border:"1px solid #1a2d45",borderRadius:6,color:"#e2e8f0",padding:"4px 10px",fontSize:12}}>
+                {MONTHS.map((m,i)=><option key={m} value={i}>{m} {CUR_YEAR}</option>)}
+              </select>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
+              {consultantRevenue.map(r => {
+                const mKey   = `${CUR_YEAR}-${String(bonusMonth+1).padStart(2,'0')}`;
+                const mInv   = safeInv.filter(inv=>(inv.issueDate||"").startsWith(mKey));
+                const mRev   = mInv.reduce((s,inv)=>{
+                  const lines=(inv.lines||[]).filter(l=>l.desc?.toLowerCase().includes(r.name.split(" ")[0].toLowerCase()));
+                  return s+lines.reduce((ss,l)=>ss+l.amount,0);
+                },0);
+                const util   = Math.round((r.util||0)*100);
+                const bonus  = mRev * (commEdit[r.id] !== undefined ? commEdit[r.id] : r.commRate);
+                const perfColor = util>=100?"#34d399":util>=80?"#f59e0b":"#f87171";
+                return (
+                  <div key={r.id} style={{padding:"12px 14px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>{r.name}</div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:4}}>
+                      <span style={{color:"#475569"}}>Utilization</span>
+                      <span style={{color:perfColor,fontWeight:700}}>{util}%</span>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:4}}>
+                      <span style={{color:"#475569"}}>Invoiced</span>
+                      <span style={{color:"#94a3b8",fontFamily:"monospace"}}>{mRev>0?fmtS(mRev):"—"}</span>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700,paddingTop:6,borderTop:"1px solid #0a1626"}}>
+                      <span style={{color:"#475569"}}>Bonus</span>
+                      <span style={{color:bonus>0?"#fbbf24":"#334155",fontFamily:"monospace"}}>{bonus>0?fmtS(bonus):"$0"}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MILESTONE TAB ──────────────────────────────────────────────────── */}
+      {sub === "milestone" && (
+        <div>
+          {/* Progress to $25M */}
+          <div className="card" style={{padding:"24px 28px",marginBottom:20,background:"linear-gradient(135deg,#060d1c,#0c2340)"}}>
+            <div style={{fontSize:18,fontWeight:900,color:"#c9a84c",marginBottom:4}}>🎯 Journey to $25M</div>
+            <div style={{fontSize:11,color:"#3d5a7a",marginBottom:20}}>Ziksatech growth roadmap 2026 → 2030</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <div style={{flex:1,height:12,background:"#0a1626",borderRadius:6,overflow:"hidden"}}>
+                <div style={{height:"100%",borderRadius:6,
+                  background:"linear-gradient(90deg,#c9a84c,#f59e0b)",
+                  width:pct(currentARR, GOAL_25M)+"%",transition:"width 1s"}}/>
+              </div>
+              <div style={{fontSize:13,fontWeight:700,color:"#c9a84c",width:60,textAlign:"right",flexShrink:0,fontFamily:"monospace"}}>
+                {pct(currentARR, GOAL_25M)}%
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#475569"}}>
+              <span>Current ARR: <span style={{color:"#f59e0b",fontWeight:700}}>{fmt(currentARR)}</span></span>
+              <span>Goal: <span style={{color:"#c9a84c",fontWeight:700}}>$25M by 2030</span></span>
+            </div>
+          </div>
+
+          {/* Milestone cards */}
+          <div style={{display:"flex",flexDirection:"column",gap:0}}>
+            {milestones.map((m, i) => {
+              const isReached  = currentARR >= m.target;
+              const isCurrent  = !isReached && (i === 0 || currentARR >= milestones[i-1].target);
+              const progress   = isCurrent ? pct(currentARR, m.target) : isReached ? 100 : 0;
+              const yearDelta  = m.year - CUR_YEAR;
+              return (
+                <div key={m.year} style={{display:"flex",gap:0,marginBottom:0}}>
+                  {/* Timeline spine */}
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:40,flexShrink:0}}>
+                    <div style={{width:20,height:20,borderRadius:"50%",flexShrink:0,
+                      background:isReached?"#34d399":isCurrent?"#f59e0b":"#1a2d45",
+                      border:`3px solid ${isReached?"#15803d":isCurrent?"#92400e":"#0f2035"}`,
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      fontSize:10,color:isReached?"#021f14":isCurrent?"#1a1005":"#334155",fontWeight:800,
+                      zIndex:1,marginTop:16}}>
+                      {isReached ? "✓" : i+1}
+                    </div>
+                    {i < milestones.length - 1 && (
+                      <div style={{width:2,flex:1,background:isReached?"#15803d":"#0f2035",minHeight:40}}/>
+                    )}
+                  </div>
+
+                  {/* Card */}
+                  <div style={{flex:1,padding:"14px 18px",marginLeft:8,marginBottom:12,borderRadius:12,
+                    background:isReached?"#021f14":isCurrent?"#1a1005":"#060d1c",
+                    border:`1px solid ${isReached?"#15803d":isCurrent?"#92400e":"#1a2d45"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:15,fontWeight:800,color:isReached?"#34d399":isCurrent?"#fbbf24":"#94a3b8"}}>{m.label}</span>
+                          <span style={{fontSize:11,fontFamily:"monospace",fontWeight:700,color:isReached?"#34d399":isCurrent?"#f59e0b":"#475569"}}>{fmt(m.target)}</span>
+                          {isReached && <span style={{fontSize:10,padding:"1px 8px",borderRadius:10,background:"#021f14",color:"#34d399",border:"1px solid #15803d"}}>✓ Reached</span>}
+                          {isCurrent && <span style={{fontSize:10,padding:"1px 8px",borderRadius:10,background:"#1a1005",color:"#fbbf24",border:"1px solid #78350f"}}>← Current</span>}
+                        </div>
+                        <div style={{fontSize:11,color:"#475569",marginTop:2}}>{m.desc}</div>
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <div style={{fontSize:11,color:"#334155"}}>{m.year}</div>
+                        {yearDelta > 0 && <div style={{fontSize:9,color:"#1e3a5f"}}>in {yearDelta}yr{yearDelta>1?"s":""}</div>}
+                      </div>
+                    </div>
+                    {/* Progress bar for current milestone */}
+                    {isCurrent && (
+                      <div>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#475569",marginBottom:3}}>
+                          <span>Progress to {fmt(m.target)}</span>
+                          <span style={{color:"#fbbf24",fontWeight:700}}>{progress}%</span>
+                        </div>
+                        <div style={{height:6,background:"#1a1005",borderRadius:3}}>
+                          <div style={{height:6,borderRadius:3,background:"linear-gradient(90deg,#92400e,#f59e0b)",width:progress+"%",transition:"width 0.8s"}}/>
+                        </div>
+                        <div style={{fontSize:10,color:"#78350f",marginTop:4}}>
+                          Gap: <span style={{color:"#fbbf24",fontFamily:"monospace"}}>{fmt(m.target - currentARR)}</span> to next milestone
+                        </div>
+                      </div>
+                    )}
+                    {/* CAGR needed */}
+                    {!isReached && yearDelta > 0 && (
+                      <div style={{marginTop:8,fontSize:10,color:"#1e3a5f"}}>
+                        Required CAGR: <span style={{color:"#3d5a7a",fontFamily:"monospace"}}>
+                          {Math.round((Math.pow(m.target/Math.max(currentARR,1),1/Math.max(yearDelta,1))-1)*100)}%/yr
+                        </span> from today
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Key growth levers */}
+          <div className="card" style={{padding:"18px 20px",marginTop:8}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>⚡ Key Growth Levers to $25M</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+              {[
+                {icon:"👤",title:"Headcount",current:`${safeRoster.length} consultants`,target:"50 by 2030",impact:"$500K avg rev/consultant"},
+                {icon:"🤝",title:"Client Diversification",current:`${safeClients.length} clients`,target:"25 clients by 2030",impact:"Reduce single-client risk"},
+                {icon:"📈",title:"Bill Rate Expansion",current:`$${Math.round(safeRoster.reduce((s,r)=>s+(r.billRate||0),0)/Math.max(safeRoster.length,1))}/hr avg`,target:"$175/hr avg by 2028",impact:"$3M additional revenue"},
+                {icon:"🏛",title:"Gov/Fed Contracts",current:"0% of revenue",target:"20% by 2028",impact:"$5M stable recurring"},
+                {icon:"🔧",title:"SAP Product Revenue",current:"GridMind (seed)",target:"$2M product rev by 2029",impact:"High-margin recurring"},
+                {icon:"🌐",title:"Offshore Delivery",current:"0% offshore",target:"30% offshore by 2028",impact:"Margin expansion +15%"},
+              ].map(l=>(
+                <div key={l.title} style={{padding:"12px 14px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+                  <div style={{fontSize:18,marginBottom:4}}>{l.icon}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{l.title}</div>
+                  <div style={{fontSize:10,color:"#475569",marginBottom:2}}>Now: {l.current}</div>
+                  <div style={{fontSize:10,color:"#38bdf8",marginBottom:4}}>Target: {l.target}</div>
+                  <div style={{fontSize:9,color:"#334155",fontStyle:"italic"}}>{l.impact}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CLIENT HEALTH SCORECARD — Auto-scoring + NPS + Renewal Tracker
