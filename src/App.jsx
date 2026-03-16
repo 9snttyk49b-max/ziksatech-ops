@@ -1,4 +1,3 @@
-// Ziksatech OPS Center v3.7.8 — Ghost data cleared, clean seeds
 window.__ZT_MASK__ = true; // PII masked by default
 // Global PII masking helper — reads window.__ZT_MASK__ flag
 const mask = (val, type="text") => {
@@ -314,12 +313,21 @@ const store = (() => {
 const BURDEN = { fica: 0.0765, futa: 0.006, futaCap: 7000, suta: 0.027, sutaCap: 9000, wc: 0.005, health: 7200, retire: 0.03, other: 0.015, hoursPerYear: 1920 };
 
 const ROSTER_SEED = [
-  { id:"r1", skills:"SAP BRIM, ABAP, BTP", projects:"PTC BRIM Phase 2, SAP Portal", name:"Nuthan Joshi",   role:"BRIM Sr Consultant",       type:"FTE",        client:"PTC",   billRate:155, util:1.0,  baseSalary:120000, revShare:0,   fixedRate:155, thirdPartySplit:0,   insurance:7200 },
-  { id:"r2", skills:"SAP IS-U, S/4HANA, CPI", projects:"HPE IS-U Migration, S4 Upgrade", name:"Malla Reddy",      role:"SAP Functional Architect",  type:"FTE",        client:"HPE",   billRate:135, util:0.8,  baseSalary:98000,  revShare:0,   fixedRate:135, thirdPartySplit:0,   insurance:7200 },
+  { id:"r1", name:"Nuthan Joshi",  role:"BRIM Sr Consultant",      type:"FTE", client:"PTC",  billRate:155, util:1.0, baseSalary:120000, skills:"SAP BRIM, ABAP, BTP",    projects:"PTC BRIM Phase 2, SAP Portal", revShare:0, fixedRate:155, thirdPartySplit:0, insurance:7200 },
+  { id:"r2", name:"Malla Reddy",   role:"SAP Functional Architect", type:"FTE", client:"HPE",  billRate:135, util:0.8, baseSalary:98000,  skills:"SAP IS-U, S/4HANA, CPI",  projects:"HPE IS-U Migration, S4 Upgrade", revShare:0, fixedRate:135, thirdPartySplit:0, insurance:7200 },
 ];
-
-
-const PIPELINE_SEED = [];
+const PIPELINE_SEED = [
+  { id:"p1",  name:"Arjun Reddy",      role:"SAP BRIM Consultant",     billRate:140, status:"Offer Pending",   readyIn:"2 weeks",  source:"Referral",  skills:"SAP BRIM, IS-U, ABAP",       visa:"H-1B" },
+  { id:"p2",  name:"Lakshmi Venkat",   role:"SAP IS-U Senior",         billRate:155, status:"Interviewing",    readyIn:"3 weeks",  source:"LinkedIn",  skills:"SAP IS-U, CCS, DM",          visa:"GC" },
+  { id:"p3",  name:"Omar Hassan",      role:"BRIM Architect",          billRate:175, status:"Screening",       readyIn:"4 weeks",  source:"Network",   skills:"SAP BRIM, S/4HANA, BTP",     visa:"USC" },
+  { id:"p4",  name:"Pooja Malhotra",   role:"S/4HANA Finance Lead",    billRate:130, status:"Offer Pending",   readyIn:"1 week",   source:"Referral",  skills:"S/4HANA FI, CO, COPA",       visa:"H-1B" },
+  { id:"p5",  name:"Chen Wei",         role:"SAP Technical Architect", billRate:125, status:"Reference Check", readyIn:"2 weeks",  source:"Job Board", skills:"ABAP, BTP, CPI",             visa:"OPT" },
+  { id:"p6",  name:"Fatima Al-Rashid", role:"Databricks Engineer",     billRate:150, status:"Interviewing",    readyIn:"3 weeks",  source:"LinkedIn",  skills:"Databricks, Spark, Python",  visa:"USC" },
+  { id:"p7",  name:"Ana Kovacs",       role:"AWS Solutions Architect", billRate:165, status:"Screening",       readyIn:"4 weeks",  source:"LinkedIn",  skills:"AWS, Terraform, DevOps",     visa:"USC" },
+  { id:"p8",  name:"Rohan Mehta",      role:"SAP BRIM Consultant",     billRate:135, status:"Screening",       readyIn:"5 weeks",  source:"Referral",  skills:"SAP BRIM, IS-U",             visa:"H-1B" },
+  { id:"p9",  name:"Preethi Nair",     role:"SAP IS-U Consultant",     billRate:130, status:"Screening",       readyIn:"4 weeks",  source:"Network",   skills:"SAP IS-U, CS",               visa:"GC" },
+  { id:"p10", name:"David Kim",        role:"SAP S/4HANA Architect",   billRate:185, status:"Offer Pending",   readyIn:"2 weeks",  source:"LinkedIn",  skills:"S/4HANA, FI, CO, COPA",      visa:"USC" },
+];
 
 const CLIENTS_SEED = [
   { id:"cl1", name:"HOPE-IDI",             vertical:"Utilities",         engType:"Project",    annualRev:1200000, grossMargin:0.35, health:"Green", csmId:"", notes:"Core anchor. BRIM Phase 3 probe H2.", consultants:4, renewalDate:"2026-12-31" },
@@ -328,7 +336,7 @@ const CLIENTS_SEED = [
   { id:"cl4", name:"PTC",                  vertical:"Tolling",            engType:"Project",    annualRev:450000,  grossMargin:0.30, health:"Green", csmId:"", notes:"Stable. Expand to 3 consultants.",  consultants:2, renewalDate:"2026-09-30" },
   { id:"cl5", name:"Arhasi",               vertical:"AI",                 engType:"Staff Aug",  annualRev:108000,  grossMargin:0.15, health:"Green", csmId:"", notes:"",                                 consultants:1, renewalDate:"2027-02-02" },
   { id:"cl6", name:"SCG",                  vertical:"Gas Utilities",      engType:"Staff Aug",  annualRev:300000,  grossMargin:0.25, health:"Green", csmId:"", notes:"",                                 consultants:1, renewalDate:"2027-02-02" },
-  { id:"cl7", name:"Freeman - Mouritech",  vertical:"Media",              engType:"Staff Aug",  annualRev:180000,  grossMargin:0.15, health:"Green", csmId:"", notes:"—",                        consultants:1, renewalDate:"2027-06-30" },
+  { id:"cl7", name:"Freeman - Mouritech",  vertical:"Media",              engType:"Staff Aug",  annualRev:180000,  grossMargin:0.15, health:"Green", csmId:"", notes:"Ravi Soni",                        consultants:1, renewalDate:"2027-06-30" },
 ];
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -405,27 +413,64 @@ const ADP_RUNS_SEED = [
 
 // ─── FINANCE MODULE SEED DATA ─────────────────────────────────────────────────
 const FIN_INVOICES_SEED = [
-  { id:"INV-001", clientId:"cl1", projectName:"AT&T BRIM Managed Services", period:"Jan 2026",
+  { id:"INV-001", clientId:"cl1", projectName:"AT&T Managed Services", period:"Jan 2026",
     issueDate:"2026-01-31", dueDate:"2026-02-28", status:"paid", paymentTerms:"Net 30",
     lines:[
       { id:"l1", desc:"BRIM Sr Consultant — Nuthan Joshi", qty:160, rate:155, amount:24800 },
-      { id:"l2", desc:"SAP Functional Architect — Malla Reddy", qty:128, rate:135, amount:17280 },
-    ],
-    amount:42080, notes:"" },
-  { id:"INV-002", clientId:"cl2", projectName:"HPE IS-U Support", period:"Feb 2026",
-    issueDate:"2026-02-28", dueDate:"2026-03-31", status:"sent", paymentTerms:"Net 30",
+      { id:"l2", desc:"SAP Functional — Malla Reddy", qty:128, rate:135, amount:17280 },
+      { id:"l3", desc:"SAP Technical — Vikram Singh", qty:128, rate:140, amount:17920 },
+      { id:"l4", desc:"BRIM Consultant — Ananya Krishnan", qty:96, rate:130, amount:12480 },
+      { id:"l5", desc:"Management Fee", qty:1, rate:27520, amount:27520 },
+    ], notes:"Net 30. PO# ATT-2026-001." },
+  { id:"INV-002", clientId:"cl2", projectName:"Client B Staff Augmentation", period:"Jan 2026",
+    issueDate:"2026-01-31", dueDate:"2026-02-28", status:"paid", paymentTerms:"Net 30",
     lines:[
-      { id:"l1", desc:"SAP Functional Architect — Malla Reddy", qty:160, rate:135, amount:21600 },
-    ],
-    amount:21600, notes:"" },
-  { id:"INV-003", clientId:"cl1", projectName:"AT&T BRIM Phase 3", period:"Feb 2026",
-    issueDate:"2026-02-28", dueDate:"2026-03-31", status:"overdue", paymentTerms:"Net 30",
+      { id:"l1", desc:"SAP Functional — Kartheek", qty:32, rate:125, amount:4000 },
+      { id:"l2", desc:"Data Engineer — Kiran Patel", qty:64, rate:145, amount:9280 },
+      { id:"l3", desc:"Management & Overhead", qty:1, rate:26720, amount:26720 },
+    ], notes:"" },
+  { id:"INV-003", clientId:"cl1", projectName:"AT&T Managed Services", period:"Feb 2026",
+    issueDate:"2026-02-28", dueDate:"2026-03-30", status:"paid", paymentTerms:"Net 30",
     lines:[
       { id:"l1", desc:"BRIM Sr Consultant — Nuthan Joshi", qty:160, rate:155, amount:24800 },
-    ],
-    amount:24800, notes:"" },
+      { id:"l2", desc:"SAP Functional — Malla Reddy", qty:128, rate:135, amount:17280 },
+      { id:"l3", desc:"SAP Technical — Vikram Singh", qty:128, rate:140, amount:17920 },
+      { id:"l4", desc:"BRIM Consultant — Ananya Krishnan", qty:96, rate:130, amount:12480 },
+      { id:"l5", desc:"Management Fee", qty:1, rate:27520, amount:27520 },
+    ], notes:"" },
+  { id:"INV-004", clientId:"cl5", projectName:"Naxon Systems Internal", period:"Feb 2026",
+    issueDate:"2026-02-28", dueDate:"2026-03-30", status:"paid", paymentTerms:"Net 15",
+    lines:[
+      { id:"l1", desc:"BRIM Architect — Rajesh Kumar", qty:128, rate:185, amount:23680 },
+      { id:"l2", desc:"SAP IS-U Lead — Priya Nair", qty:96, rate:165, amount:15840 },
+    ], notes:"Internal billing at cost+." },
+  { id:"INV-005", clientId:"cl1", projectName:"AT&T Managed Services", period:"Mar 2026",
+    issueDate:"2026-03-31", dueDate:"2026-04-30", status:"sent", paymentTerms:"Net 30",
+    lines:[
+      { id:"l1", desc:"BRIM Sr Consultant — Nuthan Joshi", qty:160, rate:155, amount:24800 },
+      { id:"l2", desc:"SAP Functional — Malla Reddy", qty:128, rate:135, amount:17280 },
+      { id:"l3", desc:"SAP Technical — Vikram Singh", qty:128, rate:140, amount:17920 },
+      { id:"l4", desc:"BRIM Consultant — Ananya Krishnan", qty:96, rate:130, amount:12480 },
+      { id:"l5", desc:"Management Fee", qty:1, rate:27520, amount:27520 },
+    ], notes:"" },
+  { id:"INV-006", clientId:"cl2", projectName:"Client B Staff Augmentation", period:"Mar 2026",
+    issueDate:"2026-03-31", dueDate:"2026-04-30", status:"sent", paymentTerms:"Net 30",
+    lines:[
+      { id:"l1", desc:"SAP Functional — Kartheek", qty:32, rate:125, amount:4000 },
+      { id:"l2", desc:"Data Engineer — Kiran Patel", qty:64, rate:145, amount:9280 },
+      { id:"l3", desc:"Management & Overhead", qty:1, rate:26720, amount:26720 },
+    ], notes:"" },
+  { id:"INV-007", clientId:"cl3", projectName:"Client C Healthcare Project", period:"Mar 2026",
+    issueDate:"2026-03-31", dueDate:"2026-04-30", status:"overdue", paymentTerms:"Net 30",
+    lines:[
+      { id:"l1", desc:"Project Delivery — March milestone", qty:1, rate:26667, amount:26667 },
+    ], notes:"Renewal discussion pending. Follow up on payment." },
+  { id:"INV-008", clientId:"cl4", projectName:"Client D Staff Augmentation", period:"Mar 2026",
+    issueDate:"2026-03-31", dueDate:"2026-04-30", status:"draft", paymentTerms:"Net 30",
+    lines:[
+      { id:"l1", desc:"SAP Functional Consulting — March 2026", qty:1, rate:15000, amount:15000 },
+    ], notes:"" },
 ];
-
 
 const FIN_PAYMENTS_SEED = [
   { id:"pay1", invoiceId:"INV-001", clientId:"cl1", date:"2026-02-25", amount:100000, method:"ACH", ref:"ACH-ATT-0225", notes:"Full payment" },
@@ -455,7 +500,14 @@ const CRM_LEADS_SEED = [
   { id:"lead5", name:"Marcus Jones",    company:"TexasEnergy",  title:"VP IT",             email:"m.jones@txenergy.com", phone:"512-555-9020", source:"website",    status:"new",       score:35, industry:"Energy",        notes:"Downloaded BRIM whitepaper from site.", linkedIn:"", assignedTo:"Manju", createdDate:"2026-03-12", lastContact:"2026-03-12" },
 ];
 
-const CRM_TASKS_SEED = [];
+const CRM_TASKS_SEED = [
+  { id:"task1", title:"Send SOW redlines response to AT&T",      accountId:"acc1", dealId:"deal1", dueDate:"2026-03-20", priority:"high",   status:"open",     assignedTo:"Manju", notes:"James sent redlines on Mar 10. Legal review done. Ready to send." },
+  { id:"task2", title:"Schedule Verizon discovery call",         accountId:"acc6", dealId:"deal2", dueDate:"2026-03-18", priority:"high",   status:"open",     assignedTo:"Manju", notes:"Need to find a 90-min slot with their team." },
+  { id:"task3", title:"Prepare Client D Phase 2 proposal",       accountId:"acc4", dealId:"deal8", dueDate:"2026-03-25", priority:"medium", status:"open",     assignedTo:"Manju", notes:"Include Sanjay Gupta profile when ready." },
+  { id:"task4", title:"Follow up Tom Bradley — Client D CTO",    accountId:"acc4", dealId:"",      dueDate:"2026-03-17", priority:"high",   status:"open",     assignedTo:"Manju", notes:"Called Mar 10, no answer. Try email." },
+  { id:"task5", title:"Send HPE renewal terms",                  accountId:"acc2", dealId:"deal3", dueDate:"2026-03-22", priority:"medium", status:"completed", assignedTo:"Manju", notes:"Contract renewal auto-sent via DocuSign." },
+  { id:"task6", title:"Log Verizon meeting notes",               accountId:"acc6", dealId:"deal2", dueDate:"2026-03-15", priority:"low",    status:"completed", assignedTo:"Manju", notes:"Done." },
+];
 
 const CRM_NOTES_SEED = [
   { id:"note1", accountId:"acc1", dealId:"deal1", contactId:"con1", type:"meeting", date:"2026-03-10", title:"AT&T SOW Review Call", body:"James reviewed Phase 3 SOW. Main concern: T&M vs fixed price. Wants clause protecting against scope creep. Action: Manju to add change order language by Mar 20.", createdBy:"Manju" },
@@ -475,34 +527,35 @@ const CRM_ACCOUNTS_SEED = [
   { id:"acc2", name:"Client B",          industry:"Financial Services",type:"customer",  website:"clientb.com",     phone:"972-555-2000", address:"Irving, TX",      annualRevPotential:600000,  owner:"Manju",   health:"green",  notes:"Stable. Expand to 3 consultants discussion started." },
   { id:"acc3", name:"Client C",          industry:"Healthcare",        type:"at-risk",   website:"clientc.com",     phone:"817-555-3000", address:"Fort Worth, TX",  annualRevPotential:320000,  owner:"Manju",   health:"amber",  notes:"Renewal June 2026. Need exec meeting by April." },
   { id:"acc4", name:"Client D",          industry:"Energy",            type:"customer",  website:"clientd.com",     phone:"469-555-4000", address:"Plano, TX",       annualRevPotential:220000,  owner:"Manju",   health:"green",  notes:"New Q1 2026. Positive signals. Expansion likely H2." },
-  { id:"acc5", name:"Naxon Systems",     industry:"Technology",        type:"partner",   website:"naxon.com",       phone:"972-555-5000", address:"Richardson, TX",  annualRevPotential:250000,  owner:"Manju",   health:"green",  notes:"Overflow partner. Billing at cost+." },
+  { id:"acc5", name:"Naxon Systems",     industry:"Technology",        type:"partner",   website:"naxon.com",       phone:"972-555-5000", address:"Richardson, TX",  annualRevPotential:250000,  owner:"Manju",   health:"green",  notes:"Overflow partner. Rajesh + Priya billing at cost+." },
   { id:"acc6", name:"Verizon",           industry:"Telecom",           type:"prospect",  website:"verizon.com",     phone:"212-555-6000", address:"New York, NY",    annualRevPotential:800000,  owner:"Manju",   health:"green",  notes:"Warm intro via AT&T contact. SAP BRIM expansion planned." },
   { id:"acc7", name:"Oncor Electric",    industry:"Energy",            type:"prospect",  website:"oncor.com",       phone:"214-555-7000", address:"Dallas, TX",      annualRevPotential:500000,  owner:"Manju",   health:"green",  notes:"SAP IS-U implementation RFP expected Q2 2026." },
   { id:"acc8", name:"CHRISTUS Health",   industry:"Healthcare",        type:"prospect",  website:"christushealth.org",phone:"214-555-8000",address:"Irving, TX",      annualRevPotential:350000,  owner:"Manju",   health:"green",  notes:"S/4HANA migration interest. Initial call scheduled." },
   { id:"acc9", name:"Toyota Connected",  industry:"Automotive",        type:"prospect",  website:"toyotaconnected.com",phone:"469-555-9000",address:"Plano, TX",     annualRevPotential:420000,  owner:"Manju",   health:"green",  notes:"Data engineering + AWS opportunity. Kiran fit." },
-  { id:"acc10",name:"NTTA",              industry:"Government",        type:"customer",  website:"ntta.org",        phone:"972-555-1010", address:"Dallas, TX",      annualRevPotential:180000,  owner:"Manju",   health:"green",  notes:"Consultant placed. Billing at $185/hr. Stable." },
+  { id:"acc10",name:"NTTA",              industry:"Government",        type:"customer",  website:"ntta.org",        phone:"972-555-1010", address:"Dallas, TX",      annualRevPotential:180000,  owner:"Manju",   health:"green",  notes:"Rajesh placed. Billing at $185/hr. Stable." },
 ];
 
 const CRM_CONTACTS_SEED = [
   { id:"con1", accountId:"acc1", name:"James Wright",    title:"VP SAP Delivery",       email:"j.wright@att.com",    phone:"214-555-1001", linkedIn:"", isPrimary:true,  notes:"Main decision maker. Responsive. Quarterly calls." },
-  { id:"con2", accountId:"acc1", name:"Sarah Chen",      title:"SAP Program Manager",   email:"s.chen@att.com",      phone:"214-555-1002", linkedIn:"", isPrimary:false, notes:"Day-to-day PM contact." },
+  { id:"con2", accountId:"acc1", name:"Sarah Chen",      title:"SAP Program Manager",   email:"s.chen@att.com",      phone:"214-555-1002", linkedIn:"", isPrimary:false, notes:"Day-to-day PM. Manages Suresh relationship." },
   { id:"con3", accountId:"acc2", name:"Mark Davis",      title:"Director IT",           email:"m.davis@clientb.com", phone:"972-555-2001", linkedIn:"", isPrimary:true,  notes:"Controls budget. Expansion approval needed from him." },
   { id:"con4", accountId:"acc3", name:"Linda Park",      title:"CIO",                   email:"l.park@clientc.com",  phone:"817-555-3001", linkedIn:"", isPrimary:true,  notes:"Exec sponsor. Renewal decision comes from her." },
   { id:"con5", accountId:"acc6", name:"Robert Kim",      title:"SAP Center of Excellence Lead", email:"r.kim@verizon.com",phone:"212-555-6001",linkedIn:"", isPrimary:true, notes:"AT&T connection intro'd us. Very warm. Schedule follow-up." },
   { id:"con6", accountId:"acc7", name:"Amanda Torres",   title:"IT Procurement Lead",   email:"a.torres@oncor.com",  phone:"214-555-7001", linkedIn:"", isPrimary:true,  notes:"Driving RFP. Timeline Q2 2026." },
   { id:"con7", accountId:"acc8", name:"David Nguyen",    title:"VP Technology",         email:"d.nguyen@christus.com",phone:"214-555-8001",linkedIn:"", isPrimary:true,  notes:"Initial call went well. S/4HANA budget confirmed." },
+  { id:"con8", accountId:"acc9", name:"Priya Rajan",     title:"Head of Data Engineering",email:"p.rajan@toyota.com",phone:"469-555-9001", linkedIn:"", isPrimary:true, notes:"Python/Databricks heavy. Kiran Patel strong fit." },
   { id:"con9", accountId:"acc4", name:"Tom Bradley",     title:"IT Director",           email:"t.bradley@clientd.com",phone:"469-555-4001",linkedIn:"", isPrimary:true,  notes:"New contact Q1. Positive on expansion." },
 ];
 
 const CRM_DEALS_SEED = [
   { id:"deal1", accountId:"acc1", name:"AT&T BRIM Phase 3 Expansion",   stage:"proposal",     value:480000, closeDate:"2026-06-30", owner:"Manju", probability:70, type:"expansion",   notes:"Upsell 2 additional BRIM consultants for Phase 3. SOW in review.", nextStep:"Follow up on SOW redlines by Mar 20." },
   { id:"deal2", accountId:"acc6", name:"Verizon SAP BRIM Initial",      stage:"qualified",    value:800000, closeDate:"2026-09-30", owner:"Manju", probability:40, type:"new",         notes:"Intro via AT&T. Need to understand their BRIM roadmap. Deck sent.", nextStep:"Discovery call with Robert Kim — schedule for Apr." },
-  { id:"deal3", accountId:"acc7", name:"Oncor IS-U Implementation",     stage:"prospecting",  value:500000, closeDate:"2026-12-31", owner:"Manju", probability:25, type:"new",         notes:"RFP expected Q2. Building relationship with Amanda Torres.", nextStep:"RFP response prep. Get team on it." },
+  { id:"deal3", accountId:"acc7", name:"Oncor IS-U Implementation",     stage:"prospecting",  value:500000, closeDate:"2026-12-31", owner:"Manju", probability:25, type:"new",         notes:"RFP expected Q2. Building relationship with Amanda Torres.", nextStep:"RFP response prep. Get Deepa + team on it." },
   { id:"deal4", accountId:"acc2", name:"Client B Headcount Expansion",  stage:"negotiation",  value:120000, closeDate:"2026-04-30", owner:"Manju", probability:80, type:"expansion",   notes:"Adding 1 SAP Functional (Arun or candidate). Mark Davis approved in principle.", nextStep:"Send updated SOW with rate card by Mar 15." },
   { id:"deal5", accountId:"acc8", name:"CHRISTUS S/4HANA Assessment",   stage:"qualified",    value:350000, closeDate:"2026-10-31", owner:"Manju", probability:35, type:"new",         notes:"Budget confirmed. Assessment phase first, then impl. Good cultural fit.", nextStep:"Proposal deck for assessment phase — due Mar 25." },
-  { id:"deal6", accountId:"acc9", name:"Toyota Data Pipeline Build",    stage:"prospecting",  value:420000, closeDate:"2026-11-30", owner:"Manju", probability:20, type:"new",         notes:"Kiran + Fatima fit. Need to position Databricks + AWS capability.", nextStep:"Send capability deck + case studies to Toyota contact." },
+  { id:"deal6", accountId:"acc9", name:"Toyota Data Pipeline Build",    stage:"prospecting",  value:420000, closeDate:"2026-11-30", owner:"Manju", probability:20, type:"new",         notes:"Kiran + Fatima fit. Need to position Databricks + AWS capability.", nextStep:"Capability deck + case studies to Priya Rajan." },
   { id:"deal7", accountId:"acc3", name:"Client C Contract Renewal",     stage:"negotiation",  value:320000, closeDate:"2026-06-30", owner:"Manju", probability:60, type:"renewal",     notes:"Renewal at risk — need exec touchpoint. Rate discussion expected.", nextStep:"Exec meeting with Linda Park — schedule ASAP." },
-  { id:"deal8", accountId:"acc4", name:"Client D Phase 2 Expansion",   stage:"proposal",     value:100000, closeDate:"2026-08-31", owner:"Manju", probability:65, type:"expansion",   notes:"Tom Bradley keen on adding cloud architect. Evaluating candidates.", nextStep:"Proposal — send by Mar 18." },
+  { id:"deal8", accountId:"acc4", name:"Client D Phase 2 Expansion",   stage:"proposal",     value:100000, closeDate:"2026-08-31", owner:"Manju", probability:65, type:"expansion",   notes:"Tom Bradley keen on adding cloud architect. Sanjay Gupta fit when active.", nextStep:"Proposal with Sanjay profile — send by Mar 18." },
 ];
 
 const CRM_ACTIVITIES_SEED = [
@@ -515,7 +568,7 @@ const CRM_ACTIVITIES_SEED = [
   { id:"act7",  dealId:"deal4", accountId:"acc2", contactId:"con3", type:"email",   date:"2026-03-15", subject:"Updated SOW — Client B expansion",          notes:"Send final SOW with rate card and start date.", completed:false },
   { id:"act8",  dealId:"deal5", accountId:"acc8", contactId:"con7", type:"meeting", date:"2026-03-25", subject:"CHRISTUS assessment proposal review",       notes:"Walk through scope + pricing for S/4HANA assessment.", completed:false },
   { id:"act9",  dealId:"deal7", accountId:"acc3", contactId:"con4", type:"meeting", date:"2026-04-05", subject:"Client C exec renewal meeting",             notes:"Exec-level renewal discussion with CIO Linda Park.", completed:false },
-  { id:"act10", dealId:"deal8", accountId:"acc4", contactId:"con9", type:"email",   date:"2026-03-18", subject:"Client D Phase 2 proposal",                notes:"Send cloud architect expansion proposal.", completed:false },
+  { id:"act10", dealId:"deal8", accountId:"acc4", contactId:"con9", type:"email",   date:"2026-03-18", subject:"Client D Phase 2 proposal",                notes:"Send Sanjay profile + cloud arch expansion proposal.", completed:false },
   { id:"act11", dealId:"deal2", accountId:"acc6", contactId:"con5", type:"call",    date:"2026-04-10", subject:"Verizon discovery call",                   notes:"Deep-dive on BRIM roadmap and resourcing needs.", completed:false },
   { id:"act12", dealId:"deal3", accountId:"acc7", contactId:"con6", type:"meeting", date:"2026-04-15", subject:"Oncor RFP kickoff",                        notes:"RFP briefing + Q&A with procurement team.", completed:false },
 ];
@@ -908,7 +961,7 @@ const ORG_MEMBERS_SEED = [
   { id:"org5",  rosterId:"r4",  name:"Vivek Khajuria",        title:"SAP SuccessFactors Consultant",      email:"vivek@ziksatech.com",     phone:"", reportsTo:"org2", role:"employee",    active:true, customPerms:{} },
   { id:"org6",  rosterId:"r5",  name:"Kartheek",              title:"AI Consultant",                      email:"kartheek@ziksatech.com",  phone:"", reportsTo:"org2", role:"employee",    active:true, customPerms:{} },
   { id:"org7",  rosterId:"r6",  name:"Gokul K",               title:"SAP MM Consultant",                  email:"gokul@ziksatech.com",     phone:"", reportsTo:"org2", role:"employee",    active:true, customPerms:{} },
-  { id:"org8",  rosterId:"r7",  name:"—",             title:"BRIM Consultant (Contractor)",       email:"ravi@ziksatech.com",      phone:"", reportsTo:"org2", role:"contractor",  active:true, customPerms:{} },
+  { id:"org8",  rosterId:"r7",  name:"Ravi Soni",             title:"BRIM Consultant (Contractor)",       email:"ravi@ziksatech.com",      phone:"", reportsTo:"org2", role:"contractor",  active:true, customPerms:{} },
   { id:"org9",  rosterId:"r8",  name:"Krishna Shastri",       title:"SAP Consultant (Contractor)",        email:"krishna@ziksatech.com",   phone:"", reportsTo:"org2", role:"contractor",  active:true, customPerms:{} },
   { id:"org10", rosterId:"r9",  name:"Sagar M",               title:"SAP Consultant (Contractor)",        email:"sagar@ziksatech.com",     phone:"", reportsTo:"org2", role:"contractor",  active:true, customPerms:{} },
 ];
@@ -998,7 +1051,7 @@ const PROPOSALS_SEED = [
     teamIds:["r9","r10"], paymentTerms:"Net 45", billingType:"Time & Materials",
     timeline:"June 2026 — September 2026",
     notes:"Draft — needs executive summary review before sending.",
-    internalNotes:"Best fit consultants identified. W-9 collection in progress."
+    internalNotes:"Kiran + Sanjay best fit. Sanjay W-9 missing — must resolve before engagement."
   },
   {
     id:"prop4", number:"PRO-2604", status:"expired", createdDate:"2025-11-15", sentDate:"2025-11-18", validUntil:"2025-12-18",
@@ -1011,7 +1064,7 @@ const PROPOSALS_SEED = [
     teamIds:["r2"], paymentTerms:"Net 30", billingType:"Time & Materials",
     timeline:"January 2026 — December 2026",
     notes:"Expired — client requested revised pricing. New proposal in progress.",
-    internalNotes:"Client wants 10% discount. Rate already at floor."
+    internalNotes:"Client wants 10% discount. Deepa's rate is already at floor."
   },
 ];
 
@@ -1138,19 +1191,117 @@ const PTO_TYPE_BG = {
 const PTO_STATUS_COLOR = { pending:"#f59e0b", approved:"#34d399", denied:"#f87171", cancelled:"#475569" };
 const PTO_STATUS_BG    = { pending:"#1a1005", approved:"#021f14", denied:"#1a0808", cancelled:"#0a1020" };
 
-const PTO_REQUESTS_SEED = [];
 const PTO_BALANCES_SEED = [];
-const CHANGE_ORDERS_SEED = [];
+
+const PTO_REQUESTS_SEED = [];
+
+// ─── CHANGE ORDER SEED DATA ───────────────────────────────────────────────────
+const CO_STATUS_COLOR = {
+  draft:    "#475569", pending:  "#f59e0b", approved: "#34d399",
+  rejected: "#f87171", voided:   "#1e3a5f",
+};
+const CO_STATUS_BG = {
+  draft:    "#0a1626", pending:  "#1a1005", approved: "#021f14",
+  rejected: "#1a0808", voided:   "#070b14",
+};
+const CO_STATUS_LABEL = {
+  draft:"Draft", pending:"Pending Client", approved:"Approved", rejected:"Rejected", voided:"Voided",
+};
+const CO_TYPE_COLOR  = { addition:"#34d399", reduction:"#f87171", timeline:"#f59e0b", scope_change:"#a78bfa" };
+const CO_TYPE_LABEL  = { addition:"Budget Addition", reduction:"Budget Reduction", timeline:"Timeline Change", scope_change:"Scope Change" };
+
+const CHANGE_ORDERS_SEED = [
+  {
+    id:"co1", number:"CO-001", projectId:"proj1", contractId:"con1", sowId:"sow1",
+    title:"Sprint 1 Scope Expansion — AT&T BRIM Portal",
+    description:"Client requested additional BRIM configuration for FI-CA module and custom dunning workflow. Original scope covered only standard configuration. Additional 120 hours required for Suresh + 40 hours for Deepa.",
+    type:"addition", status:"approved",
+    originalBudget:480000, changeAmount:24400, newBudget:504400,
+    originalEndDate:"2026-12-31", newEndDate:"2026-12-31",
+    requestedBy:"Sarah Johnson (AT&T)", requestedAt:"2026-02-10",
+    submittedAt:"2026-02-12", clientResponseAt:"2026-02-18",
+    approvedBy:"Manju", clientSignedBy:"Sarah Johnson",
+    affectedRoster:["r1","r2"], additionalHours:160,
+    internalNotes:"Suresh confirmed scope in kickoff call. Email trail saved.",
+    attachments:["CO-001-scope-doc.pdf","AT&T-approval-email.pdf"],
+    invoiced:true, invoiceRef:"FB-2606",
+  },
+  {
+    id:"co2", number:"CO-002", projectId:"proj2", contractId:"con3", sowId:"sow2",
+    title:"Client C IS-U Maintenance — Contract Renewal Extension",
+    description:"Client C IS-U maintenance contract expires June 30. Client wants 3-month extension through September 30, 2026 at the same rate. Additional 3 milestone payments of $40,500 each.",
+    type:"timeline", status:"pending",
+    originalBudget:162000, changeAmount:121500, newBudget:283500,
+    originalEndDate:"2026-06-30", newEndDate:"2026-09-30",
+    requestedBy:"Manju", requestedAt:"2026-03-05",
+    submittedAt:"2026-03-06", clientResponseAt:"",
+    approvedBy:"", clientSignedBy:"",
+    affectedRoster:["r2"], additionalHours:240,
+    internalNotes:"Client verbally confirmed intent to renew. Awaiting formal sign-off.",
+    attachments:["CO-002-draft.pdf"],
+    invoiced:false, invoiceRef:"",
+  },
+  {
+    id:"co3", number:"CO-003", projectId:"proj5", contractId:"con1", sowId:"",
+    title:"NTTA Integration — Additional AWS Lambda Development",
+    description:"NTTA requested custom API gateway layer between SAP BRIM and legacy billing system. Not in original scope. Rajesh to lead; estimated 80 hours.",
+    type:"addition", status:"draft",
+    originalBudget:180000, changeAmount:14800, newBudget:194800,
+    originalEndDate:"2026-08-31", newEndDate:"2026-08-31",
+    requestedBy:"David Chen (NTTA)", requestedAt:"2026-03-08",
+    submittedAt:"", clientResponseAt:"",
+    approvedBy:"", clientSignedBy:"",
+    affectedRoster:["r7"], additionalHours:80,
+    internalNotes:"Rajesh needs to finalize hours estimate before we submit.",
+    attachments:[],
+    invoiced:false, invoiceRef:"",
+  },
+  {
+    id:"co4", number:"CO-004", projectId:"proj1", contractId:"con1", sowId:"sow1",
+    title:"AT&T BRIM Phase 3 — Remove Reporting Module",
+    description:"AT&T decided to handle BI reporting internally. Removing the custom reporting sprint from scope. 40 hours reduction in Suresh's allocation.",
+    type:"reduction", status:"approved",
+    originalBudget:504400, changeAmount:-7750, newBudget:496650,
+    originalEndDate:"2026-12-31", newEndDate:"2026-12-31",
+    requestedBy:"AT&T PMO", requestedAt:"2026-03-01",
+    submittedAt:"2026-03-02", clientResponseAt:"2026-03-05",
+    approvedBy:"Manju", clientSignedBy:"AT&T PMO",
+    affectedRoster:["r1"], additionalHours:-40,
+    internalNotes:"Saves $7,750. Budget credit applied to next invoice.",
+    attachments:["CO-004-approved.pdf"],
+    invoiced:false, invoiceRef:"",
+  },
+];
 
 // ─── TIMESHEET APPROVAL SEED DATA ────────────────────────────────────────────
-const TS_SUBMISSIONS_SEED = [];
+const TS_SUBMISSIONS_SEED = [
+  // January 2026 — all fully approved & locked
+  { id:"tss1",  rosterId:"r1",  period:"Jan 2026", monthIdx:0, year:2026, totalHours:160, billRate:155, totalRevenue:24800,  status:"locked",      clientId:"acc1",  projectId:"proj1", submittedAt:"2026-02-01", pmApproverId:"org2", pmApprovedAt:"2026-02-02", ownerApprovedAt:"2026-02-03", lockedAt:"2026-02-03", pmNotes:"",       rejectionNote:"", invoiceRef:"FB-2601" },
+  { id:"tss2",  rosterId:"r2",  period:"Jan 2026", monthIdx:0, year:2026, totalHours:128, billRate:135, totalRevenue:17280,  status:"locked",      clientId:"acc1",  projectId:"proj2", submittedAt:"2026-02-01", pmApproverId:"org2", pmApprovedAt:"2026-02-02", ownerApprovedAt:"2026-02-03", lockedAt:"2026-02-03", pmNotes:"",       rejectionNote:"", invoiceRef:"FB-2602" },
+  { id:"tss3",  rosterId:"r3",  period:"Jan 2026", monthIdx:0, year:2026, totalHours:128, billRate:140, totalRevenue:17920,  status:"locked",      clientId:"acc1",  projectId:"proj1", submittedAt:"2026-02-01", pmApproverId:"org2", pmApprovedAt:"2026-02-02", ownerApprovedAt:"2026-02-03", lockedAt:"2026-02-03", pmNotes:"",       rejectionNote:"", invoiceRef:"FB-2602" },
+  { id:"tss4",  rosterId:"r7",  period:"Jan 2026", monthIdx:0, year:2026, totalHours:128, billRate:185, totalRevenue:23680,  status:"locked",      clientId:"acc10", projectId:"proj5", submittedAt:"2026-02-01", pmApproverId:"org2", pmApprovedAt:"2026-02-02", ownerApprovedAt:"2026-02-03", lockedAt:"2026-02-03", pmNotes:"",       rejectionNote:"", invoiceRef:"FB-2603" },
+  { id:"tss5",  rosterId:"r8",  period:"Jan 2026", monthIdx:0, year:2026, totalHours:96,  billRate:165, totalRevenue:15840,  status:"locked",      clientId:"acc5",  projectId:"proj3", submittedAt:"2026-02-01", pmApproverId:"org2", pmApprovedAt:"2026-02-02", ownerApprovedAt:"2026-02-03", lockedAt:"2026-02-03", pmNotes:"",       rejectionNote:"", invoiceRef:"FB-2604" },
+
+  // February 2026 — mixed states
+  { id:"tss6",  rosterId:"r1",  period:"Feb 2026", monthIdx:1, year:2026, totalHours:160, billRate:155, totalRevenue:24800,  status:"approved",    clientId:"acc1",  projectId:"proj1", submittedAt:"2026-03-01", pmApproverId:"org2", pmApprovedAt:"2026-03-02", ownerApprovedAt:"2026-03-05", lockedAt:"",           pmNotes:"",       rejectionNote:"", invoiceRef:"" },
+  { id:"tss7",  rosterId:"r2",  period:"Feb 2026", monthIdx:1, year:2026, totalHours:120, billRate:135, totalRevenue:16200,  status:"pm_approved", clientId:"acc3",  projectId:"proj2", submittedAt:"2026-03-01", pmApproverId:"org2", pmApprovedAt:"2026-03-02", ownerApprovedAt:"",           lockedAt:"",           pmNotes:"Looks good — Q2 renewal hours included.", rejectionNote:"", invoiceRef:"" },
+  { id:"tss8",  rosterId:"r3",  period:"Feb 2026", monthIdx:1, year:2026, totalHours:128, billRate:140, totalRevenue:17920,  status:"submitted",   clientId:"acc1",  projectId:"proj1", submittedAt:"2026-03-02", pmApproverId:"",     pmApprovedAt:"",           ownerApprovedAt:"",           lockedAt:"",           pmNotes:"",       rejectionNote:"", invoiceRef:"" },
+  { id:"tss9",  rosterId:"r7",  period:"Feb 2026", monthIdx:1, year:2026, totalHours:128, billRate:185, totalRevenue:23680,  status:"submitted",   clientId:"acc10", projectId:"proj5", submittedAt:"2026-03-01", pmApproverId:"",     pmApprovedAt:"",           ownerApprovedAt:"",           lockedAt:"",           pmNotes:"",       rejectionNote:"", invoiceRef:"" },
+  { id:"tss10", rosterId:"r8",  period:"Feb 2026", monthIdx:1, year:2026, totalHours:80,  billRate:165, totalRevenue:13200,  status:"rejected",    clientId:"acc5",  projectId:"proj3", submittedAt:"2026-02-28", pmApproverId:"org2", pmApprovedAt:"",           ownerApprovedAt:"",           lockedAt:"",           pmNotes:"",       rejectionNote:"Hours don't match project tracker. Priya was on bench Feb 15-28. Please correct.", invoiceRef:"" },
+  { id:"tss11", rosterId:"r9",  period:"Feb 2026", monthIdx:1, year:2026, totalHours:64,  billRate:145, totalRevenue:9280,   status:"submitted",   clientId:"",      projectId:"",      submittedAt:"2026-03-03", pmApproverId:"",     pmApprovedAt:"",           ownerApprovedAt:"",           lockedAt:"",           pmNotes:"",       rejectionNote:"", invoiceRef:"" },
+
+  // March 2026 — drafts (current month in progress)
+  { id:"tss12", rosterId:"r1",  period:"Mar 2026", monthIdx:2, year:2026, totalHours:80,  billRate:155, totalRevenue:12400,  status:"draft",       clientId:"acc1",  projectId:"proj1", submittedAt:"",           pmApproverId:"",     pmApprovedAt:"",           ownerApprovedAt:"",           lockedAt:"",           pmNotes:"",       rejectionNote:"", invoiceRef:"" },
+  { id:"tss13", rosterId:"r2",  period:"Mar 2026", monthIdx:2, year:2026, totalHours:60,  billRate:135, totalRevenue:8100,   status:"draft",       clientId:"acc3",  projectId:"proj2", submittedAt:"",           pmApproverId:"",     pmApprovedAt:"",           ownerApprovedAt:"",           lockedAt:"",           pmNotes:"",       rejectionNote:"", invoiceRef:"" },
+  { id:"tss14", rosterId:"r7",  period:"Mar 2026", monthIdx:2, year:2026, totalHours:96,  billRate:185, totalRevenue:17760,  status:"draft",       clientId:"acc10", projectId:"proj5", submittedAt:"",           pmApproverId:"",     pmApprovedAt:"",           ownerApprovedAt:"",           lockedAt:"",           pmNotes:"",       rejectionNote:"", invoiceRef:"" },
+];
 
 // ─── CONTRACTS & SOW SEED DATA ────────────────────────────────────────────────
 const CONTRACTS_SEED = [
   { id:"con1", accountId:"acc1", dealId:"deal1", name:"AT&T BRIM Phase 3 MSA Amendment",   type:"MSA Amendment", status:"active",    value:480000, startDate:"2026-04-01", endDate:"2026-12-31", signedDate:"2026-03-15", counterparty:"AT&T Inc.",           owner:"Manju", renewalAlert:60, notes:"Renewal of master agreement with Phase 3 SOW attached.", fileName:"att_msa_amendment_2026.pdf" },
   { id:"con2", accountId:"acc2", dealId:"deal4", name:"Client B SAP Functional SOW",        type:"SOW",           status:"pending",   value:120000, startDate:"2026-04-01", endDate:"2026-09-30", signedDate:"",          counterparty:"Client B Corp.",       owner:"Manju", renewalAlert:45, notes:"Expansion SOW — 1 additional consultant. Awaiting countersign.", fileName:"" },
   { id:"con3", accountId:"acc3", dealId:"deal7", name:"Client C Contract Renewal",           type:"MSA",           status:"expiring",  value:320000, startDate:"2025-07-01", endDate:"2026-06-30", signedDate:"2025-06-28", counterparty:"Client C Healthcare",  owner:"Manju", renewalAlert:90, notes:"Renewal negotiation in progress. Rate discussion expected.", fileName:"clientc_msa_2025.pdf" },
-  { id:"con4", accountId:"acc5", dealId:"",      name:"Naxon Systems Partner Agreement",     type:"Partner",       status:"active",    value:170000, startDate:"2026-01-01", endDate:"2026-12-31", signedDate:"2025-12-20", counterparty:"Naxon Systems LLC",    owner:"Manju", renewalAlert:60, notes:"Revenue share arrangement. Overflow billing.", fileName:"naxon_partner_2026.pdf" },
+  { id:"con4", accountId:"acc5", dealId:"",      name:"Naxon Systems Partner Agreement",     type:"Partner",       status:"active",    value:170000, startDate:"2026-01-01", endDate:"2026-12-31", signedDate:"2025-12-20", counterparty:"Naxon Systems LLC",    owner:"Manju", renewalAlert:60, notes:"Revenue share arrangement. Rajesh + Priya overflow billing.", fileName:"naxon_partner_2026.pdf" },
   { id:"con5", accountId:"acc4", dealId:"deal8", name:"Client D Cloud Architecture SOW",    type:"SOW",           status:"draft",     value:100000, startDate:"2026-09-01", endDate:"2027-02-28", signedDate:"",          counterparty:"Client D Energy",      owner:"Manju", renewalAlert:30, notes:"Draft SOW for cloud arch expansion. Needs legal review.", fileName:"" },
   { id:"con6", accountId:"acc1", dealId:"",      name:"AT&T NDA — BRIM Portal",             type:"NDA",           status:"active",    value:0,      startDate:"2023-01-01", endDate:"2027-12-31", signedDate:"2023-01-05", counterparty:"AT&T Inc.",           owner:"Manju", renewalAlert:180,notes:"Master NDA covering all AT&T projects.", fileName:"att_nda_2023.pdf" },
 ];
@@ -1181,7 +1332,13 @@ const SOW_SEED = [
 ];
 
 // ─── PROJECTS SEED DATA ────────────────────────────────────────────────────────
-const PROJECTS_SEED = [];
+const PROJECTS_SEED = [
+  { id:"proj1", accountId:"acc1", sowId:"sow1", name:"AT&T BRIM Phase 3",          status:"active",    health:"green",  startDate:"2026-04-01", endDate:"2026-12-31", budget:480000, spent:0,    pm:"Suresh Menon",  consultants:["r1","r2","r4"], notes:"On track. Kick-off Apr 1." },
+  { id:"proj2", accountId:"acc3", sowId:"sow2", name:"Client C IS-U Maintenance",  status:"active",    health:"amber",  startDate:"2025-07-01", endDate:"2026-06-30", budget:162000, spent:121500, pm:"Deepa Rao",    consultants:["r2"],           notes:"Renewal at risk. Q2 final milestone in progress." },
+  { id:"proj3", accountId:"acc5", sowId:"",     name:"Naxon BRIM Overflow",        status:"active",    health:"green",  startDate:"2026-01-01", endDate:"2026-12-31", budget:170000, spent:42500, pm:"Rajesh Kumar",  consultants:["r7","r8"],      notes:"Stable. Rajesh leading. Monthly check-ins." },
+  { id:"proj4", accountId:"acc2", sowId:"",     name:"Client B SAP Functional",    status:"planning",  health:"green",  startDate:"2026-04-01", endDate:"2026-09-30", budget:120000, spent:0,    pm:"Manju",         consultants:["r5"],           notes:"SOW pending signature. Arun confirmed." },
+  { id:"proj5", accountId:"acc10",sowId:"",     name:"NTTA Integration Support",   status:"active",    health:"green",  startDate:"2026-01-15", endDate:"2026-09-30", budget:180000, spent:72000, pm:"Rajesh Kumar",  consultants:["r7"],           notes:"Steady. Rajesh billing $185/hr. Q2 review scheduled." },
+];
 
 const TASKS_SEED = [
   { id:"task1", projectId:"proj1", title:"Set up development environment",    assignee:"r1", dueDate:"2026-04-08", status:"todo",        priority:"high",   notes:"Need AT&T VPN access + BRIM sandbox." },
@@ -1190,17 +1347,32 @@ const TASKS_SEED = [
   { id:"task4", projectId:"proj2", title:"Q2 support ticket triage",           assignee:"r2", dueDate:"2026-04-05", status:"in-progress", priority:"medium", notes:"15 open tickets from Client C queue." },
   { id:"task5", projectId:"proj2", title:"Renewal proposal to Linda Park",     assignee:"r2", dueDate:"2026-03-25", status:"in-progress", priority:"high",   notes:"Rate increase negotiation. Prepare 3 options." },
   { id:"task6", projectId:"proj3", title:"Monthly status report — Naxon",      assignee:"r7", dueDate:"2026-03-31", status:"in-progress", priority:"low",    notes:"Send to Naxon PM. Include utilization numbers." },
-  { id:"task7", projectId:"proj3", title:"BRIM config review — module 4",      assignee:"r8", dueDate:"2026-04-10", status:"todo",        priority:"medium", notes:"BRIM module 4 config review with Naxon team." },
+  { id:"task7", projectId:"proj3", title:"BRIM config review — module 4",      assignee:"r8", dueDate:"2026-04-10", status:"todo",        priority:"medium", notes:"Priya leading config session with Naxon team." },
   { id:"task8", projectId:"proj5", title:"NTTA API integration testing",        assignee:"r7", dueDate:"2026-04-05", status:"todo",        priority:"medium", notes:"Test SAP ↔ NTTA toll system integration." },
-  { id:"task9", projectId:"proj1", title:"New consultant onboarding checklist",  assignee:"",   dueDate:"2026-04-02", status:"todo",        priority:"high",   notes:"Complete system access, badge, and NDA." },
+  { id:"task9", projectId:"proj1", title:"New consultant onboarding checklist",       assignee:"r4", dueDate:"2026-04-02", status:"todo",        priority:"high",   notes:"Complete system access, badge, and NDA." },
 ];
 
-const RISKS_SEED = [];
+const RISKS_SEED = [
+  { id:"risk1", projectId:"proj2", title:"Contract renewal not signed",       probability:"high",   impact:"high",   status:"open",     mitigation:"Exec meeting scheduled Apr 5 with Linda Park. Prepare 2-year renewal option.", owner:"Manju" },
+  { id:"risk2", projectId:"proj1", title:"Delayed AT&T environment access",   probability:"medium", impact:"high",   status:"open",     mitigation:"Escalate to James Wright if not resolved by Apr 5.", owner:"r1" },
+  { id:"risk3", projectId:"proj3", title:"Kiran OPT expiry May 15",          probability:"high",   impact:"medium", status:"open",     mitigation:"H-1B petition must be filed Apr 1. Attorney briefed.", owner:"Manju" },
+  { id:"risk4", projectId:"proj5", title:"Rajesh sole resource — single pt", probability:"medium", impact:"high",   status:"mitigated",mitigation:"Cross-train Omar Hassan as backup. Omar available from May.", owner:"Manju" },
+  { id:"risk5", projectId:"proj1", title:"Scope creep in Sprint 1",          probability:"medium", impact:"medium", status:"open",     mitigation:"Strict change order process. Any scope change triggers COA review.", owner:"r1" },
+];
 
 
 
 // ─── RECRUITING SEED DATA ────────────────────────────────────────────────────
-const CANDIDATES_SEED = [];
+const CANDIDATES_SEED = [
+  { id:"cand1", name:"Arjun Reddy",     role:"SAP BRIM Consultant",     email:"arjun.r@email.com",   phone:"214-555-0101", source:"Referral",  visa:"H-1B",  skills:"SAP BRIM, IS-U, ABAP",         status:"active",   notes:"Referred by Nuthan. Strong BRIM background.",          linkedIn:"" },
+  { id:"cand2", name:"Lakshmi Venkat",  role:"SAP IS-U Senior",         email:"lakshmi.v@email.com", phone:"469-555-0202", source:"LinkedIn",  visa:"GC",    skills:"SAP IS-U, CCS, DM",            status:"active",   notes:"10 yrs utility exp. Available April 1.",               linkedIn:"" },
+  { id:"cand3", name:"Omar Hassan",     role:"BRIM Architect",          email:"omar.h@email.com",    phone:"972-555-0303", source:"Network",   visa:"USC",   skills:"SAP BRIM, S/4HANA, BTP",       status:"active",   notes:"Ex-Deloitte. High demand — move fast.",                linkedIn:"" },
+  { id:"cand4", name:"Pooja Malhotra",  role:"S/4HANA Finance Lead",    email:"pooja.m@email.com",   phone:"817-555-0404", source:"Referral",  visa:"H-1B",  skills:"S/4HANA FI, CO, COPA",         status:"placed",   notes:"Placed at Client B starting Apr 1.",                   linkedIn:"" },
+  { id:"cand5", name:"Chen Wei",        role:"SAP Technical Architect", email:"chen.w@email.com",    phone:"972-555-0505", source:"Job Board", visa:"OPT",   skills:"ABAP, BTP, CPI",               status:"active",   notes:"OPT expires Oct 2026. Need H-1B sponsor.",            linkedIn:"" },
+  { id:"cand6", name:"Fatima Al-Rashid",role:"Databricks Engineer",     email:"fatima.a@email.com",  phone:"469-555-0606", source:"LinkedIn",  visa:"USC",   skills:"Databricks, Spark, Python, AWS",status:"active",   notes:"Strong data eng profile. AT&T pipeline fit.",          linkedIn:"" },
+  { id:"cand7", name:"Ravi Shankar",    role:"SAP BRIM Consultant",     email:"ravi.s@email.com",    phone:"214-555-0707", source:"Network",   visa:"H-1B",  skills:"SAP BRIM, FI",                 status:"withdrawn",notes:"Accepted competing offer. Keep in touch.",              linkedIn:"" },
+  { id:"cand8", name:"Ana Kovacs",      role:"AWS Solutions Architect", email:"ana.k@email.com",     phone:"972-555-0808", source:"LinkedIn",  visa:"USC",   skills:"AWS, Terraform, DevOps",       status:"active",   notes:"Interested in long-term engagement.",                  linkedIn:"" },
+];
 
 const SUBMISSIONS_SEED = [
   { id:"sub1", candidateId:"cand1", clientId:"cl1", projectName:"BRIM Phase 3",         submitDate:"2026-02-15", reqId:"AT&T-REQ-001", notes:"Strong match. Submitted with rate $140/hr." },
@@ -1234,6 +1406,7 @@ const WORK_AUTH_SEED = [
   { id:"wa5",  consultantId:"", name:"Vivek Khajuria",       type:"H-1B", status:"active",  startDate:"2023-09-01", expiryDate:"2026-08-31", petitionNo:"WAC2300200", attorney:"", notes:"Renewal needed Q3 2026" },
   { id:"wa6",  consultantId:"", name:"Kartheek",             type:"H-1B", status:"expiring",startDate:"2023-04-15", expiryDate:"2026-04-14", petitionNo:"WAC2300312", attorney:"", notes:"Expires Apr 2026 — start renewal" },
   { id:"wa7",  consultantId:"", name:"Gokul K",              type:"GC",   status:"active",  startDate:"2021-07-20", expiryDate:"2031-07-19", petitionNo:"GC-2021-006", attorney:"", notes:"GC holder" },
+  { id:"wa8",  consultantId:"", name:"Ravi Soni",            type:"H-1B", status:"active",  startDate:"2024-09-01", expiryDate:"2027-08-31", petitionNo:"WAC2400398", attorney:"", notes:"Contractor - H1B via Freeman" },
   { id:"wa9",  consultantId:"", name:"Krishna Shastri",      type:"H-1B", status:"active",  startDate:"2024-06-01", expiryDate:"2027-05-31", petitionNo:"WAC2400210", attorney:"", notes:"H1B current" },
   { id:"wa10", consultantId:"", name:"Sagar M",              type:"H-1B", status:"active",  startDate:"2023-11-01", expiryDate:"2026-10-31", petitionNo:"WAC2300450", attorney:"", notes:"Renewal needed Q4 2026" },
 ];
@@ -1246,6 +1419,7 @@ const DOCUMENTS_SEED = [
   { id:"doc5",  consultantId:"", name:"Kartheek",       docType:"H-1B Petition", issueDate:"2023-04-15", expiryDate:"2026-04-14", status:"expiring", fileName:"Kartheek_H1B.pdf", notes:"Renewal needed" },
   { id:"doc6",  consultantId:"", name:"Kartheek",       docType:"I-9",           issueDate:"2023-04-15", expiryDate:"2026-04-14", status:"expiring", fileName:"Kartheek_I9.pdf", notes:"Tied to H1B" },
   { id:"doc7",  consultantId:"", name:"Vivek Khajuria", docType:"H-1B Petition", issueDate:"2023-09-01", expiryDate:"2026-08-31", status:"current", fileName:"Vivek_H1B.pdf", notes:"" },
+  { id:"doc8",  consultantId:"", name:"Ravi Soni",      docType:"I-9",           issueDate:"2024-09-01", expiryDate:"2027-08-31", status:"current", fileName:"Ravi_I9.pdf", notes:"Contractor" },
 ];
 
 
@@ -1425,7 +1599,7 @@ function RegisterScreen({ onGoLogin, onRegistered }) {
       <form onSubmit={handleRegister}>
         <div style={{marginBottom:16}}>
           <label style={lbl}>Full Name</label>
-          <input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="Full name" required autoFocus />
+          <input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="Suresh Menon" required autoFocus />
         </div>
         <div style={{marginBottom:16}}>
           <label style={lbl}>Work Email</label>
@@ -2333,15 +2507,15 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="pdfexport"     && <PDFExport {...shared}/>}
         {tab==="settings"      && <SettingsPage {...shared}/>}
         {tab==="proposals"     && <ProposalBuilder {...shared}/>}
-        {tab==="emailtpl"      && <EmailTemplates {...shared}/>}
         {tab==="doctemplates" && <DocTemplates roster={shared.roster} clients={shared.clients} authProfile={authProfile} appSettings={shared.appSettings}/>}
+        {tab==="emailtpl"      && <EmailTemplates {...shared}/>}
         {tab==="taxcal"        && <TaxCalendar {...shared}/>}
         {tab==="benefits"      && <BenefitsTracker {...shared}/>}
         {tab==="reports"       && <ReportBuilder {...shared}/>}
         {tab==="portal"        && <ClientPortal {...shared}/>}
         {tab==="capacity"      && <CapacityPlanner {...shared}/>}
         {tab==="budget"        && <BudgetActual {...shared}/>}
-        {tab==="onboarding"    && <OnboardingModule roster={shared.roster} onboardings={shared.onboardings} setOnboardings={shared.setOnboardings} addAudit={shared.addAudit}/>}
+        {tab==="onboarding"    && <OnboardingModule {...shared}/>}
         {tab==="offboarding" && <OffboardingModule orgMembers={shared.orgMembers} setOrgMembers={shared.setOrgMembers} roster={shared.roster} setRoster={shared.setRoster} vendors={shared.vendors} setVendors={shared.setVendors} addAudit={shared.addAudit}/>}
         {tab==="glexport"      && <FreshBooksGL finInvoices={shared.finInvoices||[]} fbInvoices={shared.fbInvoices||[]} clients={shared.clients||[]}/>}
         {tab==="esign"         && <ESignature {...shared}/>}
@@ -3082,7 +3256,7 @@ function Roster({ roster, setRoster, addAudit }) {
             <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"14px 16px",marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:12}}>Identity & Assignment</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <FF label="Full Name"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Nuthan Joshi"/></FF>
+                <FF label="Full Name"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Suresh Menon"/></FF>
                 <FF label="Role / Title"><input className="inp" value={form.role} onChange={e=>setForm({...form,role:e.target.value})} placeholder="BRIM Sr Consultant"/></FF>
                 <FF label="Employment Type"><select className="inp" value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option>FTE</option><option>Contractor</option></select></FF>
                 <FF label="Primary Client"><input className="inp" value={form.client} onChange={e=>setForm({...form,client:e.target.value})} placeholder="AT&T"/></FF>
@@ -3801,8 +3975,6 @@ function ImportBanner({ format, fields, onClose }) {
 // ADP Workforce Now CSV export columns (Payroll Register Report)
 const ADP_HEADERS = ["Co Code","Batch ID","Employee ID","Employee Name","Pay Period Start","Pay Period End","Pay Date","Regular Hours","OT Hours","Gross Pay","Fed Tax","State Tax","FICA EE","Medicare EE","FICA ER","Medicare ER","401k ER","Health ER","Other Deductions","Net Pay","Department","Position"];
 const ADP_SAMPLE_ROWS = [
-  {"Co Code":"ZKS","Batch ID":"B001","Employee ID":"EMP001","Employee Name":"Nuthan Joshi","Pay Period Start":"2026-03-01","Pay Period End":"2026-03-31","Pay Date":"2026-03-31","Regular Hours":"160","OT Hours":"0","Gross Pay":"10000","Fed Tax":"1800","State Tax":"400","FICA EE":"765","Medicare EE":"145","FICA ER":"765","Medicare ER":"145","401k ER":"300","Health ER":"600","Other Deductions":"125","Net Pay":"6890","Department":"Consulting","Position":"BRIM Sr Consultant"},
-  {"Co Code":"ZKS","Batch ID":"B001","Employee ID":"EMP002","Employee Name":"Malla Reddy","Pay Period Start":"2026-03-01","Pay Period End":"2026-03-31","Pay Date":"2026-03-31","Regular Hours":"160","OT Hours":"0","Gross Pay":"8167","Fed Tax":"1430","State Tax":"327","FICA EE":"625","Medicare EE":"118","FICA ER":"625","Medicare ER":"118","401k ER":"245","Health ER":"600","Other Deductions":"102","Net Pay":"5667","Department":"Consulting","Position":"SAP Functional"},
 ];
 
 function ADPPayroll({ roster, adpRuns, setAdpRuns }) {
@@ -8487,7 +8659,7 @@ function ProjOverview({ projects, setProjects, tasks, risks, roster, crmAccounts
               <FF label="Health"><select className="inp" value={form.health} onChange={e=>setForm({...form,health:e.target.value})}>
                 {["green","amber","red"].map(h=><option key={h}>{h}</option>)}
               </select></FF>
-              <FF label="Project Manager"><input className="inp" value={form.pm} onChange={e=>setForm({...form,pm:e.target.value})} placeholder="e.g. Nuthan Joshi"/></FF>
+              <FF label="Project Manager"><input className="inp" value={form.pm} onChange={e=>setForm({...form,pm:e.target.value})} placeholder="Suresh Menon"/></FF>
               <FF label="Start Date"><input className="inp" type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></FF>
               <FF label="End Date"><input className="inp" type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></FF>
               <FF label="Budget ($)"><input className="inp" type="number" value={form.budget} onChange={e=>setForm({...form,budget:e.target.value})}/></FF>
@@ -8792,7 +8964,7 @@ function ProjRisks({ projects, risks, setRisks, roster }) {
               <FF label="Project"><select className="inp" value={form.projectId} onChange={e=>setForm({...form,projectId:e.target.value})}>
                 <option value="">Select…</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
               </select></FF>
-              <FF label="Owner"><input className="inp" value={form.owner} onChange={e=>setForm({...form,owner:e.target.value})} placeholder="e.g. Manju Murthy"/></FF>
+              <FF label="Owner"><input className="inp" value={form.owner} onChange={e=>setForm({...form,owner:e.target.value})} placeholder="Manju / Suresh"/></FF>
               <FF label="Probability"><select className="inp" value={form.probability} onChange={e=>setForm({...form,probability:e.target.value})}>
                 {["low","medium","high"].map(v=><option key={v}>{v}</option>)}
               </select></FF>
@@ -9402,9 +9574,9 @@ function OrgMembers({ orgMembers, setOrgMembers, roster }) {
           <div className="modal" style={{maxWidth:500}}>
             <MH title={editing?"Edit Member":"Add Team Member"} onClose={()=>setModal(false)}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Full Name"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Nuthan Joshi"/></FF>
+              <FF label="Full Name"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Suresh Menon"/></FF>
               <FF label="Title"><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="SAP Consultant"/></FF>
-              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="email@ziksatech.com"/></FF>
+              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="suresh@ziksatech.com"/></FF>
               <FF label="Phone"><input className="inp" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="+1 (214) 555-0100"/></FF>
               <FF label="Role Template"><select className="inp" value={form.role} onChange={e=>setForm({...form,role:e.target.value,customPerms:{}})}>
                 {Object.entries(ROLE_TEMPLATES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
@@ -9644,9 +9816,9 @@ function RoleTemplates() {
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:0}}>
           {[
             ["Manju",             "Owner",         "Full access to all 15 modules"],
-            ["Delivery Lead",     "Role Example",   "Projects, Roster, Compliance, Clients"],
-            ["Team consultants",  "Consultant",     "Timesheet view, Project view, Dashboard"],
-            ["External contractors","Contractor",   "Timesheet view, Project view only"],
+            ["Suresh Menon",      "Delivery Lead",  "Projects, Roster, Compliance, Clients"],
+            ["Deepa, Vikram…",    "Consultant",     "Timesheet view, Project view, Dashboard"],
+            ["Rajesh, Priya…",    "Contractor",     "Timesheet view, Project view only"],
             ["Future: Finance Mgr","Finance Mgr",   "P&L, Finance, ADP, FreshBooks full"],
             ["Future: Recruiter", "Recruiter / HR", "Recruiting, Pipeline full"],
           ].map(([who,role,access])=>(
@@ -9691,18 +9863,6 @@ const TS_STATUS_LABEL = {
 };
 const TS_FLOW = ["draft","submitted","pm_approved","approved","locked"];
 
-// ── US FEDERAL + OPTIONAL HOLIDAYS 2025-2027 ────────────────────────────────
-
-
-// Per-client holiday calendars — extra days beyond US federal
-const CLIENT_CALENDARS = {
-  "PTC":     { extraDays:["12-24","11-28","12-26"], name:"PTC",     note:"PTC: Christmas Eve, Day after Thanksgiving, Day after Christmas" },
-  "HPE":     { extraDays:["11-28","12-24"],         name:"HPE",     note:"HPE: Day after Thanksgiving + Christmas Eve" },
-  "AT&T":    { extraDays:["11-28"],                 name:"AT&T",    note:"AT&T: Day after Thanksgiving" },
-  "Naxon":   { extraDays:["12-24","12-31"],         name:"Naxon",   note:"Naxon: Christmas Eve + New Year's Eve" },
-  "NTTA":    { extraDays:["11-28"],                 name:"NTTA",    note:"NTTA: Day after Thanksgiving" },
-};
-
 function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoices, finInvoices, authProfile, addAudit }) {
   const isAdmin = ["super_admin","admin","hr_immigration"].includes(authProfile?.role);
   const isCons  = ["employee","contractor"].includes(authProfile?.role);
@@ -9725,85 +9885,6 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
   const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
-  // ── US Federal & Optional Holidays ──────────────────────────────────────
-  // Returns holidays for a given year as { "YYYY-MM-DD": { name, type, optional } }
-  const getUSHolidays = (year) => {
-    const h = {};
-    const add = (m, d, name, type="federal", optional=false) => {
-      const dt = `${year}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-      h[dt] = { name, type, optional };
-    };
-    // Helper: nth weekday of month (0=Sun..6=Sat)
-    const nthWkday = (m, n, wd) => {
-      let d = 1;
-      const first = new Date(year, m-1, 1).getDay();
-      let diff = (wd - first + 7) % 7;
-      d += diff + (n-1)*7;
-      return d;
-    };
-    // Helper: last weekday of month
-    const lastWkday = (m, wd) => {
-      const last = new Date(year, m, 0);
-      let d = last.getDate();
-      const lastDay = last.getDay();
-      d -= (lastDay - wd + 7) % 7;
-      return d;
-    };
-
-    // FEDERAL HOLIDAYS
-    add(1,  1,  "New Year's Day");
-    // MLK Day: 3rd Monday of January
-    add(1,  nthWkday(1,3,1), "Martin Luther King Jr. Day");
-    // Presidents Day: 3rd Monday of February
-    add(2,  nthWkday(2,3,1), "Presidents' Day");
-    // Memorial Day: Last Monday of May
-    add(5,  lastWkday(5,1),  "Memorial Day");
-    // Juneteenth
-    add(6,  19, "Juneteenth National Independence Day");
-    add(7,  4,  "Independence Day");
-    // Labor Day: 1st Monday of September
-    add(9,  nthWkday(9,1,1), "Labor Day");
-    // Columbus Day: 2nd Monday of October
-    add(10, nthWkday(10,2,1),"Columbus Day");
-    add(11, 11, "Veterans Day");
-    // Thanksgiving: 4th Thursday of November
-    add(11, nthWkday(11,4,4),"Thanksgiving Day");
-    add(12, 25, "Christmas Day");
-
-    // OPTIONAL / COMMONLY OBSERVED
-    // Day after Thanksgiving
-    const thxDay = nthWkday(11,4,4);
-    add(11, thxDay+1, "Day After Thanksgiving", "optional", true);
-    add(12, 24, "Christmas Eve",   "optional", true);
-    add(12, 26, "Day After Christmas", "optional", true);
-    add(1,  2,  "New Year's Eve / Day 2", "optional", true);
-    // Black Friday = day after Thanksgiving
-    // Good Friday (Easter-2 days)
-    const easterY = year;
-    const a = easterY % 19, b = Math.floor(easterY/100), cc = easterY%100;
-    const d2 = Math.floor(b/4), e2 = b%4, f2 = Math.floor((b+8)/25);
-    const g2 = Math.floor((b-f2+1)/3), h2 = (19*a+b-d2-g2+15)%30;
-    const i2 = Math.floor(cc/4), k2 = cc%4, l2 = (32+2*e2+2*i2-h2-k2)%7;
-    const m2 = Math.floor((a+11*h2+22*l2)/451);
-    const eMonth = Math.floor((h2+l2-7*m2+114)/31);
-    const eDay   = ((h2+l2-7*m2+114)%31)+1;
-    const easterDate = new Date(year, eMonth-1, eDay);
-    const goodFriday = new Date(easterDate); goodFriday.setDate(easterDate.getDate()-2);
-    const gfStr = `${year}-${String(goodFriday.getMonth()+1).padStart(2,"0")}-${String(goodFriday.getDate()).padStart(2,"0")}`;
-    h[gfStr] = { name:"Good Friday", type:"optional", optional:true };
-
-    return h;
-  };
-
-  const US_HOLIDAYS = getUSHolidays(selYear);
-  const getHolidayInfo = (dateStr) => US_HOLIDAYS[dateStr] || null;
-
-  // Override state: { "YYYY-MM-DD": { reason, confirmedAt } }
-  const [holidayOverrides, setHolidayOverrides] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("zt-ts-overrides")||"{}"); } catch { return {}; }
-  });
-  const saveOverrides = (o) => { setHolidayOverrides(o); localStorage.setItem("zt-ts-overrides",JSON.stringify(o)); };
-
   const getDaysInMonth = (y, m) => new Date(y, m+1, 0).getDate();
   const getFirstDayOfMonth = (y, m) => { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }; // Mon=0
 
@@ -9822,36 +9903,13 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
   // ── Build blank sheet for current month ───────────────────────────────────
   const buildBlankSheet = () => {
     const days = getDaysInMonth(selYear, selMonth);
-    const holidays = getUSHolidays(selYear);
-    // Add client-specific holidays
-    const clientKey = myConsultant?.client || "";
-    const clientCal = CLIENT_CALENDARS[clientKey] || null;
-    if (clientCal) {
-      clientCal.extraDays.forEach(mmdd => {
-        const dt = `${selYear}-${mmdd}`;
-        if (!holidays[dt]) {
-          holidays[dt] = { name: clientCal.name + " Holiday", type: "client", optional: false };
-        }
-      });
-    }
-    const dayEntries = Array.from({length: days}, (_, i) => {
-      const dateStrFixed = `${selYear}-${String(selMonth+1).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`;
-      const holiday = holidays[dateStrFixed];
-      const dow = new Date(selYear, selMonth, i+1).getDay(); // 0=Sun, 6=Sat
-      const isWeekend = dow === 0 || dow === 6;
-      return {
-        day: i + 1,
-        date: dateStrFixed,
-        hours: 0,
-        notes: "",
-        type: holiday && !holiday.optional ? "holiday" : isWeekend ? "weekend" : "regular",
-        holidayName: holiday?.name || null,
-        holidayType: holiday?.type || null,
-        isOptionalHoliday: holiday?.optional || false,
-        isWeekend,
-        overrideReason: null,
-      };
-    });
+    const dayEntries = Array.from({length: days}, (_, i) => ({
+      day: i + 1,
+      date: `${selYear}-${String(selMonth+1).padStart(2,"0")}-${String(i+1).padStart(2,"0")}`,
+      hours: 0,
+      notes: "",
+      type: "regular",  // regular | pto | sick | holiday
+    }));
     return {
       id: "ts-" + Date.now(),
       consultantId: myConsultant?.id || authProfile?.id || authProfile?.email,
@@ -9891,28 +9949,9 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
     return { ...sh, totalHours, totalRevenue };
   };
 
-  const [overrideModal, setOverrideModal] = useState(null); // {dayIdx, hours}
-  const [overrideReason, setOverrideReason] = useState("");
-
   const updateDay = (dayIdx, field, value) => {
-    const day = activeSheet.days[dayIdx];
-    // If entering hours on a holiday or weekend, require an override reason
-    if (field === "hours" && +value > 0 && (day.type === "holiday" || day.isWeekend) && !day.overrideReason) {
-      setOverrideModal({ dayIdx, hours: +value });
-      setOverrideReason("");
-      return;
-    }
     const updated = { ...activeSheet, days: activeSheet.days.map((d, i) => i === dayIdx ? { ...d, [field]: field === "hours" ? Math.max(0, Math.min(24, +value || 0)) : value } : d) };
     setActiveSheet(recalc(updated));
-  };
-
-  const confirmOverride = () => {
-    if (!overrideReason.trim()) return alert("Please enter a reason for working on this day.");
-    const { dayIdx, hours } = overrideModal;
-    const updated = { ...activeSheet, days: activeSheet.days.map((d, i) => i === dayIdx ? { ...d, hours, overrideReason: overrideReason.trim(), type: "override" } : d) };
-    setActiveSheet(recalc(updated));
-    setOverrideModal(null);
-    setOverrideReason("");
   };
 
   const saveAsDraft = () => {
@@ -10063,9 +10102,6 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
         {(isCons || isAdmin) && <button onClick={()=>setView("my")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="my"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="my"?"#fff":"#475569"}}>
           {isCons ? "📋 My Monthly Timesheet" : "📋 My View"}
         </button>}
-        {isAdmin && <button onClick={()=>setView("entry")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="entry"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="entry"?"#fff":"#475569"}}>
-          👥 By Consultant
-        </button>}
         {isAdmin && <button onClick={()=>setView("admin")} style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:view==="admin"?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view==="admin"?"#fff":"#475569"}}>
           📊 All Submissions
         </button>}
@@ -10110,46 +10146,6 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
             ))}
           </div>
 
-          {/* Holiday Legend */}
-          <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
-            <span style={{fontSize:10,color:"#64748b",fontWeight:600}}>Legend:</span>
-            {[["#1a1005","#f59e0b","🇺🇸 Federal"],["#1a0a2e","#a78bfa","🏢 Client Holiday"],["#0f0f0f","#64748b","📅 Optional"],["#060d1c","#475569","⛔ Weekend"],["#0a1a10","#34d399","✅ Hours logged"]].map(([bg,c,l])=>(
-              <span key={l} style={{fontSize:9,padding:"2px 7px",borderRadius:6,background:bg,color:c,border:"1px solid "+c+"44"}}>{l}</span>
-            ))}
-            {activeSheet.clientName && CLIENT_CALENDARS[activeSheet.clientName] && (
-              <span style={{fontSize:9,color:"#3d5a7a",marginLeft:4}}>· {CLIENT_CALENDARS[activeSheet.clientName]?.note}</span>
-            )}
-          </div>
-
-          {/* Holiday / Weekend Override Modal */}
-          {overrideModal && (
-            <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setOverrideModal(null)}>
-              <div className="modal" style={{maxWidth:460}}>
-                <MH title="Override: Working on Holiday/Weekend" onClose={()=>setOverrideModal(null)}/>
-                <div style={{padding:"10px 14px",background:"#2d1a00",border:"1px solid #f59e0b55",borderRadius:8,marginBottom:14}}>
-                  <div style={{fontSize:12,color:"#f59e0b",fontWeight:700,marginBottom:4}}>
-                    ⚠️ {overrideModal.holidayName || "Weekend"} · {overrideModal.day?.date}
-                  </div>
-                  <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.5}}>
-                    You are logging <strong style={{color:"#f59e0b"}}>{overrideModal.hours} hours</strong> on a {overrideModal.holidayName?"holiday":"weekend"}.
-                    This requires a business justification and will be flagged for manager review.
-                  </div>
-                </div>
-                <div className="lbl">Business Reason for Working This Day *</div>
-                <textarea className="inp" rows={3} autoFocus value={overrideReason}
-                  onChange={e=>setOverrideReason(e.target.value)}
-                  placeholder="e.g. Critical go-live support for client, system emergency, pre-approved overtime, make-up hours..."/>
-                <div style={{fontSize:10,color:"#334155",marginTop:6,marginBottom:14}}>
-                  This note will appear on your submitted timesheet for manager review.
-                </div>
-                <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-                  <button className="btn bg" onClick={()=>setOverrideModal(null)}>Cancel</button>
-                  <button className="btn bp" onClick={confirmOverride}>⚠️ Confirm Override</button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Calendar grid */}
           <div className="card" style={{padding:"16px 18px",marginBottom:14}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:8}}>
@@ -10167,66 +10163,31 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                 const isWeekend = (firstDay + idx) % 7 >= 5;
                 const isToday   = day.date === TODAY_STR;
                 const hrs       = day.hours || 0;
-                                const isHoliday      = day.type === "holiday";
-                const isOptHol      = day.isOptionalHoliday;
-                const isOverridden  = day.overrideReason;
-                const hasHours      = hrs > 0;
-                const cellBg        = isToday ? "#0c2340"
-                                    : isOverridden && (isHoliday||day.isWeekend) ? "#1a0c00"
-                                    : isHoliday ? "#120820"
-                                    : isOptHol  ? "#0c1820"
-                                    : day.isWeekend ? "#060d1c"
-                                    : "#0a1120";
-                const cellBorder    = isToday ? "#0284c7"
-                                    : isHoliday ? "#7c3aed55"
-                                    : isOptHol  ? "#0369a155"
-                                    : day.isWeekend ? "#0a1626"
-                                    : "#1a2d45";
-                const hrColor       = isHoliday||day.isWeekend ? (isOverridden ? "#f59e0b" : "#f87171") : "#38bdf8";
                 cells.push(
-                  <div key={day.day} style={{border:`1px solid ${cellBorder}`,borderRadius:8,padding:"5px 7px",background:cellBg,minHeight:72}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
-                      <span style={{fontSize:10,color:isToday?"#38bdf8":isHoliday?"#a78bfa":day.isWeekend?"#1e3a5f":"#334155",fontWeight:isToday||isHoliday?700:400}}>{day.day}</span>
-                      {/* Holiday/weekend indicator */}
-                      {(isHoliday||isOptHol) && !isOverridden &&
-                        <span title={day.holidayName||""} style={{fontSize:7,color:isHoliday?"#a78bfa":"#38bdf8",fontWeight:700,cursor:"default",overflow:"hidden",whiteSpace:"nowrap",maxWidth:50,textOverflow:"ellipsis"}}>
-                          {isHoliday?"🏛":"📌"}{day.holidayName?.split("'")[0]?.slice(0,8)}
-                        </span>}
-                      {isOverridden && <span style={{fontSize:7,color:"#f59e0b"}}>⚡OT</span>}
-                      {day.isWeekend && !isHoliday && !isOverridden && <span style={{fontSize:7,color:"#1e3a5f"}}>WE</span>}
+                  <div key={day.day} style={{border:`1px solid ${isToday?"#0284c7":"#1a2d45"}`,borderRadius:8,padding:"6px 8px",background:isToday?"#0c2340":isWeekend?"#060d1c":"#0a1120",minHeight:70}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <span style={{fontSize:10,color:isToday?"#38bdf8":"#334155",fontWeight:isToday?700:400}}>{day.day}</span>
+                      {/* Type selector */}
+                      {!isLocked && <select value={day.type} onChange={e=>updateDay(idx,"type",e.target.value)}
+                        style={{fontSize:8,background:"transparent",border:"none",color:"#334155",cursor:"pointer",padding:0}}>
+                        <option value="regular">Work</option>
+                        <option value="pto">PTO</option>
+                        <option value="sick">Sick</option>
+                        <option value="holiday">Holiday</option>
+                      </select>}
+                      {isLocked && day.type !== "regular" && <span style={{fontSize:8,color:dayColor(day.type)}}>{day.type}</span>}
                     </div>
-                    {/* Holiday name tooltip row */}
-                    {isHoliday && !isOverridden && !hasHours && (
-                      <div style={{fontSize:8,color:"#7c3aed",marginBottom:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{day.holidayName}</div>
-                    )}
-                    {isOptHol && !isOverridden && !hasHours && (
-                      <div style={{fontSize:8,color:"#38bdf8",marginBottom:2}}>Optional holiday</div>
-                    )}
-                    {/* Hours input */}
                     {isLocked ? (
-                      <div style={{fontSize:16,fontWeight:700,color:hasHours?hrColor:"#1e3a5f",textAlign:"center",marginTop:4}}>{hasHours?hrs:""}</div>
+                      <div style={{fontSize:16,fontWeight:700,color:hrs>0?dayColor(day.type):"#1e3a5f",textAlign:"center"}}>{hrs>0?hrs:""}</div>
                     ) : (
                       <input type="number" min={0} max={24} step={0.5} value={hrs||""}
-                        onChange={e=>{
-                          const newHrs = parseFloat(e.target.value)||0;
-                          if (newHrs > 0 && (isHoliday || day.isWeekend) && !day.overrideReason) {
-                            setOverrideModal({day, idx, hours:newHrs, isHoliday, holidayName:day.holidayName});
-                          } else {
-                            updateDay(idx,"hours",e.target.value);
-                          }
-                        }}
-                        placeholder={(isHoliday&&!isOverridden)?"🏛":(day.isWeekend&&!isOverridden)?"—":"0"}
-                        style={{width:"100%",background:"transparent",border:"none",borderBottom:`1px solid ${isHoliday?"#7c3aed44":isOptHol?"#0369a144":"#1a2d45"}`,
-                          color:hrColor,fontSize:15,fontWeight:700,textAlign:"center",padding:"2px 0",outline:"none"}}/>
+                        onChange={e=>updateDay(idx,"hours",e.target.value)}
+                        placeholder={isWeekend?"—":"0"}
+                        style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid #1a2d45",color:dayColor(day.type),fontSize:16,fontWeight:700,textAlign:"center",padding:"2px 0",outline:"none"}}/>
                     )}
-                    {/* Override reason badge */}
-                    {isOverridden && <div style={{fontSize:7,color:"#f59e0b",marginTop:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer"}}
-                      title={day.overrideReason}>⚡ {day.overrideReason?.slice(0,20)}</div>}
-                    {/* Notes */}
-                    {!isLocked && hrs>0 && !isHoliday && !day.isWeekend && (
-                      <input value={day.notes||""} onChange={e=>updateDay(idx,"notes",e.target.value)}
-                        placeholder="notes" style={{width:"100%",background:"transparent",border:"none",color:"#334155",fontSize:8,marginTop:2,outline:"none"}}/>
-                    )}
+                    {/* Notes icon */}
+                    {!isLocked && hrs > 0 && <input value={day.notes} onChange={e=>updateDay(idx,"notes",e.target.value)}
+                      placeholder="notes" style={{width:"100%",background:"transparent",border:"none",color:"#334155",fontSize:8,marginTop:2,outline:"none"}}/>}
                     {isLocked && day.notes && <div style={{fontSize:8,color:"#334155",marginTop:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{day.notes}</div>}
                   </div>
                 );
@@ -10309,10 +10270,7 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                         const [y,m] = s.period.split("-").map(Number);
                         setSelYear(y); setSelMonth(m-1); setActiveSheet(s);
                       }}>
-                      <div>
-                        <div style={{fontSize:12,color:"#e2e8f0",fontWeight:600}}>{s.periodLabel}</div>
-                        <div style={{fontSize:10,color:"#475569"}}>{s.totalHours}h · ${s.totalRevenue.toLocaleString()}</div>
-                      </div>
+                      <div><div style={{fontSize:12,color:"#e2e8f0",fontWeight:600}}>{s.periodLabel}</div><div style={{fontSize:10,color:"#475569"}}>{s.totalHours}h · ${s.totalRevenue.toLocaleString()}</div></div>
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
                         {s.invoiceId && <span style={{fontSize:10,color:"#f59e0b"}}>💰 {s.invoiceId}</span>}
                         <span className="bdg" style={{background:st.bg,color:st.color,fontSize:10}}>{st.icon} {st.label}</span>
@@ -10325,56 +10283,6 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
           )}
         </div>
       )}
-      {view==="entry" && isAdmin && (
-        <div>
-          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>Enter Timesheet Per Consultant</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-            {(roster||[]).filter(r=>r.client&&r.client!=="Bench").map(r=>{
-              const clientCal = CLIENT_CALENDARS[r.client];
-              const consultantSheets = sheets.filter(s=>s.consultantId===r.id);
-              const thisMonth = consultantSheets.find(s=>s.period===currentSheetKey);
-              const st = stCfg(thisMonth?.status||"draft");
-              return (
-                <div key={r.id} className="card" style={{padding:"14px 16px",cursor:"pointer",border:`1px solid ${thisMonth?.status==="invoiced"?"#f59e0b33":thisMonth?.status==="approved"?"#34d39933":"#1a2d45"}`}}
-                  onClick={()=>{
-                    setSelMonth(new Date().getMonth());
-                    setSelYear(new Date().getFullYear());
-                    // Temporarily set "my consultant" context to this person for admin entry
-                    setActiveSheet(thisMonth || {
-                      ...buildBlankSheet(),
-                      consultantId: r.id,
-                      consultantName: r.name,
-                      clientName: r.client,
-                      clientId: r.clientId||"",
-                      project: r.projects?.split(",")[0]?.trim()||"",
-                      billRate: r.billRate||0,
-                    });
-                    setView("my");
-                  }}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                    <div>
-                      <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div>
-                      <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role}</div>
-                    </div>
-                    <span className="bdg" style={{background:st.bg,color:st.color,fontSize:9}}>{st.icon}</span>
-                  </div>
-                  <div style={{display:"flex",gap:8,marginBottom:6}}>
-                    <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:10}}>🏢 {r.client}</span>
-                    <span className="bdg" style={{background:"#0a1626",color:"#f59e0b",fontSize:10}}>${r.billRate}/hr</span>
-                  </div>
-                  {clientCal && <div style={{fontSize:9,color:"#475569",marginBottom:4}}>📋 {clientCal.note}</div>}
-                  {thisMonth ? (
-                    <div style={{fontSize:10,color:"#94a3b8"}}>{thisMonth.totalHours}h · {fmt(thisMonth.totalRevenue)} · {st.label}</div>
-                  ) : (
-                    <div style={{fontSize:10,color:"#334155"}}>No timesheet yet — click to create</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
 
       {/* ══ ADMIN — ALL SUBMISSIONS ══════════════════════════════════════════ */}
       {view==="admin" && isAdmin && (
@@ -10492,206 +10400,964 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
 }
 
 
+function TSConsultant({ roster, tsSubmissions, setTsSubmissions, tsHours, setTsHours, projects, clients, addAudit }) {
+  const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
+  const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ONBOARDING MODULE — New hire & contractor onboarding checklists
-// Data comes from `onboardings` state (Supabase) — ZERO hardcoded people
-// ═══════════════════════════════════════════════════════════════════════════
-function OnboardingModule({ roster, onboardings, setOnboardings, addAudit }) {
-  const [selId,    setSel]    = useState(onboardings?.[0]?.id || null);
-  const [newModal, setNew]    = useState(false);
-  const [newForm,  setNF]     = useState({ name:"", type:"FTE", startDate:"", rosterMemberId:"" });
+  // Build list of Mon-starting weeks covering ±8 weeks from today
+  const buildWeeks = () => {
+    const today = new Date();
+    const day = today.getDay(); // 0=Sun, 1=Mon...
+    const base = new Date(today);
+    base.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); // nearest Monday
+    const weeks = [];
+    for (let i = -4; i <= 8; i++) {
+      const mon = new Date(base); mon.setDate(mon.getDate() + i*7);
+      const fri = new Date(mon); fri.setDate(fri.getDate() + 4);
+      const label = `${MONTHS_SHORT[mon.getMonth()]} ${mon.getDate()} – ${mon.getDate()+4}, ${mon.getFullYear()}`;
+      const key   = mon.toISOString().slice(0,10);
+      weeks.push({ key, label, mon, fri });
+    }
+    return weeks;
+  };
+  const WEEKS = buildWeeks();
 
-  const save = (updated) => {
-    setOnboardings(updated);
-    addAudit?.("Onboarding","Updated","checklist","");
+  // State
+  const [consultantId, setConsultantId] = useState(roster[0]?.id||"");
+  const [weekKey,      setWeekKey]      = useState(WEEKS[4].key); // default = current week
+  const [dayHours,     setDayHours]     = useState({Mon:8,Tue:8,Wed:8,Thu:8,Fri:8});
+  const [projectId,    setProjectId]    = useState("");
+  const [notes,        setNotes]        = useState("");
+  const [viewMode,     setViewMode]     = useState("entry"); // entry | history
+  const [successMsg,   setSuccessMsg]   = useState("");
+  const [error,        setError]        = useState("");
+  const [resubId,      setResubId]      = useState(null);
+  const [resubNote,    setResubNote]    = useState("");
+
+  // ── Live clock-in timer ──────────────────────────────────────
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerDay,     setTimerDay]     = useState("Mon");
+  const timerRef = useRef(null);
+
+  const startTimer = (day) => {
+    setTimerDay(day);
+    setTimerRunning(true);
+    timerRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000);
+  };
+  const stopTimer = () => {
+    clearInterval(timerRef.current);
+    setTimerRunning(false);
+    // Add elapsed hours to selected day (rounded to nearest 0.25h)
+    const hrs = Math.round((timerSeconds / 3600) * 4) / 4;
+    if (hrs >= 0.25) {
+      setDayHours(h => ({ ...h, [timerDay]: Math.min(24, (parseFloat(h[timerDay])||0) + hrs) }));
+    }
+    setTimerSeconds(0);
+  };
+  const fmtTimer = (s) => {
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+    return `${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+  };
+  useEffect(() => () => clearInterval(timerRef.current), []);
+
+  const consultant  = roster.find(r => r.id === consultantId);
+  const billRate    = consultant?.billRate || 0;
+  const totalHours  = Object.values(dayHours).reduce((s,h) => s + (parseFloat(h)||0), 0);
+  const totalRevenue = totalHours * billRate;
+  const selectedWeek = WEEKS.find(w => w.key === weekKey) || WEEKS[4];
+
+  // Period string: "Mar W2 2026" style
+  const weekLabel = selectedWeek.label;
+
+  // Check if this consultant+week already has a submission
+  const existingSub = tsSubmissions.find(s =>
+    s.rosterId === consultantId && s.weekKey === weekKey
+  );
+
+  const isSubmitted = existingSub && existingSub.status !== "draft" && existingSub.status !== "rejected";
+  const isRejected  = existingSub?.status === "rejected";
+
+  // When consultant or week changes, pre-fill hours if draft exists
+  useEffect(() => {
+    if (existingSub?.dayHours) {
+      setDayHours(existingSub.dayHours);
+    } else {
+      setDayHours({Mon:8,Tue:8,Wed:8,Thu:8,Fri:8});
+    }
+    setNotes(existingSub?.notes||"");
+    setProjectId(existingSub?.projectId||"");
+    setError("");
+    setSuccessMsg("");
+  }, [consultantId, weekKey]);
+
+  const setDay = (day, val) => {
+    const v = Math.max(0, Math.min(24, parseFloat(val)||0));
+    setDayHours(h => ({...h, [day]: v}));
   };
 
-  const selected = onboardings?.find(o => o.id === selId) || null;
+  // Validate + submit
+  const handleSubmit = () => {
+    if (totalHours <= 0) { setError("Total hours must be greater than 0."); return; }
+    if (totalHours > 60) { setError("Total hours exceed 60 for the week — please review."); return; }
+    setError("");
 
-  const createOnboarding = () => {
-    if (!newForm.name.trim()) return alert("Enter the new hire's name");
-    const template = newForm.type === "FTE" ? OB_TEMPLATE_FTE : OB_TEMPLATE_CONTRACTOR;
-    const tasks = template.map(t => ({
-      ...t,
-      done: false,
-      doneDate: null,
-      doneBy: null,
-      note: "",
-    }));
-    const ob = {
-      id:        "ob-" + Date.now(),
-      name:      newForm.name.trim(),
-      type:      newForm.type,
-      startDate: newForm.startDate,
-      rosterId:  newForm.rosterMemberId || null,
-      tasks,
-      createdAt: TODAY_STR,
+    const period = weekLabel;
+    const newSub = {
+      id:          existingSub?.id || "tss" + uid(),
+      rosterId:    consultantId,
+      memberName:  consultant?.name || "",
+      weekKey,
+      period,
+      dayHours:    {...dayHours},
+      totalHours,
+      billRate,
+      totalRevenue,
+      projectId,
+      clientId:    projects.find(p=>p.id===projectId)?.clientId || consultant?.client || "",
+      notes,
+      status:      "submitted",
+      submittedAt: TODAY_STR,
+      pmApproverId:"", pmApprovedAt:"", ownerApprovedAt:"",
+      lockedAt:"", pmNotes:"", rejectionNote:"", invoiceRef:"",
+      monthIdx: selectedWeek.mon.getMonth(),
+      year:     selectedWeek.mon.getFullYear(),
     };
-    const updated = [...(onboardings||[]), ob];
-    save(updated);
-    setSel(ob.id);
-    setNew(false);
-    setNF({ name:"", type:"FTE", startDate:"", rosterMemberId:"" });
+
+    if (existingSub) {
+      setTsSubmissions(ss => ss.map(s => s.id === existingSub.id ? newSub : s));
+    } else {
+      setTsSubmissions(ss => [...ss, newSub]);
+      // Sync with tsHours grid (monthly bucket)
+      const mi = newSub.monthIdx;
+      setTsHours(h => ({
+        ...h,
+        [consultantId]: (h[consultantId]||Array(12).fill(0)).map((v,i) => i===mi ? (v + totalHours) : v)
+      }));
+    }
+
+    addAudit && addAudit("Timesheets", "Consultant Submitted Timesheet", "Timesheet",
+      `${consultant?.name} submitted ${totalHours}h for ${period}`, {totalRevenue});
+
+    setSuccessMsg(`✓ Submitted ${totalHours}h for ${period}. Sent to PM for approval.`);
+    setTimeout(() => setSuccessMsg(""), 5000);
   };
 
-  const toggleTask = (obId, taskId) => {
-    save((onboardings||[]).map(o => o.id !== obId ? o : {
-      ...o,
-      tasks: o.tasks.map(t => t.id !== taskId ? t : {
-        ...t,
-        done: !t.done,
-        doneDate: !t.done ? TODAY_STR : null,
-        doneBy:   !t.done ? "Manju" : null,
-      })
-    }));
+  // Resubmit after rejection
+  const handleResubmit = (sub) => {
+    setTsSubmissions(ss => ss.map(s => s.id === sub.id ? {
+      ...s, status:"submitted", submittedAt: TODAY_STR,
+      rejectionNote:"", pmNotes:"",
+    } : s));
+    addAudit && addAudit("Timesheets","Consultant Resubmitted","Timesheet",
+      `${sub.memberName} resubmitted ${sub.period} after rejection`);
+    setResubId(null);
+    setResubNote("");
   };
 
-  const deleteOnboarding = (obId) => {
-    if (!window.confirm("Remove this onboarding record?")) return;
-    const updated = (onboardings||[]).filter(o => o.id !== obId);
-    save(updated);
-    setSel(updated[0]?.id || null);
-  };
+  // My submissions filtered to this consultant
+  const mySubs = tsSubmissions.filter(s => s.rosterId === consultantId)
+    .sort((a,b) => (b.weekKey||b.period||"").localeCompare(a.weekKey||a.period||""));
 
-  const pct = (ob) => {
-    if (!ob?.tasks?.length) return 0;
-    return Math.round(ob.tasks.filter(t=>t.done).length / ob.tasks.length * 100);
-  };
+  const statusColor = { submitted:"#f59e0b", pm_approved:"#38bdf8", approved:"#34d399", locked:"#a78bfa", rejected:"#f87171", draft:"#64748b" };
+  const statusBg    = { submitted:"#1a1000", pm_approved:"#020d1c", approved:"#021f14", locked:"#0d0b1a", rejected:"#1a0808", draft:"#0a0f1c" };
 
-  const catColor = { "HR & Legal":"#38bdf8", Benefits:"#34d399", "IT & Access":"#a78bfa", Compliance:"#f59e0b", "Project Ramp":"#f87171", Finance:"#94a3b8" };
+  const clientProjects = projects.filter(p =>
+    p.status==="active" && (p.client === consultant?.client || !p.client)
+  );
 
   return (
     <div>
-      <PH title="Onboarding" sub="New hire & contractor onboarding checklists — track every step from day 0 to 30-day check-in"/>
-
-      <div style={{display:"grid", gridTemplateColumns:"260px 1fr", gap:16, alignItems:"start"}}>
-        {/* Sidebar — person list */}
-        <div>
-          <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,marginBottom:12}}
-            onClick={()=>setNew(true)}>+ New Onboarding</button>
-
-          {(!onboardings||onboardings.length===0) ? (
-            <div style={{padding:"30px 16px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:10}}>
-              <div style={{fontSize:24,marginBottom:8}}>🚀</div>
-              <div style={{fontSize:12,color:"#334155"}}>No onboardings yet</div>
-              <div style={{fontSize:11,color:"#1e3a5f",marginTop:4}}>Click "+ New Onboarding" to start tracking a new hire</div>
-            </div>
-          ) : (
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {(onboardings||[]).map(ob => {
-                const p = pct(ob);
-                const isActive = ob.id === selId;
-                return (
-                  <div key={ob.id} onClick={()=>setSel(ob.id)}
-                    style={{padding:"12px 14px",borderRadius:10,cursor:"pointer",
-                      background:isActive?"#0c2340":"#060d1c",
-                      border:`1px solid ${isActive?"#0369a1":"#1a2d45"}`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                      <div style={{width:32,height:32,borderRadius:"50%",background:"#1a2d45",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#38bdf8",flexShrink:0}}>
-                        {ob.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
-                      </div>
-                      <span style={{fontSize:11,fontWeight:700,color:p===100?"#34d399":"#38bdf8"}}>{p}%</span>
-                    </div>
-                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{ob.name}</div>
-                    <div style={{fontSize:10,color:"#3d5a7a"}}>{ob.type} · starts {ob.startDate||"TBD"}</div>
-                    <div style={{height:4,background:"#0a1626",borderRadius:2,marginTop:6}}>
-                      <div style={{height:4,borderRadius:2,background:p===100?"#34d399":"#0284c7",width:p+"%",transition:"width 0.4s"}}/>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      <div style={{display:"flex",gap:8,marginBottom:18,alignItems:"center",flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45"}}>
+          {[["entry","Log Hours"],["history","My Submissions"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setViewMode(v)}
+              style={{padding:"5px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+                background:viewMode===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+                color:viewMode===v?"#fff":"#475569"}}>
+              {l}{v==="history"&&mySubs.filter(s=>s.status==="rejected").length>0?
+                <span style={{marginLeft:5,background:"#f87171",color:"#fff",borderRadius:"50%",padding:"1px 5px",fontSize:9}}>
+                  {mySubs.filter(s=>s.status==="rejected").length}
+                </span>:""}
+            </button>
+          ))}
         </div>
-
-        {/* Main checklist panel */}
-        <div>
-          {!selected ? (
-            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
-              <div style={{fontSize:36,marginBottom:12}}>🚀</div>
-              <div style={{fontSize:14,color:"#334155"}}>Select an onboarding on the left, or create a new one</div>
-            </div>
-          ) : (
-            <div>
-              {/* Header */}
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
-                <div>
-                  <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0"}}>{selected.name}</div>
-                  <div style={{fontSize:12,color:"#3d5a7a"}}>{selected.type} · Start date: {selected.startDate||"TBD"}</div>
-                </div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <div style={{fontSize:28,fontWeight:900,color:pct(selected)===100?"#34d399":"#38bdf8"}}>{pct(selected)}%</div>
-                  {pct(selected)===100 && <span className="bdg" style={{background:"#34d39922",color:"#34d399"}}>COMPLETED</span>}
-                  <button className="btn br" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>deleteOnboarding(selected.id)}>🗑</button>
-                </div>
-              </div>
-
-              {/* Progress bar */}
-              <div style={{height:8,background:"#0a1626",borderRadius:4,marginBottom:20}}>
-                <div style={{height:8,borderRadius:4,background:"linear-gradient(90deg,#0284c7,#34d399)",width:pct(selected)+"%",transition:"width 0.5s"}}/>
-              </div>
-
-              {/* Tasks grouped by category */}
-              {[...new Set(selected.tasks.map(t=>t.cat))].map(cat => (
-                <div key={cat} className="card" style={{padding:"14px 18px",marginBottom:12}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                    <div style={{fontSize:11,fontWeight:700,color:catColor[cat]||"#94a3b8",textTransform:"uppercase"}}>{cat}</div>
-                    <span style={{fontSize:10,color:"#334155"}}>
-                      {selected.tasks.filter(t=>t.cat===cat&&t.done).length}/{selected.tasks.filter(t=>t.cat===cat).length}
-                    </span>
-                  </div>
-                  {selected.tasks.filter(t=>t.cat===cat).map(task => (
-                    <div key={task.id} onClick={()=>toggleTask(selected.id,task.id)}
-                      style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,cursor:"pointer",marginBottom:4,
-                        background:task.done?"#021f14":"#060d1c",border:`1px solid ${task.done?"#34d39333":"#1a2d45"}`}}>
-                      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,
-                        border:`2px solid ${task.done?"#34d399":"#334155"}`,
-                        background:task.done?"#34d399":"transparent",
-                        display:"flex",alignItems:"center",justifyContent:"center"}}>
-                        {task.done&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
-                      </div>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:12,color:task.done?"#34d399":"#94a3b8",textDecoration:task.done?"line-through":"none"}}>{task.title}</div>
-                        {task.doneDate&&<div style={{fontSize:9,color:"#334155"}}>✓ {task.doneDate} by {task.doneBy}</div>}
-                      </div>
-                      <span className="bdg" style={{fontSize:9,background:"#0a1626",color:"#334155"}}>Day {task.days}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Consultant selector */}
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+          <span style={{fontSize:11,color:"#3d5a7a",fontWeight:700}}>CONSULTANT</span>
+          <select className="inp" style={{fontSize:12,padding:"3px 10px",width:"auto"}}
+            value={consultantId} onChange={e=>setConsultantId(e.target.value)}>
+            {roster.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
         </div>
       </div>
 
-      {/* New Onboarding Modal */}
-      {newModal && (
-        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setNew(false)}>
-          <div className="modal" style={{maxWidth:480}}>
-            <MH title="New Onboarding" onClose={()=>setNew(false)}/>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              <div><div className="lbl">Full Name *</div>
-                <input className="inp" value={newForm.name} onChange={e=>setNF(p=>({...p,name:e.target.value}))} placeholder="New hire's full name"/></div>
-              <div><div className="lbl">Employment Type</div>
-                <select className="inp" value={newForm.type} onChange={e=>setNF(p=>({...p,type:e.target.value}))}>
-                  <option value="FTE">FTE (Full-Time Employee)</option>
-                  <option value="Contractor">Contractor</option>
-                </select></div>
-              <div><div className="lbl">Start Date</div>
-                <input className="inp" type="date" value={newForm.startDate} onChange={e=>setNF(p=>({...p,startDate:e.target.value}))}/></div>
-              <div><div className="lbl">Link to Roster Member (optional)</div>
-                <select className="inp" value={newForm.rosterMemberId} onChange={e=>setNF(p=>({...p,rosterMemberId:e.target.value}))}>
-                  <option value="">— select —</option>
-                  {(roster||[]).map(r=><option key={r.id} value={r.id}>{r.name} ({r.type})</option>)}
-                </select></div>
-              <div style={{fontSize:11,color:"#334155",padding:"8px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
-                {newForm.type==="FTE" ? `✓ FTE checklist: ${OB_TEMPLATE_FTE.length} tasks (HR, Benefits, IT, Compliance, Project Ramp)` : `✓ Contractor checklist: ${OB_TEMPLATE_CONTRACTOR.length} tasks (HR, Compliance, IT, Finance)`}
+      {/* ── LOG HOURS VIEW ─────────────────────────────────────────────────── */}
+      {viewMode==="entry"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 320px",gap:16,alignItems:"start"}}>
+
+          {/* Left: entry form */}
+          <div className="card" style={{padding:"20px 22px"}}>
+
+            {/* Consultant summary strip */}
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"12px 14px",
+              background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <Avatar name={consultant?.name||"?"} size={40}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{consultant?.name}</div>
+                <div style={{fontSize:11,color:"#3d5a7a"}}>{consultant?.role} · {consultant?.client} · ${billRate}/hr</div>
+              </div>
+              {existingSub&&(
+                <span style={{fontSize:10,padding:"3px 8px",borderRadius:20,
+                  background:statusBg[existingSub.status],color:statusColor[existingSub.status],
+                  border:`1px solid ${statusColor[existingSub.status]}44`}}>
+                  {existingSub.status}
+                </span>
+              )}
+            </div>
+
+            {/* Week selector */}
+            <div style={{marginBottom:18}}>
+              <div className="lbl" style={{marginBottom:6}}>Work Week</div>
+              <select className="inp" value={weekKey} onChange={e=>setWeekKey(e.target.value)}>
+                {WEEKS.map(w=>{
+                  const hasSub = tsSubmissions.find(s=>s.rosterId===consultantId&&s.weekKey===w.key);
+                  const suffix = hasSub ? ` — ${hasSub.status}` : "";
+                  return <option key={w.key} value={w.key}>{w.label}{suffix}</option>;
+                })}
+              </select>
+            </div>
+
+            {/* Already submitted / locked notice */}
+            {isSubmitted&&!isRejected&&(
+              <div style={{padding:"12px 14px",background:"#021f14",borderRadius:8,border:"1px solid #063d28",
+                marginBottom:14,fontSize:12,color:"#34d399"}}>
+                ✓ This week is <strong>{existingSub.status}</strong> — {existingSub.totalHours}h submitted on {existingSub.submittedAt}.
+                {existingSub.status==="pm_approved"&&" Waiting for owner final approval."}
+                {existingSub.status==="approved"&&" Approved — will be locked and invoiced at month end."}
+                {existingSub.status==="locked"&&` Locked. Invoice ref: ${existingSub.invoiceRef||"—"}`}
+              </div>
+            )}
+
+            {/* Rejection notice */}
+            {isRejected&&(
+              <div style={{padding:"12px 14px",background:"#1a0808",borderRadius:8,border:"1px solid #3d1010",
+                marginBottom:14}}>
+                <div style={{fontSize:12,color:"#f87171",fontWeight:700,marginBottom:4}}>Timesheet Rejected</div>
+                <div style={{fontSize:11,color:"#f87171",marginBottom:8}}>{existingSub.rejectionNote||"Please review and resubmit."}</div>
+                <div style={{fontSize:11,color:"#3d5a7a"}}>Update your hours below and resubmit.</div>
+              </div>
+            )}
+
+            {/* Day-by-day hours */}
+            <div className="lbl" style={{marginBottom:10}}>Daily Hours — {selectedWeek.label}</div>
+            {/* Live timer banner */}
+            {timerRunning && (
+              <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",marginBottom:12,
+                background:"#021f14",border:"1px solid #34d39944",borderRadius:8}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:"#34d399",
+                  animation:"pulse 1s infinite",flexShrink:0}}/>
+                <span style={{fontSize:13,color:"#34d399",fontFamily:"'DM Mono',monospace",fontWeight:700}}>
+                  {fmtTimer(timerSeconds)}
+                </span>
+                <span style={{fontSize:11,color:"#64748b"}}>clocked in — {timerDay}</span>
+                <button className="btn br" style={{marginLeft:"auto",fontSize:11,padding:"4px 12px"}} onClick={stopTimer}>
+                  ⏹ Stop &amp; Add Hours
+                </button>
+              </div>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+              {DAYS.map(day=>(
+                <div key={day} style={{textAlign:"center"}}>
+                  <div style={{fontSize:11,color:"#3d5a7a",fontWeight:700,marginBottom:6,
+                    letterSpacing:"0.04em"}}>{day}</div>
+                  <input
+                    type="number" min="0" max="24" step="0.5"
+                    className="inp"
+                    style={{textAlign:"center",fontSize:18,fontWeight:700,fontFamily:"'DM Mono',monospace",
+                      color:"#38bdf8",padding:"8px 4px"}}
+                    value={dayHours[day]}
+                    disabled={isSubmitted&&!isRejected}
+                    onChange={e=>setDay(day, e.target.value)}
+                  />
+                  <div style={{fontSize:9,color:"#1e3a5f",marginTop:3}}>hrs</div>
+                  {!isSubmitted && (
+                    <button
+                      onClick={()=>timerRunning&&timerDay===day ? stopTimer() : (!timerRunning ? startTimer(day) : null)}
+                      style={{marginTop:4,fontSize:9,padding:"2px 6px",borderRadius:4,border:"none",cursor:"pointer",
+                        background: timerRunning&&timerDay===day ? "#1a0808" : timerRunning ? "#0a1626" : "#021f14",
+                        color: timerRunning&&timerDay===day ? "#f87171" : timerRunning ? "#1e3a5f" : "#34d399"}}>
+                      {timerRunning&&timerDay===day ? "⏹ stop" : "▶ clock"}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Project + notes */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}}>
+              <FF label="Project / Engagement">
+                <select className="inp" value={projectId} disabled={isSubmitted&&!isRejected}
+                  onChange={e=>setProjectId(e.target.value)}>
+                  <option value="">— General / {consultant?.client||"No client"} —</option>
+                  {clientProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </FF>
+              <FF label="Notes (optional)">
+                <input className="inp" value={notes} disabled={isSubmitted&&!isRejected}
+                  placeholder="e.g. Sprint 3 delivery, client travel..."
+                  onChange={e=>setNotes(e.target.value)}/>
+              </FF>
+            </div>
+
+            {/* Error / success */}
+            {error&&<div style={{marginBottom:12,padding:"8px 12px",background:"#1a0808",border:"1px solid #3d1010",borderRadius:6,fontSize:12,color:"#f87171"}}>{error}</div>}
+            {successMsg&&<div style={{marginBottom:12,padding:"8px 12px",background:"#021f14",border:"1px solid #063d28",borderRadius:6,fontSize:12,color:"#34d399"}}>{successMsg}</div>}
+
+            {/* Submit button */}
+            {(!isSubmitted||isRejected)&&(
+              <button className="btn bp" style={{width:"100%",padding:"12px",fontSize:14,fontWeight:700}}
+                onClick={handleSubmit} disabled={totalHours===0}>
+                {isRejected?"Resubmit Timesheet →":"Submit for Approval →"}
+              </button>
+            )}
+          </div>
+
+          {/* Right: summary panel */}
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+
+            {/* Week totals card */}
+            <div className="card" style={{padding:"18px 20px",overflowX:"auto"}}>
+              <div className="section-hdr" style={{marginBottom:14}}>Week Summary</div>
+              {DAYS.map(day=>{
+                const h = parseFloat(dayHours[day])||0;
+                const rev = h * billRate;
+                return (
+                  <div key={day} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                    padding:"5px 0",borderBottom:"1px solid #070b14"}}>
+                    <span style={{fontSize:12,color:"#64748b",width:32}}>{day}</span>
+                    <div style={{flex:1,margin:"0 8px",height:4,background:"#1a2d45",borderRadius:2,overflow:"hidden"}}>
+                      <div style={{height:4,width:`${Math.min(100,h/12*100)}%`,background:"#0369a1",borderRadius:2}}/>
+                    </div>
+                    <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8",minWidth:28,textAlign:"right"}}>{h}h</span>
+                    <span style={{fontSize:11,color:"#3d5a7a",minWidth:56,textAlign:"right"}}>{fmt(rev)}</span>
+                  </div>
+                );
+              })}
+              <div style={{marginTop:10,paddingTop:10,borderTop:"2px solid #0369a1",
+                display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Total</span>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>{totalHours}h</div>
+                  <div style={{fontSize:12,color:"#34d399",fontFamily:"monospace"}}>{fmt(totalRevenue)}</div>
+                </div>
               </div>
             </div>
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
-              <button className="btn bg" onClick={()=>setNew(false)}>Cancel</button>
-              <button className="btn bp" onClick={createOnboarding}>🚀 Create Onboarding</button>
+
+            {/* Workflow guide */}
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div className="section-hdr" style={{marginBottom:10}}>Approval Flow</div>
+              {[
+                ["1","You submit","→ Sent to PM"],
+                ["2","PM reviews","→ Approves or rejects"],
+                ["3","Owner approves","→ Final sign-off"],
+                ["4","Locked","→ Invoice generated"],
+              ].map(([n,l,sub])=>(
+                <div key={n} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"5px 0",
+                  borderBottom:"1px solid #070b14"}}>
+                  <div style={{width:18,height:18,borderRadius:"50%",background:"#0369a1",
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:9,fontWeight:800,color:"#fff",flexShrink:0,marginTop:1}}>{n}</div>
+                  <div>
+                    <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1"}}>{l}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{sub}</div>
+                  </div>
+                </div>
+              ))}
+              <div style={{marginTop:10,fontSize:10,color:"#1e3a5f"}}>
+                Questions? Contact Manju or check the Approval Queue tab.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MY SUBMISSIONS VIEW ────────────────────────────────────────────── */}
+      {viewMode==="history"&&(
+        <div>
+          {mySubs.length===0&&(
+            <div style={{padding:"40px",textAlign:"center",background:"#060d1c",borderRadius:10,
+              border:"1px dashed #1a2d45",fontSize:12,color:"#1e3a5f"}}>
+              No timesheets submitted yet. Switch to "Log Hours" to submit your first one.
+            </div>
+          )}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {mySubs.map(sub=>{
+              const sc = statusColor[sub.status]||"#64748b";
+              const sb = statusBg[sub.status]||"#0a0f1c";
+              const isRej = sub.status==="rejected";
+              return (
+                <div key={sub.id} className="card" style={{padding:"16px 20px",
+                  borderLeft:`4px solid ${sc}`,opacity:sub.status==="locked"?0.8:1}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>
+                        {sub.period}
+                      </div>
+                      <div style={{fontSize:11,color:"#3d5a7a",marginTop:2}}>
+                        Submitted {sub.submittedAt||"—"}
+                        {sub.projectId&&projects.find(p=>p.id===sub.projectId)&&
+                          ` · ${projects.find(p=>p.id===sub.projectId).name}`}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:16,fontWeight:800,color:"#38bdf8",fontFamily:"monospace"}}>{sub.totalHours}h</div>
+                        <div style={{fontSize:11,color:"#34d399",fontFamily:"monospace"}}>{fmt(sub.totalRevenue)}</div>
+                      </div>
+                      <span style={{fontSize:10,padding:"3px 10px",borderRadius:20,
+                        background:sb,color:sc,border:`1px solid ${sc}44`}}>{sub.status}</span>
+                    </div>
+                  </div>
+
+                  {/* Day breakdown if available */}
+                  {sub.dayHours&&(
+                    <div style={{display:"flex",gap:6,margin:"8px 0"}}>
+                      {DAYS.map(d=>(
+                        <div key={d} style={{textAlign:"center",flex:1,padding:"4px 2px",
+                          background:"#070c18",borderRadius:4}}>
+                          <div style={{fontSize:9,color:"#1e3a5f"}}>{d}</div>
+                          <div style={{fontSize:12,fontWeight:700,fontFamily:"monospace",color:"#38bdf8"}}>{sub.dayHours[d]||0}h</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Rejection note */}
+                  {isRej&&(
+                    <div style={{padding:"8px 12px",background:"#1a0808",borderRadius:6,
+                      border:"1px solid #3d1010",marginBottom:10}}>
+                      <div style={{fontSize:11,color:"#f87171",fontWeight:700}}>Rejected</div>
+                      <div style={{fontSize:11,color:"#f87171",marginTop:2}}>{sub.rejectionNote||"Please review and resubmit."}</div>
+                    </div>
+                  )}
+
+                  {/* PM notes */}
+                  {sub.pmNotes&&(
+                    <div style={{padding:"6px 10px",background:"#020d1c",borderRadius:4,
+                      fontSize:11,color:"#38bdf8",marginBottom:8}}>
+                      PM note: {sub.pmNotes}
+                    </div>
+                  )}
+
+                  {/* Invoice ref if locked */}
+                  {sub.status==="locked"&&sub.invoiceRef&&(
+                    <div style={{fontSize:11,color:"#a78bfa",padding:"4px 10px",background:"#0d0b1a",borderRadius:4}}>
+                      Invoice: {sub.invoiceRef}
+                    </div>
+                  )}
+
+                  {/* Resubmit button if rejected */}
+                  {isRej&&(
+                    resubId===sub.id ? (
+                      <div style={{marginTop:8}}>
+                        <div style={{fontSize:11,color:"#3d5a7a",marginBottom:4}}>Add a note to your resubmission (optional):</div>
+                        <div style={{display:"flex",gap:8}}>
+                          <input className="inp" style={{flex:1,fontSize:12}}
+                            placeholder="What changed..."
+                            value={resubNote} onChange={e=>setResubNote(e.target.value)}/>
+                          <button className="btn bp" style={{fontSize:11}}
+                            onClick={()=>handleResubmit({...sub,notes:resubNote||sub.notes})}>Resubmit</button>
+                          <button className="btn bg" style={{fontSize:11}}
+                            onClick={()=>setResubId(null)}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button className="btn bp" style={{fontSize:11,marginTop:6}}
+                        onClick={()=>{ setResubId(sub.id); setViewMode("history"); }}>
+                        Resubmit Timesheet →
+                      </button>
+                    )
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+function TSOverview({ tsSubmissions, roster, setTsSubmissions, finInvoices, setFinInvoices }) {
+  const pending    = tsSubmissions.filter(s=>s.status==="submitted");
+  const pmApproved = tsSubmissions.filter(s=>s.status==="pm_approved");
+  const approved   = tsSubmissions.filter(s=>s.status==="approved");
+  const locked     = tsSubmissions.filter(s=>s.status==="locked");
+  const rejected   = tsSubmissions.filter(s=>s.status==="rejected");
+  const drafts     = tsSubmissions.filter(s=>s.status==="draft");
+
+  const lockedRev  = locked.reduce((s,x)=>s+x.totalRevenue,0);
+  const pendingRev = [...pending,...pmApproved,...approved].reduce((s,x)=>s+x.totalRevenue,0);
+  const readyToInvoice = approved.filter(s=>!s.invoiceRef);
+
+  // Workflow funnel
+  const funnelSteps = [
+    { label:"Hours entered",  count:drafts.length,     color:"#475569" },
+    { label:"Submitted",      count:pending.length,    color:"#f59e0b" },
+    { label:"PM Approved",    count:pmApproved.length, color:"#38bdf8" },
+    { label:"Owner Approved", count:approved.length,   color:"#a78bfa" },
+    { label:"Locked & Invoiced", count:locked.length,  color:"#34d399" },
+  ];
+  const maxCount = Math.max(...funnelSteps.map(s=>s.count),1);
+
+  const quickApproveAll = (fromStatus, toStatus) => {
+    setTsSubmissions(ss=>ss.map(s=>{
+      if(s.status!==fromStatus) return s;
+      if(toStatus==="pm_approved") return {...s,status:"pm_approved",pmApprovedAt:TODAY_STR};
+      if(toStatus==="approved")    return {...s,status:"approved",ownerApprovedAt:TODAY_STR};
+      if(toStatus==="locked") {
+        return {...s,status:"locked",lockedAt:TODAY_STR};
+      }
+      return s;
+    }));
+  };
+
+  const generateInvoices = () => {
+    const ready = tsSubmissions.filter(s=>s.status==="approved"&&!s.invoiceRef);
+    if(!ready.length) return;
+    const newInvoices = ready.map(s=>{
+      const r = roster.find(x=>x.id===s.rosterId);
+      const ref = "FB-"+(2700+Math.floor(Math.random()*99));
+      return { id:"fi"+uid(), number:ref, clientId:s.clientId||"acc1", description:`Consulting services — ${r?.name} — ${s.period}`, amount:s.totalRevenue, status:"draft", date:TODAY_STR, dueDate:"2026-04-11", type:"timesheet", tsSubmissionId:s.id };
+    });
+    setFinInvoices(inv=>[...inv,...newInvoices]);
+    const refMap = {};
+    ready.forEach((s,i)=>{ refMap[s.id]=newInvoices[i].number; });
+    setTsSubmissions(ss=>ss.map(s=>refMap[s.id]?{...s,status:"locked",lockedAt:TODAY_STR,invoiceRef:refMap[s.id]}:s));
+  };
+
+  return (
+    <div>
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
+        {[
+          {l:"Drafts",        v:drafts.length,     c:"#475569"},
+          {l:"Awaiting PM",   v:pending.length,    c:"#f59e0b"},
+          {l:"PM Approved",   v:pmApproved.length, c:"#38bdf8"},
+          {l:"Owner Approved",v:approved.length,   c:"#a78bfa"},
+          {l:"Locked",        v:locked.length,     c:"#34d399"},
+          {l:"Rejected",      v:rejected.length,   c:"#f87171"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:24,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:16,marginBottom:16}}>
+        {/* Workflow funnel */}
+        <div className="card" style={{padding:"18px 22px"}}>
+          <div className="section-hdr">Approval Pipeline</div>
+          {funnelSteps.map((step,i)=>(
+            <div key={step.label} style={{marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:10,height:10,borderRadius:"50%",background:step.color,flexShrink:0}}/>
+                  <span style={{fontSize:12,color:"#94a3b8"}}>{step.label}</span>
+                </div>
+                <span style={{fontSize:13,fontWeight:700,color:step.color,fontFamily:"'DM Mono',monospace"}}>{step.count}</span>
+              </div>
+              <div style={{height:8,background:"#0a1626",borderRadius:4}}>
+                <div style={{height:8,borderRadius:4,background:step.color,width:`${(step.count/maxCount)*100}%`,opacity:0.85,transition:"width 0.4s"}}/>
+              </div>
+              {i<funnelSteps.length-1 && <div style={{marginLeft:5,paddingLeft:4,borderLeft:"2px dashed #1a2d45",height:8,marginTop:2}}/>}
+            </div>
+          ))}
+        </div>
+
+        {/* Revenue status */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div className="lbl" style={{marginBottom:8}}>Revenue by approval status</div>
+            {[
+              {l:"Locked & invoiced",  v:lockedRev,  c:"#34d399"},
+              {l:"Awaiting approval",  v:pendingRev, c:"#f59e0b"},
+              {l:"Ready to invoice",   v:readyToInvoice.reduce((s,x)=>s+x.totalRevenue,0), c:"#a78bfa"},
+            ].map(r=>(
+              <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+                <span style={{fontSize:11,color:"#64748b"}}>{r.l}</span>
+                <span style={{fontSize:13,fontWeight:700,color:r.c,fontFamily:"'DM Mono',monospace"}}>{fmt(r.v)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Action center */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div className="lbl" style={{marginBottom:10}}>⚡ Quick Actions</div>
+            {pending.length>0 && (
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",marginBottom:8,fontSize:12}}
+                onClick={()=>quickApproveAll("submitted","pm_approved")}>
+                PM Approve All ({pending.length}) →
+              </button>
+            )}
+            {pmApproved.length>0 && (
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",marginBottom:8,fontSize:12}}
+                onClick={()=>quickApproveAll("pm_approved","approved")}>
+                Owner Approve All ({pmApproved.length}) →
+              </button>
+            )}
+            {readyToInvoice.length>0 && (
+              <button className="btn bs" style={{width:"100%",justifyContent:"center",fontSize:12}}
+                onClick={generateInvoices}>
+                <I d={ICONS.check} s={13}/>Generate {readyToInvoice.length} Invoice{readyToInvoice.length>1?"s":""} ({fmt(readyToInvoice.reduce((s,x)=>s+x.totalRevenue,0))})
+              </button>
+            )}
+            {pending.length===0&&pmApproved.length===0&&readyToInvoice.length===0 && (
+              <div style={{fontSize:11,color:"#1e3a5f",textAlign:"center",padding:"8px 0"}}>All caught up ✓</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Rejected — action needed */}
+      {rejected.length>0 && (
+        <div className="card">
+          <div className="section-hdr" style={{color:"#f87171"}}>⚠ Rejected — Consultant Action Required</div>
+          {rejected.map(s=>{
+            const r = roster.find(x=>x.id===s.rosterId);
+            return (
+              <div key={s.id} className="tr" style={{gridTemplateColumns:"1.5fr 90px 1fr 1fr 90px"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r?.name}</div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{s.period}</div>
+                </div>
+                <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#7dd3fc"}}>{s.totalHours}h</span>
+                <span style={{fontSize:11,color:"#f87171"}}>{s.rejectionNote?.slice(0,70)}</span>
+                <span style={{fontSize:11,color:"#475569"}}>Resubmit after corrections</span>
+                <button className="btn br" style={{fontSize:10,padding:"4px 10px"}}
+                  onClick={()=>setTsSubmissions(ss=>ss.map(x=>x.id===s.id?{...x,status:"draft",rejectionNote:"",submittedAt:""}:x))}>
+                  Reset to Draft
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Hours Grid ────────────────────────────────────────────────────────────────
+function TSGrid({ roster, setRoster, tsHours, setTsHours, tsSubmissions, setTsSubmissions }) {
+  const [editCell, setEditCell]   = useState(null);
+  const [editVal, setEditVal]     = useState("");
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectNote, setRejectNote]   = useState("");
+
+  // Determine lock status per consultant per month
+  const isLocked = (rid, mi) => tsSubmissions.some(s=>s.rosterId===rid&&s.monthIdx===mi&&["locked","approved","pm_approved","submitted"].includes(s.status));
+  const submissionFor = (rid, mi) => tsSubmissions.find(s=>s.rosterId===rid&&s.monthIdx===mi);
+
+  const updateHrs = (rid, mi, val) => {
+    if(isLocked(rid, mi)) return;
+    setTsHours(h=>({...h,[rid]:h[rid].map((v,i)=>i===mi?+val:v)}));
+    // Keep draft submission in sync
+    setTsSubmissions(ss=>ss.map(s=>{
+      if(s.rosterId!==rid||s.monthIdx!==mi||s.status!=="draft") return s;
+      const hrs = tsHours[rid]?.map((v,i)=>i===mi?+val:v)||[];
+      const total = hrs.reduce((a,b)=>a+b,0);
+      const r = roster.find(x=>x.id===rid);
+      return {...s, totalHours:total, totalRevenue:total*(r?.billRate||0)};
+    }));
+  };
+
+  const submitMonth = (rid, mi) => {
+    const r = roster.find(x=>x.id===rid);
+    const hrs = tsHours[rid]||Array(12).fill(0);
+    const totalH = hrs[mi]||0;
+    const sub = submissionFor(rid, mi);
+    const period = `${MONTHS[mi]} 2026`;
+    if(sub) {
+      setTsSubmissions(ss=>ss.map(s=>s.id===sub.id?{...s,status:"submitted",submittedAt:TODAY_STR,totalHours:totalH,totalRevenue:totalH*(r?.billRate||0)}:s));
+    } else {
+      setTsSubmissions(ss=>[...ss,{
+        id:"tss"+uid(), rosterId:rid, period, monthIdx:mi, year:2026,
+        totalHours:totalH, billRate:r?.billRate||0, totalRevenue:totalH*(r?.billRate||0),
+        status:"submitted", clientId:"", projectId:"",
+        submittedAt:TODAY_STR, pmApproverId:"", pmApprovedAt:"",
+        ownerApprovedAt:"", lockedAt:"", pmNotes:"", rejectionNote:"", invoiceRef:""
+      }]);
+    }
+  };
+
+  const startEdit = (rid,field,val) => { setEditCell({rid,field}); setEditVal(val); };
+  const commitEdit = () => {
+    if(!editCell) return;
+    setRoster(rs=>rs.map(r=>r.id===editCell.rid?{...r,[editCell.field]:editCell.field==="billRate"?+editVal:editVal}:r));
+    setEditCell(null);
+  };
+  const isEditing = (rid,field) => editCell?.rid===rid && editCell?.field===field;
+  const EditCell = ({rid,field,value,style={}}) => isEditing(rid,field)
+    ? <input autoFocus className="inp" value={editVal}
+        onChange={e=>setEditVal(e.target.value)}
+        onBlur={commitEdit}
+        onKeyDown={e=>{if(e.key==="Enter")commitEdit();if(e.key==="Escape")setEditCell(null);}}
+        style={{width:"100%",padding:"3px 6px",fontSize:12,...style}}/>
+    : <div onClick={()=>startEdit(rid,field,value)} title="Click to edit"
+        style={{cursor:"text",padding:"2px 4px",borderRadius:4,transition:"background 0.15s",...style}}
+        onMouseEnter={e=>e.currentTarget.style.background="#0f1e30"}
+        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+        {value}
+      </div>;
+
+  const totalsByMonth   = MONTHS.map((_,mi)=>roster.reduce((s,r)=>s+(tsHours[r.id]?.[mi]||0),0));
+  const totalRevByMonth = MONTHS.map((_,mi)=>roster.reduce((s,r)=>s+(tsHours[r.id]?.[mi]||0)*r.billRate,0));
+
+  return (
+    <div>
+      <div style={{fontSize:11,color:"#475569",marginBottom:14}}>
+        Submitted/approved months are locked (grey). Click a cell to edit draft hours. Use "Submit" to send for approval.
+      </div>
+      <div className="card" style={{overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead>
+            <tr style={{borderBottom:"1px solid #111d2d"}}>
+              <th style={{padding:"10px 14px",textAlign:"left"}} className="th">Consultant</th>
+              <th className="th" style={{padding:"8px 6px",textAlign:"left"}}>Rate</th>
+              {MONTHS.map((m,mi)=>(
+                <th key={m} className="th" style={{padding:"8px 6px",textAlign:"center",minWidth:58,fontSize:10}}>{m}</th>
+              ))}
+              <th className="th" style={{padding:"8px 12px",textAlign:"right"}}>Total Hrs</th>
+              <th className="th" style={{padding:"8px 12px",textAlign:"right"}}>Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {roster.map(r=>{
+              const hrs = tsHours[r.id]||Array(12).fill(0);
+              const totalH = hrs.reduce((s,v)=>s+v,0);
+              const totalR = totalH*r.billRate;
+              return (
+                <tr key={r.id} style={{borderBottom:"1px solid #0a1626"}}>
+                  <td style={{padding:"6px 14px",minWidth:160}}>
+                    <EditCell rid={r.id} field="name" value={r.name} style={{fontWeight:600,color:"#cbd5e1"}}/>
+                    <EditCell rid={r.id} field="role" value={r.role} style={{fontSize:10,color:"#3d5a7a"}}/>
+                  </td>
+                  <td style={{padding:"4px 6px",minWidth:55}}>
+                    <EditCell rid={r.id} field="billRate" value={`$${r.billRate}`} style={{fontFamily:"'DM Mono',monospace",color:"#7dd3fc",fontSize:12}}/>
+                  </td>
+                  {hrs.map((h,mi)=>{
+                    const locked = isLocked(r.id, mi);
+                    const sub    = submissionFor(r.id, mi);
+                    const sc     = sub ? TS_STATUS_COLOR[sub.status] : "#1a2d45";
+                    const canSubmit = !locked && h>0 && (!sub||sub.status==="draft"||sub.status==="rejected");
+                    return (
+                      <td key={mi} style={{padding:"3px 3px",textAlign:"center",position:"relative"}}>
+                        <input className="inp" type="number" value={h}
+                          onChange={e=>updateHrs(r.id,mi,e.target.value)}
+                          disabled={locked}
+                          style={{width:50,padding:"4px 5px",textAlign:"center",fontSize:12,
+                            background:locked?"#050910":h===0?"#0a0f1a":"#0c1e10",
+                            color:locked?"#1e3a5f":"#e2e8f0",
+                            border:`1px solid ${locked?sc+"55":"#1a2d45"}`,
+                            cursor:locked?"not-allowed":"text"}}/>
+                        {/* Status pip + submit */}
+                        {sub&&sub.status!=="draft" && (
+                          <div style={{position:"absolute",top:2,right:5,width:6,height:6,borderRadius:"50%",background:sc}}/>
+                        )}
+                        {canSubmit && (
+                          <button onClick={()=>submitMonth(r.id,mi)}
+                            title="Submit for approval"
+                            style={{position:"absolute",bottom:2,right:2,width:14,height:14,borderRadius:"50%",
+                              background:"#f59e0b",border:"none",cursor:"pointer",fontSize:8,color:"#000",fontWeight:800,
+                              display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>↑</button>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="mono" style={{padding:"8px 12px",textAlign:"right",fontWeight:700,color:"#e2e8f0"}}>{totalH}h</td>
+                  <td className="mono" style={{padding:"8px 12px",textAlign:"right",color:"#38bdf8",fontWeight:600}}>{fmt(totalR)}</td>
+                </tr>
+              );
+            })}
+            <tr style={{background:"#0a1626",borderTop:"1px solid #1a2d45"}}>
+              <td style={{padding:"10px 14px",fontSize:11,fontWeight:800,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.07em"}} colSpan={2}>TOTALS</td>
+              {totalsByMonth.map((t,i)=>(
+                <td key={i} className="mono" style={{padding:"8px 6px",textAlign:"center",fontWeight:700,fontSize:11,color:t>0?"#34d399":"#3d5a7a"}}>{t}</td>
+              ))}
+              <td className="mono" style={{padding:"10px 12px",textAlign:"right",fontWeight:700,fontSize:13,color:"#e2e8f0"}}>{totalsByMonth.reduce((s,v)=>s+v,0)}h</td>
+              <td className="mono" style={{padding:"10px 12px",textAlign:"right",fontWeight:700,fontSize:13,color:"#38bdf8"}}>{fmt(totalRevByMonth.reduce((s,v)=>s+v,0))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {/* Legend */}
+      <div style={{display:"flex",gap:14,marginTop:12,flexWrap:"wrap"}}>
+        {Object.entries(TS_STATUS_COLOR).map(([k,c])=>(
+          <span key={k} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#475569"}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:c,display:"inline-block"}}/>
+            {TS_STATUS_LABEL[k]}
+          </span>
+        ))}
+        <span style={{fontSize:10,color:"#f59e0b"}}>↑ = submit this month</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Approval Queue ────────────────────────────────────────────────────────────
+function TSApprovals({ tsSubmissions, setTsSubmissions, roster, orgMembers, projects, finInvoices, setFinInvoices }) {
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectNote, setRejectNote]   = useState("");
+  const [notesModal, setNotesModal]   = useState(null);
+  const [pmNote, setPmNote]           = useState("");
+
+  const pending    = tsSubmissions.filter(s=>s.status==="submitted");
+  const pmApproved = tsSubmissions.filter(s=>s.status==="pm_approved");
+  const readyToLock= tsSubmissions.filter(s=>s.status==="approved"&&!s.invoiceRef);
+
+  const pmApprove = (id, note="") => {
+    setTsSubmissions(ss=>ss.map(s=>s.id===id?{...s,status:"pm_approved",pmApproverId:"org2",pmApprovedAt:TODAY_STR,pmNotes:note}:s));
+    addAudit&&addAudit("Timesheets","PM Approve Timesheet","Timesheet Approval",`PM approved timesheet ${id}`);
+    setNotesModal(null);
+  };
+  const ownerApprove = (id) => {
+    setTsSubmissions(ss=>ss.map(s=>s.id===id?{...s,status:"approved",ownerApprovedAt:TODAY_STR}:s));
+    addAudit&&addAudit("Timesheets","Owner Approved","Timesheet Approval",`Final approval: ${id}`);
+  };
+  const reject = (id) => {
+    setTsSubmissions(ss=>ss.map(s=>s.id===id?{...s,status:"rejected",rejectionNote:rejectNote}:s));
+    addAudit&&addAudit("Timesheets","Reject Timesheet","Timesheet Approval",`Rejected: ${id} — ${rejectNote}`);
+    setRejectModal(null);
+    setRejectNote("");
+  };
+  const lockAndInvoice = (sub) => {
+    const r = roster.find(x=>x.id===sub.rosterId);
+    const ref = "FB-"+(2700+Math.floor(Math.random()*99));
+    const newInv = { id:"fi"+uid(), number:ref, clientId:sub.clientId||"acc1",
+      description:`Consulting — ${r?.name} — ${sub.period}`,
+      amount:sub.totalRevenue, status:"draft", date:TODAY_STR, dueDate:"2026-04-11", type:"timesheet" };
+    setFinInvoices(inv=>[...inv,newInv]);
+    setTsSubmissions(ss=>ss.map(s=>s.id===sub.id?{...s,status:"locked",lockedAt:TODAY_STR,invoiceRef:ref}:s));
+    addAudit&&addAudit("Timesheets","Invoice Created from Timesheet","Timesheet Approval",`Invoice ${ref} created`,{amount:newInv.amount});
+  };
+
+  const SubRow = ({s, actions}) => {
+    const r   = roster.find(x=>x.id===s.rosterId);
+    const proj= projects?.find(p=>p.id===s.projectId);
+    return (
+      <div className="tr" style={{gridTemplateColumns:"1.6fr 90px 80px 90px 110px 1fr"}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r?.name}</div>
+          <div style={{fontSize:10,color:"#3d5a7a"}}>{s.period} {proj?`· ${proj.name.slice(0,20)}`:""}</div>
+          {s.submittedAt&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:1}}>Submitted {fmtDate(s.submittedAt)}</div>}
+        </div>
+        <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0",fontFamily:"'DM Mono',monospace"}}>{s.totalHours}h</span>
+        <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#7dd3fc"}}>{fmt(s.totalRevenue)}</span>
+        <span className="bdg" style={{background:TS_STATUS_BG[s.status],color:TS_STATUS_COLOR[s.status],fontSize:9}}>{TS_STATUS_LABEL[s.status]}</span>
+        <div style={{fontSize:10,color:"#475569",lineHeight:1.3}}>{s.pmNotes?.slice(0,35)||""}</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{actions}</div>
+      </div>
+    );
+  };
+
+  const colHdr = <div className="tr" style={{gridTemplateColumns:"1.6fr 90px 80px 90px 110px 1fr",padding:"8px 18px"}}>
+    {["Consultant","Hours","Revenue","Status","PM Notes","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+  </div>;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      {/* Step 1: PM Queue */}
+      <div className="card">
+        <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
+          <span style={{color:"#f59e0b"}}>Step 1 — PM Review: Awaiting PM Approval ({pending.length})</span>
+          {pending.length>0&&<button className="btn bp" style={{fontSize:11,padding:"4px 12px"}}
+            onClick={()=>pending.forEach(s=>pmApprove(s.id))}>Approve All</button>}
+        </div>
+        {pending.length===0 && <div style={{padding:"16px 18px",fontSize:11,color:"#1e3a5f"}}>No submissions awaiting PM review.</div>}
+        {pending.length>0&&<>{colHdr}{pending.map(s=>(
+          <SubRow key={s.id} s={s} actions={[
+            <button key="a" className="btn bs" style={{fontSize:10,padding:"4px 10px"}}
+              onClick={()=>{setNotesModal(s);setPmNote("");}}>Approve</button>,
+            <button key="r" className="btn br" style={{fontSize:10,padding:"4px 10px"}}
+              onClick={()=>{setRejectModal(s);setRejectNote("");}}>Reject</button>,
+          ]}/>
+        ))}</>}
+      </div>
+
+      {/* Step 2: Owner Queue */}
+      <div className="card">
+        <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
+          <span style={{color:"#38bdf8"}}>Step 2 — Owner Review: PM Approved ({pmApproved.length})</span>
+          {pmApproved.length>0&&<button className="btn bp" style={{fontSize:11,padding:"4px 12px"}}
+            onClick={()=>pmApproved.forEach(s=>ownerApprove(s.id))}>Approve All</button>}
+        </div>
+        {pmApproved.length===0 && <div style={{padding:"16px 18px",fontSize:11,color:"#1e3a5f"}}>No submissions awaiting owner approval.</div>}
+        {pmApproved.length>0&&<>{colHdr}{pmApproved.map(s=>(
+          <SubRow key={s.id} s={s} actions={[
+            <button key="a" className="btn bs" style={{fontSize:10,padding:"4px 10px"}}
+              onClick={()=>ownerApprove(s.id)}>Approve</button>,
+            <button key="r" className="btn br" style={{fontSize:10,padding:"4px 10px"}}
+              onClick={()=>{setRejectModal(s);setRejectNote("");}}>Reject</button>,
+          ]}/>
+        ))}</>}
+      </div>
+
+      {/* Step 3: Lock & Invoice */}
+      <div className="card">
+        <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
+          <span style={{color:"#a78bfa"}}>Step 3 — Lock & Invoice: Owner Approved ({readyToLock.length})</span>
+          {readyToLock.length>0&&<button className="btn bs" style={{fontSize:11,padding:"4px 12px"}}
+            onClick={()=>readyToLock.forEach(s=>lockAndInvoice(s))}>
+            <I d={ICONS.check} s={11}/>Lock All & Generate Invoices
+          </button>}
+        </div>
+        {readyToLock.length===0 && <div style={{padding:"16px 18px",fontSize:11,color:"#1e3a5f"}}>No approved timesheets ready to lock.</div>}
+        {readyToLock.length>0&&<>{colHdr}{readyToLock.map(s=>(
+          <SubRow key={s.id} s={s} actions={[
+            <button key="l" className="btn bs" style={{fontSize:10,padding:"4px 10px"}}
+              onClick={()=>lockAndInvoice(s)}>
+              <I d={ICONS.check} s={10}/>Lock & Invoice
+            </button>,
+          ]}/>
+        ))}</>}
+      </div>
+
+      {/* PM Approve modal with notes */}
+      {notesModal&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setNotesModal(null)}>
+          <div className="modal" style={{maxWidth:440}}>
+            <MH title="PM Approval" onClose={()=>setNotesModal(null)}/>
+            <div style={{fontSize:13,color:"#94a3b8",marginBottom:12}}>
+              Approving: <b style={{color:"#e2e8f0"}}>{roster.find(x=>x.id===notesModal.rosterId)?.name}</b> — {notesModal.period} — {notesModal.totalHours}h — {fmt(notesModal.totalRevenue)}
+            </div>
+            <FF label="PM Notes (optional)">
+              <textarea className="inp" rows={2} value={pmNote} onChange={e=>setPmNote(e.target.value)} placeholder="Looks good. Hours match project tracker."/>
+            </FF>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setNotesModal(null)}>Cancel</button>
+              <button className="btn bs" onClick={()=>pmApprove(notesModal.id,pmNote)}><I d={ICONS.check} s={13}/>Approve</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject modal */}
+      {rejectModal&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setRejectModal(null)}>
+          <div className="modal" style={{maxWidth:440}}>
+            <MH title="Reject Timesheet" onClose={()=>setRejectModal(null)}/>
+            <div style={{fontSize:13,color:"#94a3b8",marginBottom:12}}>
+              Rejecting: <b style={{color:"#e2e8f0"}}>{roster.find(x=>x.id===rejectModal.rosterId)?.name}</b> — {rejectModal.period}
+            </div>
+            <FF label="Rejection Reason (required)">
+              <textarea className="inp" rows={3} value={rejectNote} onChange={e=>setRejectNote(e.target.value)} placeholder="Please explain why this timesheet is being rejected…"/>
+            </FF>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setRejectModal(null)}>Cancel</button>
+              <button className="btn br" disabled={!rejectNote.trim()} onClick={()=>reject(rejectModal.id)}>Reject & Notify</button>
             </div>
           </div>
         </div>
@@ -10700,21 +11366,111 @@ function OnboardingModule({ roster, onboardings, setOnboardings, addAudit }) {
   );
 }
 
-// ─── CHANGE ORDER CONSTANTS ───────────────────────────────────────────────────
-const CO_STATUS_COLOR = {
-  draft:"#475569", pending:"#f59e0b", approved:"#34d399",
-  rejected:"#f87171", voided:"#1e3a5f",
-};
-const CO_STATUS_BG = {
-  draft:"#0a1626", pending:"#1a1005", approved:"#021f14",
-  rejected:"#1a0808", voided:"#070b14",
-};
-const CO_STATUS_LABEL = {
-  draft:"Draft", pending:"Pending Client", approved:"Approved", rejected:"Rejected", voided:"Voided",
-};
-const CO_TYPE_COLOR  = { addition:"#34d399", reduction:"#f87171", timeline:"#f59e0b", scope_change:"#a78bfa" };
-const CO_TYPE_LABEL  = { addition:"Budget Addition", reduction:"Budget Reduction", timeline:"Timeline Change", scope_change:"Scope Change" };
+// ── History & Locked ──────────────────────────────────────────────────────────
+function TSHistory({ tsSubmissions, setTsSubmissions, roster, finInvoices }) {
+  const [filter, setFilter] = useState("all");
 
+  const historical = tsSubmissions
+    .filter(s=>["locked","approved","pm_approved","rejected"].includes(s.status))
+    .filter(s=>filter==="all"||s.status===filter)
+    .sort((a,b)=>b.period.localeCompare(a.period));
+
+  const lockedRev   = tsSubmissions.filter(s=>s.status==="locked").reduce((s,x)=>s+x.totalRevenue,0);
+  const invoiced    = tsSubmissions.filter(s=>s.status==="locked"&&s.invoiceRef).length;
+  const pendingInv  = tsSubmissions.filter(s=>s.status==="locked"&&!s.invoiceRef).length;
+
+  // Group by period
+  const byPeriod = historical.reduce((acc,s)=>{
+    (acc[s.period]=acc[s.period]||[]).push(s);
+    return acc;
+  },{});
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Locked Revenue", v:fmt(lockedRev),                c:"#34d399"},
+          {l:"Invoiced",             v:invoiced,                      c:"#34d399"},
+          {l:"Locked, Not Invoiced", v:pendingInv,                    c:pendingInv>0?"#f59e0b":"#34d399"},
+          {l:"Rejected (total)",     v:tsSubmissions.filter(s=>s.status==="rejected").length, c:"#f87171"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px"}}>
+            <div className="th" style={{marginBottom:4}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+        {["all","locked","approved","pm_approved","rejected"].map(f=>(
+          <button key={f} className="btn bg" style={{fontSize:11,padding:"5px 10px",
+            borderColor:filter===f?"#0284c7":"#1a2d45",color:filter===f?"#38bdf8":"#475569"}}
+            onClick={()=>setFilter(f)}>
+            {TS_STATUS_LABEL[f]||"All"} ({f==="all"?historical.length:tsSubmissions.filter(s=>s.status===f).length})
+          </button>
+        ))}
+      </div>
+
+      {Object.entries(byPeriod).map(([period,subs])=>{
+        const periodRev = subs.reduce((s,x)=>s+x.totalRevenue,0);
+        return (
+          <div key={period} className="card" style={{marginBottom:14}}>
+            <div className="section-hdr" style={{display:"flex",justifyContent:"space-between"}}>
+              <span>{period}</span>
+              <span style={{fontFamily:"'DM Mono',monospace",color:"#38bdf8",fontSize:12}}>{fmt(periodRev)}</span>
+            </div>
+            <div className="tr" style={{gridTemplateColumns:"1.5fr 70px 90px 90px 100px 110px 80px",padding:"8px 18px"}}>
+              {["Consultant","Hours","Revenue","Status","PM Approved","Invoice Ref","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {subs.map(s=>{
+              const r = roster.find(x=>x.id===s.rosterId);
+              const inv = finInvoices?.find(i=>i.number===s.invoiceRef);
+              return (
+                <div key={s.id} className="tr" style={{gridTemplateColumns:"1.5fr 70px 90px 90px 100px 110px 80px"}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r?.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{r?.role}</div>
+                  </div>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#e2e8f0"}}>{s.totalHours}h</span>
+                  <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",color:"#7dd3fc"}}>{fmt(s.totalRevenue)}</span>
+                  <span className="bdg" style={{background:TS_STATUS_BG[s.status],color:TS_STATUS_COLOR[s.status],fontSize:9}}>{TS_STATUS_LABEL[s.status]}</span>
+                  <span style={{fontSize:11,color:"#475569"}}>{s.pmApprovedAt?fmtDate(s.pmApprovedAt):"—"}</span>
+                  <div>
+                    {s.invoiceRef
+                      ? <span className="bdg" style={{background:"#021f14",color:"#34d399",fontSize:9}}>{s.invoiceRef}</span>
+                      : <span style={{fontSize:11,color:"#1e3a5f"}}>—</span>}
+                  </div>
+                  <div style={{display:"flex",gap:4}}>
+                    {s.status==="locked"&&(
+                      <button className="btn br" style={{fontSize:9,padding:"3px 7px"}}
+                        title="Unlock (admin)"
+                        onClick={()=>setTsSubmissions(ss=>ss.map(x=>x.id===s.id?{...x,status:"approved",lockedAt:"",invoiceRef:""}:x))}>
+                        Unlock
+                      </button>
+                    )}
+                    {s.status==="rejected"&&(
+                      <button className="btn bg" style={{fontSize:9,padding:"3px 7px"}}
+                        onClick={()=>setTsSubmissions(ss=>ss.map(x=>x.id===s.id?{...x,status:"draft",rejectionNote:"",submittedAt:""}:x))}>
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+      {Object.keys(byPeriod).length===0&&(
+        <div style={{padding:"24px",textAlign:"center",fontSize:12,color:"#1e3a5f"}}>No records match this filter.</div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHANGE ORDER MODULE
+// ═══════════════════════════════════════════════════════════════════════════════
 function ChangeOrderModule({ changeOrders, setChangeOrders, projects, contracts, sows, roster, crmAccounts, finInvoices, setFinInvoices }) {
   const [sub, setSub] = useState("dashboard");
   const tabs = [
@@ -16844,11 +17600,6 @@ function applyFields(text, values) {
 }
 
 // ── Main Email Templates component ────────────────────────────────────────────
-
-// ═══════════════════════════════════════════════════════════════════════════
-// DOC TEMPLATES — Offer Letter, NDA, MSA, Verification, Resume Builder, etc.
-// Ziksatech branded. AI-powered form filling. PDF download.
-// ═══════════════════════════════════════════════════════════════════════════
 function DocTemplates({ roster, clients, authProfile, appSettings }) {
   const [sub,        setSub]        = useState("library");
   const [selTpl,     setSelTpl]     = useState(null);
@@ -17777,7 +18528,7 @@ const TAX_DEADLINES = [
   { id:"td03",  date:"2026-01-31", type:"information",     title:"W-2s & 1099-NECs Due to Recipients",           desc:"Deliver W-2s to all employees and 1099-NECs to contractors paid $600+. Ziksatech has 4 contractors requiring 1099-NEC.", federal:true, amount:null, status:"done" },
   { id:"td04",  date:"2026-01-31", type:"payroll_filing",  title:"Form 941 — Q4 2025 Payroll Tax Return",        desc:"File quarterly payroll tax return (or 944 if annual filer). Covers Oct–Dec 2025 wages.", federal:true, amount:null, status:"done" },
   { id:"td05",  date:"2026-01-31", type:"payroll_filing",  title:"FUTA Annual Return — Form 940",                desc:"File annual Federal Unemployment Tax return. FUTA wage base $7,000 per employee.", federal:true, amount:840, status:"done" },
-  { id:"td06",  date:"2026-01-31", type:"information",     title:"1099-NEC E-File with IRS",                     desc:"Submit 1099-NEC information returns to IRS (same deadline as recipient delivery). File for all contractors paid $600+ this year.", federal:true, amount:null, status:"done" },
+  { id:"td06",  date:"2026-01-31", type:"information",     title:"1099-NEC E-File with IRS",                     desc:"Submit 1099-NEC information returns to IRS (same deadline as recipient delivery). 4 contractors: Rajesh, Priya, Kiran, Sanjay.", federal:true, amount:null, status:"done" },
   { id:"td07",  date:"2026-02-28", type:"information",     title:"1099-MISC Paper Filing Deadline",              desc:"File paper 1099-MISC returns. Electronic filers have until March 31.", federal:true, amount:null, status:"done" },
   { id:"td08",  date:"2026-03-15", type:"annual",          title:"S-Corp / Partnership Return Due (Form 1120-S / 1065)", desc:"Federal income tax return for S-corporations and partnerships. Ziksatech LLC files as S-Corp. Extend via Form 7004.", federal:true, amount:null, status:"upcoming" },
   { id:"td09",  date:"2026-03-15", type:"annual",          title:"S-Corp K-1s to Shareholders",                  desc:"Deliver Schedule K-1s to all S-Corp shareholders by the return due date.", federal:true, amount:null, status:"upcoming" },
@@ -18179,8 +18930,8 @@ function TaxCalendar({ adpRuns, roster, vendors, apInvoices }) {
                 )}
                 {sel.type==="information"&&sel.id==="td03"&&(
                   <div style={{fontSize:11,color:"#3d5a7a",background:"#060d1c",borderRadius:8,padding:"10px 12px",border:"1px solid #111d2d",lineHeight:1.6}}>
-                    1099-NEC required for all contractors paid $600+ this year. Review contractor roster.<br/>
-                    ⚠ Verify all contractor W-9s are collected before filing or apply backup withholding (24%).
+                    1099-NEC required for: Rajesh Kumar, Priya Nair, Kiran Patel, Sanjay Gupta (all paid $600+).<br/>
+                    ⚠ Sanjay Gupta — W-9 missing. Collect before filing or apply backup withholding (24%).
                   </div>
                 )}
                 {sel.type==="estimated"&&(
@@ -20436,446 +21187,24 @@ const OB_TEMPLATE_CONTRACTOR = [
   { id:"ob_c10", cat:"Finance",         title:"Net-30 payment terms confirmed",      days:3  },
 ];
 
-const ONBOARDING_SEED = [];
-
-function CertTracker({ addAudit }) {
-  const [certs, setCerts] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-certs")||"{}");}catch{return {};}});
-  const [detail, setDetail] = useState(null);
-  const save = (id, data) => { const u={...certs,[id]:{...(certs[id]||{}),...data}}; setCerts(u); localStorage.setItem("zt-certs",JSON.stringify(u)); };
-
-  const status = (cert) => {
-    const d = certs[cert.id];
-    if(!d?.obtained) return {label:"Not Started",color:"#f87171",bg:"#f8717122"};
-    if(!d?.expiryDate) return {label:"Active – No Expiry Set",color:"#f59e0b",bg:"#f59e0b22"};
-    const days = Math.round((new Date(d.expiryDate)-new Date())/86400000);
-    if(days<0) return {label:"EXPIRED",color:"#f87171",bg:"#f8717122"};
-    if(days<=90) return {label:`Expires in ${days}d`,color:"#f59e0b",bg:"#f59e0b22"};
-    return {label:`Active · ${days}d left`,color:"#34d399",bg:"#34d39922"};
-  };
-
-  const docsComplete = (cert) => {
-    const d = certs[cert.id]?.docs||{};
-    return cert.docs.filter(doc=>d[doc]).length;
-  };
-
-  return (
-    <div>
-      <PH title="WBE/HUB/WOSB Certification Tracker" sub="Certification status · Renewal dates · Document checklist · Federal contracting readiness"/>
-      <div style={{display:"grid",gridTemplateColumns:detail?"1fr 360px":"1fr",gap:16}}>
-        <div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-            {[{l:"Active",c:"#34d399"},{l:"Expiring Soon",c:"#f59e0b"},{l:"Not Started",c:"#f87171"}].map(({l,c})=>{
-              const count = CERT_LIST.filter(cert=>{const s=status(cert); return l==="Active"?s.color==="#34d399":l==="Expiring Soon"?s.color==="#f59e0b":s.color==="#f87171";}).length;
-              return <div key={l} className="card" style={{padding:"12px 16px"}}>
-                <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>{l.toUpperCase()}</div>
-                <div style={{fontSize:24,fontWeight:800,color:c}}>{count}</div>
-              </div>;
-            })}
-          </div>
-          <div style={{padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:10,marginBottom:16,fontSize:11,color:"#38bdf8"}}>
-            💡 <strong>Market Impact:</strong> WBE + HUB + WOSB certifications unlock <strong>set-aside contracts</strong> and make Ziksatech a preferred vendor for Fortune 500 diversity supplier programs — AT&T, Toyota, and most large companies have supplier diversity mandates. These certs alone can double your addressable market.
-          </div>
-          <div className="card">
-            <div className="tr" style={{gridTemplateColumns:"2fr 110px 90px 80px 80px",padding:"8px 18px"}}>
-              {["Certification","Status","Obtained","Expiry","Docs"].map(h=><span key={h} className="th">{h}</span>)}
-            </div>
-            {CERT_LIST.map(cert=>{
-              const st=status(cert); const d=certs[cert.id]||{}; const docs=docsComplete(cert);
-              return (
-                <div key={cert.id} className="tr" style={{gridTemplateColumns:"2fr 110px 90px 80px 80px",cursor:"pointer",background:detail?.id===cert.id?"#0a1a2e":undefined}}
-                  onClick={()=>setDetail(detail?.id===cert.id?null:cert)}>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{cert.name}</div>
-                    <div style={{fontSize:10,color:"#3d5a7a"}}>{cert.body} · Renews every {cert.renewalMonths}mo</div>
-                  </div>
-                  <span className="bdg" style={{background:st.bg,color:st.color,fontSize:9}}>{st.label}</span>
-                  <div style={{display:"flex",alignItems:"center",gap:6}} onClick={e=>{e.stopPropagation();save(cert.id,{obtained:!d.obtained});}}>
-                    <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${d.obtained?"#34d399":"#334155"}`,background:d.obtained?"#34d399":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      {d.obtained&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
-                    </div>
-                    <span style={{fontSize:10,color:"#475569"}}>{d.obtained?"Yes":"No"}</span>
-                  </div>
-                  <span style={{fontSize:11,color:"#475569"}}>{d.expiryDate?fmtDate(d.expiryDate):"—"}</span>
-                  <div>
-                    <div style={{height:5,background:"#0a1626",borderRadius:3}}>
-                      <div style={{height:5,borderRadius:3,background:docs===cert.docs.length?"#34d399":"#f59e0b",width:(docs/cert.docs.length*100)+"%"}}/>
-                    </div>
-                    <span style={{fontSize:9,color:"#334155"}}>{docs}/{cert.docs.length}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        {detail&&(
-          <div className="card" style={{height:"fit-content",position:"sticky",top:0,padding:"16px 18px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{detail.name}</div>
-              <button className="btn bg" style={{padding:"3px 8px",fontSize:11}} onClick={()=>setDetail(null)}>✕</button>
-            </div>
-            <div style={{fontSize:11,color:"#3d5a7a",marginBottom:12,lineHeight:1.5}}>{detail.desc}</div>
-            <div style={{marginBottom:12}}>
-              <div className="lbl">Expiry Date</div>
-              <input className="inp" type="date" value={certs[detail.id]?.expiryDate||""}
-                onChange={e=>save(detail.id,{expiryDate:e.target.value})}/>
-            </div>
-            <div style={{marginBottom:12}}>
-              <div className="lbl">Notes</div>
-              <textarea className="inp" rows={2} value={certs[detail.id]?.notes||""}
-                onChange={e=>save(detail.id,{notes:e.target.value})} placeholder="Attorney contact, renewal notes..."/>
-            </div>
-            <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8}}>REQUIRED DOCUMENTS</div>
-            {detail.docs.map(doc=>{
-              const checked=!!(certs[detail.id]?.docs||{})[doc];
-              return (
-                <div key={doc} onClick={()=>save(detail.id,{docs:{...(certs[detail.id]?.docs||{}),[doc]:!checked}})}
-                  style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:7,cursor:"pointer",marginBottom:4,
-                    background:checked?"#021f14":"#060d1c",border:`1px solid ${checked?"#34d39933":"#1a2d45"}`}}>
-                  <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${checked?"#34d399":"#334155"}`,background:checked?"#34d399":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    {checked&&<span style={{color:"#021f14",fontSize:9,fontWeight:800}}>✓</span>}
-                  </div>
-                  <span style={{fontSize:11,color:checked?"#34d399":"#94a3b8"}}>{doc}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 30-DAY OUTREACH CADENCE TRACKER
-// ═══════════════════════════════════════════════════════════════════════════
-const OUTREACH_STAGES = ["Identified","Researched","1st Contact","Follow-up 1","Follow-up 2","Meeting Booked","Proposal","Closed/Won","Closed/Lost","Nurture"];
-const OUTREACH_STAGE_COLOR = {"Identified":"#475569","Researched":"#38bdf8","1st Contact":"#a78bfa","Follow-up 1":"#f59e0b","Follow-up 2":"#f97316","Meeting Booked":"#34d399","Proposal":"#0284c7","Closed/Won":"#34d399","Closed/Lost":"#f87171","Nurture":"#64748b"};
-
-function OutreachTracker({ crmLeads, setCrmLeads, crmAccounts, crmDeals, addAudit }) {
-  const [records, setRecords] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-outreach")||"[]");}catch{return [];}});
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""});
-  const [filter, setFilter] = useState("All");
-  const [editing, setEditing] = useState(null);
-
-  const save = r => { setRecords(r); localStorage.setItem("zt-outreach",JSON.stringify(r)); };
-
-  const addRecord = () => {
-    if(!form.company.trim()) return alert("Enter company name");
-    const rec = editing
-      ? records.map(r=>r.id===editing?{...r,...form}:r)
-      : [{...form,id:"ot-"+Date.now(),createdDate:TODAY_STR},...records];
-    save(rec); setModal(false); setEditing(null);
-    setForm({company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""});
-    addAudit&&addAudit("Sales","Outreach Tracked",form.company,form.stage);
-  };
-
-  const open = (r=null) => { setEditing(r?.id||null); setForm(r?{...r}:{company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""}); setModal(true); };
-  const del = id => { if(window.confirm("Delete this outreach record?")) save(records.filter(r=>r.id!==id)); };
-  const convertToLead = (r) => {
-    setCrmLeads&&setCrmLeads(ls=>[...ls,{id:"lead"+uid(),name:r.contact||r.company,company:r.company,title:r.title||"",email:r.email||"",phone:r.phone||"",industry:"",source:r.source,score:60,status:"new",notes:r.notes||"",linkedIn:"",assignedTo:"Manju",createdDate:TODAY_STR,lastContact:TODAY_STR}]);
-    alert("✅ Converted to CRM Lead!");
-    addAudit&&addAudit("CRM","Lead Created",r.company,"From Outreach Tracker");
-  };
-
-  const filtered = filter==="All" ? records : records.filter(r=>r.stage===filter);
-  const dueToday = records.filter(r=>r.nextDate&&r.nextDate<=TODAY_STR&&!["Closed/Won","Closed/Lost"].includes(r.stage));
-  const byStage = OUTREACH_STAGES.reduce((acc,s)=>({...acc,[s]:records.filter(r=>r.stage===s).length}),{});
-
-  return (
-    <div>
-      <PH title="30-Day Outreach Tracker" sub="Prospect pipeline · Contact cadence · Follow-up alerts · Convert to CRM"/>
-      {dueToday.length>0&&(
-        <div style={{padding:"12px 16px",background:"#1a0a05",border:"1px solid #f59e0b",borderRadius:10,marginBottom:16,display:"flex",alignItems:"center",gap:12}}>
-          <span style={{fontSize:18}}>⏰</span>
-          <div>
-            <div style={{fontSize:12,fontWeight:700,color:"#f59e0b"}}>{dueToday.length} follow-up{dueToday.length>1?"s":""} due today</div>
-            <div style={{fontSize:11,color:"#92400e"}}>{dueToday.map(r=>r.company).join(", ")}</div>
-          </div>
-        </div>
-      )}
-      <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
-        <div style={{display:"flex",gap:4,flex:1,overflowX:"auto"}}>
-          {["All",...OUTREACH_STAGES.filter(s=>byStage[s]>0)].map(s=>(
-            <button key={s} className="btn bg" style={{fontSize:10,padding:"4px 10px",whiteSpace:"nowrap",
-              borderColor:filter===s?(OUTREACH_STAGE_COLOR[s]||"#0284c7"):"#1a2d45",
-              color:filter===s?(OUTREACH_STAGE_COLOR[s]||"#38bdf8"):"#475569"}}
-              onClick={()=>setFilter(s)}>
-              {s}{s!=="All"&&byStage[s]>0?` (${byStage[s]})`:s==="All"?` (${records.length})`:""}
-            </button>
-          ))}
-        </div>
-        <button className="btn bp" style={{flexShrink:0,fontSize:12}} onClick={()=>open()}>+ Add Prospect</button>
-      </div>
-      <div className="card">
-        <div className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 100px 90px 120px 100px",padding:"8px 18px"}}>
-          {["Company / Contact","Stage","Source","Next Action","Due Date","Actions"].map(h=><span key={h} className="th">{h}</span>)}
-        </div>
-        {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:"#1e3a5f",fontSize:12}}>No outreach records{filter!=="All"?" for this stage":""}. Add your first prospect!</div>}
-        {filtered.map(r=>{
-          const overdue=r.nextDate&&r.nextDate<TODAY_STR&&!["Closed/Won","Closed/Lost"].includes(r.stage);
-          const sc=OUTREACH_STAGE_COLOR[r.stage]||"#64748b";
-          return (
-            <div key={r.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 100px 90px 120px 100px",background:overdue?"#100800":undefined}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.company}</div>
-                {r.contact&&<div style={{fontSize:10,color:"#3d5a7a"}}>{r.contact}{r.title?` · ${r.title}`:""}</div>}
-                {r.notes&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:2}}>{r.notes.slice(0,60)}{r.notes.length>60?"...":""}</div>}
-              </div>
-              <span className="bdg" style={{background:sc+"22",color:sc,fontSize:9}}>{r.stage}</span>
-              <span style={{fontSize:10,color:"#475569"}}>{r.source}</span>
-              <span style={{fontSize:10,color:"#94a3b8"}}>{r.nextAction||"—"}</span>
-              <span style={{fontSize:11,color:overdue?"#f87171":r.nextDate?"#94a3b8":"#334155",fontWeight:overdue?700:400}}>
-                {r.nextDate?fmtDate(r.nextDate):"—"}{overdue?" ⚠️":""}
-              </span>
-              <div style={{display:"flex",gap:3}} onClick={e=>e.stopPropagation()}>
-                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(r)} title="Edit">✏️</button>
-                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>convertToLead(r)} title="→ CRM Lead">→</button>
-                <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>del(r.id)} title="Delete">🗑</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {modal&&(
-        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
-          <div className="modal" style={{maxWidth:560}}>
-            <MH title={editing?"Edit Prospect":"Add Prospect to Outreach"} onClose={()=>setModal(false)}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Company" style={{gridColumn:"span 2"}}><input className="inp" value={form.company} onChange={e=>setForm({...form,company:e.target.value})} placeholder="e.g. Capital One"/></FF>
-              <FF label="Contact Name"><input className="inp" value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})} placeholder="Full name"/></FF>
-              <FF label="Title"><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="VP SAP, CTO..."/></FF>
-              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="email@company.com"/></FF>
-              <FF label="Phone"><input className="inp" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="214-555-xxxx"/></FF>
-              <FF label="Stage"><select className="inp" value={form.stage} onChange={e=>setForm({...form,stage:e.target.value})}>
-                {OUTREACH_STAGES.map(s=><option key={s}>{s}</option>)}
-              </select></FF>
-              <FF label="Source"><select className="inp" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>
-                {["Prospect Intel","LinkedIn","Referral","Conference","Cold Email","Apollo","ZoomInfo","Other"].map(s=><option key={s}>{s}</option>)}
-              </select></FF>
-              <FF label="Next Action"><input className="inp" value={form.nextAction} onChange={e=>setForm({...form,nextAction:e.target.value})} placeholder="Send intro email, Schedule call..."/></FF>
-              <FF label="Next Action Date"><input className="inp" type="date" value={form.nextDate} onChange={e=>setForm({...form,nextDate:e.target.value})}/></FF>
-              <FF label="Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Context, connection, talking points..."/></FF>
-            </div>
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
-              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
-              <button className="btn bp" onClick={addRecord}><I d={ICONS.check} s={13}/>{editing?"Update":"Add Prospect"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SOP LIBRARY + EXIT READINESS
-// ═══════════════════════════════════════════════════════════════════════════
-const SOP_CATEGORIES = ["Delivery","Finance","HR","Sales & BD","Compliance","Technology","Executive"];
-const SOP_CHECKLIST = [
-  {id:"s1",  cat:"Delivery",   title:"Client Onboarding Process",         desc:"Steps from contract sign to consultant start date",    impact:"High"},
-  {id:"s2",  cat:"Delivery",   title:"Consultant Performance Review SOP",  desc:"Monthly check-in, utilization review, billing audit",  impact:"High"},
-  {id:"s3",  cat:"Delivery",   title:"Project Escalation Playbook",        desc:"When/how to escalate client issues",                   impact:"Medium"},
-  {id:"s4",  cat:"Delivery",   title:"Knowledge Transfer Checklist",       desc:"How to transition consultants off engagements",         impact:"High"},
-  {id:"s5",  cat:"Finance",    title:"Invoice Generation & Approval",      desc:"Who approves, timing, client submission process",       impact:"High"},
-  {id:"s6",  cat:"Finance",    title:"Accounts Receivable Follow-up",      desc:"30/60/90 day collection escalation steps",             impact:"High"},
-  {id:"s7",  cat:"Finance",    title:"Month-End Close Process",            desc:"Reconciliation, P&L review, reporting cadence",        impact:"High"},
-  {id:"s8",  cat:"Finance",    title:"Vendor Payment Schedule",            desc:"AP approval workflow, payment timing",                 impact:"Medium"},
-  {id:"s9",  cat:"HR",         title:"Consultant Hiring Process",          desc:"Job post to screen to interview to offer to onboard",  impact:"High"},
-  {id:"s10", cat:"HR",         title:"H-1B Sponsorship Process",           desc:"Timeline, attorney workflow, tracking system",         impact:"High"},
-  {id:"s11", cat:"HR",         title:"Timesheet Submission & Approval",    desc:"Weekly process, client approval, billing trigger",     impact:"High"},
-  {id:"s12", cat:"HR",         title:"Benefits Enrollment Guide",          desc:"Health, dental, 401k enrollment for new hires",        impact:"Medium"},
-  {id:"s13", cat:"Sales & BD", title:"Lead Qualification Criteria",        desc:"ICP definition, scoring model, disqualification",      impact:"High"},
-  {id:"s14", cat:"Sales & BD", title:"Proposal & SOW Process",             desc:"Template, approval, send, follow-up cadence",          impact:"High"},
-  {id:"s15", cat:"Sales & BD", title:"Client Renewal Process",             desc:"90-day pre-renewal check-in, rate negotiation",        impact:"High"},
-  {id:"s16", cat:"Sales & BD", title:"RFP Response Process",               desc:"Bid/no-bid decision, WBE angle, submission checklist", impact:"Medium"},
-  {id:"s17", cat:"Compliance", title:"I-9 & Work Authorization Process",   desc:"Verification timing, re-verification alerts",          impact:"High"},
-  {id:"s18", cat:"Compliance", title:"WBE/HUB/WOSB Cert Maintenance",      desc:"Renewal dates, documentation requirements",            impact:"High"},
-  {id:"s19", cat:"Compliance", title:"Data Security & NDA Process",        desc:"Client NDA workflow, data handling policy",            impact:"Medium"},
-  {id:"s20", cat:"Technology", title:"System Access Management",           desc:"Onboard/offboard access to all tools and systems",     impact:"High"},
-  {id:"s21", cat:"Technology", title:"Backup & Disaster Recovery",         desc:"Data backup schedule, recovery procedures",            impact:"Medium"},
-  {id:"s22", cat:"Executive",  title:"Company Org Chart & Succession",     desc:"Who covers what if key person is unavailable",         impact:"High"},
-  {id:"s23", cat:"Executive",  title:"Investor/Advisor Reporting",         desc:"Monthly KPI deck, financial summary format",           impact:"Medium"},
-  {id:"s24", cat:"Executive",  title:"M&A Data Room Checklist",            desc:"Documents needed for due diligence",                   impact:"High"},
-];
-const EXIT_CHECKS = [
-  {id:"er1",  cat:"Financial",  check:"3 years of clean P&L statements",              weight:10},
-  {id:"er2",  cat:"Financial",  check:"AR aging < 60 days average",                   weight:8},
-  {id:"er3",  cat:"Financial",  check:"No single client > 40% of revenue",            weight:9},
-  {id:"er4",  cat:"Financial",  check:"Positive EBITDA margin documented",            weight:10},
-  {id:"er5",  cat:"Operations", check:"SOPs documented for all core processes",        weight:9},
-  {id:"er6",  cat:"Operations", check:"Business runs without owner day-to-day",       weight:10},
-  {id:"er7",  cat:"Operations", check:"CRM with clean pipeline data",                 weight:7},
-  {id:"er8",  cat:"Legal",      check:"WBE/HUB/WOSB certifications current",          weight:8},
-  {id:"er9",  cat:"Legal",      check:"All client contracts signed and filed",         weight:9},
-  {id:"er10", cat:"Legal",      check:"Consultant agreements (IP assignment, NDAs)",  weight:8},
-  {id:"er11", cat:"People",     check:"Key person dependency documented & mitigated", weight:8},
-  {id:"er12", cat:"People",     check:"Org chart with clear reporting lines",          weight:6},
-  {id:"er13", cat:"Brand",      check:"GridMind/ARIA IP registered or pending",        weight:7},
-  {id:"er14", cat:"Brand",      check:"Verifiable client references (3+ Fortune 500)",weight:9},
+const ONBOARDING_SEED = [
+  {
+    id:"onb1", memberId:"r1", name:"Suresh Menon", type:"FTE", startDate:"2024-01-15", status:"completed",
+    tasks: OB_TEMPLATE_FTE.map(t=>({...t, status:"done", completedDate:"2024-01-"+String(15+t.days).padStart(2,"0"), assignee:"Manju", notes:"" }))
+  },
+  {
+    id:"onb2", memberId:"r7", name:"Rajesh Kumar", type:"Contractor", startDate:"2024-03-01", status:"completed",
+    tasks: OB_TEMPLATE_CONTRACTOR.map(t=>({...t, status:t.id==="ob_c3"?"pending":"done", completedDate:t.id==="ob_c3"?null:"2024-03-"+String(1+t.days).padStart(2,"0"), assignee:"Manju", notes:t.id==="ob_c3"?"COI requested — follow up":""  }))
+  },
+  {
+    id:"onb3", memberId:"new1", name:"Priya Sharma (New Hire)", type:"FTE", startDate:"2026-04-01", status:"in_progress",
+    tasks: OB_TEMPLATE_FTE.map(t=>({...t, status:t.days===0?"done":"pending", completedDate:t.days===0?"2026-04-01":null, assignee:t.cat==="IT & Access"?"IT Team":"Manju", notes:"" }))
+  },
 ];
 
-function SOPLibrary({ roster, finInvoices, finPayments, apInvoices, crmDeals, crmAccounts, addAudit }) {
-  const [view, setView]           = useState("sop");
-  const [sops, setSops]           = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-sops")||"{}");}catch{return {};}});
-  const [exitChecks, setExitChks] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-exit-checks")||"{}");}catch{return {};}});
-  const [catFilter, setCatFilter] = useState("All");
-
-  const saveSops = s  => { setSops(s);       localStorage.setItem("zt-sops",JSON.stringify(s)); };
-  const saveExit = e  => { setExitChks(e);   localStorage.setItem("zt-exit-checks",JSON.stringify(e)); };
-  const toggleSop  = (id,field) => { const u={...sops,[id]:{...(sops[id]||{}),[field]:!(sops[id]||{})[field]}}; saveSops(u); };
-  const toggleExit = (id) => { const u={...exitChecks,[id]:!exitChecks[id]}; saveExit(u); addAudit&&addAudit("Ops","Exit Check",id,exitChecks[id]?"Unchecked":"Checked"); };
-
-  const documented = SOP_CHECKLIST.filter(s=>(sops[s.id]||{}).documented).length;
-  const reviewed   = SOP_CHECKLIST.filter(s=>(sops[s.id]||{}).reviewed).length;
-  const sopPct     = Math.round(documented/SOP_CHECKLIST.length*100);
-  const totalW     = EXIT_CHECKS.reduce((s,c)=>s+c.weight,0);
-  const earnedW    = EXIT_CHECKS.filter(c=>exitChecks[c.id]).reduce((s,c)=>s+c.weight,0);
-  const exitScore  = Math.round(earnedW/totalW*100);
-  const exitColor  = exitScore>=80?"#34d399":exitScore>=60?"#f59e0b":"#f87171";
-
-  const clientRevs = (crmAccounts||[]).map(a=>({name:a.name,rev:(crmDeals||[]).filter(d=>d.accountId===a.id&&d.stage==="won").reduce((s,d)=>s+(+d.value||0),0)})).filter(a=>a.rev>0);
-  const totalRev   = clientRevs.reduce((s,a)=>s+a.rev,0);
-  const maxClientPct = totalRev>0 ? Math.max(...clientRevs.map(a=>a.rev/totalRev)) : 0;
-  const filtered   = catFilter==="All" ? SOP_CHECKLIST : SOP_CHECKLIST.filter(s=>s.cat===catFilter);
-
-  return (
-    <div>
-      <PH title="SOP Library & Exit Readiness" sub="Operating procedures · Exit valuation score · M&A preparation"/>
-      <div style={{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}}>
-        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
-          const rows=SOP_CHECKLIST.map(s=>[(sops[s.id]||{}).documented?"✓":"",(sops[s.id]||{}).reviewed?"✓":"",s.title,s.cat,s.impact,s.desc]);
-          await exportTableToXLSX(rows,["Documented","Reviewed","SOP Title","Category","Impact","Description"],"SOP Library",`Ziksatech-SOPs-${TODAY_STR}.xlsx`);
-        }}>📋 XLSX</button>
-        <button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
-          const rows=SOP_CHECKLIST.map(s=>[(sops[s.id]||{}).documented?"✓":"—",s.title,s.cat,s.impact]);
-          await generateReportPDF("SOP Library & Exit Readiness",[
-            {type:"heading",text:"Standard Operating Procedures — Ziksatech"},
-            {type:"text",text:`Documented: ${documented}/24 (${sopPct}%) | Reviewed: ${reviewed}/24 | Exit Score: ${exitScore}/100`},
-            {type:"table",headers:["Done","SOP Title","Category","Impact"],rows},
-          ],`Ziksatech-SOPs-${TODAY_STR}.pdf`);
-        }}>📄 PDF</button>
-      </div>
-      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
-        {[{id:"sop",label:"📋 SOP Library"},{id:"exit",label:"🚪 Exit Readiness"}].map(v=>(
-          <button key={v.id} onClick={()=>setView(v.id)}
-            style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
-              background:view===v.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
-              color:view===v.id?"#fff":"#475569",transition:"all 0.15s"}}>{v.label}</button>
-        ))}
-      </div>
-
-      {view==="sop"&&(
-        <div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
-            {[{l:"Total SOPs",v:SOP_CHECKLIST.length,c:"#64748b"},{l:"Documented",v:`${documented}/${SOP_CHECKLIST.length}`,c:"#34d399"},{l:"Reviewed",v:`${reviewed}/${SOP_CHECKLIST.length}`,c:"#38bdf8"},{l:"Completion",v:`${sopPct}%`,c:sopPct>=80?"#34d399":sopPct>=50?"#f59e0b":"#f87171"}].map(s=>(
-              <div key={s.l} className="card" style={{padding:"14px 18px"}}><div style={{fontSize:10,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>{s.l}</div><div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div></div>
-            ))}
-          </div>
-          <div style={{marginBottom:16,padding:"12px 16px",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:12,color:"#475569"}}>Documentation Progress</span><span style={{fontSize:12,fontWeight:700,color:sopPct>=80?"#34d399":"#f59e0b"}}>{sopPct}%</span></div>
-            <div style={{height:8,background:"#0a1626",borderRadius:4}}><div style={{height:8,borderRadius:4,background:sopPct>=80?"#34d399":"#f59e0b",width:sopPct+"%",transition:"width 0.5s"}}/></div>
-            <div style={{fontSize:11,color:"#1e3a5f",marginTop:6}}>Buyers pay <strong style={{color:"#38bdf8"}}>2-3× more</strong> for companies with documented SOPs. Target: 100% before exit.</div>
-          </div>
-          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-            {["All",...SOP_CATEGORIES].map(cat=>(
-              <button key={cat} className="btn bg" style={{fontSize:10,padding:"4px 10px",borderColor:catFilter===cat?"#0284c7":"#1a2d45",color:catFilter===cat?"#38bdf8":"#475569"}} onClick={()=>setCatFilter(cat)}>{cat}</button>
-            ))}
-          </div>
-          <div className="card">
-            <div className="tr" style={{gridTemplateColumns:"18px 1fr 100px 70px 80px 80px",padding:"8px 18px"}}>
-              {["","SOP","Category","Impact","Doc'd","Reviewed"].map(h=><span key={h} className="th">{h}</span>)}
-            </div>
-            {filtered.map(sop=>{
-              const st=sops[sop.id]||{};
-              return (
-                <div key={sop.id} className="tr" style={{gridTemplateColumns:"18px 1fr 100px 70px 80px 80px",background:st.documented&&st.reviewed?"#020f08":undefined}}>
-                  <div style={{width:8,height:8,borderRadius:"50%",margin:"auto",background:st.documented&&st.reviewed?"#34d399":st.documented?"#f59e0b":"#334155"}}/>
-                  <div><div style={{fontSize:13,fontWeight:600,color:st.documented?"#34d399":"#94a3b8"}}>{sop.title}</div><div style={{fontSize:10,color:"#334155",marginTop:1}}>{sop.desc}</div></div>
-                  <span className="bdg" style={{fontSize:9,background:"#0a1626",color:"#475569"}}>{sop.cat}</span>
-                  <span className="bdg" style={{fontSize:9,background:sop.impact==="High"?"#f8717122":"#f59e0b22",color:sop.impact==="High"?"#f87171":"#f59e0b"}}>{sop.impact}</span>
-                  {["documented","reviewed"].map(field=>(
-                    <div key={field} onClick={()=>toggleSop(sop.id,field)} style={{cursor:"pointer",display:"flex",justifyContent:"center",alignItems:"center"}}>
-                      <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${(st[field])?(field==="documented"?"#34d399":"#38bdf8"):"#334155"}`,background:(st[field])?(field==="documented"?"#34d399":"#38bdf822"):"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                        {st[field]&&<span style={{color:field==="documented"?"#021f14":"#38bdf8",fontSize:11,fontWeight:800}}>✓</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {view==="exit"&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 320px",gap:16}}>
-          <div>
-            <div className="card" style={{padding:"20px 24px",marginBottom:14}}>
-              <div style={{display:"flex",alignItems:"center",gap:20}}>
-                <div style={{textAlign:"center"}}><div style={{fontSize:52,fontWeight:900,color:exitColor,lineHeight:1}}>{exitScore}</div><div style={{fontSize:11,color:"#475569"}}>Exit Score</div></div>
-                <div style={{flex:1}}>
-                  <div style={{height:10,background:"#0a1626",borderRadius:5,marginBottom:8}}><div style={{height:10,borderRadius:5,background:`linear-gradient(90deg,#f87171,#f59e0b,#34d399)`,width:exitScore+"%",transition:"width 0.6s"}}/></div>
-                  <div style={{fontSize:13,color:exitColor,fontWeight:600,marginBottom:4}}>{exitScore>=80?"🚀 Exit Ready":exitScore>=60?"⚡ Good Progress — 3-6 months":"🔨 Building Foundation"}</div>
-                  <div style={{fontSize:11,color:"#334155"}}>{EXIT_CHECKS.filter(c=>exitChecks[c.id]).length} of {EXIT_CHECKS.length} items complete</div>
-                </div>
-                <div style={{textAlign:"center",padding:"12px 16px",background:"#0a1120",borderRadius:10,border:"1px solid #1a2d45"}}>
-                  <div style={{fontSize:10,color:"#475569",marginBottom:4}}>Est. Exit Value</div>
-                  <div style={{fontSize:15,fontWeight:800,color:"#34d399"}}>{fmt(exitScore*15000*7)}</div>
-                  <div style={{fontSize:9,color:"#334155"}}>score-based 7× estimate</div>
-                </div>
-              </div>
-            </div>
-            {["Financial","Operations","Legal","People","Brand"].map(cat=>{
-              const items=EXIT_CHECKS.filter(c=>c.cat===cat);
-              const done=items.filter(c=>exitChecks[c.id]).length;
-              const cc=done===items.length?"#34d399":done>0?"#f59e0b":"#f87171";
-              return (
-                <div key={cat} className="card" style={{marginBottom:10,padding:"12px 16px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><div style={{fontSize:11,fontWeight:700,color:cc,textTransform:"uppercase"}}>{cat}</div><span style={{fontSize:11,color:cc}}>{done}/{items.length}</span></div>
-                  {items.map(item=>(
-                    <div key={item.id} onClick={()=>toggleExit(item.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:7,cursor:"pointer",marginBottom:4,background:exitChecks[item.id]?"#021f14":"#060d1c",border:`1px solid ${exitChecks[item.id]?"#34d39333":"#1a2d45"}`}}>
-                      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,border:`2px solid ${exitChecks[item.id]?"#34d399":"#334155"}`,background:exitChecks[item.id]?"#34d399":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                        {exitChecks[item.id]&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
-                      </div>
-                      <span style={{fontSize:12,color:exitChecks[item.id]?"#34d399":"#94a3b8",flex:1}}>{item.check}</span>
-                      <span style={{fontSize:9,color:"#334155"}}>w:{item.weight}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            <div className="card" style={{padding:"14px 16px"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>AUTO CHECKS</div>
-              {[
-                {l:"Client Concentration",ok:maxClientPct<0.4||!totalRev,detail:maxClientPct>0?`Largest: ${Math.round(maxClientPct*100)}%`:"No deal data yet"},
-                {l:"CRM Pipeline Data",ok:(crmDeals||[]).length>3,detail:`${(crmDeals||[]).length} deals in CRM`},
-                {l:"Team Size ≥5",ok:(roster||[]).length>=5,detail:`${(roster||[]).length} team members`},
-                {l:"SOPs ≥80%",ok:sopPct>=80,detail:`Currently ${sopPct}%`},
-              ].map(({l,ok,detail})=>(
-                <div key={l} style={{display:"flex",gap:10,padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
-                  <span style={{fontSize:14,flexShrink:0}}>{ok?"✅":"❌"}</span>
-                  <div><div style={{fontSize:11,fontWeight:600,color:ok?"#34d399":"#f87171"}}>{l}</div><div style={{fontSize:10,color:"#475569"}}>{detail}</div></div>
-                </div>
-              ))}
-            </div>
-            <div className="card" style={{padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>💡 M&A BUYER PROFILE</div>
-              {["Mid-size SI firm wanting WBE cert","PE roll-up of SAP niche firms","SAP partner expanding to DFW","Indian IT firm needing US footprint"].map(b=>(
-                <div key={b} style={{fontSize:10,color:"#38bdf8",marginBottom:4}}>→ {b}</div>
-              ))}
-              <div style={{marginTop:8,fontSize:10,color:"#0369a1"}}>Target: 7× EBITDA = $1.5M–$3M exit</div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
+// =============================================================================
+// RESOURCE CAPACITY PLANNER  (#3)
+// =============================================================================
 function CapacityPlanner({ roster, projects, sows, clients, tsHours }) {
   const WEEKS = 12;
   const TODAY = new Date();
@@ -21128,7 +21457,6 @@ function CapacityPlanner({ roster, projects, sows, clients, tsHours }) {
 // =============================================================================
 // BUDGET VS. ACTUAL  (#4)
 // =============================================================================
-
 function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses, plIncome, plExpense, clients, adpRuns }) {
   const [level, setLevel] = useState("company"); // company | project
   const [selProj, setSelProj] = useState(null);
@@ -21412,6 +21740,210 @@ function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses,
 // =============================================================================
 // ONBOARDING MODULE  (#5)
 // =============================================================================
+function OnboardingModule({ roster, onboardings, setOnboardings, addAudit }) {
+  const [selId,    setSel]    = useState(onboardings?.[0]?.id || null);
+  const [newModal, setNew]    = useState(false);
+  const [newForm,  setNF]     = useState({ name:"", type:"FTE", startDate:"", rosterMemberId:"" });
+
+  const save = (updated) => {
+    setOnboardings(updated);
+    addAudit?.("Onboarding","Updated","checklist","");
+  };
+
+  const selected = onboardings?.find(o => o.id === selId) || null;
+
+  const createOnboarding = () => {
+    if (!newForm.name.trim()) return alert("Enter the new hire's name");
+    const template = newForm.type === "FTE" ? OB_TEMPLATE_FTE : OB_TEMPLATE_CONTRACTOR;
+    const tasks = template.map(t => ({
+      ...t,
+      done: false,
+      doneDate: null,
+      doneBy: null,
+      note: "",
+    }));
+    const ob = {
+      id:        "ob-" + Date.now(),
+      name:      newForm.name.trim(),
+      type:      newForm.type,
+      startDate: newForm.startDate,
+      rosterId:  newForm.rosterMemberId || null,
+      tasks,
+      createdAt: TODAY_STR,
+    };
+    const updated = [...(onboardings||[]), ob];
+    save(updated);
+    setSel(ob.id);
+    setNew(false);
+    setNF({ name:"", type:"FTE", startDate:"", rosterMemberId:"" });
+  };
+
+  const toggleTask = (obId, taskId) => {
+    save((onboardings||[]).map(o => o.id !== obId ? o : {
+      ...o,
+      tasks: o.tasks.map(t => t.id !== taskId ? t : {
+        ...t,
+        done: !t.done,
+        doneDate: !t.done ? TODAY_STR : null,
+        doneBy:   !t.done ? "Manju" : null,
+      })
+    }));
+  };
+
+  const deleteOnboarding = (obId) => {
+    if (!window.confirm("Remove this onboarding record?")) return;
+    const updated = (onboardings||[]).filter(o => o.id !== obId);
+    save(updated);
+    setSel(updated[0]?.id || null);
+  };
+
+  const pct = (ob) => {
+    if (!ob?.tasks?.length) return 0;
+    return Math.round(ob.tasks.filter(t=>t.done).length / ob.tasks.length * 100);
+  };
+
+  const catColor = { "HR & Legal":"#38bdf8", Benefits:"#34d399", "IT & Access":"#a78bfa", Compliance:"#f59e0b", "Project Ramp":"#f87171", Finance:"#94a3b8" };
+
+  return (
+    <div>
+      <PH title="Onboarding" sub="New hire & contractor onboarding checklists — track every step from day 0 to 30-day check-in"/>
+
+      <div style={{display:"grid", gridTemplateColumns:"260px 1fr", gap:16, alignItems:"start"}}>
+        {/* Sidebar — person list */}
+        <div>
+          <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,marginBottom:12}}
+            onClick={()=>setNew(true)}>+ New Onboarding</button>
+
+          {(!onboardings||onboardings.length===0) ? (
+            <div style={{padding:"30px 16px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:10}}>
+              <div style={{fontSize:24,marginBottom:8}}>🚀</div>
+              <div style={{fontSize:12,color:"#334155"}}>No onboardings yet</div>
+              <div style={{fontSize:11,color:"#1e3a5f",marginTop:4}}>Click "+ New Onboarding" to start tracking a new hire</div>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {(onboardings||[]).map(ob => {
+                const p = pct(ob);
+                const isActive = ob.id === selId;
+                return (
+                  <div key={ob.id} onClick={()=>setSel(ob.id)}
+                    style={{padding:"12px 14px",borderRadius:10,cursor:"pointer",
+                      background:isActive?"#0c2340":"#060d1c",
+                      border:`1px solid ${isActive?"#0369a1":"#1a2d45"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:"#1a2d45",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#38bdf8",flexShrink:0}}>
+                        {ob.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+                      </div>
+                      <span style={{fontSize:11,fontWeight:700,color:p===100?"#34d399":"#38bdf8"}}>{p}%</span>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{ob.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{ob.type} · starts {ob.startDate||"TBD"}</div>
+                    <div style={{height:4,background:"#0a1626",borderRadius:2,marginTop:6}}>
+                      <div style={{height:4,borderRadius:2,background:p===100?"#34d399":"#0284c7",width:p+"%",transition:"width 0.4s"}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Main checklist panel */}
+        <div>
+          {!selected ? (
+            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:36,marginBottom:12}}>🚀</div>
+              <div style={{fontSize:14,color:"#334155"}}>Select an onboarding on the left, or create a new one</div>
+            </div>
+          ) : (
+            <div>
+              {/* Header */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+                <div>
+                  <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0"}}>{selected.name}</div>
+                  <div style={{fontSize:12,color:"#3d5a7a"}}>{selected.type} · Start date: {selected.startDate||"TBD"}</div>
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <div style={{fontSize:28,fontWeight:900,color:pct(selected)===100?"#34d399":"#38bdf8"}}>{pct(selected)}%</div>
+                  {pct(selected)===100 && <span className="bdg" style={{background:"#34d39922",color:"#34d399"}}>COMPLETED</span>}
+                  <button className="btn br" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>deleteOnboarding(selected.id)}>🗑</button>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{height:8,background:"#0a1626",borderRadius:4,marginBottom:20}}>
+                <div style={{height:8,borderRadius:4,background:"linear-gradient(90deg,#0284c7,#34d399)",width:pct(selected)+"%",transition:"width 0.5s"}}/>
+              </div>
+
+              {/* Tasks grouped by category */}
+              {[...new Set(selected.tasks.map(t=>t.cat))].map(cat => (
+                <div key={cat} className="card" style={{padding:"14px 18px",marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontSize:11,fontWeight:700,color:catColor[cat]||"#94a3b8",textTransform:"uppercase"}}>{cat}</div>
+                    <span style={{fontSize:10,color:"#334155"}}>
+                      {selected.tasks.filter(t=>t.cat===cat&&t.done).length}/{selected.tasks.filter(t=>t.cat===cat).length}
+                    </span>
+                  </div>
+                  {selected.tasks.filter(t=>t.cat===cat).map(task => (
+                    <div key={task.id} onClick={()=>toggleTask(selected.id,task.id)}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,cursor:"pointer",marginBottom:4,
+                        background:task.done?"#021f14":"#060d1c",border:`1px solid ${task.done?"#34d39333":"#1a2d45"}`}}>
+                      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,
+                        border:`2px solid ${task.done?"#34d399":"#334155"}`,
+                        background:task.done?"#34d399":"transparent",
+                        display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {task.done&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:12,color:task.done?"#34d399":"#94a3b8",textDecoration:task.done?"line-through":"none"}}>{task.title}</div>
+                        {task.doneDate&&<div style={{fontSize:9,color:"#334155"}}>✓ {task.doneDate} by {task.doneBy}</div>}
+                      </div>
+                      <span className="bdg" style={{fontSize:9,background:"#0a1626",color:"#334155"}}>Day {task.days}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* New Onboarding Modal */}
+      {newModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setNew(false)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <MH title="New Onboarding" onClose={()=>setNew(false)}/>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div><div className="lbl">Full Name *</div>
+                <input className="inp" value={newForm.name} onChange={e=>setNF(p=>({...p,name:e.target.value}))} placeholder="New hire's full name"/></div>
+              <div><div className="lbl">Employment Type</div>
+                <select className="inp" value={newForm.type} onChange={e=>setNF(p=>({...p,type:e.target.value}))}>
+                  <option value="FTE">FTE (Full-Time Employee)</option>
+                  <option value="Contractor">Contractor</option>
+                </select></div>
+              <div><div className="lbl">Start Date</div>
+                <input className="inp" type="date" value={newForm.startDate} onChange={e=>setNF(p=>({...p,startDate:e.target.value}))}/></div>
+              <div><div className="lbl">Link to Roster Member (optional)</div>
+                <select className="inp" value={newForm.rosterMemberId} onChange={e=>setNF(p=>({...p,rosterMemberId:e.target.value}))}>
+                  <option value="">— select —</option>
+                  {(roster||[]).map(r=><option key={r.id} value={r.id}>{r.name} ({r.type})</option>)}
+                </select></div>
+              <div style={{fontSize:11,color:"#334155",padding:"8px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+                {newForm.type==="FTE" ? `✓ FTE checklist: ${OB_TEMPLATE_FTE.length} tasks (HR, Benefits, IT, Compliance, Project Ramp)` : `✓ Contractor checklist: ${OB_TEMPLATE_CONTRACTOR.length} tasks (HR, Compliance, IT, Finance)`}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setNew(false)}>Cancel</button>
+              <button className="btn bp" onClick={createOnboarding}>🚀 Create Onboarding</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CHANGE ORDER CONSTANTS ───────────────────────────────────────────────────
 
 function AIAgent({ authProfile, roster, clients, finInvoices, finPayments, crmDeals, portalView }) {
   const [open, setOpen] = useState(false);
@@ -21583,7 +22115,6 @@ Be concise, helpful and professional. Answer based on the context above when pos
 // ═══════════════════════════════════════════════════════════════════════
 // PROFILE MENU — top-right dropdown for profile, settings, sign out
 // ═══════════════════════════════════════════════════════════════════════
-
 function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile, setTab }) {
   const [open, setOpen] = useState(false);
 
@@ -21681,7 +22212,6 @@ function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile,
 // ═══════════════════════════════════════════════════════════════════════
 // HOME PAGE — appended at file end, uses only already-imported hooks
 // ═══════════════════════════════════════════════════════════════════════
-
 function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
   dismissedAlerts, setDismissedAlerts }) {
@@ -22014,7 +22544,6 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   );
 }
 
-
 function MiniCalculator() {
   const [expr, setExpr] = useState("");
   const [result, setResult] = useState(null);
@@ -22303,7 +22832,6 @@ const callClaudeWithDoc = async (systemPrompt, userPrompt, docData, onChunk, max
 };
 
 // ── Company Profile Modal ─────────────────────────────────────────────────────
-
 function CompanyProfileModal({ open, onClose, onSelect }) {
   const [profiles, setProfiles]   = useState(getCompanyProfiles);
   const [editing, setEditing]     = useState(null);
@@ -22398,7 +22926,6 @@ function CompanyProfileModal({ open, onClose, onSelect }) {
 
 // ── Reusable Document Upload + Company Profile Panel ─────────────────────────
 // Used by SOW, RFP, Resource Planner — sits above the form as a collapsible section
-
 function DocUploadPanel({ docData, setDocData, companyProfile, setCompanyProfile, onAnalyze, analyzing, label = 'Upload Reference Document' }) {
   const [expanded, setExpanded]       = useState(true);
   const [showProfileModal, setShowPM] = useState(false);
@@ -22516,7 +23043,6 @@ function DocUploadPanel({ docData, setDocData, companyProfile, setCompanyProfile
     </>
   );
 }
-
 
 
 function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
@@ -23090,7 +23616,6 @@ const safeExport = async (fn) => {
     console.error('Export error:', e);
   }
 };
-
 function ExportButtons({ data, type, label="Export" }) {
   const [exporting, setExporting] = useState(null);
   const [done, setDone] = useState("");
@@ -23135,8 +23660,235 @@ function ExportButtons({ data, type, label="Export" }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // PREVIEW MODAL — Shows structured preview before AI generation
 // ═══════════════════════════════════════════════════════════════════════════
+function PreviewModal({ open, onClose, onConfirm, title, fields, loading }) {
+  if (!open) return null;
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:560}}>
+        <MH title={"Preview: "+title} onClose={onClose}/>
+        <div style={{fontSize:11,color:"#475569",marginBottom:14,padding:"8px 12px",background:"#0a1120",borderRadius:8,border:"1px solid #1a2d45"}}>
+          📋 Review your inputs below before generating. Click <strong style={{color:"#38bdf8"}}>Confirm & Generate</strong> to proceed.
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto",marginBottom:16}}>
+          {fields.filter(f=>f.value).map((f,i)=>(
+            <div key={i} style={{display:"grid",gridTemplateColumns:"140px 1fr",gap:8,padding:"8px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <span style={{fontSize:11,color:"#3d5a7a",fontWeight:600,paddingTop:1}}>{f.label}</span>
+              <span style={{fontSize:12,color:"#e2e8f0",wordBreak:"break-word"}}>{String(f.value).slice(0,120)}{String(f.value).length>120?"...":""}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button className="btn bg" onClick={onClose}>✏️ Edit</button>
+          <button className="btn bp" onClick={onConfirm} disabled={loading}>
+            {loading?"⚡ Generating...":"⚡ Confirm & Generate"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-const PI_SAMPLE_COMPANIES = ["Capital One","Oncor Electric","CHRISTUS Health","Verizon","BNSF Railway","Celanese","Calpine Energy","Southwest Airlines","American Airlines","AT&T","Toyota Connected","Flowserve","DXC Technology","NTTA","Atmos Energy"];
+// ═══════════════════════════════════════════════════════════════════════════
+// PDF INVOICE GENERATOR — Professional branded invoice PDF
+// ═══════════════════════════════════════════════════════════════════════════
+const generateInvoicePDF = async (inv, clients, appSettings) => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"pt", format:"letter" });
+
+  const NAVY=[13,27,42], GOLD=[201,168,76], WHITE=[255,255,255], LIGHT=[232,240,248], GRAY=[100,116,139], DARKGRAY=[51,65,85];
+  const client = (clients||[]).find(cl=>cl.id===inv.clientId) || {};
+  const co = appSettings || {};
+  const lines = inv.lines || [];
+  const subtotal = lines.reduce((s,l)=>s+(+l.amount||0),0);
+  const tax = inv.taxRate ? subtotal*(inv.taxRate/100) : 0;
+  const total = subtotal + tax;
+  const W=612, margin=40;
+
+  // ── Header band ──────────────────────────────────────────────────────────
+  doc.setFillColor(...NAVY); doc.rect(0,0,W,80,"F");
+  doc.setFillColor(...GOLD);  doc.rect(0,78,W,3,"F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.setTextColor(...WHITE);
+  doc.text(co.companyName||"ZIKSATECH, LLC", margin, 38);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(180,200,220);
+  doc.text("WBE | HUB | WOSB Certified SAP Consulting", margin, 52);
+  doc.text(co.address||"Plano, TX 75024  |  manju@ziksatech.com", margin, 63);
+  // Invoice label right side
+  doc.setFont("helvetica","bold"); doc.setFontSize(26); doc.setTextColor(...GOLD);
+  doc.text("INVOICE", W-margin, 42, {align:"right"});
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...WHITE);
+  doc.text(inv.id||"INV-001", W-margin, 58, {align:"right"});
+
+  // ── Invoice meta + Bill To ────────────────────────────────────────────────
+  let y = 100;
+  // Left: Bill To
+  doc.setFillColor(235,243,252); doc.roundedRect(margin, y, 240, 90, 4, 4, "F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...GRAY);
+  doc.text("BILL TO", margin+10, y+15);
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(...DARKGRAY);
+  doc.text(client.name||inv.clientName||"Client", margin+10, y+30);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...GRAY);
+  if (client.address) doc.text(client.address, margin+10, y+44);
+  if (client.contact) doc.text(client.contact, margin+10, y+56);
+  if (client.email)   doc.text(client.email,   margin+10, y+68);
+
+  // Right: Invoice details
+  const rx=W-margin-200;
+  const detailRows=[["Invoice #",inv.id||""],["Issue Date",inv.issueDate||inv.date||""],["Due Date",inv.dueDate||""],["Terms",inv.paymentTerms||"Net 30"],["Period",inv.period||""]];
+  doc.setFillColor(235,243,252); doc.roundedRect(rx-10, y, 210, 90, 4, 4, "F");
+  detailRows.filter(r=>r[1]).forEach(([k,v],i)=>{
+    const dy = y+14+i*16;
+    doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(...GRAY); doc.text(k, rx, dy);
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(...DARKGRAY); doc.text(String(v), rx+105, dy, {align:"right"});
+  });
+
+  y += 105;
+
+  // ── Project title ─────────────────────────────────────────────────────────
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(...NAVY);
+  doc.text(inv.projectName||inv.description||"Professional Services", margin, y+14);
+  y += 22;
+
+  // ── Line items table ──────────────────────────────────────────────────────
+  const tableRows = lines.map(l=>([
+    l.desc||l.description||"Services",
+    String(l.qty||1),
+    l.rate ? `$${Number(l.rate).toLocaleString()}` : "",
+    `$${Number(l.amount||0).toLocaleString()}`
+  ]));
+
+  doc.autoTable({
+    startY: y,
+    head: [["Description","Qty","Rate","Amount"]],
+    body: tableRows,
+    margin:{left:margin, right:margin},
+    headStyles:{fillColor:NAVY,textColor:WHITE,fontSize:9,fontStyle:"bold"},
+    bodyStyles:{fontSize:10,textColor:DARKGRAY},
+    columnStyles:{0:{cellWidth:"auto"},1:{cellWidth:50,halign:"center"},2:{cellWidth:70,halign:"right"},3:{cellWidth:80,halign:"right",fontStyle:"bold"}},
+    alternateRowStyles:{fillColor:[245,249,255]},
+    tableLineColor:LIGHT, tableLineWidth:0.5,
+  });
+
+  y = doc.lastAutoTable.finalY + 10;
+
+  // ── Totals box ────────────────────────────────────────────────────────────
+  const boxX=W-margin-200, boxW=200;
+  doc.setFillColor(235,243,252); doc.roundedRect(boxX, y, boxW, tax>0?80:62, 4,4,"F");
+  let ty=y+18;
+  [["Subtotal",`$${subtotal.toLocaleString()}`], ...(tax>0?[[`Tax (${inv.taxRate}%)`,`$${tax.toFixed(2)}`]]:[])]
+    .forEach(([k,v])=>{
+      doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(...GRAY);doc.text(k,boxX+10,ty);
+      doc.setFont("helvetica","bold");doc.setFontSize(10);doc.setTextColor(...DARKGRAY);doc.text(v,boxX+boxW-10,ty,{align:"right"});
+      ty+=16;
+    });
+  // Total line
+  doc.setFillColor(...NAVY); doc.rect(boxX,ty-4,boxW,22,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(...WHITE);doc.text("TOTAL DUE",boxX+10,ty+10);
+  doc.setTextColor(...GOLD);doc.text(`$${total.toLocaleString()}`,boxX+boxW-10,ty+10,{align:"right"});
+
+  y = Math.max(y+85, doc.lastAutoTable.finalY+95);
+
+  // ── Notes / payment instructions ─────────────────────────────────────────
+  if(inv.notes||co.invoiceFooter) {
+    const note = inv.notes||co.invoiceFooter||"Thank you for your business.";
+    doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(...NAVY);doc.text("Notes / Payment Instructions",margin,y);
+    doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(...GRAY);
+    doc.text(note, margin, y+14, {maxWidth:W-margin*2});
+    y+=30;
+  }
+
+  // ── Status badge ─────────────────────────────────────────────────────────
+  const statusColors={paid:[34,197,94],sent:[56,189,248],overdue:[248,113,113],draft:[100,116,139],partial:[249,158,11]};
+  const sc=statusColors[inv.status]||GRAY;
+  doc.setFillColor(...sc); doc.roundedRect(margin,y,60,18,4,4,"F");
+  doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(...WHITE);
+  doc.text((inv.status||"draft").toUpperCase(),margin+30,y+12,{align:"center"});
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+  const pageH=792;
+  doc.setFillColor(...NAVY); doc.rect(0,pageH-30,W,30,"F");
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(150,180,200);
+  doc.text(`${co.companyName||"Ziksatech, LLC"} | WBE/HUB/WOSB Certified | ${co.email||"manju@ziksatech.com"}`, W/2, pageH-12, {align:"center"});
+
+  const filename=`${inv.id||"invoice"}-${client.name||"client"}.pdf`.replace(/[^a-zA-Z0-9.-]/g,"-");
+  doc.save(filename);
+  return filename;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UNIVERSAL XLSX EXPORTER — for data tables across all modules
+// ═══════════════════════════════════════════════════════════════════════════
+const exportTableToXLSX = async (rows, headers, sheetName, filename) => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+  const XLSX = window.XLSX;
+  if (!XLSX) throw new Error("SheetJS (XLSX) failed to load. Try again.");
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws["!cols"] = headers.map(()=>({wch:22}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName||"Data");
+  XLSX.writeFile(wb, filename||`export-${Date.now()}.xlsx`);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UNIVERSAL PDF REPORT GENERATOR — tables, lists, any structured data
+// ═══════════════════════════════════════════════════════════════════════════
+const generateReportPDF = async (title, sections, filename) => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"portrait", unit:"pt", format:"letter" });
+  const NAVY=[13,27,42], GOLD=[201,168,76], WHITE=[255,255,255], GRAY=[100,116,139];
+  const W=612, margin=40;
+
+  // Header
+  doc.setFillColor(...NAVY); doc.rect(0,0,W,60,"F");
+  doc.setFillColor(...GOLD);  doc.rect(0,58,W,3,"F");
+  doc.setFont("helvetica","bold"); doc.setFontSize(18); doc.setTextColor(...WHITE);
+  doc.text("ZIKSATECH", margin, 28);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(180,200,220);
+  doc.text(title, margin, 44);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(180,200,220);
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, W-margin, 44, {align:"right"});
+
+  let y=80;
+  for(const section of sections) {
+    if(section.type==="heading") {
+      doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(...NAVY);
+      doc.text(section.text, margin, y); y+=20;
+    } else if(section.type==="text") {
+      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...GRAY);
+      const lines = doc.splitTextToSize(section.text, W-margin*2);
+      doc.text(lines, margin, y); y+=lines.length*14+8;
+    } else if(section.type==="table") {
+      doc.autoTable({
+        startY: y, head:[section.headers], body:section.rows,
+        margin:{left:margin,right:margin},
+        headStyles:{fillColor:NAVY,textColor:WHITE,fontSize:9,fontStyle:"bold"},
+        bodyStyles:{fontSize:9,textColor:[51,65,85]},
+        alternateRowStyles:{fillColor:[245,249,255]},
+      });
+      y = doc.lastAutoTable.finalY + 16;
+    }
+    if(y>720){doc.addPage(); y=40;}
+  }
+
+  // Footer
+  doc.setFillColor(...NAVY); doc.rect(0,762,W,30,"F");
+  doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(150,180,200);
+  doc.text("Ziksatech, LLC | WBE/HUB/WOSB Certified | manju@ziksatech.com", W/2, 780, {align:"center"});
+
+  doc.save(filename||`ziksatech-report-${Date.now()}.pdf`);
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROSPECT INTELLIGENCE ENGINE
+// AI-powered company research → SAP landscape → BRIM fit → outreach angle
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PI_INDUSTRIES = ["Utilities","Telecom","Healthcare","Financial Services","Manufacturing","Retail","Energy","Government","Technology","Insurance"];
+const PI_SAMPLE_COMPANIES = ["Capital One","Oncor Electric","CHRISTUS Health","Verizon","BNSF Railway","Celanese","Calpine Energy","Southwest Airlines","American Airlines","AT&T"];
 
 function ProspectIntel({ crmLeads, setCrmLeads, addAudit }) {
   const [company,    setCompany]   = useState("");
@@ -23494,7 +24246,6 @@ Next: ${r.nextStep}`,
 // ═══════════════════════════════════════════════════════════════════════════
 // CAPABILITY DECK GENERATOR — AI-powered client-specific pitch decks
 // ═══════════════════════════════════════════════════════════════════════════
-
 function CapabilityDeck({ clients, crmAccounts, crmDeals, roster, addAudit }) {
   const [target, setTarget] = useState(""); const [industry, setIndustry] = useState("Utilities");
   const [focus, setFocus] = useState([]); const [loading, setLoading] = useState(false);
@@ -23653,6 +24404,444 @@ const CERT_LIST = [
   {id:"c5",name:"SAP Partner Edge",body:"SAP",desc:"SAP Partner Edge certification — enables co-selling and joint GTM with SAP",renewalMonths:12,docs:["Partner application","Reference clients","Certified consultant list","Revenue targets commitment"]},
   {id:"c6",name:"GSA Schedule (IT 70)",body:"GSA",desc:"Federal GSA IT Schedule 70 — enables direct federal agency sales",renewalMonths:60,docs:["GSA eOffer application","Pricing proposal","Quality assurance plan","Past performance references","Financial statements"]},
 ];
+
+function CertTracker({ addAudit }) {
+  const [certs, setCerts] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-certs")||"{}");}catch{return {};}});
+  const [detail, setDetail] = useState(null);
+  const save = (id, data) => { const u={...certs,[id]:{...(certs[id]||{}),...data}}; setCerts(u); localStorage.setItem("zt-certs",JSON.stringify(u)); };
+
+  const status = (cert) => {
+    const d = certs[cert.id];
+    if(!d?.obtained) return {label:"Not Started",color:"#f87171",bg:"#f8717122"};
+    if(!d?.expiryDate) return {label:"Active – No Expiry Set",color:"#f59e0b",bg:"#f59e0b22"};
+    const days = Math.round((new Date(d.expiryDate)-new Date())/86400000);
+    if(days<0) return {label:"EXPIRED",color:"#f87171",bg:"#f8717122"};
+    if(days<=90) return {label:`Expires in ${days}d`,color:"#f59e0b",bg:"#f59e0b22"};
+    return {label:`Active · ${days}d left`,color:"#34d399",bg:"#34d39922"};
+  };
+
+  const docsComplete = (cert) => {
+    const d = certs[cert.id]?.docs||{};
+    return cert.docs.filter(doc=>d[doc]).length;
+  };
+
+  return (
+    <div>
+      <PH title="WBE/HUB/WOSB Certification Tracker" sub="Certification status · Renewal dates · Document checklist · Federal contracting readiness"/>
+      <div style={{display:"grid",gridTemplateColumns:detail?"1fr 360px":"1fr",gap:16}}>
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            {[{l:"Active",c:"#34d399"},{l:"Expiring Soon",c:"#f59e0b"},{l:"Not Started",c:"#f87171"}].map(({l,c})=>{
+              const count = CERT_LIST.filter(cert=>{const s=status(cert); return l==="Active"?s.color==="#34d399":l==="Expiring Soon"?s.color==="#f59e0b":s.color==="#f87171";}).length;
+              return <div key={l} className="card" style={{padding:"12px 16px"}}>
+                <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>{l.toUpperCase()}</div>
+                <div style={{fontSize:24,fontWeight:800,color:c}}>{count}</div>
+              </div>;
+            })}
+          </div>
+          <div style={{padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:10,marginBottom:16,fontSize:11,color:"#38bdf8"}}>
+            💡 <strong>Market Impact:</strong> WBE + HUB + WOSB certifications unlock <strong>set-aside contracts</strong> and make Ziksatech a preferred vendor for Fortune 500 diversity supplier programs — AT&T, Toyota, and most large companies have supplier diversity mandates. These certs alone can double your addressable market.
+          </div>
+          <div className="card">
+            <div className="tr" style={{gridTemplateColumns:"2fr 110px 90px 80px 80px",padding:"8px 18px"}}>
+              {["Certification","Status","Obtained","Expiry","Docs"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {CERT_LIST.map(cert=>{
+              const st=status(cert); const d=certs[cert.id]||{}; const docs=docsComplete(cert);
+              return (
+                <div key={cert.id} className="tr" style={{gridTemplateColumns:"2fr 110px 90px 80px 80px",cursor:"pointer",background:detail?.id===cert.id?"#0a1a2e":undefined}}
+                  onClick={()=>setDetail(detail?.id===cert.id?null:cert)}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{cert.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{cert.body} · Renews every {cert.renewalMonths}mo</div>
+                  </div>
+                  <span className="bdg" style={{background:st.bg,color:st.color,fontSize:9}}>{st.label}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:6}} onClick={e=>{e.stopPropagation();save(cert.id,{obtained:!d.obtained});}}>
+                    <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${d.obtained?"#34d399":"#334155"}`,background:d.obtained?"#34d399":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      {d.obtained&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
+                    </div>
+                    <span style={{fontSize:10,color:"#475569"}}>{d.obtained?"Yes":"No"}</span>
+                  </div>
+                  <span style={{fontSize:11,color:"#475569"}}>{d.expiryDate?fmtDate(d.expiryDate):"—"}</span>
+                  <div>
+                    <div style={{height:5,background:"#0a1626",borderRadius:3}}>
+                      <div style={{height:5,borderRadius:3,background:docs===cert.docs.length?"#34d399":"#f59e0b",width:(docs/cert.docs.length*100)+"%"}}/>
+                    </div>
+                    <span style={{fontSize:9,color:"#334155"}}>{docs}/{cert.docs.length}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {detail&&(
+          <div className="card" style={{height:"fit-content",position:"sticky",top:0,padding:"16px 18px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{detail.name}</div>
+              <button className="btn bg" style={{padding:"3px 8px",fontSize:11}} onClick={()=>setDetail(null)}>✕</button>
+            </div>
+            <div style={{fontSize:11,color:"#3d5a7a",marginBottom:12,lineHeight:1.5}}>{detail.desc}</div>
+            <div style={{marginBottom:12}}>
+              <div className="lbl">Expiry Date</div>
+              <input className="inp" type="date" value={certs[detail.id]?.expiryDate||""}
+                onChange={e=>save(detail.id,{expiryDate:e.target.value})}/>
+            </div>
+            <div style={{marginBottom:12}}>
+              <div className="lbl">Notes</div>
+              <textarea className="inp" rows={2} value={certs[detail.id]?.notes||""}
+                onChange={e=>save(detail.id,{notes:e.target.value})} placeholder="Attorney contact, renewal notes..."/>
+            </div>
+            <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8}}>REQUIRED DOCUMENTS</div>
+            {detail.docs.map(doc=>{
+              const checked=!!(certs[detail.id]?.docs||{})[doc];
+              return (
+                <div key={doc} onClick={()=>save(detail.id,{docs:{...(certs[detail.id]?.docs||{}),[doc]:!checked}})}
+                  style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:7,cursor:"pointer",marginBottom:4,
+                    background:checked?"#021f14":"#060d1c",border:`1px solid ${checked?"#34d39933":"#1a2d45"}`}}>
+                  <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${checked?"#34d399":"#334155"}`,background:checked?"#34d399":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {checked&&<span style={{color:"#021f14",fontSize:9,fontWeight:800}}>✓</span>}
+                  </div>
+                  <span style={{fontSize:11,color:checked?"#34d399":"#94a3b8"}}>{doc}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 30-DAY OUTREACH CADENCE TRACKER
+// ═══════════════════════════════════════════════════════════════════════════
+const OUTREACH_STAGES = ["Identified","Researched","1st Contact","Follow-up 1","Follow-up 2","Meeting Booked","Proposal","Closed/Won","Closed/Lost","Nurture"];
+const OUTREACH_STAGE_COLOR = {"Identified":"#475569","Researched":"#38bdf8","1st Contact":"#a78bfa","Follow-up 1":"#f59e0b","Follow-up 2":"#f97316","Meeting Booked":"#34d399","Proposal":"#0284c7","Closed/Won":"#34d399","Closed/Lost":"#f87171","Nurture":"#64748b"};
+
+function OutreachTracker({ crmLeads, setCrmLeads, crmAccounts, crmDeals, addAudit }) {
+  const [records, setRecords] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-outreach")||"[]");}catch{return [];}});
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""});
+  const [filter, setFilter] = useState("All");
+  const [editing, setEditing] = useState(null);
+
+  const save = r => { setRecords(r); localStorage.setItem("zt-outreach",JSON.stringify(r)); };
+
+  const addRecord = () => {
+    if(!form.company.trim()) return alert("Enter company name");
+    const rec = editing
+      ? records.map(r=>r.id===editing?{...r,...form}:r)
+      : [{...form,id:"ot-"+Date.now(),createdDate:TODAY_STR},...records];
+    save(rec); setModal(false); setEditing(null);
+    setForm({company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""});
+    addAudit&&addAudit("Sales","Outreach Tracked",form.company,form.stage);
+  };
+
+  const open = (r=null) => { setEditing(r?.id||null); setForm(r?{...r}:{company:"",contact:"",title:"",email:"",phone:"",stage:"Identified",source:"Prospect Intel",notes:"",nextAction:"",nextDate:""}); setModal(true); };
+  const del = id => { if(window.confirm("Delete this outreach record?")) save(records.filter(r=>r.id!==id)); };
+  const convertToLead = (r) => {
+    setCrmLeads&&setCrmLeads(ls=>[...ls,{id:"lead"+uid(),name:r.contact||r.company,company:r.company,title:r.title||"",email:r.email||"",phone:r.phone||"",industry:"",source:r.source,score:60,status:"new",notes:r.notes||"",linkedIn:"",assignedTo:"Manju",createdDate:TODAY_STR,lastContact:TODAY_STR}]);
+    alert("✅ Converted to CRM Lead!");
+    addAudit&&addAudit("CRM","Lead Created",r.company,"From Outreach Tracker");
+  };
+
+  const filtered = filter==="All" ? records : records.filter(r=>r.stage===filter);
+  const dueToday = records.filter(r=>r.nextDate&&r.nextDate<=TODAY_STR&&!["Closed/Won","Closed/Lost"].includes(r.stage));
+  const byStage = OUTREACH_STAGES.reduce((acc,s)=>({...acc,[s]:records.filter(r=>r.stage===s).length}),{});
+
+  return (
+    <div>
+      <PH title="30-Day Outreach Tracker" sub="Prospect pipeline · Contact cadence · Follow-up alerts · Convert to CRM"/>
+      {dueToday.length>0&&(
+        <div style={{padding:"12px 16px",background:"#1a0a05",border:"1px solid #f59e0b",borderRadius:10,marginBottom:16,display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:18}}>⏰</span>
+          <div>
+            <div style={{fontSize:12,fontWeight:700,color:"#f59e0b"}}>{dueToday.length} follow-up{dueToday.length>1?"s":""} due today</div>
+            <div style={{fontSize:11,color:"#92400e"}}>{dueToday.map(r=>r.company).join(", ")}</div>
+          </div>
+        </div>
+      )}
+      <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
+        <div style={{display:"flex",gap:4,flex:1,overflowX:"auto"}}>
+          {["All",...OUTREACH_STAGES.filter(s=>byStage[s]>0)].map(s=>(
+            <button key={s} className="btn bg" style={{fontSize:10,padding:"4px 10px",whiteSpace:"nowrap",
+              borderColor:filter===s?(OUTREACH_STAGE_COLOR[s]||"#0284c7"):"#1a2d45",
+              color:filter===s?(OUTREACH_STAGE_COLOR[s]||"#38bdf8"):"#475569"}}
+              onClick={()=>setFilter(s)}>
+              {s}{s!=="All"&&byStage[s]>0?` (${byStage[s]})`:s==="All"?` (${records.length})`:""}
+            </button>
+          ))}
+        </div>
+        <button className="btn bp" style={{flexShrink:0,fontSize:12}} onClick={()=>open()}>+ Add Prospect</button>
+      </div>
+      <div className="card">
+        <div className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 100px 90px 120px 100px",padding:"8px 18px"}}>
+          {["Company / Contact","Stage","Source","Next Action","Due Date","Actions"].map(h=><span key={h} className="th">{h}</span>)}
+        </div>
+        {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:"#1e3a5f",fontSize:12}}>No outreach records{filter!=="All"?" for this stage":""}. Add your first prospect!</div>}
+        {filtered.map(r=>{
+          const overdue=r.nextDate&&r.nextDate<TODAY_STR&&!["Closed/Won","Closed/Lost"].includes(r.stage);
+          const sc=OUTREACH_STAGE_COLOR[r.stage]||"#64748b";
+          return (
+            <div key={r.id} className="tr" style={{gridTemplateColumns:"1.5fr 1.2fr 100px 90px 120px 100px",background:overdue?"#100800":undefined}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{r.company}</div>
+                {r.contact&&<div style={{fontSize:10,color:"#3d5a7a"}}>{r.contact}{r.title?` · ${r.title}`:""}</div>}
+                {r.notes&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:2}}>{r.notes.slice(0,60)}{r.notes.length>60?"...":""}</div>}
+              </div>
+              <span className="bdg" style={{background:sc+"22",color:sc,fontSize:9}}>{r.stage}</span>
+              <span style={{fontSize:10,color:"#475569"}}>{r.source}</span>
+              <span style={{fontSize:10,color:"#94a3b8"}}>{r.nextAction||"—"}</span>
+              <span style={{fontSize:11,color:overdue?"#f87171":r.nextDate?"#94a3b8":"#334155",fontWeight:overdue?700:400}}>
+                {r.nextDate?fmtDate(r.nextDate):"—"}{overdue?" ⚠️":""}
+              </span>
+              <div style={{display:"flex",gap:3}} onClick={e=>e.stopPropagation()}>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>open(r)} title="Edit">✏️</button>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>convertToLead(r)} title="→ CRM Lead">→</button>
+                <button className="btn br" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>del(r.id)} title="Delete">🗑</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {modal&&(
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:560}}>
+            <MH title={editing?"Edit Prospect":"Add Prospect to Outreach"} onClose={()=>setModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Company" style={{gridColumn:"span 2"}}><input className="inp" value={form.company} onChange={e=>setForm({...form,company:e.target.value})} placeholder="e.g. Capital One"/></FF>
+              <FF label="Contact Name"><input className="inp" value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})} placeholder="Full name"/></FF>
+              <FF label="Title"><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="VP SAP, CTO..."/></FF>
+              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="email@company.com"/></FF>
+              <FF label="Phone"><input className="inp" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="214-555-xxxx"/></FF>
+              <FF label="Stage"><select className="inp" value={form.stage} onChange={e=>setForm({...form,stage:e.target.value})}>
+                {OUTREACH_STAGES.map(s=><option key={s}>{s}</option>)}
+              </select></FF>
+              <FF label="Source"><select className="inp" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>
+                {["Prospect Intel","LinkedIn","Referral","Conference","Cold Email","Apollo","ZoomInfo","Other"].map(s=><option key={s}>{s}</option>)}
+              </select></FF>
+              <FF label="Next Action"><input className="inp" value={form.nextAction} onChange={e=>setForm({...form,nextAction:e.target.value})} placeholder="Send intro email, Schedule call..."/></FF>
+              <FF label="Next Action Date"><input className="inp" type="date" value={form.nextDate} onChange={e=>setForm({...form,nextDate:e.target.value})}/></FF>
+              <FF label="Notes" style={{gridColumn:"span 2"}}><textarea className="inp" rows={2} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Context, connection, talking points..."/></FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={addRecord}><I d={ICONS.check} s={13}/>{editing?"Update":"Add Prospect"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOP LIBRARY + EXIT READINESS
+// ═══════════════════════════════════════════════════════════════════════════
+const SOP_CATEGORIES = ["Delivery","Finance","HR","Sales & BD","Compliance","Technology","Executive"];
+const SOP_CHECKLIST = [
+  {id:"s1",  cat:"Delivery",   title:"Client Onboarding Process",         desc:"Steps from contract sign to consultant start date",    impact:"High"},
+  {id:"s2",  cat:"Delivery",   title:"Consultant Performance Review SOP",  desc:"Monthly check-in, utilization review, billing audit",  impact:"High"},
+  {id:"s3",  cat:"Delivery",   title:"Project Escalation Playbook",        desc:"When/how to escalate client issues",                   impact:"Medium"},
+  {id:"s4",  cat:"Delivery",   title:"Knowledge Transfer Checklist",       desc:"How to transition consultants off engagements",         impact:"High"},
+  {id:"s5",  cat:"Finance",    title:"Invoice Generation & Approval",      desc:"Who approves, timing, client submission process",       impact:"High"},
+  {id:"s6",  cat:"Finance",    title:"Accounts Receivable Follow-up",      desc:"30/60/90 day collection escalation steps",             impact:"High"},
+  {id:"s7",  cat:"Finance",    title:"Month-End Close Process",            desc:"Reconciliation, P&L review, reporting cadence",        impact:"High"},
+  {id:"s8",  cat:"Finance",    title:"Vendor Payment Schedule",            desc:"AP approval workflow, payment timing",                 impact:"Medium"},
+  {id:"s9",  cat:"HR",         title:"Consultant Hiring Process",          desc:"Job post to screen to interview to offer to onboard",  impact:"High"},
+  {id:"s10", cat:"HR",         title:"H-1B Sponsorship Process",           desc:"Timeline, attorney workflow, tracking system",         impact:"High"},
+  {id:"s11", cat:"HR",         title:"Timesheet Submission & Approval",    desc:"Weekly process, client approval, billing trigger",     impact:"High"},
+  {id:"s12", cat:"HR",         title:"Benefits Enrollment Guide",          desc:"Health, dental, 401k enrollment for new hires",        impact:"Medium"},
+  {id:"s13", cat:"Sales & BD", title:"Lead Qualification Criteria",        desc:"ICP definition, scoring model, disqualification",      impact:"High"},
+  {id:"s14", cat:"Sales & BD", title:"Proposal & SOW Process",             desc:"Template, approval, send, follow-up cadence",          impact:"High"},
+  {id:"s15", cat:"Sales & BD", title:"Client Renewal Process",             desc:"90-day pre-renewal check-in, rate negotiation",        impact:"High"},
+  {id:"s16", cat:"Sales & BD", title:"RFP Response Process",               desc:"Bid/no-bid decision, WBE angle, submission checklist", impact:"Medium"},
+  {id:"s17", cat:"Compliance", title:"I-9 & Work Authorization Process",   desc:"Verification timing, re-verification alerts",          impact:"High"},
+  {id:"s18", cat:"Compliance", title:"WBE/HUB/WOSB Cert Maintenance",      desc:"Renewal dates, documentation requirements",            impact:"High"},
+  {id:"s19", cat:"Compliance", title:"Data Security & NDA Process",        desc:"Client NDA workflow, data handling policy",            impact:"Medium"},
+  {id:"s20", cat:"Technology", title:"System Access Management",           desc:"Onboard/offboard access to all tools and systems",     impact:"High"},
+  {id:"s21", cat:"Technology", title:"Backup & Disaster Recovery",         desc:"Data backup schedule, recovery procedures",            impact:"Medium"},
+  {id:"s22", cat:"Executive",  title:"Company Org Chart & Succession",     desc:"Who covers what if key person is unavailable",         impact:"High"},
+  {id:"s23", cat:"Executive",  title:"Investor/Advisor Reporting",         desc:"Monthly KPI deck, financial summary format",           impact:"Medium"},
+  {id:"s24", cat:"Executive",  title:"M&A Data Room Checklist",            desc:"Documents needed for due diligence",                   impact:"High"},
+];
+const EXIT_CHECKS = [
+  {id:"er1",  cat:"Financial",  check:"3 years of clean P&L statements",              weight:10},
+  {id:"er2",  cat:"Financial",  check:"AR aging < 60 days average",                   weight:8},
+  {id:"er3",  cat:"Financial",  check:"No single client > 40% of revenue",            weight:9},
+  {id:"er4",  cat:"Financial",  check:"Positive EBITDA margin documented",            weight:10},
+  {id:"er5",  cat:"Operations", check:"SOPs documented for all core processes",        weight:9},
+  {id:"er6",  cat:"Operations", check:"Business runs without owner day-to-day",       weight:10},
+  {id:"er7",  cat:"Operations", check:"CRM with clean pipeline data",                 weight:7},
+  {id:"er8",  cat:"Legal",      check:"WBE/HUB/WOSB certifications current",          weight:8},
+  {id:"er9",  cat:"Legal",      check:"All client contracts signed and filed",         weight:9},
+  {id:"er10", cat:"Legal",      check:"Consultant agreements (IP assignment, NDAs)",  weight:8},
+  {id:"er11", cat:"People",     check:"Key person dependency documented & mitigated", weight:8},
+  {id:"er12", cat:"People",     check:"Org chart with clear reporting lines",          weight:6},
+  {id:"er13", cat:"Brand",      check:"GridMind/ARIA IP registered or pending",        weight:7},
+  {id:"er14", cat:"Brand",      check:"Verifiable client references (3+ Fortune 500)",weight:9},
+];
+
+function SOPLibrary({ roster, finInvoices, finPayments, apInvoices, crmDeals, crmAccounts, addAudit }) {
+  const [view, setView]           = useState("sop");
+  const [sops, setSops]           = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-sops")||"{}");}catch{return {};}});
+  const [exitChecks, setExitChks] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-exit-checks")||"{}");}catch{return {};}});
+  const [catFilter, setCatFilter] = useState("All");
+
+  const saveSops = s  => { setSops(s);       localStorage.setItem("zt-sops",JSON.stringify(s)); };
+  const saveExit = e  => { setExitChks(e);   localStorage.setItem("zt-exit-checks",JSON.stringify(e)); };
+  const toggleSop  = (id,field) => { const u={...sops,[id]:{...(sops[id]||{}),[field]:!(sops[id]||{})[field]}}; saveSops(u); };
+  const toggleExit = (id) => { const u={...exitChecks,[id]:!exitChecks[id]}; saveExit(u); addAudit&&addAudit("Ops","Exit Check",id,exitChecks[id]?"Unchecked":"Checked"); };
+
+  const documented = SOP_CHECKLIST.filter(s=>(sops[s.id]||{}).documented).length;
+  const reviewed   = SOP_CHECKLIST.filter(s=>(sops[s.id]||{}).reviewed).length;
+  const sopPct     = Math.round(documented/SOP_CHECKLIST.length*100);
+  const totalW     = EXIT_CHECKS.reduce((s,c)=>s+c.weight,0);
+  const earnedW    = EXIT_CHECKS.filter(c=>exitChecks[c.id]).reduce((s,c)=>s+c.weight,0);
+  const exitScore  = Math.round(earnedW/totalW*100);
+  const exitColor  = exitScore>=80?"#34d399":exitScore>=60?"#f59e0b":"#f87171";
+
+  const clientRevs = (crmAccounts||[]).map(a=>({name:a.name,rev:(crmDeals||[]).filter(d=>d.accountId===a.id&&d.stage==="won").reduce((s,d)=>s+(+d.value||0),0)})).filter(a=>a.rev>0);
+  const totalRev   = clientRevs.reduce((s,a)=>s+a.rev,0);
+  const maxClientPct = totalRev>0 ? Math.max(...clientRevs.map(a=>a.rev/totalRev)) : 0;
+  const filtered   = catFilter==="All" ? SOP_CHECKLIST : SOP_CHECKLIST.filter(s=>s.cat===catFilter);
+
+  return (
+    <div>
+      <PH title="SOP Library & Exit Readiness" sub="Operating procedures · Exit valuation score · M&A preparation"/>
+      <div style={{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}}>
+        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
+          const rows=SOP_CHECKLIST.map(s=>[(sops[s.id]||{}).documented?"✓":"",(sops[s.id]||{}).reviewed?"✓":"",s.title,s.cat,s.impact,s.desc]);
+          await exportTableToXLSX(rows,["Documented","Reviewed","SOP Title","Category","Impact","Description"],"SOP Library",`Ziksatech-SOPs-${TODAY_STR}.xlsx`);
+        }}>📋 XLSX</button>
+        <button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
+          const rows=SOP_CHECKLIST.map(s=>[(sops[s.id]||{}).documented?"✓":"—",s.title,s.cat,s.impact]);
+          await generateReportPDF("SOP Library & Exit Readiness",[
+            {type:"heading",text:"Standard Operating Procedures — Ziksatech"},
+            {type:"text",text:`Documented: ${documented}/24 (${sopPct}%) | Reviewed: ${reviewed}/24 | Exit Score: ${exitScore}/100`},
+            {type:"table",headers:["Done","SOP Title","Category","Impact"],rows},
+          ],`Ziksatech-SOPs-${TODAY_STR}.pdf`);
+        }}>📄 PDF</button>
+      </div>
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {[{id:"sop",label:"📋 SOP Library"},{id:"exit",label:"🚪 Exit Readiness"}].map(v=>(
+          <button key={v.id} onClick={()=>setView(v.id)}
+            style={{padding:"7px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:view===v.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:view===v.id?"#fff":"#475569",transition:"all 0.15s"}}>{v.label}</button>
+        ))}
+      </div>
+
+      {view==="sop"&&(
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+            {[{l:"Total SOPs",v:SOP_CHECKLIST.length,c:"#64748b"},{l:"Documented",v:`${documented}/${SOP_CHECKLIST.length}`,c:"#34d399"},{l:"Reviewed",v:`${reviewed}/${SOP_CHECKLIST.length}`,c:"#38bdf8"},{l:"Completion",v:`${sopPct}%`,c:sopPct>=80?"#34d399":sopPct>=50?"#f59e0b":"#f87171"}].map(s=>(
+              <div key={s.l} className="card" style={{padding:"14px 18px"}}><div style={{fontSize:10,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>{s.l}</div><div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div></div>
+            ))}
+          </div>
+          <div style={{marginBottom:16,padding:"12px 16px",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:12,color:"#475569"}}>Documentation Progress</span><span style={{fontSize:12,fontWeight:700,color:sopPct>=80?"#34d399":"#f59e0b"}}>{sopPct}%</span></div>
+            <div style={{height:8,background:"#0a1626",borderRadius:4}}><div style={{height:8,borderRadius:4,background:sopPct>=80?"#34d399":"#f59e0b",width:sopPct+"%",transition:"width 0.5s"}}/></div>
+            <div style={{fontSize:11,color:"#1e3a5f",marginTop:6}}>Buyers pay <strong style={{color:"#38bdf8"}}>2-3× more</strong> for companies with documented SOPs. Target: 100% before exit.</div>
+          </div>
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            {["All",...SOP_CATEGORIES].map(cat=>(
+              <button key={cat} className="btn bg" style={{fontSize:10,padding:"4px 10px",borderColor:catFilter===cat?"#0284c7":"#1a2d45",color:catFilter===cat?"#38bdf8":"#475569"}} onClick={()=>setCatFilter(cat)}>{cat}</button>
+            ))}
+          </div>
+          <div className="card">
+            <div className="tr" style={{gridTemplateColumns:"18px 1fr 100px 70px 80px 80px",padding:"8px 18px"}}>
+              {["","SOP","Category","Impact","Doc'd","Reviewed"].map(h=><span key={h} className="th">{h}</span>)}
+            </div>
+            {filtered.map(sop=>{
+              const st=sops[sop.id]||{};
+              return (
+                <div key={sop.id} className="tr" style={{gridTemplateColumns:"18px 1fr 100px 70px 80px 80px",background:st.documented&&st.reviewed?"#020f08":undefined}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",margin:"auto",background:st.documented&&st.reviewed?"#34d399":st.documented?"#f59e0b":"#334155"}}/>
+                  <div><div style={{fontSize:13,fontWeight:600,color:st.documented?"#34d399":"#94a3b8"}}>{sop.title}</div><div style={{fontSize:10,color:"#334155",marginTop:1}}>{sop.desc}</div></div>
+                  <span className="bdg" style={{fontSize:9,background:"#0a1626",color:"#475569"}}>{sop.cat}</span>
+                  <span className="bdg" style={{fontSize:9,background:sop.impact==="High"?"#f8717122":"#f59e0b22",color:sop.impact==="High"?"#f87171":"#f59e0b"}}>{sop.impact}</span>
+                  {["documented","reviewed"].map(field=>(
+                    <div key={field} onClick={()=>toggleSop(sop.id,field)} style={{cursor:"pointer",display:"flex",justifyContent:"center",alignItems:"center"}}>
+                      <div style={{width:20,height:20,borderRadius:6,border:`2px solid ${(st[field])?(field==="documented"?"#34d399":"#38bdf8"):"#334155"}`,background:(st[field])?(field==="documented"?"#34d399":"#38bdf822"):"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {st[field]&&<span style={{color:field==="documented"?"#021f14":"#38bdf8",fontSize:11,fontWeight:800}}>✓</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {view==="exit"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 320px",gap:16}}>
+          <div>
+            <div className="card" style={{padding:"20px 24px",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:20}}>
+                <div style={{textAlign:"center"}}><div style={{fontSize:52,fontWeight:900,color:exitColor,lineHeight:1}}>{exitScore}</div><div style={{fontSize:11,color:"#475569"}}>Exit Score</div></div>
+                <div style={{flex:1}}>
+                  <div style={{height:10,background:"#0a1626",borderRadius:5,marginBottom:8}}><div style={{height:10,borderRadius:5,background:`linear-gradient(90deg,#f87171,#f59e0b,#34d399)`,width:exitScore+"%",transition:"width 0.6s"}}/></div>
+                  <div style={{fontSize:13,color:exitColor,fontWeight:600,marginBottom:4}}>{exitScore>=80?"🚀 Exit Ready":exitScore>=60?"⚡ Good Progress — 3-6 months":"🔨 Building Foundation"}</div>
+                  <div style={{fontSize:11,color:"#334155"}}>{EXIT_CHECKS.filter(c=>exitChecks[c.id]).length} of {EXIT_CHECKS.length} items complete</div>
+                </div>
+                <div style={{textAlign:"center",padding:"12px 16px",background:"#0a1120",borderRadius:10,border:"1px solid #1a2d45"}}>
+                  <div style={{fontSize:10,color:"#475569",marginBottom:4}}>Est. Exit Value</div>
+                  <div style={{fontSize:15,fontWeight:800,color:"#34d399"}}>{fmt(exitScore*15000*7)}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>score-based 7× estimate</div>
+                </div>
+              </div>
+            </div>
+            {["Financial","Operations","Legal","People","Brand"].map(cat=>{
+              const items=EXIT_CHECKS.filter(c=>c.cat===cat);
+              const done=items.filter(c=>exitChecks[c.id]).length;
+              const cc=done===items.length?"#34d399":done>0?"#f59e0b":"#f87171";
+              return (
+                <div key={cat} className="card" style={{marginBottom:10,padding:"12px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><div style={{fontSize:11,fontWeight:700,color:cc,textTransform:"uppercase"}}>{cat}</div><span style={{fontSize:11,color:cc}}>{done}/{items.length}</span></div>
+                  {items.map(item=>(
+                    <div key={item.id} onClick={()=>toggleExit(item.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:7,cursor:"pointer",marginBottom:4,background:exitChecks[item.id]?"#021f14":"#060d1c",border:`1px solid ${exitChecks[item.id]?"#34d39333":"#1a2d45"}`}}>
+                      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,border:`2px solid ${exitChecks[item.id]?"#34d399":"#334155"}`,background:exitChecks[item.id]?"#34d399":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {exitChecks[item.id]&&<span style={{color:"#021f14",fontSize:10,fontWeight:800}}>✓</span>}
+                      </div>
+                      <span style={{fontSize:12,color:exitChecks[item.id]?"#34d399":"#94a3b8",flex:1}}>{item.check}</span>
+                      <span style={{fontSize:9,color:"#334155"}}>w:{item.weight}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>AUTO CHECKS</div>
+              {[
+                {l:"Client Concentration",ok:maxClientPct<0.4||!totalRev,detail:maxClientPct>0?`Largest: ${Math.round(maxClientPct*100)}%`:"No deal data yet"},
+                {l:"CRM Pipeline Data",ok:(crmDeals||[]).length>3,detail:`${(crmDeals||[]).length} deals in CRM`},
+                {l:"Team Size ≥5",ok:(roster||[]).length>=5,detail:`${(roster||[]).length} team members`},
+                {l:"SOPs ≥80%",ok:sopPct>=80,detail:`Currently ${sopPct}%`},
+              ].map(({l,ok,detail})=>(
+                <div key={l} style={{display:"flex",gap:10,padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
+                  <span style={{fontSize:14,flexShrink:0}}>{ok?"✅":"❌"}</span>
+                  <div><div style={{fontSize:11,fontWeight:600,color:ok?"#34d399":"#f87171"}}>{l}</div><div style={{fontSize:10,color:"#475569"}}>{detail}</div></div>
+                </div>
+              ))}
+            </div>
+            <div className="card" style={{padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>💡 M&A BUYER PROFILE</div>
+              {["Mid-size SI firm wanting WBE cert","PE roll-up of SAP niche firms","SAP partner expanding to DFW","Indian IT firm needing US footprint"].map(b=>(
+                <div key={b} style={{fontSize:10,color:"#38bdf8",marginBottom:4}}>→ {b}</div>
+              ))}
+              <div style={{marginTop:8,fontSize:10,color:"#0369a1"}}>Target: 7× EBITDA = $1.5M–$3M exit</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function RFPGenerator({ clients, roster }) {
   const [mode, setMode]         = useState("respond");   // "respond" | "create"
@@ -26641,6 +27830,7 @@ function CRMImport({ setLeads, setCrmContacts, crmAccounts, crmLeads, crmContact
     ],
     contacts: [
       "James Wright,AT&T,VP SAP Delivery,j.wright@att.com,214-555-0201,linkedin.com/in/jwright,Primary decision maker BRIM",
+      "Priya Rajan,Toyota,Head Data Engineering,p.rajan@toyota.com,469-555-0202,linkedin.com/in/prijarajan,Python/Databricks focus",
     ],
     deals: [
       "AT&T BRIM Phase 4,AT&T,proposal,450000,60,2026-09-30,expansion,Extension of Phase 3",
