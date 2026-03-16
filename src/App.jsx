@@ -20248,6 +20248,2782 @@ function SOPLibrary({ roster, finInvoices, finPayments, apInvoices, crmDeals, cr
   );
 }
 
+function CapacityPlanner({ roster, projects, sows, clients, tsHours }) {
+  const WEEKS = 12;
+  const TODAY = new Date();
+  const weeks = Array.from({length:WEEKS},(_,i)=>{
+    const d = new Date(TODAY); d.setDate(d.getDate() + i*7 - d.getDay() + 1);
+    return { label: d.toLocaleDateString("en-US",{month:"short",day:"numeric"}), date: d.toISOString().slice(0,10) };
+  });
+
+  const [view,    setView]    = useState("grid");   // grid | person | project
+  const [hovered, setHovered] = useState(null);
+  const [selPerson, setSelPerson] = useState(null);
+
+  const rData = roster.map(r => ({ ...r, ...calcRoster(r) }));
+
+  // Capacity model: each person has utilization → booked hours/week
+  // Project assignments derived from roster.client + projects
+  const WORK_HRS = 40;
+  const personCapacity = rData.map(r => {
+    const bookedPct  = r.util;
+    const bookedHrs  = Math.round(WORK_HRS * bookedPct);
+    const freeHrs    = WORK_HRS - bookedHrs;
+    const assignments = projects.filter(p => p.team?.includes(r.id) || p.pm===r.name || r.client===p.client);
+    return { ...r, bookedHrs, freeHrs, bookedPct, assignments };
+  });
+
+  // Project demand vs capacity
+  const projDemand = projects.filter(p=>p.status==="active").map(p=>{
+    const teamMembers = personCapacity.filter(r=>r.client===p.client||p.team?.includes(r.id));
+    const totalBooked = teamMembers.reduce((s,r)=>s+r.bookedHrs,0);
+    const budget = p.budget||0;
+    const spent  = p.spent||0;
+    const burnPct= budget>0?Math.round(spent/budget*100):0;
+    return { ...p, teamSize:teamMembers.length, totalBooked, budget, spent, burnPct };
+  });
+
+  // Capacity colour helper
+  const capColor = (pct) => pct>=0.9?"#f87171":pct>=0.7?"#f59e0b":pct>=0.3?"#34d399":"#38bdf8";
+  const capBg    = (pct) => pct>=0.9?"#1a0808":pct>=0.7?"#1a1000":pct>=0.3?"#021f14":"#020d1c";
+
+  return (
+    <div>
+      <PH title="Resource Capacity Planner" sub="12-week forward view · utilization, bench time, and project demand"/>
+
+      {/* Summary KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Total Headcount",  v:rData.length,                                              c:"#38bdf8" },
+          { l:"Fully Booked",     v:rData.filter(r=>r.util>=0.9).length,                       c:"#f87171" },
+          { l:"High Util (≥70%)", v:rData.filter(r=>r.util>=0.7&&r.util<0.9).length,          c:"#f59e0b" },
+          { l:"On Bench",         v:rData.filter(r=>r.util===0).length,                        c:"#64748b" },
+          { l:"Available Hours/wk",v:personCapacity.reduce((s,r)=>s+r.freeHrs,0)+"h",         c:"#34d399" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* View toggle */}
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {[["grid","Capacity Grid"],["person","By Person"],["project","By Project"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)}
+            style={{padding:"5px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+              background:view===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:view===v?"#fff":"#475569"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* ── CAPACITY GRID ── */}
+      {view==="grid"&&(
+        <div className="card" style={{overflow:"auto"}}>
+          {/* Header row — weeks */}
+          <div style={{display:"grid",gridTemplateColumns:`180px repeat(${WEEKS},1fr)`,padding:"8px 12px",background:"#060d1c",borderBottom:"2px solid #1a2d45",minWidth:800}}>
+            <span className="th">Consultant</span>
+            {weeks.map(w=><span key={w.date} className="th" style={{textAlign:"center",fontSize:9}}>{w.label}</span>)}
+          </div>
+          {personCapacity.map(r=>(
+            <div key={r.id} onClick={()=>setSelPerson(selPerson===r.id?null:r.id)}
+              style={{display:"grid",gridTemplateColumns:`180px repeat(${WEEKS},1fr)`,padding:"6px 12px",
+                borderBottom:"1px solid #070b14",cursor:"pointer",background:selPerson===r.id?"#0a1a2e":"transparent",
+                minWidth:800}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <Avatar name={r.name} size={24}/>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:130}}>{r.name}</div>
+                  <div style={{fontSize:9,color:"#3d5a7a"}}>{r.client}</div>
+                </div>
+              </div>
+              {weeks.map(w=>{
+                // Simulate slight variation per week based on util
+                const variation = r.util>0 ? (Math.sin(w.date.charCodeAt(8)+r.id.charCodeAt(1))*0.08) : 0;
+                const wPct = Math.max(0,Math.min(1,r.util+variation));
+                const col  = capColor(wPct);
+                const bg   = capBg(wPct);
+                const isHov = hovered===`${r.id}-${w.date}`;
+                return (
+                  <div key={w.date}
+                    onMouseEnter={()=>setHovered(`${r.id}-${w.date}`)}
+                    onMouseLeave={()=>setHovered(null)}
+                    title={`${r.name} · ${w.label}: ${Math.round(wPct*100)}% (${Math.round(wPct*WORK_HRS)}h booked, ${Math.round((1-wPct)*WORK_HRS)}h free)`}
+                    style={{margin:"1px 2px",borderRadius:4,height:26,background:bg,border:`1px solid ${col}44`,
+                      display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.1s",
+                      transform:isHov?"scale(1.1)":"none",zIndex:isHov?1:0,position:"relative",cursor:"default"}}>
+                    <div style={{height:18,width:`${wPct*100}%`,background:col,borderRadius:3,opacity:0.85,maxWidth:"92%",minWidth:wPct>0?3:0}}/>
+                    {isHov&&(
+                      <div style={{position:"absolute",bottom:"110%",left:"50%",transform:"translateX(-50%)",
+                        background:"#0c1a2e",border:"1px solid #1a2d45",borderRadius:6,padding:"4px 8px",
+                        fontSize:9,color:"#e2e8f0",whiteSpace:"nowrap",zIndex:10,pointerEvents:"none"}}>
+                        {Math.round(wPct*100)}% · {Math.round(wPct*WORK_HRS)}h
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+          {/* Legend */}
+          <div style={{display:"flex",gap:16,padding:"10px 12px",borderTop:"1px solid #1a2d45",flexWrap:"wrap"}}>
+            {[["#f87171","≥90% — At capacity"],["#f59e0b","70–89% — High"],["#34d399","30–69% — Healthy"],["#38bdf8","<30% — Available"]].map(([c,l])=>(
+              <div key={l} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#475569"}}>
+                <div style={{width:12,height:12,borderRadius:3,background:c}}/>
+                {l}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── BY PERSON ── */}
+      {view==="person"&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+          {personCapacity.map(r=>{
+            const col = capColor(r.bookedPct);
+            return (
+              <div key={r.id} className="card" style={{padding:"16px 18px",borderLeft:`4px solid ${col}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                  <Avatar name={r.name} size={40}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{r.role} · {r.type} · {r.client}</div>
+                  </div>
+                  <span className="bdg" style={{background:capBg(r.bookedPct),color:col,border:`1px solid ${col}44`}}>{Math.round(r.bookedPct*100)}%</span>
+                </div>
+                {/* Utilization bar */}
+                <div style={{height:8,background:"#1a2d45",borderRadius:4,overflow:"hidden",marginBottom:8}}>
+                  <div style={{height:8,width:`${r.bookedPct*100}%`,background:col,borderRadius:4,transition:"width 0.4s"}}/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                  {[
+                    ["Booked",  `${r.bookedHrs}h/wk`, col],
+                    ["Free",    `${r.freeHrs}h/wk`,   "#34d399"],
+                    ["Bill Rate",`$${r.billRate}/hr`,  "#38bdf8"],
+                  ].map(([l,v,c2])=>(
+                    <div key={l} style={{textAlign:"center",padding:"6px",background:"#070c18",borderRadius:6}}>
+                      <div style={{fontSize:13,fontWeight:800,color:c2,fontFamily:"monospace"}}>{v}</div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginTop:1}}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Available capacity value */}
+                {r.freeHrs>0&&(
+                  <div style={{fontSize:10,color:"#34d399",padding:"5px 8px",background:"#021f14",borderRadius:6,border:"1px solid #063d28"}}>
+                    💡 Available: {r.freeHrs}h/wk = {fmt(r.freeHrs*r.billRate*4)}/mo potential revenue
+                  </div>
+                )}
+                {r.freeHrs===0&&(
+                  <div style={{fontSize:10,color:"#f87171",padding:"5px 8px",background:"#1a0808",borderRadius:6,border:"1px solid #3d1010"}}>
+                    ⚠ Fully booked — no capacity for new work
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── BY PROJECT ── */}
+      {view==="project"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {projDemand.length===0&&<div style={{padding:"32px",textAlign:"center",fontSize:12,color:"#1e3a5f",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No active projects found.</div>}
+          {projDemand.map(p=>{
+            const hc = p.health==="Green"?"#34d399":p.health==="Amber"?"#f59e0b":"#f87171";
+            const teamMembers = personCapacity.filter(r=>r.client===p.client||p.team?.includes(r.id));
+            return (
+              <div key={p.id} className="card" style={{padding:"18px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{p.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginTop:2}}>{p.client} · PM: {p.pm} · {p.startDate} → {p.endDate}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <span className="bdg" style={{background:hc+"22",color:hc,border:`1px solid ${hc}44`}}>{p.health||"—"}</span>
+                    <span className="bdg" style={{background:"#0c2340",color:"#38bdf8",border:"1px solid #1a3a5c"}}>{p.teamSize} people</span>
+                  </div>
+                </div>
+                {/* Budget bar */}
+                <div style={{marginBottom:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:4}}>
+                    <span style={{color:"#475569"}}>Budget consumed</span>
+                    <span style={{color:p.burnPct>85?"#f87171":p.burnPct>60?"#f59e0b":"#64748b",fontFamily:"monospace"}}>{fmt(p.spent)} / {fmt(p.budget)} ({p.burnPct}%)</span>
+                  </div>
+                  <div style={{height:6,background:"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:6,width:`${Math.min(100,p.burnPct)}%`,background:p.burnPct>85?"#f87171":p.burnPct>60?"#f59e0b":"#0369a1",borderRadius:3,transition:"width 0.3s"}}/>
+                  </div>
+                </div>
+                {/* Team breakdown */}
+                {teamMembers.length>0&&(
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {teamMembers.map(r=>{
+                      const tc = capColor(r.bookedPct);
+                      return (
+                        <div key={r.id} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:20,background:capBg(r.bookedPct),border:`1px solid ${tc}44`}}>
+                          <div style={{width:6,height:6,borderRadius:"50%",background:tc}}/>
+                          <span style={{fontSize:10,color:"#94a3b8"}}>{r.name.split(" ")[0]}</span>
+                          <span style={{fontSize:9,color:"#3d5a7a"}}>{r.bookedHrs}h/wk</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {/* Bench — available for project assignment */}
+          {personCapacity.filter(r=>r.util===0).length>0&&(
+            <div className="card" style={{padding:"16px 20px",border:"1px solid #063d28"}}>
+              <div className="section-hdr" style={{color:"#34d399"}}>🟢 On Bench — Available for Assignment</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",padding:"10px 0"}}>
+                {personCapacity.filter(r=>r.util===0).map(r=>(
+                  <div key={r.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",background:"#021f14",borderRadius:8,border:"1px solid #063d28"}}>
+                    <Avatar name={r.name} size={28}/>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#34d399"}}>{r.name}</div>
+                      <div style={{fontSize:9,color:"#1e3a5f"}}>{r.role} · {fmt(r.rev/52)}/wk revenue potential</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// BUDGET VS. ACTUAL  (#4)
+// =============================================================================
+
+function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses, plIncome, plExpense, clients, adpRuns }) {
+  const [level, setLevel] = useState("company"); // company | project
+  const [selProj, setSelProj] = useState(null);
+  const [year, setYear] = useState("2026");
+
+  const rData = roster.map(r=>({...r,...calcRoster(r)}));
+
+  // ── Company-level budget model ──────────────────────────────────────────────
+  const COMPANY_BUDGET = {
+    revenue:   2_400_000,
+    cogs:        960_000,
+    payroll:     720_000,
+    contractors: 240_000,
+    opex:        180_000,
+    marketing:    36_000,
+    travel:       24_000,
+    software:     48_000,
+    legal:        24_000,
+    misc:         24_000,
+  };
+
+  // Actual revenue: from finInvoices YTD
+  const ytdRevActual = (finInvoices||[])
+    .filter(i=>i.issueDate?.startsWith(year)||(i.date?.startsWith(year)))
+    .reduce((s,i)=>s+i.lines?.reduce((x,l)=>x+l.amount,0)||i.amount||0, 0);
+
+  // Actual expenses by category
+  const expByCategory = {};
+  for (const e of (finExpenses||[])) {
+    if (!(e.date||"").startsWith(year)) continue;
+    const cat = e.category||"misc";
+    expByCategory[cat] = (expByCategory[cat]||0) + (e.amount||0);
+  }
+
+  // ADP payroll actual (YTD processed runs)
+  const ytdPayrollActual = (adpRuns||[])
+    .filter(r=>r.status==="processed"&&(r.date||"").startsWith(year))
+    .reduce((s,r)=>s+(r.grossPayroll||0),0);
+
+  // Annualize YTD (3 months in → ×4)
+  const MONTHS_ELAPSED = 3;
+  const annualizeRun = (v) => Math.round(v/MONTHS_ELAPSED*12);
+
+  const companyRows = [
+    { label:"Revenue",        budget:COMPANY_BUDGET.revenue,    actual:ytdRevActual,             annualRun:annualizeRun(ytdRevActual),     type:"income" },
+    { label:"Payroll (FTE)",  budget:COMPANY_BUDGET.payroll,    actual:ytdPayrollActual||Math.round(rData.filter(r=>r.type==="FTE").reduce((s,r)=>s+r.baseSalary,0)/4*MONTHS_ELAPSED), annualRun:0, type:"expense" },
+    { label:"Contractor Pay", budget:COMPANY_BUDGET.contractors,actual:Math.round(rData.filter(r=>r.type==="Contractor").reduce((s,r)=>s+r.totalCost,0)/12*MONTHS_ELAPSED), annualRun:0, type:"expense" },
+    { label:"Operating Exp.", budget:COMPANY_BUDGET.opex,       actual:(expByCategory["office"]||0)+(expByCategory["admin"]||0)+(expByCategory["general"]||0), annualRun:0, type:"expense" },
+    { label:"Software/SaaS",  budget:COMPANY_BUDGET.software,   actual:expByCategory["software"]||0, annualRun:0, type:"expense" },
+    { label:"Travel & Meals", budget:COMPANY_BUDGET.travel,     actual:expByCategory["travel"]||0,   annualRun:0, type:"expense" },
+    { label:"Legal & Prof.",  budget:COMPANY_BUDGET.legal,      actual:expByCategory["legal"]||0,    annualRun:0, type:"expense" },
+    { label:"Marketing",      budget:COMPANY_BUDGET.marketing,  actual:expByCategory["marketing"]||0,annualRun:0, type:"expense" },
+  ].map(r=>{
+    const ytdBudget = Math.round(r.budget/12*MONTHS_ELAPSED);
+    const variance  = r.actual - ytdBudget;
+    const variancePct = ytdBudget>0 ? variance/ytdBudget : 0;
+    const status = r.type==="income"
+      ? (variance>=0?"favorable":"unfavorable")
+      : (variance<=0?"favorable":"unfavorable");
+    return {...r, ytdBudget, variance, variancePct, status};
+  });
+
+  // EBITDA calc
+  const totalRevRow   = companyRows.find(r=>r.label==="Revenue");
+  const totalExpRows  = companyRows.filter(r=>r.type==="expense");
+  const budgetEBITDA  = COMPANY_BUDGET.revenue - Object.entries(COMPANY_BUDGET).filter(([k])=>k!=="revenue").reduce((s,[,v])=>s+v,0);
+  const actualExpTotal= totalExpRows.reduce((s,r)=>s+r.actual,0);
+  const actualEBITDA  = ytdRevActual - actualExpTotal;
+  const ytdBudgetEBITDA = (totalRevRow?.ytdBudget||0) - totalExpRows.reduce((s,r)=>s+r.ytdBudget,0);
+
+  // Project-level
+  const activeProjects = (projects||[]).filter(p=>p.status==="active"||p.status==="on_track");
+
+  const varColor = (status) => status==="favorable"?"#34d399":"#f87171";
+  const varBg    = (status) => status==="favorable"?"#021f14":"#1a0808";
+
+  return (
+    <div>
+      <PH title="Budget vs. Actual" sub={`${year} fiscal year · YTD through March · ${MONTHS_ELAPSED} months elapsed`}/>
+
+      {/* Level toggle */}
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {[["company","Company P&L"],["project","By Project"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setLevel(v)}
+            style={{padding:"5px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+              background:level===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:level===v?"#fff":"#475569"}}>
+            {l}
+          </button>
+        ))}
+        <select className="inp" style={{fontSize:11,padding:"4px 10px",width:"auto",marginLeft:8}} value={year} onChange={e=>setYear(e.target.value)}>
+          {["2025","2026"].map(y=><option key={y}>{y}</option>)}
+        </select>
+      </div>
+
+      {/* ── COMPANY P&L ── */}
+      {level==="company"&&(
+        <>
+          {/* EBITDA summary cards */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+            {[
+              { l:"Budget Revenue",    v:fmt(COMPANY_BUDGET.revenue),  c:"#38bdf8" },
+              { l:"Actual YTD Rev",    v:fmt(ytdRevActual),             c:ytdRevActual>=(COMPANY_BUDGET.revenue/12*MONTHS_ELAPSED)?"#34d399":"#f87171" },
+              { l:"Budget EBITDA",     v:fmt(budgetEBITDA),             c:"#a78bfa" },
+              { l:"Actual EBITDA YTD", v:fmt(actualEBITDA),             c:actualEBITDA>0?"#34d399":"#f87171" },
+            ].map(k=>(
+              <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+                <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+                <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Variance table */}
+          <div className="card">
+            <div style={{display:"grid",gridTemplateColumns:"1.4fr 100px 100px 100px 90px 80px",padding:"8px 18px",background:"#060d1c",borderBottom:"2px solid #1a2d45"}}>
+              {["Category","Annual Budget","YTD Budget","YTD Actual","Variance","Status"].map(h=>(
+                <span key={h} className="th" style={{fontSize:10}}>{h}</span>
+              ))}
+            </div>
+            {companyRows.map((r,i)=>{
+              const vc = varColor(r.status);
+              const vb = varBg(r.status);
+              return (
+                <div key={i} style={{display:"grid",gridTemplateColumns:"1.4fr 100px 100px 100px 90px 80px",padding:"10px 18px",
+                  borderBottom:"1px solid #070b14",background:i%2===0?"transparent":"#06090f"}}>
+                  <span style={{fontSize:12,color:"#cbd5e1",fontWeight:600}}>{r.label}</span>
+                  <span style={{fontSize:12,fontFamily:"monospace",color:"#475569"}}>{fmt(r.budget)}</span>
+                  <span style={{fontSize:12,fontFamily:"monospace",color:"#3d5a7a"}}>{fmt(r.ytdBudget)}</span>
+                  <span style={{fontSize:12,fontFamily:"monospace",color:"#94a3b8",fontWeight:600}}>{fmt(r.actual)}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
+                    <span style={{fontSize:11,fontFamily:"monospace",fontWeight:700,color:vc}}>
+                      {r.variance>=0?"+":""}{fmt(Math.abs(r.variance))}
+                    </span>
+                  </div>
+                  <span className="bdg" style={{background:vb,color:vc,border:`1px solid ${vc}44`,fontSize:9,width:"fit-content"}}>
+                    {r.status==="favorable"?"✓ On":"⚠ Over"}
+                  </span>
+                </div>
+              );
+            })}
+            {/* EBITDA row */}
+            <div style={{display:"grid",gridTemplateColumns:"1.4fr 100px 100px 100px 90px 80px",padding:"12px 18px",background:"#060d1c",borderTop:"3px solid #0369a1"}}>
+              <span style={{fontSize:13,fontWeight:800,color:"#e2e8f0"}}>EBITDA</span>
+              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#a78bfa"}}>{fmt(budgetEBITDA)}</span>
+              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:"#7dd3fc"}}>{fmt(ytdBudgetEBITDA)}</span>
+              <span style={{fontSize:13,fontFamily:"monospace",fontWeight:800,color:actualEBITDA>0?"#34d399":"#f87171"}}>{fmt(actualEBITDA)}</span>
+              <span style={{fontSize:12,fontFamily:"monospace",fontWeight:800,color:actualEBITDA>ytdBudgetEBITDA?"#34d399":"#f87171"}}>
+                {actualEBITDA-ytdBudgetEBITDA>=0?"+":""}{fmt(actualEBITDA-ytdBudgetEBITDA)}
+              </span>
+              <span className="bdg" style={{background:actualEBITDA>ytdBudgetEBITDA?"#021f14":"#1a0808",color:actualEBITDA>ytdBudgetEBITDA?"#34d399":"#f87171",border:"1px solid",borderColor:actualEBITDA>ytdBudgetEBITDA?"#063d28":"#3d1010",fontSize:9}}>
+                {actualEBITDA>ytdBudgetEBITDA?"✓ Ahead":"⚠ Behind"}
+              </span>
+            </div>
+          </div>
+
+          {/* Variance waterfall chart */}
+          <div className="card" style={{padding:"18px 20px",marginTop:14}}>
+            <div className="section-hdr">Variance by Category</div>
+            <div style={{padding:"12px 0",display:"flex",flexDirection:"column",gap:8}}>
+              {companyRows.map((r,i)=>{
+                const maxBudget = Math.max(...companyRows.map(rr=>rr.budget));
+                const barW = Math.round(Math.abs(r.variance)/maxBudget*260);
+                const vc   = varColor(r.status);
+                return (
+                  <div key={i} style={{display:"grid",gridTemplateColumns:"140px 1fr 100px",gap:8,alignItems:"center"}}>
+                    <span style={{fontSize:11,color:"#64748b",textAlign:"right",paddingRight:8}}>{r.label}</span>
+                    <div style={{height:18,background:"#0a1626",borderRadius:4,overflow:"hidden",position:"relative"}}>
+                      <div style={{height:18,width:`${Math.min(100,Math.abs(r.variance)/5000)}%`,background:vc,borderRadius:4,maxWidth:"100%",opacity:0.85}}/>
+                    </div>
+                    <span style={{fontSize:11,fontFamily:"monospace",color:vc,fontWeight:700}}>
+                      {r.variance>=0?"+":"-"}{fmt(Math.abs(r.variance))}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── BY PROJECT ── */}
+      {level==="project"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {activeProjects.length===0&&<div style={{padding:"32px",textAlign:"center",fontSize:12,color:"#1e3a5f",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No active projects.</div>}
+          {activeProjects.map(p=>{
+            const budget    = p.budget||0;
+            const actual    = p.spent||0;
+            const variance  = actual-budget;
+            const burnPct   = budget>0?Math.round(actual/budget*100):0;
+            const daysTotal = p.startDate&&p.endDate ? Math.round((new Date(p.endDate)-new Date(p.startDate))/86400000) : 0;
+            const daysGone  = p.startDate ? Math.round((new Date()-new Date(p.startDate))/86400000) : 0;
+            const timePct   = daysTotal>0?Math.min(100,Math.round(daysGone/daysTotal*100)):0;
+            const isSel     = selProj===p.id;
+            const hc        = p.health==="Green"?"#34d399":p.health==="Amber"?"#f59e0b":"#f87171";
+            const overBudget= actual>budget && budget>0;
+
+            // Estimate at Completion (EAC)
+            const eac = timePct>0&&timePct<100 ? Math.round(actual/(timePct/100)) : actual;
+            const eacVariance = eac - budget;
+
+            return (
+              <div key={p.id} className="card" style={{padding:"18px 20px",borderLeft:`4px solid ${hc}`,cursor:"pointer"}}
+                onClick={()=>setSelProj(isSel?null:p.id)}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{p.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginTop:2}}>{p.client} · {p.startDate} → {p.endDate}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    {overBudget&&<span className="bdg" style={{background:"#1a0808",color:"#f87171",border:"1px solid #3d1010"}}>Over Budget</span>}
+                    <span className="bdg" style={{background:hc+"22",color:hc,border:`1px solid ${hc}44`}}>{p.health}</span>
+                  </div>
+                </div>
+                {/* Dual progress bars: budget + time */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}>
+                      <span style={{color:"#475569"}}>Budget spent</span>
+                      <span style={{color:burnPct>100?"#f87171":burnPct>80?"#f59e0b":"#34d399",fontFamily:"monospace"}}>{burnPct}%</span>
+                    </div>
+                    <div style={{height:6,background:"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:6,width:`${Math.min(100,burnPct)}%`,background:burnPct>100?"#f87171":burnPct>80?"#f59e0b":"#0369a1",borderRadius:3}}/>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}>
+                      <span style={{color:"#475569"}}>Time elapsed</span>
+                      <span style={{color:"#38bdf8",fontFamily:"monospace"}}>{timePct}%</span>
+                    </div>
+                    <div style={{height:6,background:"#1a2d45",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:6,width:`${timePct}%`,background:"#0369a1",borderRadius:3}}/>
+                    </div>
+                  </div>
+                </div>
+                {/* Numbers */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                  {[
+                    ["Budget",       fmt(budget),              "#475569"],
+                    ["Actual YTD",   fmt(actual),              "#94a3b8"],
+                    ["Variance",     (variance>=0?"+":"")+fmt(variance), variance>0?"#f87171":"#34d399"],
+                    ["Est. at Comp.",fmt(eac),                 eac>budget?"#f59e0b":"#34d399"],
+                  ].map(([l,v,c])=>(
+                    <div key={l} style={{textAlign:"center",padding:"6px",background:"#070c18",borderRadius:6}}>
+                      <div style={{fontSize:12,fontFamily:"monospace",fontWeight:800,color:c}}>{v}</div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginTop:1}}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Expanded detail */}
+                {isSel&&(
+                  <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #1a2d45"}}>
+                    <div style={{fontSize:11,color:"#3d5a7a",marginBottom:8,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em"}}>Forecast Analysis</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                      <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+                        <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>Burn rate vs. time</div>
+                        <div style={{fontSize:13,fontWeight:700,color:burnPct>timePct+10?"#f87171":burnPct<timePct-10?"#34d399":"#f59e0b"}}>
+                          {burnPct>timePct+10?"⚠ Burning faster than timeline"
+                          :burnPct<timePct-10?"✓ Under budget vs. timeline"
+                          :"~ Tracking to plan"}
+                        </div>
+                      </div>
+                      <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+                        <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>EAC vs. Budget</div>
+                        <div style={{fontSize:13,fontWeight:700,color:eacVariance>0?"#f87171":"#34d399"}}>
+                          {eacVariance>0?`⚠ ${fmt(eacVariance)} over at completion`:`✓ ${fmt(Math.abs(eacVariance))} under at completion`}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// ONBOARDING MODULE  (#5)
+// =============================================================================
+
+function AIAgent({ authProfile, roster, clients, finInvoices, finPayments, crmDeals, portalView }) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { role:"assistant", text:"Hi! I'm your Ziksatech AI assistant. Ask me anything about your operations, team, clients, financials, or Naxon products." }
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef();
+  const inputRef = useRef();
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
+  useEffect(() => { if (open) setTimeout(()=>inputRef.current?.focus(), 100); }, [open]);
+
+  // Build context from live data
+  const buildContext = () => {
+    const totalRev = (roster||[]).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*1920,0);
+    const activeC = (roster||[]).filter(r=>(r.util||0)>0).length;
+    const collected = (finPayments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+    const invTotal = (finInvoices||[]).reduce((s,i)=>s+(i.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0),0);
+    const openPipe = (crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage)).reduce((s,d)=>s+(+d.value||0),0);
+    return `
+You are an AI assistant for Ziksatech, an SAP consulting firm based in Plano, TX.
+You also know about Naxon Systems flagship products: Gridmind (AI energy grid intelligence) and Aria (AI conversation intelligence, scaling to 20-25M interactions).
+
+LIVE CONTEXT (as of today):
+- Annual Revenue: $${Math.round(totalRev).toLocaleString()}
+- Active Consultants: ${activeC} of ${(roster||[]).length}
+- Total Invoiced YTD: $${Math.round(invTotal).toLocaleString()}
+- Collected YTD: $${Math.round(collected).toLocaleString()}
+- Collection Rate: ${invTotal>0?Math.round(collected/invTotal*100):0}%
+- Open Pipeline: $${Math.round(openPipe).toLocaleString()} (${(crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage)).length} deals)
+- Active Clients: ${(clients||[]).filter(c=>c.health!=="Red").length}
+- User: ${authProfile?.full_name} (${authProfile?.role?.replace("_"," ")})
+- Current View: ${portalView}
+
+Team roster: ${(roster||[]).map(r=>`${r.name} (${r.type}, $${r.billRate}/hr, ${Math.round((r.util||0)*100)}% util, ${r.client})`).join("; ")}
+Clients: ${(clients||[]).map(c=>`${c.name} ($${c.annualRev?.toLocaleString()}, ${c.health})`).join("; ")}
+
+Be concise, helpful and professional. Answer based on the context above when possible.`;
+  };
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput("");
+    const userMsg = { role:"user", text };
+    setMessages(m => [...m, userMsg]);
+    setLoading(true);
+
+    const history = [...messages, userMsg]
+      .filter(m=>m.role!=="assistant"||messages.indexOf(m)>0)
+      .map(m=>({ role: m.role==="assistant"?"assistant":"user", content: m.text }));
+
+    let reply = "";
+    setMessages(m => [...m, { role:"assistant", text:"…", streaming:true }]);
+    try {
+      await callClaude(buildContext(), text, txt => {
+        reply = txt;
+        setMessages(m => [...m.slice(0,-1), { role:"assistant", text:txt, streaming:true }]);
+      });
+      setMessages(m => [...m.slice(0,-1), { role:"assistant", text:reply }]);
+    } catch(e) {
+      setMessages(m => [...m.slice(0,-1), { role:"assistant", text:"Sorry, I couldn't connect. Please check your API key in Settings." }]);
+    }
+    setLoading(false);
+  };
+
+  const QUICK = ["What's our revenue YTD?", "Who has capacity?", "Open pipeline value?", "Tell me about Aria", "What is Gridmind?"];
+
+  return (
+    <>
+      {/* Floating button */}
+      <button
+        onClick={()=>setOpen(o=>!o)}
+        style={{
+          position:"fixed", bottom:24, right:24, zIndex:9999,
+          width:52, height:52, borderRadius:"50%",
+          background:"linear-gradient(135deg,#0369a1,#7c3aed)",
+          border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(3,105,161,0.5)",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:22, transition:"transform 0.2s",
+        }}
+        onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"}
+        onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+        {open ? "✕" : "✦"}
+      </button>
+
+      {/* Chat panel */}
+      {open && (
+        <div style={{
+          position:"fixed", bottom:88, right:24, zIndex:9999,
+          width:360, height:520, display:"flex", flexDirection:"column",
+          background:"#060d1c", border:"1px solid #1a2d45", borderRadius:16,
+          boxShadow:"0 24px 60px rgba(0,0,0,0.7)",
+          fontFamily:"'DM Sans','Segoe UI',sans-serif",
+          overflow:"hidden"
+        }}>
+          {/* Header */}
+          <div style={{padding:"14px 16px",borderBottom:"1px solid #0f1e30",background:"#050e1c",display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>✦</div>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Ziksatech AI</div>
+              <div style={{fontSize:10,color:"#334155"}}>Powered by Claude · Ops + Naxon aware</div>
+            </div>
+            <div style={{marginLeft:"auto",width:7,height:7,borderRadius:"50%",background:"#34d399"}}/>
+          </div>
+
+          {/* Messages */}
+          <div style={{flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+            {messages.map((m,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+                <div style={{
+                  maxWidth:"82%", padding:"9px 13px", borderRadius:m.role==="user"?"14px 14px 2px 14px":"14px 14px 14px 2px",
+                  background:m.role==="user"?"linear-gradient(135deg,#0369a1,#0284c7)":"#0a1829",
+                  border:m.role==="user"?"none":"1px solid #1a2d45",
+                  fontSize:12, lineHeight:1.6, color:m.role==="user"?"#fff":"#cbd5e1",
+                  opacity:m.streaming?0.8:1
+                }}>
+                  {m.text}
+                </div>
+              </div>
+            ))}
+            <div ref={bottomRef}/>
+          </div>
+
+          {/* Quick prompts */}
+          {messages.length <= 1 && (
+            <div style={{padding:"0 12px 8px",display:"flex",flexWrap:"wrap",gap:5}}>
+              {QUICK.map(q=>(
+                <button key={q} onClick={()=>{setInput(q);inputRef.current?.focus();}}
+                  style={{background:"#0a1829",border:"1px solid #1a2d45",borderRadius:12,color:"#64748b",fontSize:10,padding:"4px 10px",cursor:"pointer",whiteSpace:"nowrap"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#0369a1";e.currentTarget.style.color="#38bdf8";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="#1a2d45";e.currentTarget.style.color="#64748b";}}>
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          <div style={{padding:"10px 12px",borderTop:"1px solid #0f1e30",display:"flex",gap:8,alignItems:"center"}}>
+            <input
+              ref={inputRef}
+              className="inp"
+              value={input}
+              onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&send()}
+              placeholder="Ask about ops, team, deals, Naxon…"
+              style={{flex:1,fontSize:12,padding:"8px 12px"}}
+              disabled={loading}
+            />
+            <button onClick={send} disabled={loading||!input.trim()}
+              style={{
+                width:34,height:34,borderRadius:"50%",border:"none",cursor:"pointer",
+                background:loading||!input.trim()?"#0a1829":"linear-gradient(135deg,#0369a1,#7c3aed)",
+                color:"#fff",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",
+                flexShrink:0
+              }}>
+              {loading?"⋯":"↑"}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PROFILE MENU — top-right dropdown for profile, settings, sign out
+// ═══════════════════════════════════════════════════════════════════════
+
+function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile, setTab }) {
+  const [open, setOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    setOpen(false);
+    if (supaAuth) { await supaAuth.signOut(authSession?.access_token); supaAuth.clearSession(); }
+    setAuthSession(null);
+    setAuthProfile(null);
+  };
+
+  const go = (tab) => { setOpen(false); setTab(tab); };
+
+  const initials = (authProfile?.full_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+  const isAdmin  = ["admin","super_admin"].includes(authProfile?.role);
+
+  const menuItems = [
+    { icon:"👤", label:"My Profile",    tab:"myprofile" },
+    { icon:"⚙️", label:"Settings",      tab:"settings" },
+    { icon:"🔔", label:"Notifications", tab:"notifications" },
+    { icon:"📋", label:"Audit Log",      tab:"auditlog" },
+    { icon:"📄", label:"PDF Export",     tab:"pdfexport" },
+    isAdmin && { icon:"👥", label:"User Approvals", tab:"org" },
+  ].filter(Boolean);
+
+  return (
+    <div style={{position:"relative"}}>
+      {/* Avatar button */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{display:"flex",alignItems:"center",gap:7,background:"#0a1120",border:"1px solid #1e2a3a",borderRadius:20,padding:"4px 10px 4px 4px",cursor:"pointer",transition:"border-color 0.15s"}}
+        onMouseEnter={e=>e.currentTarget.style.borderColor="#2a4d75"}
+        onMouseLeave={e=>e.currentTarget.style.borderColor="#1e2a3a"}>
+        <div style={{width:26,height:26,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#0ea5e9)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}}>
+          {initials}
+        </div>
+        <div style={{textAlign:"left"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#cbd5e1",lineHeight:1.2,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+            {authProfile?.full_name?.split(" ")[0] || "User"}
+          </div>
+          <div style={{fontSize:9,color:authProfile?.role==="super_admin"?"#f59e0b":"#475569",textTransform:"capitalize"}}>
+            {authProfile?.role === "super_admin" ? "⭐ Super Admin" : authProfile?.role}
+          </div>
+        </div>
+        <span style={{fontSize:9,color:"#3d5a7a",marginLeft:2}}>{open?"▲":"▼"}</span>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div onClick={() => setOpen(false)} style={{position:"fixed",inset:0,zIndex:998}}/>
+          <div style={{
+            position:"absolute",top:"calc(100% + 8px)",right:0,
+            background:"#0d1829",border:"1px solid #1e2a3a",
+            borderRadius:12,padding:"6px",minWidth:200,
+            boxShadow:"0 16px 40px rgba(0,0,0,0.6)",zIndex:999
+          }}>
+            {/* User info header */}
+            <div style={{padding:"10px 12px 10px",borderBottom:"1px solid #0f1e30",marginBottom:4}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{authProfile?.full_name}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:2}}>{authProfile?.email}</div>
+              <div style={{marginTop:6,display:"inline-block",background:authProfile?.status==="approved"?"#021f14":"#2d1f00",border:`1px solid ${authProfile?.status==="approved"?"#065f46":"#92400e"}`,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:600,color:authProfile?.status==="approved"?"#34d399":"#fcd34d"}}>
+                {authProfile?.status==="approved"?"✓ Active":"Pending"}
+              </div>
+            </div>
+
+            {/* Menu items */}
+            {menuItems.map(item => (
+              <button key={item.tab} onClick={() => go(item.tab)}
+                style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",borderRadius:8,padding:"9px 12px",cursor:"pointer",textAlign:"left",color:"#94a3b8",fontSize:12,fontWeight:500,transition:"all 0.12s"}}
+                onMouseEnter={e=>{e.currentTarget.style.background="#0f1e30";e.currentTarget.style.color="#e2e8f0";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="none";e.currentTarget.style.color="#94a3b8";}}>
+                <span style={{fontSize:14,width:18}}>{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+
+            {/* Divider + Sign out */}
+            <div style={{borderTop:"1px solid #0f1e30",marginTop:4,paddingTop:4}}>
+              <button onClick={handleSignOut}
+                style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",borderRadius:8,padding:"9px 12px",cursor:"pointer",textAlign:"left",color:"#f87171",fontSize:12,fontWeight:600,transition:"all 0.12s"}}
+                onMouseEnter={e=>{e.currentTarget.style.background="#2d0a0a";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="none";}}>
+                <span style={{fontSize:14,width:18}}>🚪</span>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HOME PAGE — appended at file end, uses only already-imported hooks
+// ═══════════════════════════════════════════════════════════════════════
+
+function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
+  workAuth, ptoRequests, auditLog, authProfile, setTab,
+  dismissedAlerts, setDismissedAlerts }) {
+
+  const [weather, setWeather]   = useState(null);
+  const [todos,   setTodos]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch(e) { return []; } });
+  const [newTodo, setNewTodo]   = useState("");
+  const [clock,   setClock]     = useState(new Date());
+
+  useEffect(() => { const t = setInterval(() => setClock(new Date()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=33.1507&longitude=-96.8236&current=temperature_2m,weathercode,relativehumidity_2m,windspeed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph")
+      .then(r => r.json()).then(d => {
+        const cur = d.current;
+        const WC = { 0:"☀️ Clear", 1:"🌤 Mostly Clear", 2:"⛅ Partly Cloudy", 3:"☁️ Overcast", 51:"🌦 Drizzle", 61:"🌧 Rain", 71:"🌨 Snow", 80:"🌦 Showers", 95:"⛈ Thunderstorm" };
+        setWeather({ temp: Math.round(cur.temperature_2m), condition: WC[cur.weathercode] || "🌡", humidity: cur.relativehumidity_2m, wind: Math.round(cur.windspeed_10m) });
+      }).catch(() => {});
+  }, []);
+
+  const saveTodos = t => { setTodos(t); localStorage.setItem("zt-todos", JSON.stringify(t)); };
+  const addTodo   = () => { if (!newTodo.trim()) return; saveTodos([...todos, { id: Date.now(), text: newTodo.trim(), done: false }]); setNewTodo(""); };
+  const toggleTodo = id => saveTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const deleteTodo = id => saveTodos(todos.filter(t => t.id !== id));
+
+  const hr = clock.getHours();
+  const greeting = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
+  const dayStr = clock.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
+  const fv = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`;
+
+  const safeRoster     = roster     || [];
+  const safeClients    = clients    || [];
+  const safeInvoices   = finInvoices || [];
+  const safeDeals      = crmDeals   || [];
+  const safeCandidates = candidates || [];
+  const safeWorkAuth   = workAuth   || [];
+  const safePTO        = ptoRequests || [];
+  const safeAudit      = auditLog   || [];
+  const safeDismissed  = dismissedAlerts || [];
+
+  const totalRev    = safeClients.reduce((s, c) => s + (c.annualRev || 0), 0);
+  const overdueInv  = safeInvoices.filter(i => i.status === "overdue");
+  const openDeals   = safeDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage));
+  const expDocs     = safeWorkAuth.filter(w => { if (!w.expiryDate) return false; const days = (new Date(w.expiryDate) - new Date()) / 86400000; return days >= 0 && days <= 60; });
+  const pendPTO     = safePTO.filter(p => p.status === "pending").length;
+  const actCands    = safeCandidates.filter(c => !["rejected","hired"].includes(c.stage)).length;
+
+  const role = authProfile?.role || "";
+  const isAdmin  = ["super_admin","admin"].includes(role);
+  const isAccounts = role === "accounts";
+  const isHR       = role === "hr_immigration";
+  const isSales    = isAdmin; // sales = admin for now
+  const isConsultant = ["employee","contractor"].includes(role);
+
+  // ── ROLE-BASED TILES ──────────────────────────────────────────────────────
+  // Each role sees tiles most relevant to their daily work
+
+  // ACCOUNTS tiles
+  const accountsTiles = [
+    { icon:"💸", label:"Overdue Invoices",   value:overdueInv.length,  sub:overdueInv.length>0?fv(overdueInv.reduce((s,i)=>s+(i.amount||0),0))+" pending":"All collected",  color:overdueInv.length>0?"#f87171":"#34d399", tab:"finance" },
+    { icon:"📊", label:"Active Clients",      value:safeClients.filter(c=>c.health!=="Red").length, sub:`of ${safeClients.length} total`,     color:"#38bdf8",  tab:"clients" },
+    { icon:"💰", label:"Annual Revenue",      value:fv(totalRev),       sub:"Client portfolio",                                                                 color:"#34d399",  tab:"pl" },
+    { icon:"🔄", label:"Reconciliation",      value:safeInvoices.filter(i=>i.status==="paid").length, sub:"Paid invoices",                                      color:"#a78bfa",  tab:"reconcile" },
+    { icon:"📉", label:"P&L / Income",        value:"View",             sub:"Monthly income statement",                                                          color:"#f59e0b",  tab:"pl" },
+    { icon:"💳", label:"Vendors & AP",        value:fv(0),              sub:"Payables tracker",                                                                  color:"#64748b",  tab:"vendors" },
+    { icon:"🏦", label:"Cash Flow",           value:"Forecast",         sub:"13-week rolling",                                                                   color:"#38bdf8",  tab:"cashflow" },
+    { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn revenue share",                                                                color:"#f59e0b",  tab:"ideapad" },
+  ];
+
+  // HR & PAYROLL tiles
+  const hrTiles = [
+    { icon:"👥", label:"Team Roster",         value:safeRoster.length,  sub:`${safeRoster.filter(r=>r.util>0).length} active`,                                  color:"#38bdf8",  tab:"roster" },
+    { icon:"📋", label:"Expiring Docs",       value:expDocs.length,     sub:"Work auth ≤60 days",                                                                color:expDocs.length>0?"#f87171":"#34d399", tab:"compliance" },
+    { icon:"🏖",  label:"PTO Requests",        value:pendPTO,            sub:"Awaiting approval",                                                                 color:pendPTO>0?"#f59e0b":"#34d399",        tab:"pto" },
+    { icon:"🎯", label:"Hiring Pipeline",     value:actCands,           sub:"Active candidates",                                                                 color:"#60a5fa",  tab:"pipeline" },
+    { icon:"📄", label:"PAF Files",           value:"Manage",           sub:"Personnel action forms",                                                            color:"#a78bfa",  tab:"paffiles" },
+    { icon:"🏢", label:"Onboarding",          value:safeRoster.filter(r=>r.status==="onboarding").length||"Active", sub:"New hires in progress",                color:"#34d399",  tab:"onboarding" },
+    { icon:"💊", label:"Benefits",            value:"Tracker",          sub:"Health, dental, 401k",                                                              color:"#38bdf8",  tab:"benefits" },
+    { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn revenue share",                                                                color:"#f59e0b",  tab:"ideapad" },
+  ];
+
+  // SALES / ADMIN tiles
+  const salesTiles = [
+    { icon:"💼", label:"Open Pipeline",       value:fv(openDeals.reduce((s,d)=>s+(d.value||0),0)), sub:`${openDeals.length} active deals`,                     color:"#38bdf8",  tab:"crm" },
+    { icon:"🎯", label:"CRM Leads",           value:(safeDeals.filter(d=>d.stage==="prospecting")||[]).length||"Active", sub:"New leads this week",             color:"#a78bfa",  tab:"crm" },
+    { icon:"🏢", label:"Active Clients",      value:safeClients.filter(c=>c.health!=="Red").length, sub:`of ${safeClients.length} total`,                       color:"#34d399",  tab:"clients" },
+    { icon:"💰", label:"Annual Revenue",      value:fv(totalRev),       sub:"Client portfolio",                                                                 color:"#34d399",  tab:"dashboard" },
+    { icon:"🔍", label:"Prospect Intel",      value:"Research",         sub:"AI company analysis",                                                               color:"#38bdf8",  tab:"prospectintel" },
+    { icon:"📝", label:"SOW Generator",       value:"Generate",         sub:"AI-powered SOW",                                                                    color:"#a78bfa",  tab:"sowgen" },
+    { icon:"📥", label:"RFP Responder",       value:"Respond",          sub:"Win more RFPs",                                                                     color:"#f59e0b",  tab:"rfpgen" },
+    { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn revenue share",                                                                color:"#f59e0b",  tab:"ideapad" },
+  ];
+
+  // CONSULTANT tiles — full self-service dashboard
+  const myConsultant = safeRoster.find(r => r.email?.toLowerCase() === authProfile?.email?.toLowerCase() || r.name?.toLowerCase().includes((authProfile?.full_name||"").split(" ")[0]?.toLowerCase() || "_"));
+  const myClient     = myConsultant?.client || "—";
+  const myUtil       = myConsultant ? `${Math.round((myConsultant.util||0)*100)}%` : "—";
+  const myRate       = myConsultant ? `$${myConsultant.billRate||0}/hr` : "—";
+  const myPTO        = safePTO.filter(p => p.employeeName?.toLowerCase().includes((authProfile?.full_name||"").split(" ")[0]?.toLowerCase()||"_") || p.employeeId===authProfile?.id);
+  const pendingMyPTO = myPTO.filter(p=>p.status==="pending").length;
+
+  // Row 1: work essentials
+  const consultantTilesRow1 = [
+    { icon:"⏱",  label:"My Timesheet",       value:"Log Hours",        sub:"Weekly hours & billing",                                                             color:"#38bdf8",  tab:"timesheet" },
+    { icon:"🏢", label:"My Client",           value:myClient,           sub:"Current engagement",                                                                color:"#34d399",  tab:"consultanthub" },
+    { icon:"📈", label:"My Utilization",      value:myUtil,             sub:`${myRate} · this month`,                                                             color:(myConsultant&&(myConsultant.util||0)>=0.8)?"#34d399":"#f59e0b", tab:"timesheet" },
+    { icon:"🏖",  label:"My PTO",             value:pendingMyPTO>0?`${pendingMyPTO} pending`:"Request", sub:"Time off & balance",                                color:pendingMyPTO>0?"#f59e0b":"#38bdf8", tab:"pto" },
+  ];
+  // Row 2: self-service tools
+  const consultantTilesRow2 = [
+    { icon:"🧮", label:"Mini Calculator",     value:"Calculate",        sub:"Quick math tool",                                                                   color:"#a78bfa",  tab:"minicalc" },
+    { icon:"💊", label:"My Benefits",         value:"View",             sub:"Health, dental, 401k",                                                              color:"#38bdf8",  tab:"benefits" },
+    { icon:"💰", label:"Pay Stubs",           value:"View",             sub:"Salary & deductions",                                                               color:"#34d399",  tab:"adpstubs" },
+    { icon:"📋", label:"Tax Calculator",      value:"Estimate",         sub:"W-4 & tax savings",                                                                 color:"#f59e0b",  tab:"taxcal" },
+  ];
+  // Row 3: documents & ideas
+  const consultantTilesRow3 = [
+    { icon:"📁", label:"My PAF Files",        value:"View",             sub:"Personnel action forms",                                                            color:"#60a5fa",  tab:"paffiles" },
+    { icon:"🧾", label:"My Statements",       value:"View",             sub:"Pay & reconciliation",                                                              color:"#94a3b8",  tab:"reconcile" },
+    { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn 10% revenue share",                                                            color:"#f59e0b",  tab:"ideapad" },
+    { icon:"👤", label:"My Profile",         value:"View",             sub:"Info & documents",                                                                   color:"#a78bfa",  tab:"myprofile" },
+  ];
+  const consultantTiles = [...consultantTilesRow1, ...consultantTilesRow2, ...consultantTilesRow3];
+
+  // Pick tile set based on role
+  const tiles = isConsultant ? consultantTiles
+              : isHR         ? hrTiles
+              : isAccounts   ? accountsTiles
+              : salesTiles;  // admin / super_admin / sales
+
+  const roleLabel = isConsultant?"Consultant Dashboard":isHR?"HR & Payroll Dashboard":isAccounts?"Accounts Dashboard":"Executive Dashboard";
+  const roleSub   = isConsultant?`${myClient} · ${myUtil} util · ${myRate}`
+                  : isHR?`${safeRoster.length} consultants · ${expDocs.length} docs expiring · ${pendPTO} PTO pending`
+                  : isAccounts?`${overdueInv.length} overdue · ${safeClients.length} clients · ${safeInvoices.filter(i=>i.status==="paid").length} paid`
+                  : `$${(totalRev/1e6).toFixed(1)}M portfolio · ${openDeals.length} deals · ${safeRoster.filter(r=>r.util>0).length} active consultants`;
+
+  const alerts = [
+    overdueInv.length > 0 && { id:"inv",    type:"red",   icon:"⚠️", title:`${overdueInv.length} Overdue Invoice${overdueInv.length>1?"s":""}`, sub:`${fv(overdueInv.reduce((s,i)=>s+(i.amount||0),0))} pending collection`, tab:"finance" },
+    expDocs.length > 0    && { id:"docs",   type:"amber", icon:"📋", title:`${expDocs.length} Work Auth Expiring`, sub:"Action needed within 60 days", tab:"compliance" },
+    pendPTO > 0           && { id:"pto",    type:"blue",  icon:"🏖", title:`${pendPTO} PTO Request${pendPTO>1?"s":""} Pending`, sub:"Awaiting manager approval", tab:"pto" },
+    actCands > 0          && { id:"hiring", type:"green", icon:"👤", title:`${actCands} Active Candidate${actCands>1?"s":""}`, sub:"In recruiting pipeline", tab:"pipeline" },
+    openDeals.length > 0  && { id:"deals",  type:"blue",  icon:"💼", title:`${openDeals.length} Open Deal${openDeals.length>1?"s":""} in Pipeline`, sub:`${fv(openDeals.reduce((s,d)=>s+(d.value||0),0))} pipeline value`, tab:"crm" },
+  ].filter(Boolean).filter(a => !safeDismissed.includes(a.id));
+
+  const ACOLS = { red:{bg:"#2d0a0a",br:"#7f1d1d",tx:"#fca5a5",dot:"#ef4444"}, amber:{bg:"#2d1f00",br:"#92400e",tx:"#fcd34d",dot:"#f59e0b"}, blue:{bg:"#0c1a2e",br:"#1e3a5f",tx:"#7dd3fc",dot:"#38bdf8"}, green:{bg:"#0a1f0f",br:"#166534",tx:"#86efac",dot:"#22c55e"} };
+  const tileStyle = () => ({ background:"#0a1120", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px", cursor:"pointer", transition:"border-color 0.2s" });
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:10 }}>
+        <div>
+          <div style={{ fontSize:24, fontWeight:800, color:"#e2e8f0" }}>{greeting}, {authProfile?.full_name?.split(" ")[0] || "there"} 👋</div>
+          <div style={{ fontSize:13, color:"#475569", marginTop:3 }}>{dayStr}</div>
+          {/* Role badge + sub info */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:6 }}>
+            <span className="bdg" style={{ background:"#0c2340", color:"#38bdf8", fontSize:10, fontWeight:700 }}>{roleLabel}</span>
+            <span style={{ fontSize:11, color:"#3d5a7a" }}>{roleSub}</span>
+          </div>
+        </div>
+        <div style={{ textAlign:"right" }}>
+          <div style={{ fontSize:26, fontWeight:700, color:"#38bdf8", fontFamily:"'DM Mono',monospace", letterSpacing:"0.05em" }}>
+            {clock.toLocaleTimeString("en-US", { hour:"2-digit", minute:"2-digit", second:"2-digit" })}
+          </div>
+          {weather && <div style={{ fontSize:11, color:"#475569", marginTop:3 }}>{weather.condition} · {weather.temp}°F · 💧{weather.humidity}%</div>}
+        </div>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 310px", gap:18, alignItems:"start" }}>
+        {/* LEFT */}
+        <div>
+          {/* Role-based tiles */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:16 }}>
+            {tiles.map((t,i) => (
+              <div key={i} onClick={() => t.tab && t.tab!=="home" && setTab(t.tab)} style={{...tileStyle(), opacity: t.tab==="home"?0.6:1}}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#2a4d75"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#1a2d45"}>
+                <div style={{ fontSize:20, marginBottom:5 }}>{t.icon}</div>
+                <div style={{ fontSize:18, fontWeight:800, color:t.color||"#38bdf8", fontFamily:"'DM Mono',monospace", lineHeight:1.1 }}>{window.__ZT_MASK__!==false && typeof t.value==="string" && t.value.startsWith("$") ? "$ ●●●" : t.value}</div>
+                <div style={{ fontSize:11, fontWeight:600, color:"#cbd5e1", marginTop:4 }}>{t.label}</div>
+                <div style={{ fontSize:10, color:"#475569", marginTop:2 }}>{t.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Role section banners */}
+          {isConsultant && (
+            <div style={{ padding:"12px 16px", background:"#0c2340", border:"1px solid #0369a1", borderRadius:10, marginBottom:14 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:"#38bdf8", marginBottom:4 }}>💡 IdeaPad — Your Ideas = Your Revenue</div>
+              <div style={{ fontSize:11, color:"#7dd3fc", lineHeight:1.5 }}>
+                Got an idea to grow Ziksatech? Submit it on IdeaPad. If it generates revenue, <strong style={{color:"#34d399"}}>you earn 10% of net revenue — forever.</strong>
+              </div>
+              <button className="btn bp" style={{ fontSize:11, marginTop:8 }} onClick={() => setTab("ideapad")}>→ Go to IdeaPad</button>
+            </div>
+          )}
+
+          {/* Alerts */}
+          {(isAdmin || isAccounts || isHR) && (
+            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"16px 18px", marginBottom:14 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                <span style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>🔔 Notifications & Alerts</span>
+                {alerts.length > 0 && <span style={{ background:"#ef4444", color:"#fff", fontSize:10, fontWeight:700, borderRadius:10, padding:"2px 7px" }}>{alerts.length}</span>}
+              </div>
+              {alerts.length === 0
+                ? <div style={{ textAlign:"center", padding:"14px 0", color:"#334155", fontSize:13 }}>✅ All clear — no pending actions</div>
+                : alerts.map(a => {
+                    const col = ACOLS[a.type] || ACOLS.blue;
+                    return (
+                      <div key={a.id} onClick={() => setTab(a.tab)}
+                        style={{ display:"flex", alignItems:"center", gap:12, background:col.bg, border:`1px solid ${col.br}`, borderRadius:8, padding:"10px 14px", marginBottom:8, cursor:"pointer" }}>
+                        <div style={{ width:8, height:8, borderRadius:"50%", background:col.dot, flexShrink:0 }}/>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:12, fontWeight:600, color:col.tx }}>{a.icon} {a.title}</div>
+                          <div style={{ fontSize:10, color:"#475569", marginTop:2 }}>{a.sub}</div>
+                        </div>
+                        <span style={{ fontSize:11, color:"#3d5a7a" }}>View →</span>
+                        <button onClick={e => { e.stopPropagation(); setDismissedAlerts(p => [...(p||[]), a.id]); }}
+                          style={{ background:"none", border:"none", color:"#334155", cursor:"pointer", fontSize:14, padding:"0 4px" }}>✕</button>
+                      </div>
+                    );
+                  })}
+            </div>
+          )}
+
+          {/* Consultant quick links */}
+          {isConsultant && alerts.length > 0 && (
+            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px", marginBottom:14 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:"#e2e8f0", marginBottom:10 }}>📢 Team Alerts</div>
+              {alerts.slice(0,3).map(a => {
+                const col = ACOLS[a.type] || ACOLS.blue;
+                return (
+                  <div key={a.id} style={{ display:"flex", gap:8, marginBottom:6, fontSize:11 }}>
+                    <span>{a.icon}</span>
+                    <span style={{ color:col.tx }}>{a.title}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Quick actions row */}
+          <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 18px", marginBottom:14 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"#e2e8f0", marginBottom:10 }}>⚡ Quick Actions</div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {isConsultant && [
+                ["⏱ Log Hours", "timesheet"], ["🏖 Request PTO", "pto"],
+                ["💊 Benefits", "benefits"], ["💰 Pay Stubs", "adpstubs"],
+                ["🧮 Calculator", "minicalc"], ["📁 My PAF", "paffiles"],
+                ["💡 IdeaPad", "ideapad"], ["👤 My Profile", "myprofile"],
+              ].map(([l,t]) => <button key={t} className="btn bg" style={{fontSize:11}} onClick={()=>setTab(t)}>{l}</button>)}
+              {isHR && [
+                ["👥 Roster", "roster"], ["📋 Compliance", "compliance"],
+                ["🏖 PTO Queue", "pto"], ["🎯 Pipeline", "pipeline"],
+                ["📄 PAF Files", "paffiles"], ["💡 IdeaPad", "ideapad"],
+              ].map(([l,t]) => <button key={t} className="btn bg" style={{fontSize:11}} onClick={()=>setTab(t)}>{l}</button>)}
+              {isAccounts && [
+                ["💰 Finance", "finance"], ["📊 P&L", "pl"],
+                ["🔄 Reconcile", "reconcile"], ["💸 Vendors", "vendors"],
+                ["🏦 Cash Flow", "cashflow"], ["💡 IdeaPad", "ideapad"],
+              ].map(([l,t]) => <button key={t} className="btn bg" style={{fontSize:11}} onClick={()=>setTab(t)}>{l}</button>)}
+              {isAdmin && [
+                ["📊 Dashboard", "dashboard"], ["💼 CRM", "crm"],
+                ["🔍 Prospect Intel", "prospectintel"], ["📝 SOW", "sowgen"],
+                ["👥 Roster", "roster"], ["💰 Finance", "finance"],
+                ["💡 IdeaPad", "ideapad"], ["⚙️ Settings", "settings"],
+              ].map(([l,t]) => <button key={t} className="btn bg" style={{fontSize:11}} onClick={()=>setTab(t)}>{l}</button>)}
+            </div>
+          </div>
+
+          {/* My To-Do */}
+          <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 18px" }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"#e2e8f0", marginBottom:10 }}>✅ My To-Do Today</div>
+            <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+              <input className="inp" style={{ flex:1, fontSize:12 }} placeholder="Add a task..." value={newTodo}
+                onChange={e => setNewTodo(e.target.value)} onKeyDown={e => e.key==="Enter" && addTodo()}/>
+              <button className="btn bp" style={{ fontSize:12 }} onClick={addTodo}>Add</button>
+            </div>
+            {todos.length === 0
+              ? <div style={{ color:"#1e3a5f", fontSize:12, textAlign:"center", padding:"8px 0" }}>No tasks — have a great day! 🎉</div>
+              : todos.slice(0,8).map(t => (
+                <div key={t.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0", borderBottom:"1px solid #0a1626" }}>
+                  <input type="checkbox" checked={t.done} onChange={() => toggleTodo(t.id)} style={{ cursor:"pointer", accentColor:"#38bdf8" }}/>
+                  <span style={{ flex:1, fontSize:12, color:t.done?"#334155":"#94a3b8", textDecoration:t.done?"line-through":"none" }}>{t.text}</span>
+                  <button onClick={() => deleteTodo(t.id)} style={{ background:"none", border:"none", color:"#334155", cursor:"pointer", fontSize:12 }}>✕</button>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {/* IdeaPad spotlight */}
+          <div style={{ padding:"14px 16px", background:"linear-gradient(135deg,#0c2340,#0a1a0a)", border:"1px solid #15803d", borderRadius:12, cursor:"pointer" }} onClick={()=>setTab("ideapad")}>
+            <div style={{ fontSize:13, fontWeight:700, color:"#4ade80", marginBottom:6 }}>💡 IdeaPad</div>
+            <div style={{ fontSize:11, color:"#7dd3fc", lineHeight:1.6, marginBottom:8 }}>
+              Submit ideas · Vote · AI evaluation<br/>
+              <strong style={{color:"#34d399"}}>Earn 10% of revenue if your idea ships</strong>
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ fontSize:10, color:"#334155" }}>Open to all team members</span>
+              <button className="btn bp" style={{ fontSize:10, padding:"3px 10px" }}>→ Submit</button>
+            </div>
+          </div>
+
+          {/* Recent activity */}
+          {safeAudit.length > 0 && (
+            <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
+              <div style={{ fontSize:12, fontWeight:700, color:"#e2e8f0", marginBottom:10 }}>🕐 Recent Activity</div>
+              {safeAudit.slice(0,6).map((a,i) => (
+                <div key={i} style={{ padding:"6px 0", borderBottom:"1px solid #0a1626", fontSize:11 }}>
+                  <div style={{ color:"#94a3b8" }}>{a.action} — <span style={{color:"#475569"}}>{a.entity}</span></div>
+                  <div style={{ fontSize:9, color:"#334155", marginTop:1 }}>{a.user} · {a.module}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Weather */}
+          {weather && (
+            <div style={{ padding:"12px 16px", background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12 }}>
+              <div style={{ fontSize:11, color:"#334155", marginBottom:4 }}>Frisco, TX</div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div><div style={{ fontSize:24, color:"#e2e8f0", fontWeight:700 }}>{weather.temp}°F</div><div style={{ fontSize:11, color:"#475569" }}>{weather.condition}</div></div>
+                <div style={{ textAlign:"right", fontSize:10, color:"#334155" }}><div>💧 {weather.humidity}%</div><div>💨 {weather.wind} mph</div></div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function MiniCalculator() {
+  const [expr, setExpr] = useState("");
+  const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [mode, setMode] = useState("basic"); // basic | billing | margin
+
+  // Billing calculator state
+  const [rate, setRate] = useState("");
+  const [hrs, setHrs] = useState("");
+  const [salary, setSalary] = useState("");
+  const [utilPct, setUtilPct] = useState("100");
+
+  const calc = () => {
+    try {
+      // eslint-disable-next-line no-eval
+      const r = Function('"use strict"; return (' + expr + ')')();
+      setResult(r);
+      setHistory(h => [{expr, result: r, ts: new Date().toLocaleTimeString()}, ...h.slice(0,9)]);
+    } catch { setResult("Error"); }
+  };
+
+  const btn = (v, fn) => (
+    <button onClick={fn || (() => setExpr(e => e + v))}
+      style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:8,color:"#e2e8f0",
+        fontSize:15,fontWeight:600,padding:"12px 0",cursor:"pointer",transition:"background 0.12s"}}
+      onMouseEnter={e=>e.currentTarget.style.background="#0f1e30"}
+      onMouseLeave={e=>e.currentTarget.style.background="#0a1120"}>
+      {v}
+    </button>
+  );
+
+  const billingRev = (+rate||0) * (+hrs||0) * (+utilPct||100)/100;
+  const burdenCost = (+salary||0) * 1.2265 + 7200; // rough total burden
+  const billingMargin = billingRev > 0 ? ((billingRev - burdenCost) / billingRev * 100).toFixed(1) : 0;
+
+  return (
+    <div style={{maxWidth:680}}>
+      <PH title="Mini Calculator" sub="Quick billing, margin & general calculations"/>
+      <div style={{display:"flex",gap:8,marginBottom:18}}>
+        {["basic","billing","margin"].map(m=>(
+          <button key={m} onClick={()=>setMode(m)}
+            style={{padding:"7px 18px",borderRadius:8,border:`1px solid ${mode===m?"#0369a1":"#1a2d45"}`,
+              background:mode===m?"#0c2340":"#0a1120",color:mode===m?"#38bdf8":"#64748b",
+              cursor:"pointer",fontSize:12,fontWeight:600,textTransform:"capitalize"}}>
+            {m==="basic"?"🔢 Basic":m==="billing"?"💰 Billing":"📊 Margin"}
+          </button>
+        ))}
+      </div>
+
+      {mode==="basic" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:16}}>
+          <div className="card" style={{padding:"20px"}}>
+            <div style={{background:"#050e1c",borderRadius:10,padding:"14px 16px",marginBottom:14,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:12,color:"#475569",marginBottom:4,fontFamily:"monospace"}}>{expr||"0"}</div>
+              <div style={{fontSize:28,fontWeight:800,color:"#38bdf8",fontFamily:"'DM Mono',monospace",textAlign:"right"}}>
+                {result !== null ? (typeof result === "number" ? result.toLocaleString(undefined,{maximumFractionDigits:4}) : result) : "—"}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+              {btn("C", ()=>{setExpr(""); setResult(null);})}
+              {btn("←", ()=>setExpr(e=>e.slice(0,-1)))}
+              {btn("%", ()=>setExpr(e=>e+"/100"))}
+              {btn("÷", ()=>setExpr(e=>e+"/"))}
+              {btn("7")} {btn("8")} {btn("9")} {btn("×", ()=>setExpr(e=>e+"*"))}
+              {btn("4")} {btn("5")} {btn("6")} {btn("−", ()=>setExpr(e=>e+"-"))}
+              {btn("1")} {btn("2")} {btn("3")} {btn("+")}
+              {btn("0")} {btn(".")} {btn("()",(()=>setExpr(e=>e+"()")))} 
+              <button onClick={calc}
+                style={{background:"linear-gradient(135deg,#0369a1,#0284c7)",border:"none",borderRadius:8,
+                  color:"#fff",fontSize:18,fontWeight:700,cursor:"pointer",gridColumn:"span 1"}}>
+                =
+              </button>
+            </div>
+          </div>
+          <div className="card" style={{padding:"16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>History</div>
+            {history.length===0 && <div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"20px 0"}}>No calculations yet</div>}
+            {history.map((h,i)=>(
+              <div key={i} onClick={()=>{setExpr(h.expr); setResult(h.result);}}
+                style={{padding:"7px 10px",borderBottom:"1px solid #0a1420",cursor:"pointer",borderRadius:6}}
+                onMouseEnter={e=>e.currentTarget.style.background="#0a1120"}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div style={{fontSize:11,color:"#475569",fontFamily:"monospace"}}>{h.expr}</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#38bdf8",fontFamily:"'DM Mono',monospace"}}>= {typeof h.result==="number"?h.result.toLocaleString():h.result}</div>
+                <div style={{fontSize:9,color:"#1e3a5f"}}>{h.ts}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mode==="billing" && (
+        <div className="card" style={{padding:"24px",maxWidth:520}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:18}}>💰 Billing Rate Calculator</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+            <FF label="Bill Rate/hr ($)"><input className="inp" type="number" value={rate} onChange={e=>setRate(e.target.value)} placeholder="150"/></FF>
+            <FF label="Hours/Year"><input className="inp" type="number" value={hrs} onChange={e=>setHrs(e.target.value)} placeholder="1920"/></FF>
+            <FF label="Base Salary ($)"><input className="inp" type="number" value={salary} onChange={e=>setSalary(e.target.value)} placeholder="120000"/></FF>
+            <FF label="Utilization %"><input className="inp" type="number" value={utilPct} onChange={e=>setUtilPct(e.target.value)} placeholder="100"/></FF>
+          </div>
+          {[
+            {l:"Annual Revenue", v:"$"+(billingRev).toLocaleString(), c:"#38bdf8"},
+            {l:"Monthly Revenue", v:"$"+(billingRev/12).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,","), c:"#7dd3fc"},
+            {l:"Est. Employer Cost (burden)", v:"$"+(burdenCost).toLocaleString(), c:"#f87171"},
+            {l:"Co. Keeps (Rev − Cost)", v:"$"+((billingRev-burdenCost)>0?(billingRev-burdenCost).toLocaleString():"0"), c:"#34d399"},
+            {l:"Gross Margin", v:billingMargin+"%", c:+billingMargin>30?"#34d399":+billingMargin>15?"#f59e0b":"#f87171"},
+          ].map(r=>(
+            <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #0a1420"}}>
+              <span style={{fontSize:13,color:"#64748b"}}>{r.l}</span>
+              <span style={{fontSize:14,fontWeight:700,color:r.c,fontFamily:"'DM Mono',monospace"}}>{r.v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {mode==="margin" && (
+        <div className="card" style={{padding:"24px",maxWidth:520}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:18}}>📊 Margin / Break-even Calculator</div>
+          {["Revenue","Cost"].map(f=>(
+            <FF key={f} label={f+" ($)"}><input className="inp" type="number" placeholder="0"
+              id={"mc-"+f.toLowerCase()}
+              onChange={()=>{
+                const rev = +(document.getElementById("mc-revenue")?.value||0);
+                const cst = +(document.getElementById("mc-cost")?.value||0);
+                document.getElementById("mc-result-margin").textContent = rev>0?((rev-cst)/rev*100).toFixed(1)+"%":"—";
+                document.getElementById("mc-result-keeps").textContent = "$"+(rev-cst).toLocaleString();
+              }}/></FF>
+          ))}
+          <div style={{marginTop:16,padding:"14px 18px",background:"#050e1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{color:"#64748b",fontSize:13}}>Gross Margin</span>
+              <span id="mc-result-margin" style={{color:"#34d399",fontWeight:700,fontSize:16,fontFamily:"'DM Mono',monospace"}}>—</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={{color:"#64748b",fontSize:13}}>Net (Rev − Cost)</span>
+              <span id="mc-result-keeps" style={{color:"#38bdf8",fontWeight:700,fontSize:16,fontFamily:"'DM Mono',monospace"}}>$0</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// AI GENERATORS — shared Claude API helper
+// ═══════════════════════════════════════════════════════════════════════
+async function callClaude(systemPrompt, userPrompt, onChunk, maxTokens=1500) {
+  // Route through Vercel serverless proxy to avoid CORS
+  const storedKey = typeof localStorage !== "undefined" ? localStorage.getItem("zt-anthropic-key") : null;
+  const res = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(storedKey ? {"x-api-key-override": storedKey} : {}) },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: maxTokens,
+      stream: true,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    onChunk && onChunk("⚠️ Error: " + err);
+    return "Error: " + err;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value);
+    for (const line of chunk.split("\n")) {
+      if (line.startsWith("data: ")) {
+        try {
+          const d = JSON.parse(line.slice(6));
+          if (d.type === "content_block_delta" && d.delta?.text) {
+            full += d.delta.text;
+            onChunk && onChunk(full);
+          }
+        } catch {}
+      }
+    }
+  }
+  return full;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SOW GENERATOR — AI-powered Statement of Work
+// ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// DOCUMENT UPLOAD & COMPANY PROFILE SYSTEM
+// Reusable across SOW, RFP, Resource Planner, Proposals
+// Supports: PDF (base64 via Anthropic), TXT, DOCX (text extract), CSV
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Company Profile Storage ──────────────────────────────────────────────────
+const getCompanyProfiles = () => {
+  try { return JSON.parse(localStorage.getItem('zt-company-profiles') || '[]'); } catch { return []; }
+};
+const saveCompanyProfiles = (profiles) => {
+  localStorage.setItem('zt-company-profiles', JSON.stringify(profiles));
+};
+
+// ── Document text extractor ───────────────────────────────────────────────────
+const extractDocText = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (['txt', 'md', 'csv', 'json'].includes(ext)) {
+    reader.onload = e => resolve({ text: e.target.result, type: 'text', name: file.name });
+    reader.readAsText(file);
+  } else if (ext === 'pdf') {
+    // Return base64 for Anthropic PDF vision
+    reader.onload = e => {
+      const base64 = e.target.result.split(',')[1];
+      resolve({ text: null, base64, type: 'pdf', name: file.name, mediaType: 'application/pdf' });
+    };
+    reader.readAsDataURL(file);
+  } else if (['doc', 'docx', 'pptx', 'xlsx'].includes(ext)) {
+    // Read as text — works for some Office files
+    reader.onload = e => resolve({ text: e.target.result.slice(0, 8000), type: 'office', name: file.name });
+    reader.readAsText(file);
+  } else {
+    reader.onload = e => resolve({ text: e.target.result.slice(0, 8000), type: 'unknown', name: file.name });
+    reader.readAsText(file);
+  }
+  reader.onerror = reject;
+});
+
+// ── Call Claude with optional PDF document ────────────────────────────────────
+const callClaudeWithDoc = async (systemPrompt, userPrompt, docData, onChunk, maxTokens = 3000) => {
+  const messages = [];
+
+  if (docData?.base64 && docData?.type === 'pdf') {
+    // Use Anthropic PDF vision
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'document', source: { type: 'base64', media_type: docData.mediaType, data: docData.base64 } },
+        { type: 'text', text: userPrompt }
+      ]
+    });
+  } else {
+    const docContext = docData?.text ? `\n\n--- UPLOADED DOCUMENT: ${docData.name} ---\n${docData.text.slice(0, 6000)}\n--- END DOCUMENT ---\n\n` : '';
+    messages.push({ role: 'user', content: docContext + userPrompt });
+  }
+
+  const response = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      stream: true,
+      system: systemPrompt,
+      messages,
+      ...(docData?.base64 ? { betas: ['pdfs-2024-09-25'] } : {})
+    })
+  });
+
+  if (!response.ok) throw new Error(`API error ${response.status}`);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') break;
+      try {
+        const j = JSON.parse(data);
+        const chunk = j.delta?.text || j.content?.[0]?.text || '';
+        if (chunk) onChunk(chunk);
+      } catch {}
+    }
+  }
+};
+
+// ── Company Profile Modal ─────────────────────────────────────────────────────
+
+function CompanyProfileModal({ open, onClose, onSelect }) {
+  const [profiles, setProfiles]   = useState(getCompanyProfiles);
+  const [editing, setEditing]     = useState(null);
+  const [form, setForm]           = useState({ name:'', industry:'', size:'', hq:'', sapLandscape:'', budget:'', contacts:'', notes:'', website:'' });
+  const [showForm, setShowForm]   = useState(false);
+
+  const save = () => {
+    if (!form.name.trim()) return alert('Company name is required');
+    const updated = editing
+      ? profiles.map(p => p.id === editing ? { ...p, ...form } : p)
+      : [...profiles, { ...form, id: 'cp-' + Date.now() }];
+    saveCompanyProfiles(updated);
+    setProfiles(updated);
+    setShowForm(false); setEditing(null);
+    setForm({ name:'', industry:'', size:'', hq:'', sapLandscape:'', budget:'', contacts:'', notes:'', website:'' });
+  };
+
+  const del = id => { const u = profiles.filter(p => p.id !== id); saveCompanyProfiles(u); setProfiles(u); };
+  const edit = p => { setForm({ ...p }); setEditing(p.id); setShowForm(true); };
+
+  if (!open) return null;
+  return (
+    <div className="modal-bg" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 680 }}>
+        <MH title="Company Profiles" onClose={onClose} />
+        <div style={{ fontSize: 11, color: '#475569', marginBottom: 14 }}>
+          Save company profiles to auto-fill and tailor SOW, RFP, Resource Plans to each client's context.
+        </div>
+
+        {!showForm ? (
+          <>
+            <button className="btn bp" style={{ fontSize: 12, marginBottom: 14 }} onClick={() => { setShowForm(true); setEditing(null); setForm({ name:'', industry:'', size:'', hq:'', sapLandscape:'', budget:'', contacts:'', notes:'', website:'' }); }}>
+              + New Company Profile
+            </button>
+            {profiles.length === 0 ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: '#1e3a5f', fontSize: 12 }}>
+                No profiles yet. Add your key prospects and clients for faster, tailored document generation.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 420, overflowY: 'auto' }}>
+                {profiles.map(p => (
+                  <div key={p.id} style={{ padding: '12px 16px', background: '#060d1c', borderRadius: 10, border: '1px solid #1a2d45', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { onSelect(p); onClose(); }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{p.name}</div>
+                      <div style={{ fontSize: 10, color: '#3d5a7a', marginTop: 2 }}>{p.industry} · {p.size} · {p.hq}</div>
+                      {p.sapLandscape && <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>SAP: {p.sapLandscape}</div>}
+                      {p.budget && <div style={{ fontSize: 10, color: '#f59e0b' }}>Budget range: {p.budget}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn bp" style={{ fontSize: 10, padding: '3px 10px' }} onClick={() => { onSelect(p); onClose(); }}>Use</button>
+                      <button className="btn bg" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => edit(p)}>✏️</button>
+                      <button className="btn br" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => del(p.id)}>🗑</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', marginBottom: 14 }}>{editing ? 'Edit' : 'New'} Company Profile</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[['Company Name *', 'name', '', 'e.g. Capital One'], ['Industry', 'industry', '', 'e.g. Financial Services'], ['Company Size', 'size', '', 'e.g. 50,000 employees'], ['HQ Location', 'hq', '', 'e.g. McLean, VA'], ['Website', 'website', '', 'e.g. capitalone.com'], ['Typical Budget Range', 'budget', '', 'e.g. $300K–$1M']].map(([l, k, , ph]) => (
+                <div key={k}>
+                  <div className="lbl">{l}</div>
+                  <input className="inp" value={form[k]} onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))} placeholder={ph} />
+                </div>
+              ))}
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className="lbl">SAP Landscape / Current Systems</div>
+                <input className="inp" value={form.sapLandscape} onChange={e => setForm(p => ({ ...p, sapLandscape: e.target.value }))} placeholder="e.g. SAP ECC 6.0, BRIM v2.0, planning S/4HANA by 2027"/>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className="lbl">Key Contacts</div>
+                <input className="inp" value={form.contacts} onChange={e => setForm(p => ({ ...p, contacts: e.target.value }))} placeholder="e.g. John Smith (VP IT), Sarah Lee (SAP Program Manager)"/>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div className="lbl">Notes / Context</div>
+                <textarea className="inp" rows={3} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="Procurement preferences, pain points, relationship history, special requirements..."/>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn bg" onClick={() => { setShowForm(false); setEditing(null); }}>Cancel</button>
+              <button className="btn bp" onClick={save}>Save Profile</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Reusable Document Upload + Company Profile Panel ─────────────────────────
+// Used by SOW, RFP, Resource Planner — sits above the form as a collapsible section
+
+function DocUploadPanel({ docData, setDocData, companyProfile, setCompanyProfile, onAnalyze, analyzing, label = 'Upload Reference Document' }) {
+  const [expanded, setExpanded]       = useState(true);
+  const [showProfileModal, setShowPM] = useState(false);
+  const [dragging, setDragging]       = useState(false);
+  const [analysisHint, setHint]       = useState('');
+
+  const handleFile = async (file) => {
+    try {
+      const data = await extractDocText(file);
+      setDocData(data);
+      setHint(`✓ ${file.name} loaded (${(file.size / 1024).toFixed(0)} KB)`);
+    } catch (e) {
+      alert('Could not read file: ' + e.message);
+    }
+  };
+
+  const handleDrop = e => {
+    e.preventDefault(); setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <>
+      <div style={{ marginBottom: 16 }}>
+        {/* Header toggle */}
+        <div onClick={() => setExpanded(x => !x)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '10px 14px', background: '#060d1c', border: '1px solid #1a2d45', borderRadius: expanded ? '8px 8px 0 0' : 8, marginBottom: expanded ? 0 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14 }}>📎</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>Upload Document + Company Profile</span>
+            {(docData || companyProfile) && <span className="bdg" style={{ background: '#34d39922', color: '#34d399', fontSize: 9 }}>Active</span>}
+          </div>
+          <span style={{ fontSize: 11, color: '#334155' }}>{expanded ? '▲ Collapse' : '▼ Expand'}</span>
+        </div>
+
+        {expanded && (
+          <div style={{ padding: '14px 16px', background: '#060d1c', border: '1px solid #1a2d45', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+
+              {/* Document Upload */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+                <label
+                  style={{ display: 'block', border: `2px dashed ${dragging ? '#0284c7' : docData ? '#34d399' : '#1a2d45'}`, borderRadius: 8, padding: '14px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: docData ? '#021f14' : dragging ? '#0c2340' : '#070c18' }}
+                  onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={handleDrop}>
+                  <input type="file" accept=".pdf,.txt,.doc,.docx,.csv,.md" style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files[0]; if (f) handleFile(f); }} />
+                  {docData ? (
+                    <div>
+                      <div style={{ fontSize: 18, marginBottom: 4 }}>✅</div>
+                      <div style={{ fontSize: 11, color: '#34d399', fontWeight: 600 }}>{docData.name}</div>
+                      <div style={{ fontSize: 9, color: '#15803d' }}>{docData.type === 'pdf' ? 'PDF — full vision analysis' : 'Text extracted'}</div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 20, marginBottom: 6 }}>📄</div>
+                      <div style={{ fontSize: 11, color: '#3d5a7a' }}>Drop or click to upload</div>
+                      <div style={{ fontSize: 9, color: '#1e3a5f', marginTop: 3 }}>PDF · DOCX · TXT · CSV</div>
+                    </div>
+                  )}
+                </label>
+                {docData && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <button className="btn bp" style={{ flex: 1, justifyContent: 'center', fontSize: 11 }}
+                      onClick={onAnalyze} disabled={analyzing}>
+                      {analyzing ? '🔍 Analyzing...' : '🔍 Analyze & Auto-Fill Form'}
+                    </button>
+                    <button className="btn br" style={{ fontSize: 11, padding: '4px 8px' }}
+                      onClick={() => { setDocData(null); setHint(''); }}>✕</button>
+                  </div>
+                )}
+                {analysisHint && <div style={{ fontSize: 10, color: '#34d399', marginTop: 6 }}>{analysisHint}</div>}
+                <div style={{ fontSize: 10, color: '#1e3a5f', marginTop: 8 }}>
+                  Upload a client's SOW, RFP, requirements doc, or project brief — AI will extract key info and pre-fill the form
+                </div>
+              </div>
+
+              {/* Company Profile */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Company Profile</div>
+                  <button className="btn bg" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => setShowPM(true)}>
+                    {companyProfile ? '✏️ Change' : '+ Select / Add'}
+                  </button>
+                </div>
+
+                {companyProfile ? (
+                  <div style={{ padding: '12px', background: '#0a1a2e', borderRadius: 8, border: '1px solid #0369a133' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>{companyProfile.name}</div>
+                    <div style={{ fontSize: 10, color: '#3d5a7a', marginBottom: 4 }}>{companyProfile.industry} · {companyProfile.size} · {companyProfile.hq}</div>
+                    {companyProfile.sapLandscape && <div style={{ fontSize: 10, color: '#475569' }}>SAP: {companyProfile.sapLandscape}</div>}
+                    {companyProfile.budget && <div style={{ fontSize: 10, color: '#f59e0b', marginTop: 3 }}>Budget: {companyProfile.budget}</div>}
+                    {companyProfile.notes && <div style={{ fontSize: 10, color: '#334155', marginTop: 4, fontStyle: 'italic' }}>{companyProfile.notes.slice(0, 100)}</div>}
+                    <button className="btn bg" style={{ fontSize: 9, marginTop: 8, padding: '2px 8px' }} onClick={() => setCompanyProfile(null)}>✕ Clear</button>
+                  </div>
+                ) : (
+                  <div style={{ padding: '20px 14px', background: '#070c18', borderRadius: 8, border: '1px dashed #1a2d45', textAlign: 'center', cursor: 'pointer' }} onClick={() => setShowPM(true)}>
+                    <div style={{ fontSize: 20, marginBottom: 6 }}>🏢</div>
+                    <div style={{ fontSize: 11, color: '#3d5a7a' }}>Select a company profile</div>
+                    <div style={{ fontSize: 9, color: '#1e3a5f', marginTop: 3 }}>Tailors the output to this company's context, SAP landscape & budget</div>
+                  </div>
+                )}
+                <div style={{ fontSize: 10, color: '#1e3a5f', marginTop: 8 }}>
+                  Company profiles pre-fill client details and help AI generate more targeted, relevant documents
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <CompanyProfileModal open={showProfileModal} onClose={() => setShowPM(false)} onSelect={p => { setCompanyProfile(p); }} />
+    </>
+  );
+}
+
+
+
+function SOWGenerator({ clients, roster, crmDeals, crmAccounts }) {
+  const topClient = clients?.[0]?.name || "";
+  const [docData, setDocData]             = useState(null);
+  const [companyProfile, setCompanyProf]  = useState(null);
+  const [analyzing, setAnalyzing]         = useState(false);
+  const [form, setForm] = useState({
+    client: "", project: "",
+    scope: "Implement SAP BRIM billing engine, configure rate plans, and integrate with existing systems.",
+    deliverables: "BRIM configuration, testing documentation, go-live support, and knowledge transfer.",
+    timeline:"6 months",
+    budget:"450000", consultants:"2 FTE SAP consultants", paymentTerms:"Net 30",
+    assumptions:"Client will provide system access, sandbox environment, and dedicated SMEs."
+  });
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [validErr, setValidErr] = useState("");
+
+  // Populate client/project once clients load from Supabase
+  useEffect(() => {
+    if (clients?.length && !form.client) {
+      const name = clients[0].name;
+      setForm(p => ({ ...p, client: name, project: name + " SAP Implementation" }));
+    }
+  }, [clients]);
+
+  const f = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  // Auto-fill form from uploaded document
+  const analyzeDoc = async () => {
+    if (!docData) return;
+    setAnalyzing(true);
+    try {
+      let extracted = "";
+      const system = "You are a document analyst. Extract key project information and return ONLY valid JSON.";
+      const prompt = `Extract project details from this document and return JSON:
+{"client":"","project":"","scope":"","deliverables":"","timeline":"","budget":"","consultants":"","assumptions":""}`;
+      await callClaudeWithDoc(system, prompt, docData, txt => { extracted += txt; }, 800);
+      const parsed = JSON.parse(extracted.replace(/```json|```/g,'').trim());
+      setForm(f => ({
+        ...f,
+        client:      parsed.client      || (companyProfile?.name) || f.client,
+        project:     parsed.project     || f.project,
+        scope:       parsed.scope       || f.scope,
+        deliverables:parsed.deliverables|| f.deliverables,
+        timeline:    parsed.timeline    || f.timeline,
+        budget:      parsed.budget?.replace(/[$,]/g,'') || f.budget,
+        consultants: parsed.consultants || f.consultants,
+        assumptions: parsed.assumptions || f.assumptions,
+      }));
+      if (companyProfile && !form.client) setForm(f => ({...f, client: companyProfile.name}));
+    } catch(e) { console.error('Doc analysis failed:', e); }
+    setAnalyzing(false);
+  };
+
+  const generate = async () => {
+    if (!form.client || !form.project || !form.scope) {
+      setValidErr("Please fill in Client Name, Project Name, and Scope of Work.");
+      return;
+    }
+    setValidErr(""); setLoading(true); setOutput("");
+    const cpCtx = companyProfile ? `
+Company Context:
+- Industry: ${companyProfile.industry}
+- Size: ${companyProfile.size}
+- SAP Landscape: ${companyProfile.sapLandscape}
+- Budget range: ${companyProfile.budget}
+- Notes: ${companyProfile.notes}
+` : "";
+    const system = `You are a professional IT consulting contract writer for Ziksatech, a WBE/HUB/WOSB certified SAP consulting firm. 
+Write formal, detailed Statements of Work tailored to the specific client. Use professional language. Include all standard SOW sections.
+Format with clear headers using ## for sections. Be specific and detailed.`;
+    const prompt = `Write a complete Statement of Work for:
+Client: ${form.client}
+Project: ${form.project}
+Scope: ${form.scope}
+Key Deliverables: ${form.deliverables}
+Timeline: ${form.timeline}
+Budget: ${form.budget ? "$"+form.budget : "TBD"}
+Consultants: ${form.consultants}
+Payment Terms: ${form.paymentTerms}
+Assumptions: ${form.assumptions}
+${cpCtx}
+Include: Executive Summary, Project Scope, Deliverables, Timeline & Milestones, 
+Resource Requirements, Pricing & Payment, Assumptions & Dependencies, 
+Change Management Process, Acceptance Criteria, Signatures section.`;
+    if (docData) {
+      await callClaudeWithDoc(system, prompt, docData, txt => setOutput(p => p + txt), 3000);
+    } else {
+      await callClaude(system, prompt, txt => setOutput(txt));
+    }
+    setLoading(false);
+  };
+  const [showPreview, setShowPreview] = useState(false);
+  const previewFields = [
+    {label:"Client",value:form.client},{label:"Project",value:form.project},
+    {label:"Scope",value:form.scope},{label:"Deliverables",value:form.deliverables},
+    {label:"Duration",value:form.duration},{label:"Budget Range",value:form.budget},
+    {label:"Engagement Type",value:form.type},{label:"Assumptions",value:form.assumptions},
+  ];
+
+  const copyOutput = () => { navigator.clipboard.writeText(output); };
+
+  return (
+    <div>
+      <DocUploadPanel
+        docData={docData} setDocData={setDocData}
+        companyProfile={companyProfile} setCompanyProfile={setCompanyProf}
+        onAnalyze={analyzeDoc} analyzing={analyzing}
+        label="Upload Client Document (requirements, project brief, existing SOW)"/>
+    <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:20,alignItems:"start"}}>
+      <div>
+        <PH title="SOW Generator" sub="AI-powered Statement of Work"/>
+        <div className="card" style={{padding:"20px"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>Project Details</div>
+          <FF label="Client Name *"><input className="inp" value={form.client} onChange={f("client")} placeholder="HOPE-IDI / AT&T..."/></FF>
+          <FF label="Project Name *"><input className="inp" value={form.project} onChange={f("project")} placeholder="SAP BRIM Phase 3 Implementation"/></FF>
+          <FF label="Scope of Work *"><textarea className="inp" rows={3} value={form.scope} onChange={f("scope")} placeholder="Implement SAP BRIM billing engine, configure rate plans..."/></FF>
+          <FF label="Key Deliverables"><textarea className="inp" rows={2} value={form.deliverables} onChange={f("deliverables")} placeholder="BRIM configuration, testing docs, go-live support..."/></FF>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <FF label="Timeline"><input className="inp" value={form.timeline} onChange={f("timeline")} placeholder="6 months (Q2-Q3 2026)"/></FF>
+            <FF label="Budget ($)"><input className="inp" type="number" value={form.budget} onChange={f("budget")} placeholder="450000"/></FF>
+          </div>
+          <FF label="Consultants"><input className="inp" value={form.consultants} onChange={f("consultants")} placeholder="2 FTE BRIM consultants"/></FF>
+          <FF label="Payment Terms">
+            <select className="inp" value={form.paymentTerms} onChange={f("paymentTerms")}>
+              {["Net 30","Net 45","Net 60","Monthly milestone","50% upfront / 50% delivery"].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </FF>
+          <FF label="Assumptions / Dependencies"><textarea className="inp" rows={2} value={form.assumptions} onChange={f("assumptions")} placeholder="Client will provide system access, sandbox environment..."/></FF>
+          {validErr && <div style={{color:"#ef4444",fontSize:12,padding:"8px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #7f1d1d"}}>{validErr}</div>}
+          <button onClick={generate} disabled={loading||!form.client||!form.project||!form.scope}
+            style={{width:"100%",padding:"11px",marginTop:8,background:loading?"#0a1826":"linear-gradient(135deg,#0369a1,#0284c7)",
+              border:"none",borderRadius:8,color:"#fff",fontSize:13,fontWeight:700,cursor:loading?"wait":"pointer"}}>
+            {loading ? "✍️ Generating SOW..." : "✨ Generate SOW with AI"}
+          </button>
+          <button className="btn bg" style={{color:"#7dd3fc",fontSize:13,fontWeight:700,cursor:"pointer",width:"100%",marginTop:6}}
+            onClick={()=>setShowPreview(true)} disabled={loading}>
+            👁 Preview Before Generating
+          </button>
+          <PreviewModal open={showPreview} onClose={()=>setShowPreview(false)} onConfirm={()=>{setShowPreview(false);generate();}}
+            title="Statement of Work" fields={previewFields} loading={loading}/>
+        </div>
+      </div>
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:16,fontWeight:700,color:"#e2e8f0"}}>Generated SOW</div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {output && <button onClick={copyOutput} style={{background:"#0a1120",border:"1px solid #1a2d45",borderRadius:7,color:"#94a3b8",fontSize:11,padding:"5px 14px",cursor:"pointer"}}>📋 Copy</button>}
+            {output && <ExportButtons data={{sowTitle:form?.client+" SOW",content:output,executiveSummary:output.split("\n").slice(0,3).join(" "),whyZiksatech:"Ziksatech is a WBE/HUB/WOSB certified SAP consulting firm."}} type="sow"/>}
+          </div>
+        </div>
+        <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"20px",minHeight:500,fontFamily:"Georgia,serif",fontSize:13,lineHeight:1.8,color:"#cbd5e1",whiteSpace:"pre-wrap",overflowY:"auto",maxHeight:"75vh"}}>
+          {!output && !loading && <div style={{color:"#334155",textAlign:"center",padding:"80px 0"}}>Fill in the form and click Generate to create your SOW</div>}
+          {loading && !output && <div style={{color:"#475569",textAlign:"center",padding:"80px 0"}}>✍️ AI is writing your Statement of Work...</div>}
+          {output && output.split('\n').map((line,i)=>{
+            if(line.startsWith('## ')) return <div key={i} style={{fontSize:15,fontWeight:700,color:"#38bdf8",marginTop:20,marginBottom:6,borderBottom:"1px solid #1a2d45",paddingBottom:4}}>{line.slice(3)}</div>;
+            if(line.startsWith('# ')) return <div key={i} style={{fontSize:18,fontWeight:800,color:"#e2e8f0",marginBottom:10}}>{line.slice(2)}</div>;
+            if(line.startsWith('**') && line.endsWith('**')) return <div key={i} style={{fontWeight:700,color:"#cbd5e1",marginTop:6}}>{line.slice(2,-2)}</div>;
+            if(line.startsWith('- ')) return <div key={i} style={{paddingLeft:16,color:"#94a3b8"}}>• {line.slice(2)}</div>;
+            return <div key={i} style={{marginBottom:line===''?8:0,color:line===''?"transparent":"#94a3b8"}}>{line||"\u200b"}</div>;
+          })}
+        </div>
+      </div>
+    </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RFP GENERATOR — AI-powered Request for Proposal
+// ═══════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DOCUMENT EXPORT UTILITIES — Word / PowerPoint / Excel / PDF
+// Uses pptxgenjs (PPTX), docx (DOCX), and SheetJS (XLSX) via dynamic load
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Dynamic script loader
+const loadScript = (src) => new Promise((resolve, reject) => {
+  if (document.querySelector(`script[src="${src}"]`)) return resolve();
+  const s = document.createElement("script"); s.src = src;
+  s.onload = () => resolve();
+  s.onerror = (e) => reject(new Error(`Failed to load script: ${src.split('/').pop()}`));
+  document.head.appendChild(s);
+});
+
+// ── PPTX Export ─────────────────────────────────────────────────────────────
+const exportToPPTX = async (data, type="deck") => {
+  // Uses jsPDF to generate a branded presentation-style PDF (slide per page)
+  // Much more reliable than pptxgenjs which has no stable browser CDN build
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) throw new Error("jsPDF failed to load.");
+
+  const doc = new jsPDF({ orientation:"landscape", unit:"pt", format:[792,446] }); // 16:9 slide
+  const NAVY=[13,27,42], GOLD=[201,168,76], WHITE=[240,244,250], BLUE=[30,96,145], LGRAY=[200,214,228];
+  const W=792, H=446;
+
+  const slide = (bgColor=NAVY) => {
+    doc.addPage([W,H],"landscape");
+    doc.setFillColor(...bgColor); doc.rect(0,0,W,H,"F");
+    doc.setFillColor(...GOLD); doc.rect(0,0,W,5,"F"); // top gold strip
+    doc.setFillColor(...GOLD); doc.rect(0,H-5,W,5,"F"); // bottom gold strip
+  };
+  const title = (text,y,size=28,color=WHITE) => {
+    doc.setFont("helvetica","bold"); doc.setFontSize(size); doc.setTextColor(...color);
+    doc.text(text||"",40,y);
+  };
+  const body = (text,x,y,maxW,size=12,color=LGRAY) => {
+    doc.setFont("helvetica","normal"); doc.setFontSize(size); doc.setTextColor(...color);
+    doc.text(String(text||""),x,y,{maxWidth:maxW,lineHeightFactor:1.4});
+  };
+  const badge = (text,x,y,bgColor=BLUE) => {
+    doc.setFillColor(...bgColor); doc.roundedRect(x,y-11,doc.getTextWidth(text||"")+16,16,4,4,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...WHITE);
+    doc.text(text||"",x+8,y);
+  };
+  const footer = (pageN) => {
+    doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(80,100,120);
+    doc.text("Ziksatech, LLC | WBE/HUB/WOSB Certified SAP Consulting | manju@ziksatech.com",W/2,H-12,{align:"center"});
+    if(pageN) doc.text(String(pageN),W-20,H-12,{align:"right"});
+  };
+
+  // ── Delete the auto-added blank first page ──────────────────────────────
+  doc.deletePage(1);
+
+  if(type==="deck" && data.sections) {
+    // TITLE SLIDE
+    doc.addPage([W,H],"landscape");
+    doc.setFillColor(...NAVY); doc.rect(0,0,W,H,"F");
+    doc.setFillColor(...GOLD); doc.rect(0,0,W,6,"F");
+    doc.setFillColor(...GOLD); doc.rect(0,H-6,W,6,"F");
+    doc.setFillColor(30,55,80); doc.rect(0,80,W,H-160,"F"); // content band
+    doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...GOLD);
+    doc.text("ZIKSATECH, LLC", 40, 50); doc.text("WBE | HUB | WOSB CERTIFIED", W-40, 50, {align:"right"});
+    doc.setFont("helvetica","bold"); doc.setFontSize(30); doc.setTextColor(...WHITE);
+    doc.text(data.deckTitle||"Capability Overview", 40, 130, {maxWidth:W-80});
+    doc.setFont("helvetica","italic"); doc.setFontSize(16); doc.setTextColor(...GOLD);
+    doc.text(data.tagline||"", 40, 170, {maxWidth:W-80});
+    doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(180,200,220);
+    doc.text(data.executiveSummary||"", 40, 210, {maxWidth:W-80, lineHeightFactor:1.5});
+    if(data._target) { badge(data._target, 40, 330, [3,105,161]); }
+    (data._focus||[]).slice(0,4).forEach((f,i) => badge(f, 40+i*150, 350, [20,50,80]));
+    doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(80,100,120);
+    doc.text("Ziksatech, LLC | manju@ziksatech.com | Plano, TX", W/2, H-12, {align:"center"});
+
+    // WHY NOW SLIDE
+    if(data.whyNow) {
+      slide();
+      title("WHY NOW", 50, 11, [...GOLD]);
+      title(`Why ${data._target||"Your Organization"} — Now`, 90, 22);
+      doc.setFillColor(15,40,65); doc.roundedRect(30,105,W-60,200,8,8,"F");
+      body(data.whyNow, 50, 140, W-100, 14, [200,220,240]);
+      footer(2);
+    }
+
+    // CONTENT SLIDES
+    (data.sections||[]).forEach((s,i) => {
+      slide();
+      doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...GOLD);
+      doc.text(`0${i+2}`, 40, 50);
+      doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...GOLD);
+      doc.text((s.title||"").toUpperCase(), 65, 50);
+      title(s.headline||"", 85, 20);
+      const bullets = (s.bullets||[]);
+      bullets.forEach((b,j) => {
+        const y = 120 + j*24;
+        if(y < 360) {
+          doc.setFillColor(...BLUE); doc.rect(40,y-7,4,14,"F");
+          body(b, 52, y, W-100, 11, [210,225,240]);
+        }
+      });
+      if(s.proof) {
+        doc.setFillColor(2,31,20); doc.roundedRect(30,370,W-60,40,6,6,"F");
+        doc.setFillColor(52,211,153); doc.rect(30,370,4,40,"F");
+        body("📊  "+s.proof, 44, 396, W-80, 10, [52,211,153]);
+      }
+      footer(i+3);
+    });
+
+    // WHY ZIKSATECH SLIDE
+    slide([10,20,35]);
+    title("WHY ZIKSATECH, LLC", 50, 14, [...GOLD]);
+    title("Your Competitive Advantage", 85, 22);
+    (data.differentiators||[]).forEach((d,i) => {
+      const y = 125 + i*42;
+      if(y < 400) {
+        doc.setFillColor(20,50,80); doc.roundedRect(30,y-18,W-60,34,6,6,"F");
+        doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(...GOLD);
+        doc.text("✓", 50, y); 
+        doc.setFont("helvetica","normal"); doc.setTextColor(...WHITE);
+        doc.text(d||"", 68, y, {maxWidth:W-120});
+      }
+    });
+    footer(""+((data.sections||[]).length+4));
+
+    // CTA SLIDE
+    slide([10,20,30]);
+    doc.setFillColor(3,105,161); doc.rect(0,H/2-60,W,120,"F");
+    title("NEXT STEPS", 170, 10, [...GOLD]);
+    title(data.callToAction||"Let's Build This Together", 210, 26);
+    doc.setFont("helvetica","italic"); doc.setFontSize(14); doc.setTextColor(...GOLD);
+    doc.text(data.suggestedNextStep||"Schedule a 30-minute discovery call", W/2, 260, {align:"center"});
+    doc.setFillColor(...GOLD); doc.roundedRect(W/2-160,290,320,36,8,8,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(...NAVY);
+    doc.text("manju@ziksatech.com  ·  (972) 555-0100", W/2, 313, {align:"center"});
+    footer("");
+
+  } else if(type==="prospect" && data.company) {
+    // PROSPECT INTEL SLIDES
+    // Slide 1: Overview
+    doc.addPage([W,H],"landscape");
+    doc.setFillColor(...NAVY); doc.rect(0,0,W,H,"F");
+    doc.setFillColor(...GOLD); doc.rect(0,0,W,6,"F"); doc.setFillColor(...GOLD); doc.rect(0,H-6,W,6,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...GOLD);
+    doc.text("PROSPECT INTELLIGENCE REPORT", 40, 35);
+    title(data.company||"", 70, 32); 
+    doc.setFont("helvetica","normal"); doc.setFontSize(12); doc.setTextColor(120,160,200);
+    doc.text(`${data.industry||""} · ${data.headquarters||""} · ${data.employees||""} employees · ${data.revenue||""}`, 40, 100);
+    // Fit scores bar chart
+    const scores = data.fitScores||{};
+    const scoreItems = [["BRIM",scores.brim],["IS-U",scores.isU],["S/4HANA",scores.s4Migration],["Databricks",scores.databricks],["Managed Svcs",scores.managedServices]];
+    scoreItems.filter(s=>s[1]).forEach(([label,val],i) => {
+      const y = 130+i*40; const barW = (val||0)/100*(W-220);
+      const col = val>=70?[52,211,153]:val>=50?[245,158,11]:[248,113,113];
+      doc.setFillColor(15,30,50); doc.rect(40,y-14,W-80,24,"F");
+      doc.setFillColor(...col); doc.rect(40,y-14,barW,24,"F");
+      doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...WHITE);
+      doc.text(label,50,y); doc.text((val||0)+"%",W-50,y,{align:"right"});
+    });
+    doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.setTextColor(245,158,11);
+    doc.text("ECC 2027 Risk: "+(data.sapLandscape?.ecc2027Risk||"—"), 40, 360);
+    doc.text("Deal Est: "+(data.estimatedDealSize||"—")+" · "+(data.urgency||""), 40, 380);
+    footer(1);
+
+    // Slide 2: Outreach
+    slide();
+    title("OUTREACH STRATEGY", 50, 16, [...GOLD]);
+    doc.setFillColor(15,40,65); doc.roundedRect(30,70,W-60,70,6,6,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...GOLD); doc.text("EMAIL SUBJECT",50,95);
+    body(data.emailSubject||"",50,115,W-100,12,[200,220,240]);
+    doc.setFillColor(15,40,65); doc.roundedRect(30,150,W-60,120,6,6,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...GOLD); doc.text("OUTREACH ANGLE",50,175);
+    body(data.outreachAngle||"",50,200,W-100,11,[200,220,240]);
+    doc.setFillColor(3,105,161); doc.roundedRect(30,280,W-60,50,6,6,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(...GOLD); doc.text("⚡ NEXT STEP:",50,308);
+    body(data.nextStep||"",180,308,W-240,12,[200,220,240]);
+    footer(2);
+
+  } else {
+    // Generic slides from content string
+    slide();
+    const lines = (data.content||data.sowTitle||"No content").split("\n");
+    let y = 60, page = 1;
+    lines.forEach(line => {
+      if(y > 400) { slide(); footer(++page); y = 60; }
+      if(line.startsWith("## ")) {
+        doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(...GOLD);
+        doc.text(line.replace("## ",""),40,y); y+=28;
+      } else if(line.startsWith("# ")) {
+        doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.setTextColor(...WHITE);
+        doc.text(line.replace("# ",""),40,y); y+=32;
+      } else if(line.trim()) {
+        doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(180,200,220);
+        const wrapped = doc.splitTextToSize(line,W-80);
+        doc.text(wrapped,40,y); y+=wrapped.length*14;
+      } else { y+=8; }
+    });
+    footer(page);
+  }
+
+  const filename = `Ziksatech-${type}-${(data.deckTitle||data.company||data.sowTitle||"slides").replace(/[^a-zA-Z0-9]/g,"-").slice(0,40)}-${new Date().toISOString().slice(0,10)}.pdf`;
+  doc.save(filename);
+  return filename;
+};
+
+
+// ── DOCX Export ─────────────────────────────────────────────────────────────
+const exportToDOCX = async (data, type="sow") => {
+  await loadScript("https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.js");
+  if (!window.docx) throw new Error("docx library failed to load. Try again.");
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+          HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType, PageBreak } = window.docx;
+
+  const GOLD_COLOR = "C9A84C", NAVY_COLOR = "0D1B2A", BLUE_COLOR = "1E6091";
+
+  const h1 = (text) => new Paragraph({ text: text||"", heading: HeadingLevel.HEADING_1, spacing:{before:320,after:160} });
+  const h2 = (text) => new Paragraph({ text: text||"", heading: HeadingLevel.HEADING_2, spacing:{before:240,after:120} });
+  const h3 = (text) => new Paragraph({ text: text||"", heading: HeadingLevel.HEADING_3, spacing:{before:160,after:80} });
+  const body = (text) => new Paragraph({ children:[new TextRun({text:String(text||""),size:22,font:"Calibri"})], spacing:{after:160} });
+  const bullet = (text) => new Paragraph({ children:[new TextRun({text:"• "+String(text||""),size:22,font:"Calibri"})], spacing:{after:80}, indent:{left:360} });
+  const divider = () => new Paragraph({ border:{bottom:{color:GOLD_COLOR,space:1,style:BorderStyle.SINGLE,size:6}}, spacing:{after:240} });
+  const pageBreak = () => new Paragraph({ children:[new PageBreak()] });
+  const coverLine = (text,size,color,bold=false) => new Paragraph({
+    children:[new TextRun({text:String(text||""),size,bold,color:color||NAVY_COLOR,font:"Calibri"})],
+    alignment:AlignmentType.CENTER, spacing:{after:120}
+  });
+
+  // ── Parse markdown content into structured DOCX ──────────────────────────
+  // Handles both structured data objects AND plain markdown text (data.content)
+  const parseMarkdown = (text) => {
+    const children = [];
+    if(!text) return children;
+    const lines = text.split("\n");
+    lines.forEach(line => {
+      if(line.startsWith("# "))       children.push(h1(line.slice(2).trim()));
+      else if(line.startsWith("## ")) children.push(h2(line.slice(3).trim()));
+      else if(line.startsWith("### "))children.push(h3(line.slice(4).trim()));
+      else if(line.startsWith("- ")||line.startsWith("* ")) children.push(bullet(line.slice(2).trim()));
+      else if(line.startsWith("**")||line.startsWith("__")) children.push(body(line.replace(/\*\*|__/g,"").trim()));
+      else if(line.trim() === "---" || line.trim() === "___") children.push(divider());
+      else if(line.trim()) children.push(body(line.trim()));
+    });
+    return children;
+  };
+
+  let children = [];
+
+  // ── COVER PAGE (all doc types) ────────────────────────────────────────────
+  const docTitle = data.sowTitle || data.title || (type==="sow"?"Statement of Work":type==="rfp"?"RFP Response":"Document");
+  const clientName = data.company || "";
+  
+  children.push(new Paragraph({spacing:{before:720}}));
+  children.push(coverLine("ZIKSATECH, LLC", 48, NAVY_COLOR, true));
+  children.push(coverLine("WBE | HUB | WOSB Certified SAP Consulting", 20, "666666", false));
+  children.push(new Paragraph({spacing:{before:240}}));
+  children.push(coverLine(docTitle, 36, GOLD_COLOR, true));
+  if(clientName) children.push(coverLine(clientName, 24, BLUE_COLOR, true));
+  children.push(coverLine(`Prepared: ${new Date().toLocaleDateString()}  ·  Plano, TX`, 18, "888888"));
+  children.push(coverLine("manju@ziksatech.com  |  ziksatech.com", 18, "888888"));
+  children.push(pageBreak());
+
+  // ── CONTENT: use markdown parser for content field, structured for parsed data ──
+  if(data.content && typeof data.content === "string" && data.content.length > 50) {
+    // AI-generated markdown text — parse it into proper Word formatting
+    children.push(...parseMarkdown(data.content));
+  } else {
+    // Structured data fields (prospect intel, etc.)
+    if(data.executiveSummary) {
+      children.push(h1("Executive Summary"));
+      children.push(body(data.executiveSummary));
+      children.push(divider());
+    }
+    if(data.scope) { children.push(h1("Scope of Work")); children.push(body(data.scope)); }
+    if(data.phases?.length) {
+      children.push(h1("Project Phases"));
+      data.phases.forEach((phase,i)=>{
+        children.push(h2(phase.name||`Phase ${i+1}`));
+        (phase.objectives||[]).forEach(o=>children.push(bullet(o)));
+        (phase.deliverables||[]).forEach(d=>children.push(bullet(d)));
+        if(phase.duration) children.push(body("Duration: "+phase.duration));
+      });
+    }
+    if(data.assumptions?.length) {
+      children.push(h1("Assumptions"));
+      data.assumptions.forEach(a=>children.push(bullet(a)));
+    }
+    if(data.exclusions?.length) {
+      children.push(h1("Exclusions"));
+      data.exclusions.forEach(e=>children.push(bullet(e)));
+    }
+    // Prospect Intel fields
+    if(data.company) {
+      children.push(h1("Company Overview"));
+      [["Industry",data.industry],["Headquarters",data.headquarters],["Employees",data.employees],["Revenue",data.revenue]].filter(([,v])=>v).forEach(([k,v])=>children.push(body(`${k}: ${v}`)));
+    }
+    if(data.sapLandscape) {
+      children.push(h1("SAP Landscape & Risk"));
+      children.push(body("ECC 2027 Risk: "+(data.sapLandscape.ecc2027Risk||"—")));
+      children.push(body(data.sapLandscape.ecc2027RiskReason||""));
+    }
+    if(data.keyTargets?.length) {
+      children.push(h1("Key Contacts to Target"));
+      data.keyTargets.forEach(t=>children.push(bullet(`${t.title} (${t.dept}): ${t.why}`)));
+    }
+    if(data.outreachAngle) {
+      children.push(h1("Outreach Strategy"));
+      if(data.emailSubject) { children.push(h2("Email Subject Line")); children.push(body(data.emailSubject)); }
+      if(data.openingLine)  { children.push(h2("Opening Line"));       children.push(body(data.openingLine)); }
+      children.push(h2("Full Outreach Angle")); children.push(body(data.outreachAngle));
+    }
+    if(data.nextStep) { children.push(h1("Next Step")); children.push(body(data.nextStep)); }
+  }
+
+  // ── SIGNATURE (SOW only) ──────────────────────────────────────────────────
+  if(type==="sow") {
+    children.push(pageBreak());
+    children.push(h1("Acceptance & Signature"));
+    children.push(body("By signing below, both parties agree to the terms outlined in this Statement of Work."));
+    [["Client",clientName||""],["Ziksatech, LLC","Manju Murthy, CEO"]].forEach(([party,name])=>{
+      children.push(new Paragraph({children:[new TextRun({text:`${party}: `,bold:true,font:"Calibri",size:22}),new TextRun({text:name,font:"Calibri",size:22})],spacing:{before:400}}));
+      children.push(new Paragraph({children:[new TextRun({text:"Signature: ___________________________    Date: ____________",font:"Calibri",size:20,color:"888888"})],spacing:{before:80,after:240}}));
+    });
+  }
+
+  const doc = new Document({ sections:[{children}], creator:"Ziksatech OPS Center", description:"Generated by Ziksatech AI" });
+  const buffer = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(buffer);
+  const a = document.createElement("a");
+  const filename = `Ziksatech-${type}-${(data.sowTitle||data.company||data.title||"doc").replace(/[^a-zA-Z0-9]/g,"-").slice(0,40)}-${new Date().toISOString().slice(0,10)}.docx`;
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  return filename;
+};
+
+
+// ── XLSX Export ─────────────────────────────────────────────────────────────
+const exportToXLSX = async (data, type="prospect") => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+  const XLSX = window.XLSX;
+  if (!XLSX) throw new Error("SheetJS (XLSX) failed to load. Try again.");
+  let wb;
+
+  if(type==="prospect") {
+    const ws1 = XLSX.utils.aoa_to_sheet([
+      ["PROSPECT INTELLIGENCE REPORT — "+data.company],
+      ["Generated by Ziksatech OPS Center","",new Date().toLocaleDateString()],
+      [],
+      ["COMPANY OVERVIEW"],
+      ["Industry",data.industry||""],
+      ["Headquarters",data.headquarters||""],
+      ["Employees",data.employees||""],
+      ["Revenue",data.revenue||""],
+      [],
+      ["SAP LANDSCAPE"],
+      ["Current Systems",(data.sapLandscape?.currentSystems||[]).join(", ")],
+      ["ECC 2027 Risk",data.sapLandscape?.ecc2027Risk||""],
+      ["ECC Risk Reason",data.sapLandscape?.ecc2027RiskReason||""],
+      ["S/4 Migration",data.sapLandscape?.s4Migration||""],
+      [],
+      ["FIT SCORES"],
+      ["BRIM / Revenue Mgmt",data.fitScores?.brim||0],
+      ["IS-U / Utilities",data.fitScores?.isU||0],
+      ["S/4HANA Migration",data.fitScores?.s4Migration||0],
+      ["Databricks / Data",data.fitScores?.databricks||0],
+      ["Managed Services",data.fitScores?.managedServices||0],
+      ["Overall BRIM Fit",data.brimFitScore||0],
+      [],
+      ["KEY CONTACTS"],
+      ...(data.keyTargets||[]).map(t=>[t.title,t.dept,t.why]),
+      [],
+      ["DEAL INTELLIGENCE"],
+      ["Estimated Deal Size",data.estimatedDealSize||""],
+      ["Deal Type",data.dealType||""],
+      ["Urgency",data.urgency||""],
+      [],
+      ["OUTREACH"],
+      ["Email Subject",data.emailSubject||""],
+      ["Opening Line",data.openingLine||""],
+      ["Outreach Angle",data.outreachAngle||""],
+      ["Next Step",data.nextStep||""],
+    ]);
+    ws1["!cols"] = [{wch:25},{wch:60}];
+    wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,"Prospect Intel",ws1);
+  }
+
+  const filename = `Ziksatech-${type}-${(data.company||"export").replace(/[^a-zA-Z0-9]/g,"-")}-${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  return filename;
+};
+
+// ── Export Button Component ──────────────────────────────────────────────────
+// Safe export wrapper — catches CDN load failures gracefully
+const safeExport = async (fn) => {
+  try { await fn(); }
+  catch(e) {
+    const msg = e?.message || (e instanceof Event ? 'CDN script failed to load' : String(e));
+    alert('Export failed: '+msg+'. Check internet connection and try again.');
+    console.error('Export error:', e);
+  }
+};
+
+function ExportButtons({ data, type, label="Export" }) {
+  const [exporting, setExporting] = useState(null);
+  const [done, setDone] = useState("");
+
+  const doExport = async (format) => {
+    if(!data) return alert("Generate content first before exporting");
+    setExporting(format);
+    try {
+      let filename;
+      if(format==="pptx") filename = await exportToPPTX(data, type);
+      else if(format==="docx") filename = await exportToDOCX(data, type);
+      else if(format==="xlsx") filename = await exportToXLSX(data, type);
+      setDone(format+" ✅");
+      setTimeout(()=>setDone(""),3000);
+    } catch(e) {
+      const msg = e?.message || (typeof e === 'string' ? e : 'Script failed to load from CDN');
+      alert("Export failed: "+msg+". Check that you have internet access and try again.");
+      console.error("Export error:", e);
+    }
+    setExporting(null);
+  };
+
+  const formats = type==="deck"||type==="prospect"
+    ? [{f:"pptx",icon:"📊",label:"Slides PDF"},{f:"docx",icon:"📄",label:"DOCX"},{f:"xlsx",icon:"📋",label:"XLSX"}]
+    : [{f:"docx",icon:"📄",label:"DOCX"},{f:"pptx",icon:"📊",label:"Slides PDF"}];
+
+  return (
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      {done&&<span style={{fontSize:11,color:"#34d399",marginRight:4}}>{done}</span>}
+      {formats.map(({f,icon,lbl})=>(
+        <button key={f} className="btn bg" style={{fontSize:11,padding:"4px 10px",display:"flex",gap:4,alignItems:"center",
+          borderColor:"#1a3d60",color:"#7dd3fc"}}
+          onClick={()=>doExport(f)} disabled={!!exporting} title={`Export as ${f.toUpperCase()}`}>
+          {exporting===f?"⏳":icon} {f.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PREVIEW MODAL — Shows structured preview before AI generation
+// ═══════════════════════════════════════════════════════════════════════════
+
+function ProspectIntel({ crmLeads, setCrmLeads, addAudit }) {
+  const [company,    setCompany]   = useState("");
+  const [context,    setContext]   = useState("");
+  const [loading,    setLoading]   = useState(false);
+  const [result,     setResult]    = useState(null);
+  const [history,    setHistory]   = useState(()=>{ try{ return JSON.parse(localStorage.getItem("zt-pi-history")||"[]"); }catch{ return []; } });
+  const [activeHist, setActiveHist]= useState(null);
+  const [savedMsg,   setSavedMsg]  = useState("");
+
+  const saveHistory = (item) => {
+    const updated = [item, ...history].slice(0,20);
+    setHistory(updated);
+    localStorage.setItem("zt-pi-history", JSON.stringify(updated));
+  };
+
+  const analyze = async () => {
+    if(!company.trim()) return alert("Enter a company name to analyze");
+    setLoading(true); setResult(null); setActiveHist(null);
+    const systemPrompt = `You are a senior SAP consulting BD analyst at Ziksatech, a certified WBE/HUB/WOSB SAP consulting firm in Plano TX specializing in SAP BRIM, IS-U, S/4HANA migrations, Databricks, and AI solutions.
+
+Analyze the prospect company and return ONLY valid JSON (no markdown):
+{
+  "company": "Company Name",
+  "industry": "Industry",
+  "headquarters": "City, State",
+  "employees": "estimated range",
+  "revenue": "estimated annual revenue",
+  "sapLandscape": {
+    "currentSystems": ["list of likely SAP/ERP systems in use"],
+    "ecc2027Risk": "Critical|High|Medium|Low",
+    "ecc2027RiskReason": "1-2 sentence explanation",
+    "s4Migration": "Planned|Likely|Unlikely|Unknown",
+    "sapModules": ["relevant SAP modules they likely use"]
+  },
+  "brimFitScore": 85,
+  "brimFitReason": "Why BRIM/IS-U/S4HANA is relevant to them",
+  "fitScores": {
+    "brim": 0-100,
+    "isU": 0-100,
+    "s4Migration": 0-100,
+    "databricks": 0-100,
+    "managedServices": 0-100
+  },
+  "keyTargets": [
+    {"title": "VP SAP Solutions", "dept": "IT", "why": "Decision maker for SAP roadmap"},
+    {"title": "CTO", "dept": "Technology", "why": "Budget authority for digital transformation"},
+    {"title": "Director, Revenue Management", "dept": "Finance", "why": "BRIM pain point owner"}
+  ],
+  "outreachAngle": "Specific, compelling 2-3 sentence outreach hook tailored to this company",
+  "emailSubject": "Specific email subject line that would get opened",
+  "openingLine": "Personalized opening sentence for cold outreach",
+  "painPoints": ["Pain point 1", "Pain point 2", "Pain point 3"],
+  "ziksatechValue": "What Ziksatech specifically brings that big 4 firms don't",
+  "competitiveAdvantage": "WBE/HUB angle if applicable to this company",
+  "estimatedDealSize": "$XXX,000 - $XXX,000",
+  "dealType": "Staff Augmentation|Project Implementation|Managed Services|Mixed",
+  "urgency": "Immediate|Q2 2026|H2 2026|2027",
+  "nextStep": "Specific recommended first action to take this week"
+}`;
+
+    const userPrompt = `Analyze this prospect for Ziksatech SAP consulting opportunities:
+Company: ${company.trim()}
+${context.trim() ? "Additional context: "+context.trim() : ""}
+Industry context: This is for a DFW-based SAP staffing & consulting firm targeting $5M+ companies that use or need SAP BRIM, IS-U, S/4HANA, or data engineering.`;
+
+    try {
+      let full = "";
+      await callClaude(systemPrompt, userPrompt, txt => { full = txt; }, 2000);
+      const clean = full.replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(clean);
+      parsed._timestamp = new Date().toISOString();
+      parsed._query = company.trim();
+      setResult(parsed);
+      saveHistory(parsed);
+      addAudit&&addAudit("CRM","Prospect Intel",company.trim(),"AI analysis completed");
+    } catch(e) {
+      setResult({_error: "Analysis failed: "+e.message, _query: company.trim()});
+    }
+    setLoading(false);
+  };
+
+  const saveAsLead = (r) => {
+    if(!r || r._error) return;
+    const newLead = {
+      id:"lead"+Date.now(), name:r.keyTargets?.[0]?.title||"Decision Maker",
+      company:r.company, title:r.keyTargets?.[0]?.title||"",
+      email:"", phone:"", industry:r.industry||"",
+      source:"Prospect Intel", score:r.brimFitScore||70, status:"new",
+      notes:`${r.outreachAngle}
+
+ECC Risk: ${r.sapLandscape?.ecc2027Risk} | Deal: ${r.estimatedDealSize}
+Next: ${r.nextStep}`,
+      linkedIn:"", assignedTo:"Manju", createdDate:TODAY_STR, lastContact:TODAY_STR,
+    };
+    setCrmLeads&&setCrmLeads(ls=>[...(ls||[]),newLead]);
+    setSavedMsg("✅ Saved to CRM Leads!");
+    addAudit&&addAudit("CRM","Lead Created",r.company,"From Prospect Intel");
+    setTimeout(()=>setSavedMsg(""),3000);
+  };
+
+  const display = activeHist || result;
+  const riskColor = {Critical:"#f87171",High:"#f59e0b",Medium:"#fbbf24",Low:"#34d399"};
+  const scoreColor = n => n>=80?"#34d399":n>=60?"#f59e0b":"#f87171";
+
+  return (
+    <div>
+      <PH title="Prospect Intelligence Engine" sub="AI-powered company research · SAP landscape · BRIM fit score · Outreach angles"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:16,alignItems:"start"}}>
+        {/* LEFT: Input + History */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {/* Search card */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🔍 Analyze a Prospect</div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Company Name</div>
+              <input className="inp" value={company} onChange={e=>setCompany(e.target.value)}
+                placeholder="e.g. Capital One, Oncor, CHRISTUS Health"
+                onKeyDown={e=>e.key==="Enter"&&!loading&&analyze()}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div className="lbl">Context (optional)</div>
+              <textarea className="inp" rows={3} value={context} onChange={e=>setContext(e.target.value)}
+                placeholder="e.g. They're on ECC 6.0, upgrading to cloud by 2027. Met at SAP Sapphire. Intro through Nuthan."/>
+            </div>
+            {/* Quick picks */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:10,color:"#3d5a7a",marginBottom:6}}>QUICK PICKS</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {PI_SAMPLE_COMPANIES.slice(0,6).map(co=>(
+                  <button key={co} className="btn bg" style={{fontSize:10,padding:"3px 8px"}}
+                    onClick={()=>setCompany(co)}>{co}</button>
+                ))}
+              </div>
+            </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:13}}
+              onClick={analyze} disabled={loading}>
+              {loading?"⚡ Analyzing...":"⚡ Analyze Prospect"}
+            </button>
+            {loading&&(
+              <div style={{marginTop:12,padding:"10px 14px",background:"#0c1e30",borderRadius:8,fontSize:11,color:"#38bdf8",textAlign:"center"}}>
+                AI is researching {company}…
+              </div>
+            )}
+          </div>
+
+          {/* History */}
+          {history.length>0&&(
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:10}}>RECENT ANALYSES</div>
+              {history.slice(0,8).map((h,i)=>(
+                <div key={i} onClick={()=>{ setActiveHist(h); setResult(null); }}
+                  style={{padding:"8px 10px",borderRadius:7,cursor:"pointer",marginBottom:4,
+                    background:activeHist===h?"#0a1a2e":"#060d1c",
+                    border:`1px solid ${activeHist===h?"#0369a1":"#1a2d45"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{h.company||h._query}</span>
+                    <span className="bdg" style={{fontSize:9,background:scoreColor(h.brimFitScore||0)+"22",color:scoreColor(h.brimFitScore||0)}}>
+                      {h.brimFitScore||"?"}pt
+                    </span>
+                  </div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{h.industry} · {h.sapLandscape?.ecc2027Risk||"?"} ECC Risk</div>
+                </div>
+              ))}
+              {history.length>0&&(
+                <button className="btn bg" style={{fontSize:10,width:"100%",marginTop:6,justifyContent:"center"}}
+                  onClick={()=>{ setHistory([]); localStorage.removeItem("zt-pi-history"); setActiveHist(null); }}>
+                  Clear History
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Results */}
+        <div>
+          {!display&&!loading&&(
+            <div className="card" style={{padding:"60px 40px",textAlign:"center"}}>
+              <div style={{fontSize:40,marginBottom:16}}>🎯</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#334155",marginBottom:8}}>Prospect Intelligence Engine</div>
+              <div style={{fontSize:13,color:"#1e3a5f",marginBottom:20,lineHeight:1.6}}>
+                Enter any company name and get instant AI-powered research:<br/>
+                SAP landscape · ECC 2027 risk · BRIM fit score · Key contacts · Outreach script
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+                {["SAP Landscape Analysis","ECC 2027 Risk Score","BRIM/IS-U Fit","Key Decision Makers","Personalized Outreach","Deal Size Estimate"].map(t=>(
+                  <span key={t} className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:11}}>{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {display&&!display._error&&(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {/* Header row */}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0"}}>{display.company}</div>
+                    <div style={{fontSize:12,color:"#3d5a7a",marginTop:2}}>{display.industry} · {display.headquarters} · {display.employees} employees · {display.revenue}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <ExportButtons data={display} type="prospect"/>
+                    <button className="btn bp" style={{fontSize:12}} onClick={()=>saveAsLead(display)}>
+                      + Save as Lead
+                    </button>
+                    <button className="btn bg" style={{fontSize:12}} onClick={()=>{
+                      setCompany(display.company||"");
+                      setContext(display.outreachAngle||"");
+                      window.setTimeout(()=>{ Array.from(document.querySelectorAll("button")).find(b=>b.textContent.trim()==="SOW Generator")?.click(); },100);
+                    }}>→ SOW Gen</button>
+                  </div>
+                </div>
+                {savedMsg&&<div style={{marginTop:8,color:"#34d399",fontSize:12,fontWeight:600}}>{savedMsg}</div>}
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                {/* SAP Landscape */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>SAP Landscape</div>
+                  <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                    {(display.sapLandscape?.currentSystems||[]).map(s=>(
+                      <span key={s} className="bdg" style={{background:"#0c2340",color:"#7dd3fc",fontSize:10}}>{s}</span>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"8px 10px",background:"#070c18",borderRadius:8,marginBottom:8}}>
+                    <span style={{fontSize:12,color:"#94a3b8"}}>ECC 2027 Risk</span>
+                    <span style={{fontSize:13,fontWeight:700,color:riskColor[display.sapLandscape?.ecc2027Risk]||"#64748b"}}>
+                      {display.sapLandscape?.ecc2027Risk}
+                    </span>
+                  </div>
+                  <div style={{fontSize:11,color:"#475569",lineHeight:1.5}}>{display.sapLandscape?.ecc2027RiskReason}</div>
+                  <div style={{marginTop:10,fontSize:11}}>
+                    <span style={{color:"#3d5a7a"}}>S/4 Migration: </span>
+                    <span style={{color:"#94a3b8",fontWeight:600}}>{display.sapLandscape?.s4Migration}</span>
+                  </div>
+                  <div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {(display.sapLandscape?.sapModules||[]).map(m=>(
+                      <span key={m} className="bdg" style={{background:"#1a2d45",color:"#475569",fontSize:9}}>{m}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Fit Scores */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a78bfa",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>Fit Scores</div>
+                  {[
+                    ["BRIM / Revenue Mgmt", display.fitScores?.brim],
+                    ["IS-U / Utilities",    display.fitScores?.isU],
+                    ["S/4HANA Migration",   display.fitScores?.s4Migration],
+                    ["Databricks / Data",   display.fitScores?.databricks],
+                    ["Managed Services",    display.fitScores?.managedServices],
+                  ].map(([label,score])=>(
+                    <div key={label} style={{marginBottom:8}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                        <span style={{fontSize:11,color:"#64748b"}}>{label}</span>
+                        <span style={{fontSize:11,fontWeight:700,color:scoreColor(score||0)}}>{score||0}%</span>
+                      </div>
+                      <div style={{height:5,background:"#0a1626",borderRadius:3}}>
+                        <div style={{height:5,borderRadius:3,background:scoreColor(score||0),width:(score||0)+"%",transition:"width 0.5s"}}/>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{marginTop:10,padding:"8px 10px",background:"#0c1020",borderRadius:8,border:"1px solid #1a2d45"}}>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:2}}>Overall BRIM Fit</div>
+                    <div style={{fontSize:22,fontWeight:800,color:scoreColor(display.brimFitScore||0)}}>{display.brimFitScore||0}</div>
+                    <div style={{fontSize:10,color:"#475569",marginTop:2}}>{display.brimFitReason}</div>
+                  </div>
+                </div>
+
+                {/* Key Targets */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#34d399",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>Key Decision Makers to Target</div>
+                  {(display.keyTargets||[]).map((t,i)=>(
+                    <div key={i} style={{padding:"10px 12px",background:"#060d1c",borderRadius:8,marginBottom:8,border:"1px solid #1a2d45"}}>
+                      <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{t.title}</div>
+                      <div style={{fontSize:10,color:"#3d5a7a"}}>{t.dept}</div>
+                      <div style={{fontSize:10,color:"#475569",marginTop:4}}>{t.why}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Deal Intelligence */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>Deal Intelligence</div>
+                  {[
+                    ["Estimated Deal Size", display.estimatedDealSize],
+                    ["Deal Type",           display.dealType],
+                    ["Urgency",             display.urgency],
+                  ].map(([l,v])=>(
+                    <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
+                      <span style={{fontSize:11,color:"#475569"}}>{l}</span>
+                      <span style={{fontSize:11,fontWeight:600,color:"#94a3b8"}}>{v||"—"}</span>
+                    </div>
+                  ))}
+                  <div style={{marginTop:12}}>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>Pain Points</div>
+                    {(display.painPoints||[]).map((p,i)=>(
+                      <div key={i} style={{fontSize:11,color:"#475569",marginBottom:4}}>• {p}</div>
+                    ))}
+                  </div>
+                  <div style={{marginTop:10,padding:"8px 10px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a133"}}>
+                    <div style={{fontSize:10,color:"#0284c7",marginBottom:2}}>Ziksatech Advantage</div>
+                    <div style={{fontSize:11,color:"#38bdf8"}}>{display.ziksatechValue}</div>
+                    {display.competitiveAdvantage&&(
+                      <div style={{fontSize:10,color:"#0369a1",marginTop:4}}>🏅 {display.competitiveAdvantage}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Outreach section */}
+              <div className="card" style={{padding:"18px 20px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#f87171",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>📧 Outreach Script</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>                  <div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>EMAIL SUBJECT LINE</div>
+                    <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,fontSize:13,fontWeight:600,color:"#e2e8f0",border:"1px solid #1a2d45"}}>
+                      {display.emailSubject}
+                    </div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginTop:10,marginBottom:4}}>OPENING LINE</div>
+                    <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,fontSize:12,color:"#94a3b8",border:"1px solid #1a2d45",lineHeight:1.5}}>
+                      {display.openingLine}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4}}>FULL OUTREACH ANGLE</div>
+                    <div style={{padding:"10px 14px",background:"#070c18",borderRadius:8,fontSize:12,color:"#94a3b8",border:"1px solid #1a2d45",lineHeight:1.6,height:"100%"}}>
+                      {display.outreachAngle}
+                    </div>
+                  </div>
+                </div>
+                <div style={{marginTop:14,padding:"12px 16px",background:"#0c2340",border:"1px solid #0369a1",borderRadius:8}}>
+                  <div style={{fontSize:10,color:"#0284c7",marginBottom:4}}>⚡ RECOMMENDED NEXT STEP THIS WEEK</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#38bdf8"}}>{display.nextStep}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {display&&display._error&&(
+            <div className="card" style={{padding:30,textAlign:"center",color:"#f87171"}}>
+              <div style={{fontSize:24,marginBottom:8}}>⚠️</div>
+              <div>{display._error}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:8}}>Check your API connection and try again</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAPABILITY DECK GENERATOR — AI-powered client-specific pitch decks
+// ═══════════════════════════════════════════════════════════════════════════
+
+function CapabilityDeck({ clients, crmAccounts, crmDeals, roster, addAudit }) {
+  const [target, setTarget] = useState(""); const [industry, setIndustry] = useState("Utilities");
+  const [focus, setFocus] = useState([]); const [loading, setLoading] = useState(false);
+  const [deck, setDeck] = useState(null); const [history, setHistory] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-decks")||"[]");}catch{return [];}});
+  const FOCUS_AREAS = ["SAP BRIM","SAP IS-U","S/4HANA Migration","Databricks / Data Engineering","GridMind™ AI","Managed Services","Staff Augmentation"];
+  const toggleFocus = f => setFocus(prev=>prev.includes(f)?prev.filter(x=>x!==f):[...prev,f]);
+  const allAccounts = [...(clients||[]).map(c=>({name:c.name,type:"client"})),...(crmAccounts||[]).filter(a=>!clients?.find(c=>c.name===a.name)).map(a=>({name:a.name,type:"prospect"}))];
+  const activeConsultants = (roster||[]).filter(r=>r.util>0);
+  const wonDeals = (crmDeals||[]).filter(d=>d.stage==="won");
+
+  const generate = async () => {
+    if(!target.trim()) return alert("Enter a target company name");
+    if(!focus.length) return alert("Select at least one focus area");
+    setLoading(true); setDeck(null);
+    const prompt = `You are a senior SAP consulting BD strategist at Ziksatech (WBE/HUB/WOSB certified, Plano TX).
+Generate a compelling capability deck outline for: ${target} (${industry} industry)
+Focus areas: ${focus.join(", ")}
+Our team: ${activeConsultants.length} active consultants including SAP BRIM, IS-U, S/4HANA, Databricks specialists
+Our clients: ${(clients||[]).map(c=>c.name).join(", ")}
+
+Return ONLY valid JSON:
+{"deckTitle":"string","tagline":"string","executiveSummary":"2-3 sentences","sections":[{"title":"string","headline":"string","bullets":["string"],"proof":"1 real-sounding stat or case study"}],"differentiators":["string"],"callToAction":"string","whyNow":"urgency reason specific to ${target}","suggestedNextStep":"string"}
+Include 5-6 sections. Make it specific to ${target} and ${industry}. No markdown.`;
+
+    try {
+      let full="";
+      await callClaude("You are a BD deck generator. Return only valid JSON.", prompt, t=>{full=t;}, 2000);
+      const parsed = JSON.parse(full.replace(/```json|```/g,"").trim());
+      parsed._target=target; parsed._industry=industry; parsed._focus=[...focus]; parsed._ts=new Date().toISOString();
+      setDeck(parsed);
+      const h=[parsed,...history].slice(0,10); setHistory(h); localStorage.setItem("zt-decks",JSON.stringify(h));
+      addAudit&&addAudit("Sales","Capability Deck",target,"AI deck generated");
+    } catch(e){alert("Generation failed: "+e.message);}
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <PH title="Capability Deck AI" sub="Generate client-specific pitch decks in seconds · SAP expertise · WBE/HUB angle"/>
+      <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:16,alignItems:"start"}}>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🎯 Configure Deck</div>
+            <div style={{marginBottom:10}}><div className="lbl">Target Company</div>
+              <input className="inp" value={target} onChange={e=>setTarget(e.target.value)} placeholder="e.g. Capital One, Verizon, CHRISTUS Health"/>
+            </div>
+            <div style={{marginBottom:10}}><div className="lbl">Industry</div>
+              <select className="inp" value={industry} onChange={e=>setIndustry(e.target.value)}>
+                {["Utilities","Telecom","Healthcare","Financial Services","Manufacturing","Retail","Energy","Government","Technology"].map(i=><option key={i}>{i}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:14}}><div className="lbl" style={{marginBottom:6}}>Focus Areas (select all that apply)</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {FOCUS_AREAS.map(f=>(
+                  <button key={f} className="btn bg" style={{fontSize:9,padding:"3px 8px",
+                    borderColor:focus.includes(f)?"#0284c7":"#1a2d45",color:focus.includes(f)?"#38bdf8":"#475569"}}
+                    onClick={()=>toggleFocus(f)}>{f}</button>
+                ))}
+              </div>
+            </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center"}} onClick={generate} disabled={loading}>
+              {loading?"⚡ Generating...":"⚡ Generate Deck"}
+            </button>
+            <button className="btn bg" style={{color:"#7dd3fc",marginTop:6,width:"100%",fontSize:12,fontWeight:700,cursor:"pointer"}}
+              disabled={loading} onClick={()=>{
+                if(!target.trim()) return alert("Enter a target company");
+                if(!focus.length) return alert("Select at least one focus area");
+                const confirmed = window.confirm(`Generate deck for: ${target}\nIndustry: ${industry}\nFocus: ${focus.join(", ")}\n\nProceed?`);
+                if(confirmed) generate();
+              }}>
+              👁 Preview & Confirm
+            </button>
+          </div>
+          {history.length>0&&(<div className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#475569",marginBottom:8}}>RECENT DECKS</div>
+            {history.slice(0,5).map((h,i)=>(
+              <div key={i} onClick={()=>setDeck(h)} style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",marginBottom:4,background:deck===h?"#0a1a2e":"#060d1c",border:`1px solid ${deck===h?"#0369a1":"#1a2d45"}`}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{h._target}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{h._industry} · {(h._focus||[]).slice(0,2).join(", ")}</div>
+              </div>
+            ))}
+          </div>)}
+        </div>
+        <div>
+          {!deck&&!loading&&(<div className="card" style={{padding:"60px 40px",textAlign:"center"}}>
+            <div style={{fontSize:40,marginBottom:12}}>📊</div>
+            <div style={{fontSize:15,fontWeight:700,color:"#334155",marginBottom:8}}>Client-Specific Capability Decks</div>
+            <div style={{fontSize:12,color:"#1e3a5f",lineHeight:1.6}}>Enter a target company and select focus areas.<br/>AI generates a tailored deck outline specific to their industry and pain points.</div>
+          </div>)}
+          {loading&&(<div className="card" style={{padding:"60px",textAlign:"center",color:"#38bdf8"}}>
+            <div style={{fontSize:24,marginBottom:12}}>⚡</div>
+            <div style={{fontSize:14}}>Building deck for {target}...</div>
+          </div>)}
+          {deck&&!loading&&(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div className="card" style={{padding:"20px 24px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                  <div style={{fontSize:22,fontWeight:800,color:"#e2e8f0"}}>{deck.deckTitle}</div>
+                  <ExportButtons data={deck} type="deck"/>
+                </div>
+                <div style={{fontSize:14,color:"#38bdf8",marginBottom:10,fontStyle:"italic"}}>{deck.tagline}</div>
+                <div style={{fontSize:12,color:"#64748b",lineHeight:1.6,marginBottom:14}}>{deck.executiveSummary}</div>
+                <div style={{padding:"10px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1",marginBottom:10}}>
+                  <div style={{fontSize:10,color:"#0284c7",marginBottom:3}}>⚡ WHY NOW FOR {(deck._target||"").toUpperCase()}</div>
+                  <div style={{fontSize:12,color:"#38bdf8"}}>{deck.whyNow}</div>
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {(deck._focus||[]).map(f=><span key={f} className="bdg" style={{background:"#0c2340",color:"#38bdf8",fontSize:10}}>{f}</span>)}
+                </div>
+              </div>
+              {(deck.sections||[]).map((s,i)=>(
+                <div key={i} className="card" style={{padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                    <div>
+                      <div style={{fontSize:10,color:"#475569",fontWeight:700,marginBottom:2}}>SLIDE {i+2}: {s.title?.toUpperCase()}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{s.headline}</div>
+                    </div>
+                    <span style={{fontSize:10,background:"#1a2d45",color:"#475569",padding:"2px 8px",borderRadius:10}}>Slide {i+2}</span>
+                  </div>
+                  <div style={{marginBottom:10}}>
+                    {(s.bullets||[]).map((b,j)=><div key={j} style={{fontSize:12,color:"#94a3b8",marginBottom:5,paddingLeft:12,borderLeft:"2px solid #1a3d60"}}>• {b}</div>)}
+                  </div>
+                  {s.proof&&<div style={{fontSize:11,color:"#34d399",background:"#021f14",padding:"7px 10px",borderRadius:6,border:"1px solid #34d39933"}}>📊 {s.proof}</div>}
+                </div>
+              ))}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:6}}>WHY ZIKSATECH</div>
+                  {(deck.differentiators||[]).map((d,i)=><div key={i} style={{fontSize:12,color:"#94a3b8",marginBottom:5}}>✓ {d}</div>)}
+                </div>
+                <div style={{padding:"12px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
+                  <div style={{fontSize:10,color:"#0284c7",marginBottom:3}}>CALL TO ACTION</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#38bdf8"}}>{deck.callToAction}</div>
+                </div>
+                <div style={{marginTop:10,padding:"10px 14px",background:"#021f14",borderRadius:8,border:"1px solid #34d39933"}}>
+                  <div style={{fontSize:10,color:"#34d399",marginBottom:3}}>⚡ SUGGESTED NEXT STEP</div>
+                  <div style={{fontSize:12,color:"#34d399"}}>{deck.suggestedNextStep}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WBE/HUB/WOSB CERTIFICATION TRACKER
+// ═══════════════════════════════════════════════════════════════════════════
+const CERT_LIST = [
+  {id:"c1",name:"WBE – Women's Business Enterprise",body:"WBENC",desc:"National WBE certification through Women's Business Enterprise National Council",renewalMonths:12,docs:["WBENC application","Owner personal financial statement","Business financial statements","Articles of incorporation","Operating agreement","Photos of business premises"]},
+  {id:"c2",name:"HUB – Historically Underutilized Business",body:"Texas HUB Program",desc:"Texas state HUB certification for state agency procurement",renewalMonths:24,docs:["HUB application","Owner's personal net worth statement","Proof of Texas residency","Business financial statements","IRS filings","Organizational documents"]},
+  {id:"c3",name:"WOSB – Women-Owned Small Business",body:"SBA",desc:"Federal SBA WOSB certification for federal contracting",renewalMonths:12,docs:["SBA WOSB application","NAICS codes documentation","Joint venture agreements (if any)","Annual certification renewal"]},
+  {id:"c4",name:"DBE – Disadvantaged Business Enterprise",body:"TxDOT",desc:"Federal DBE certification for transportation-related federal contracts",renewalMonths:36,docs:["DBE application","Personal net worth statement","Business financial statements","SBA 8(a) eligibility docs"]},
+  {id:"c5",name:"SAP Partner Edge",body:"SAP",desc:"SAP Partner Edge certification — enables co-selling and joint GTM with SAP",renewalMonths:12,docs:["Partner application","Reference clients","Certified consultant list","Revenue targets commitment"]},
+  {id:"c6",name:"GSA Schedule (IT 70)",body:"GSA",desc:"Federal GSA IT Schedule 70 — enables direct federal agency sales",renewalMonths:60,docs:["GSA eOffer application","Pricing proposal","Quality assurance plan","Past performance references","Financial statements"]},
+];
+
 function RFPGenerator({ clients, roster }) {
   const [mode, setMode]         = useState("respond");   // "respond" | "create"
   const [companyProfile, setCompanyProf] = useState(null);
