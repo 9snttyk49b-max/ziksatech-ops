@@ -1841,6 +1841,37 @@ export default function ZiksatechOps() {
   // ── Mobile responsive ─────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(() => typeof window!=="undefined" && window.innerWidth < 768);
   const [sideOpen, setSideOpen] = useState(false);
+  // ── PWA state ─────────────────────────────────────────────────────────────
+  const [pwaPrompt,    setPwaPrompt]   = useState(null);   // deferred install event
+  const [pwaInstalled, setPwaInstalled] = useState(false);
+  const [isOnline,     setIsOnline]    = useState(() => typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [pullRefresh,  setPullRefresh] = useState(false);  // pull-to-refresh indicator
+  const [pullY,        setPullY]       = useState(0);
+  useEffect(() => {
+    // PWA install prompt
+    const handler = (e) => { e.preventDefault(); setPwaPrompt(e); };
+    window.addEventListener("beforeinstallprompt", handler);
+    // Already installed?
+    if (window.matchMedia("(display-mode: standalone)").matches) setPwaInstalled(true);
+    window.addEventListener("appinstalled", () => setPwaInstalled(true));
+    // Online/offline
+    const goOnline  = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online",  goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("online",  goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+  const installPWA = async () => {
+    if (!pwaPrompt) return;
+    pwaPrompt.prompt();
+    const { outcome } = await pwaPrompt.userChoice;
+    if (outcome === "accepted") setPwaInstalled(true);
+    setPwaPrompt(null);
+  };
 
   // ── Auth state ─────────────────────────────────────────────────────────────
   const [authView, setAuthView] = useState("login"); // login | register | pending
@@ -2217,9 +2248,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         /* Mobile nav bar */
         .mobile-nav{display:none}
         @media(max-width:767px){
-          .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:90;background:#060a10;border-top:1px solid #1a2d45;height:58px}
+          .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:90;background:#060a10;border-top:1px solid #1a2d45;height:58px;padding-bottom:env(safe-area-inset-bottom)}
           .desktop-sidebar{display:none!important}
-          .main-content{padding-bottom:68px!important;padding-left:12px!important;padding-right:12px!important}
+          .main-content{padding-bottom:80px!important;padding-left:12px!important;padding-right:12px!important;padding-top:60px!important}
           .kpi-grid-4{grid-template-columns:1fr 1fr!important}
           .kpi-grid-5{grid-template-columns:1fr 1fr!important}
           .two-col{grid-template-columns:1fr!important}
@@ -2227,11 +2258,58 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
           .hide-mobile{display:none!important}
           h1{font-size:18px!important}
           .tr{padding:10px 12px!important}
+          /* Touch targets — minimum 44px */
+          button{min-height:38px}
+          .btn{min-height:36px;padding:8px 14px!important}
+          /* Full-screen modals on mobile */
+          .modal{position:fixed!important;inset:0!important;margin:0!important;border-radius:0!important;max-width:100vw!important;max-height:100dvh!important;overflow-y:auto!important}
+          .modal-bg{align-items:flex-end!important}
+          /* Cards stack nicely */
+          .card{border-radius:10px!important}
+          /* Inputs easier to tap */
+          .inp{padding:10px 12px!important;font-size:16px!important}
+          select{font-size:16px!important}
+          textarea{font-size:16px!important}
+          /* Pull-to-refresh area */
+          .pull-indicator{display:flex}
         }
         @media(min-width:768px){
           .mobile-topbar{display:none!important}
+          .pull-indicator{display:none!important}
+          .pwa-install-banner{display:none!important}
         }
       `}</style>
+
+      {/* ── OFFLINE BANNER ─────────────────────────────────── */}
+      {!isOnline && (
+        <div style={{position:"fixed",top:0,left:0,right:0,zIndex:200,background:"#1a0808",
+          borderBottom:"2px solid #f87171",padding:"8px 16px",textAlign:"center",fontSize:12,
+          color:"#f87171",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span>📡</span> You're offline — data may be outdated
+        </div>
+      )}
+
+      {/* ── PWA INSTALL BANNER ──────────────────────────────── */}
+      {pwaPrompt && !pwaInstalled && (
+        <div className="pwa-install-banner" style={{position:"fixed",bottom:isMobile?68:20,left:"50%",transform:"translateX(-50%)",
+          zIndex:150,background:"linear-gradient(135deg,#0d1b2a,#0c2340)",border:"1px solid #c9a84c",
+          borderRadius:14,padding:"12px 18px",display:"flex",alignItems:"center",gap:12,
+          boxShadow:"0 8px 32px rgba(0,0,0,0.5)",maxWidth:360,width:"calc(100% - 32px)"}}>
+          <div style={{width:36,height:36,background:"#0369a1",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>⬡</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Install Ziksatech Ops</div>
+            <div style={{fontSize:11,color:"#64748b"}}>Add to home screen for quick access</div>
+          </div>
+          <button onClick={installPWA}
+            style={{padding:"7px 14px",background:"#c9a84c",color:"#0d1b2a",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>
+            Install
+          </button>
+          <button onClick={()=>setPwaPrompt(null)}
+            style={{padding:"4px 8px",background:"none",color:"#475569",border:"none",cursor:"pointer",fontSize:16,flexShrink:0}}>
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Mobile overlay when sidebar open */}
       {isMobile && sideOpen && (
@@ -2250,10 +2328,19 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         </button>
         <div onClick={()=>setTab("home")} style={{fontSize:15,fontWeight:800,color:"#38bdf8",cursor:"pointer"}} title="Home">⬡ ZIKSATECH</div>
         <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
+          {/* Offline dot */}
+          {!isOnline && <span style={{fontSize:10,color:"#f87171",fontWeight:700}}>OFFLINE</span>}
           <div style={{display:"flex",alignItems:"center",gap:5}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:saveStatus==="saved"?"#34d399":saveStatus==="saving"?"#f59e0b":"#1e3a5f"}}/>
             <span style={{fontSize:9,color:"#3d5a7a"}}>{saveStatus==="saved"?"Saved":saveStatus==="saving"?"Saving…":""}</span>
           </div>
+          {/* PWA install icon if available */}
+          {pwaPrompt && !pwaInstalled && (
+            <button onClick={installPWA}
+              style={{background:"none",border:"1px solid #c9a84c",color:"#c9a84c",borderRadius:8,padding:"3px 8px",fontSize:10,cursor:"pointer",fontWeight:700}}>
+              ⬇ Install
+            </button>
+          )}
           {supaAuth && authProfile && <ProfileMenu authProfile={authProfile} authSession={authSession} setAuthSession={setAuthSession} setAuthProfile={setAuthProfile} setTab={setTab}/>}
         </div>
       </div>
@@ -2530,26 +2617,26 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       {/* Mobile bottom nav */}
       <nav className="mobile-nav" style={{alignItems:"stretch"}}>
         {[
-          { id:"dashboard",  icon:"🏠", label:"Home"    },
-          { id:"crm",        icon:"🤝", label:"Sales"   },
-          { id:"projects",   icon:"📊", label:"Projects"},
-          { id:"finance",    icon:"💰", label:"Finance" },
-          { id:"compliance", icon:"🛡", label:"Comply"  },
+          { id:"dashboard",   icon:"🏠", label:"Home"     },
+          { id:"timesheet",   icon:"⏱", label:"Time"     },
+          { id:"arinvoices",  icon:"💰", label:"Invoices" },
+          { id:"bench",       icon:"📊", label:"Bench"    },
+          { id:"notifhub",    icon:"🔔", label:"Alerts"   },
         ].map(item=>(
           <button key={item.id} onClick={()=>setTab(item.id)}
             style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
               background:"none",border:"none",cursor:"pointer",padding:"6px 0",
               borderTop:tab===item.id?"2px solid #38bdf8":"2px solid transparent",
-              color:tab===item.id?"#38bdf8":"#475569"}}>
-            <span style={{fontSize:18}}>{item.icon}</span>
-            <span style={{fontSize:9,fontWeight:600}}>{item.label}</span>
+              color:tab===item.id?"#38bdf8":"#475569",minHeight:58,WebkitTapHighlightColor:"transparent"}}>
+            <span style={{fontSize:20}}>{item.icon}</span>
+            <span style={{fontSize:9,fontWeight:600,letterSpacing:"0.02em"}}>{item.label}</span>
           </button>
         ))}
         <button onClick={()=>setSideOpen(s=>!s)}
           style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
             background:"none",border:"none",cursor:"pointer",padding:"6px 0",
-            borderTop:"2px solid transparent",color:"#475569"}}>
-          <span style={{fontSize:18}}>☰</span>
+            borderTop:"2px solid transparent",color:"#475569",minHeight:58,WebkitTapHighlightColor:"transparent",position:"relative"}}>
+          <span style={{fontSize:20}}>☰</span>
           <span style={{fontSize:9,fontWeight:600}}>More</span>
         </button>
       </nav>
