@@ -4,6 +4,7 @@
   "framework": "vite",
   "rewrites": [{"source": "/((?!api/).*)", "destination": "/index.html"}],
   "functions": {
-    "api/claude.js": { "maxDuration": 60 }
+    "api/claude.js":   { "maxDuration": 60 },
+    "api/webhook.js":  { "maxDuration": 15 }
   }
 }

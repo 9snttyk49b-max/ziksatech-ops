@@ -89,6 +89,7 @@ const RBAC = {
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],           // settings — super_admin ONLY
   notifications:["super_admin","admin","accounts","hr_immigration","employee","contractor"],
+  notifhub:     ["super_admin","admin"],
   pdfexport:    ["super_admin","admin","accounts"],
 };
 
@@ -2065,6 +2066,7 @@ export default function ZiksatechOps() {
     { id:"dashboard",    label:"Executive Dashboard", icon:ICONS.dash,     group:"Overview"    },
     { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Overview"    },
     { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Overview"    },
+    { id:"notifhub",    label:"Teams / Slack",          icon:ICONS.dash,     group:"Overview"    },
     { id:"clients",      label:"Client Portfolio",     icon:ICONS.clients,  group:"Clients"     },
     { id:"healthscore",  label:"Client Health ♥",       icon:ICONS.ebitda,   group:"Clients"     },
     { id:"revforecast",  label:"Revenue Forecast",         icon:ICONS.ebitda,   group:"Clients"     },
@@ -18025,6 +18027,16 @@ function NotificationsHub({
   const loadSettings = () => {
     try { return JSON.parse(localStorage.getItem("zt-notif-hub") || "{}"); } catch { return {}; }
   };
+  const DEFAULT_CHANNELS = {
+    finance:    { teams: true,  slack: true,  label: "Finance Alerts",     emoji: "💰" },
+    compliance: { teams: true,  slack: true,  label: "Compliance Alerts",  emoji: "🛂" },
+    hr:         { teams: false, slack: true,  label: "HR / PTO Alerts",    emoji: "👥" },
+    deals:      { teams: true,  slack: false, label: "New Deals / CRM",    emoji: "🤝" },
+    contracts:  { teams: true,  slack: true,  label: "Contract Renewals",  emoji: "📋" },
+    bench:      { teams: true,  slack: true,  label: "Bench Alerts",       emoji: "🔴" },
+    invoices:   { teams: true,  slack: true,  label: "Invoice / Payment",  emoji: "📊" },
+  };
+  const saved = loadSettings();
   const [settings, setSettings] = useState(() => ({
     teamsWebhook:   "",
     slackWebhook:   "",
@@ -18032,16 +18044,10 @@ function NotificationsHub({
     slackEnabled:   false,
     digestTime:     "08:00",
     digestEnabled:  false,
-    channels: {
-      finance:    { teams: true,  slack: true,  label: "Finance Alerts",     emoji: "💰" },
-      compliance: { teams: true,  slack: true,  label: "Compliance Alerts",  emoji: "🛂" },
-      hr:         { teams: false, slack: true,  label: "HR / PTO Alerts",    emoji: "👥" },
-      deals:      { teams: true,  slack: false, label: "New Deals / CRM",    emoji: "🤝" },
-      contracts:  { teams: true,  slack: true,  label: "Contract Renewals",  emoji: "📋" },
-      bench:      { teams: true,  slack: true,  label: "Bench Alerts",       emoji: "🔴" },
-      invoices:   { teams: true,  slack: true,  label: "Invoice / Payment",  emoji: "📊" },
-    },
-    ...loadSettings()
+    channels:       DEFAULT_CHANNELS,
+    ...saved,
+    // Deep merge channels so saved routing persists but new categories still appear
+    channels: { ...DEFAULT_CHANNELS, ...(saved.channels || {}) },
   }));
   const [sub,       setSub]      = useState("overview"); // overview | settings | history | test
   const [sending,   setSending]  = useState(null);
@@ -18220,31 +18226,43 @@ function NotificationsHub({
 
     const payload = platform === "teams" ? buildTeamsPayload(alertList, isDigest) : buildSlackPayload(alertList, isDigest);
 
+    // Strategy 1: Use our Vercel serverless relay (/api/webhook) — bypasses CORS, gets real response
     try {
-      // Teams webhooks: use no-cors (Teams doesn't support CORS from browser)
-      // Slack webhooks: use regular fetch (Slack supports CORS)
-      // Both treat a successful send as "ok: true" since opaque responses can't be read
-      const isSlack = webhook.includes("hooks.slack.com");
-      if (isSlack) {
-        // Slack supports CORS — we can get a real response
+      const relayResp = await fetch("/api/webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: webhook, payload })
+      });
+      if (relayResp.ok) {
+        const data = await relayResp.json();
+        // Teams returns "1" on success, Slack returns "ok"
+        const delivered = data.ok || data.body === "1" || data.body === "ok" || data.status === 200 || data.status === 202;
+        if (delivered) return { ok: true, confirmed: true };
+        return { ok: false, error: `Webhook rejected: ${data.body || data.status}` };
+      }
+    } catch(e) { /* relay unavailable, fall through */ }
+
+    // Strategy 2: Direct fetch for Slack (supports CORS)
+    if (webhook.includes("hooks.slack.com")) {
+      try {
         const resp = await fetch(webhook, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
         const text = await resp.text();
-        return resp.ok || text === "ok" ? { ok: true } : { ok: false, error: `Slack error: ${text}` };
-      } else {
-        // Teams (office.com / webhook.office.com) — no-cors required
-        await fetch(webhook, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        // Opaque response — if no exception thrown, assume success
-        return { ok: true };
-      }
+        return resp.ok || text === "ok" ? { ok: true } : { ok: false, error: `Slack: ${text}` };
+      } catch(e) { return { ok: false, error: e.message }; }
+    }
+
+    // Strategy 3: Teams no-cors (fire-and-forget — always returns ok if no exception)
+    try {
+      await fetch(webhook, {
+        method: "POST", mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      return { ok: true, fallback: true };
     } catch(e) {
       return { ok: false, error: e.message };
     }
