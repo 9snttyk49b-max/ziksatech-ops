@@ -2712,7 +2712,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             </div>
           </div>
         )}
-        {tab==="home"       && <HomePage      {...shared} authProfile={authProfile} />}
+        {tab==="home"       && <HomePage      {...shared} authProfile={authProfile} jobReqs={shared.jobReqs||[]} />}
         {tab==="rfpgen"     && <RFPGenerator   {...shared} />}
         {tab==="prospectintel" && <ProspectIntel crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} addAudit={shared.addAudit} />}
         {tab==="soplibrary"   && <SOPLibrary roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} apInvoices={shared.apInvoices} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
@@ -36270,7 +36270,7 @@ Requirements:
 
 function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
-  dismissedAlerts, setDismissedAlerts }) {
+  dismissedAlerts, setDismissedAlerts, jobReqs }) {
 
   const [weather, setWeather]   = useState(null);
   const [todos,   setTodos]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch(e) { return []; } });
@@ -36347,7 +36347,7 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
     { icon:"👥", label:"Team Roster",         value:safeRoster.length,  sub:`${safeRoster.filter(r=>r.util>0).length} active`,                                  color:"#38bdf8",  tab:"roster" },
     { icon:"📋", label:"Expiring Docs",       value:expDocs.length,     sub:"Work auth ≤60 days",                                                                color:expDocs.length>0?"#f87171":"#34d399", tab:"compliance" },
     { icon:"🏖",  label:"PTO Requests",        value:pendPTO,            sub:"Awaiting approval",                                                                 color:pendPTO>0?"#f59e0b":"#34d399",        tab:"pto" },
-    { icon:"📋", label:"Open Reqs",           value:((typeof jobReqs!=="undefined"?jobReqs:[]).filter(r=>r.stage!=="filled")).length||0, sub:"Active requisitions",  color:"#38bdf8",  tab:"jobreqs"    },
+    { icon:"📋", label:"Open Reqs",           value:(jobReqs||[]).filter(r=>r.stage!=="filled").length||0, sub:"Active requisitions",  color:"#38bdf8",  tab:"jobreqs"    },
     { icon:"🎯", label:"Hiring Pipeline",     value:actCands,           sub:"Active candidates",                                                                 color:"#60a5fa",  tab:"pipeline" },
     { icon:"📄", label:"PAF Files",           value:"Manage",           sub:"Personnel action forms",                                                            color:"#a78bfa",  tab:"paffiles" },
     { icon:"🏢", label:"Onboarding",          value:safeRoster.filter(r=>r.status==="onboarding").length||"Active", sub:"New hires in progress",                color:"#34d399",  tab:"onboarding" },
