@@ -21628,6 +21628,10 @@ function ProposalWriterV2({ proposals, setProposals, crmDeals, crmAccounts, crmC
   const [winProb,     setWinProb]  = useState(null);
   const [selCaseStudies, setSelCS] = useState([]);
   const [rateModal,   setRateMod]  = useState(false);
+  const [uploadedDocs, setUploadedDocs] = useState([]);   // [{name, type, content, base64, mediaType, size}]
+  const [uploading,    setUploading]    = useState(false);
+  const [uploadError,  setUploadError]  = useState("");
+  const [dragOver,     setDragOver]     = useState(false);
 
   const TODAY_STR = new Date().toISOString().slice(0,10);
   const safe      = proposals || [];
@@ -21637,6 +21641,127 @@ function ProposalWriterV2({ proposals, setProposals, crmDeals, crmAccounts, crmC
   const fmt        = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${Math.round(v).toLocaleString()}`;
 
   const uid = () => "p" + Date.now() + Math.random().toString(36).slice(2,6);
+
+  // ── File extraction helper ──────────────────────────────────────────────
+  const extractFileContent = async (file) => {
+    const ext = file.name.split(".").pop().toLowerCase();
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+
+    // Read as base64 for binary types
+    const toBase64 = (f) => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(",")[1]);
+      r.onerror = rej;
+      r.readAsDataURL(f);
+    });
+
+    // Read as text
+    const toText = (f) => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsText(f);
+    });
+
+    try {
+      // PDF → base64 (Claude API supports natively)
+      if (ext === "pdf") {
+        const base64 = await toBase64(file);
+        return { name: file.name, type: "pdf", base64, mediaType: "application/pdf", size: sizeMB, content: `[PDF: ${file.name}]` };
+      }
+
+      // Images → base64
+      if (["png","jpg","jpeg","gif","webp"].includes(ext)) {
+        const base64 = await toBase64(file);
+        const mediaType = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+        return { name: file.name, type: "image", base64, mediaType, size: sizeMB, content: `[Image: ${file.name}]` };
+      }
+
+      // DOCX → mammoth.js text extraction
+      if (ext === "docx") {
+        if (!window.mammoth) {
+          await new Promise(res => {
+            const s = document.createElement("script");
+            s.src = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.18/mammoth.browser.min.js";
+            s.onload = res; document.head.appendChild(s);
+          });
+        }
+        const ab = await file.arrayBuffer();
+        const result = await window.mammoth.extractRawText({ arrayBuffer: ab });
+        const content = result.value.slice(0, 6000);
+        return { name: file.name, type: "text", content, size: sizeMB };
+      }
+
+      // XLSX → SheetJS text extraction
+      if (["xlsx","xls","csv"].includes(ext)) {
+        if (ext === "csv") {
+          const content = (await toText(file)).slice(0, 5000);
+          return { name: file.name, type: "text", content, size: sizeMB };
+        }
+        if (!window.XLSX) {
+          await new Promise(res => {
+            const s = document.createElement("script");
+            s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+            s.onload = res; document.head.appendChild(s);
+          });
+        }
+        const ab  = await file.arrayBuffer();
+        const wb  = window.XLSX.read(ab, { type: "array" });
+        const txt = wb.SheetNames.map(name => {
+          const csv = window.XLSX.utils.sheet_to_csv(wb.Sheets[name]);
+          return `Sheet: ${name}\n${csv}`;
+        }).join("\n\n").slice(0, 5000);
+        return { name: file.name, type: "text", content: txt, size: sizeMB };
+      }
+
+      // PPTX → extract text from XML parts
+      if (ext === "pptx") {
+        if (!window.JSZip) {
+          await new Promise(res => {
+            const s = document.createElement("script");
+            s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+            s.onload = res; document.head.appendChild(s);
+          });
+        }
+        const ab  = await file.arrayBuffer();
+        const zip = await window.JSZip.loadAsync(ab);
+        const slides = Object.keys(zip.files).filter(n => n.match(/ppt\/slides\/slide\d+\.xml/));
+        const texts  = await Promise.all(slides.slice(0, 20).map(async (s) => {
+          const xml = await zip.files[s].async("text");
+          return xml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        }));
+        const content = texts.join("\n---\n").slice(0, 5000);
+        return { name: file.name, type: "text", content: `[PowerPoint: ${file.name}]\n${content}`, size: sizeMB };
+      }
+
+      // Plain text, markdown, HTML
+      if (["txt","md","html","htm","json"].includes(ext)) {
+        const content = (await toText(file)).slice(0, 6000);
+        return { name: file.name, type: "text", content, size: sizeMB };
+      }
+
+      // Fallback: try as text
+      const content = (await toText(file)).slice(0, 4000);
+      return { name: file.name, type: "text", content, size: sizeMB };
+
+    } catch (e) {
+      return { name: file.name, type: "error", content: "", size: sizeMB, error: e.message };
+    }
+  };
+
+  const handleFileUpload = async (files) => {
+    const fileArr = Array.from(files);
+    if (!fileArr.length) return;
+    setUploading(true); setUploadError("");
+    const results = await Promise.all(fileArr.map(extractFileContent));
+    const valid = results.filter(r => r.type !== "error");
+    const errors = results.filter(r => r.type === "error");
+    setUploadedDocs(prev => [...prev, ...valid]);
+    if (errors.length) setUploadError(`Failed to extract: ${errors.map(e=>e.name).join(", ")}`);
+    setUploading(false);
+  };
+
+  const removeDoc = (name) => setUploadedDocs(prev => prev.filter(d => d.name !== name));
 
   const makeBlank = () => ({
     id:"", number:`PRO-${String(safe.length+1).padStart(4,"0")}`,
@@ -21730,13 +21855,16 @@ function ProposalWriterV2({ proposals, setProposals, crmDeals, crmAccounts, crmC
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 1000,
           system: "You are a senior proposal writer for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. Generate structured proposal content. Return JSON only, no markdown.",
-          messages: [{ role:"user", content: `Generate a complete proposal for:
+          messages: [{ role:"user", content: [
+            // Text prompt
+            { type:"text", text:`Generate a complete proposal for:
 Title: ${form.title}
 Client: ${form.client} (${client?.industry||"Enterprise"})
 Project: ${deal?.notes||form.notes||"SAP consulting engagement"}
 Team: ${teamStr||"To be determined"}
 Budget Range: ${deal?.value ? "$"+deal.value.toLocaleString() : "TBD"}
 Related wins: ${relCS.map(cs=>`${cs.title}: ${cs.outcome}`).join("; ")||"Multiple SAP implementations"}
+${uploadedDocs.filter(d=>d.type==="text").map(d=>`\n--- Reference Document: ${d.name} ---\n${d.content}`).join("\n") || ""}
 
 Return JSON: {
   "executiveSummary": "230 word exec summary",
@@ -21746,7 +21874,12 @@ Return JSON: {
   "winProbabilityInsight": "1 sentence AI assessment of win probability",
   "riskMitigations": ["risk 1 mitigation","risk 2 mitigation"],
   "suggestedPricing": "pricing recommendation sentence"
-}` }]
+}` },
+            // Attach PDFs natively
+            ...uploadedDocs.filter(d=>d.type==="pdf").map(d=>({ type:"document", source:{ type:"base64", media_type:d.mediaType, data:d.base64 } })),
+            // Attach images natively
+            ...uploadedDocs.filter(d=>d.type==="image").map(d=>({ type:"image", source:{ type:"base64", media_type:d.mediaType, data:d.base64 } })),
+          ] }]
         })
       });
       const data = await resp.json();
@@ -22074,9 +22207,12 @@ Return JSON: {
                 </button>
               ))}
               <div style={{borderTop:"1px solid #0a1626",paddingTop:8,marginTop:4}}>
-                <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:11}} onClick={generateFullProposal} disabled={!!aiLoading}>
-                  {aiLoading==="full"?"⏳ Generating Full Proposal...":"🚀 Generate Full Proposal with AI"}
+                <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:11}} onClick={()=>{setSub("ai-assist");}} disabled={!!aiLoading}>
+                  {uploadedDocs.length > 0 ? `🚀 AI Generate (${uploadedDocs.length} doc${uploadedDocs.length>1?"s":""} attached)` : "🚀 Generate Full Proposal with AI"}
                 </button>
+                <div style={{fontSize:9,color:"#334155",textAlign:"center",marginTop:4}}>
+                  Upload PDFs, DOCX, XLSX, PPTX in AI Assist tab
+                </div>
               </div>
             </div>
           </div>
@@ -22106,6 +22242,79 @@ Return JSON: {
                   {safeDeals.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
+
+              {/* ── DOCUMENT UPLOAD ── */}
+              <div style={{marginBottom:14}}>
+                <div className="lbl" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span>📎 Reference Documents <span style={{fontSize:9,color:"#334155",fontWeight:400}}>(PDF, DOCX, XLSX, PPTX, TXT, CSV, images)</span></span>
+                  {uploadedDocs.length > 0 && <span style={{fontSize:9,color:"#34d399"}}>{uploadedDocs.length} file{uploadedDocs.length>1?"s":""} ready</span>}
+                </div>
+                {/* Drop zone */}
+                <div
+                  onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+                  onDragLeave={()=>setDragOver(false)}
+                  onDrop={e=>{e.preventDefault();setDragOver(false);handleFileUpload(e.dataTransfer.files);}}
+                  onClick={()=>document.getElementById("proposal-file-input")?.click()}
+                  style={{
+                    border:`2px dashed ${dragOver?"#0369a1":"#1a2d45"}`,
+                    borderRadius:10,padding:"16px",textAlign:"center",cursor:"pointer",
+                    background:dragOver?"#0c2340":"#040810",transition:"all 0.2s",
+                    marginBottom:uploadedDocs.length>0?8:0
+                  }}>
+                  <input
+                    id="proposal-file-input"
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.xlsx,.xls,.pptx,.txt,.csv,.md,.png,.jpg,.jpeg,.gif,.webp"
+                    style={{display:"none"}}
+                    onChange={e=>handleFileUpload(e.target.files)}
+                  />
+                  {uploading ? (
+                    <div style={{fontSize:12,color:"#38bdf8"}}>⏳ Extracting documents...</div>
+                  ) : (
+                    <>
+                      <div style={{fontSize:22,marginBottom:4}}>📁</div>
+                      <div style={{fontSize:12,color:dragOver?"#38bdf8":"#475569",fontWeight:600}}>
+                        {dragOver ? "Drop files here" : "Drag & drop or click to upload"}
+                      </div>
+                      <div style={{fontSize:10,color:"#334155",marginTop:2}}>
+                        Supports PDF · DOCX · XLSX · PPTX · TXT · CSV · Images
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* Uploaded files list */}
+                {uploadedDocs.length > 0 && (
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    {uploadedDocs.map(doc => {
+                      const typeColor  = doc.type==="pdf"?"#f87171":doc.type==="image"?"#a78bfa":doc.type==="error"?"#f87171":"#38bdf8";
+                      const typeIcon   = doc.type==="pdf"?"📄":doc.type==="image"?"🖼️":doc.type==="error"?"❌":"📊";
+                      return (
+                        <div key={doc.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",
+                          borderRadius:8,background:doc.type==="error"?"#1a0808":"#060d1c",
+                          border:`1px solid ${doc.type==="error"?"#7f1d1d":"#1a2d45"}`}}>
+                          <span style={{fontSize:14,flexShrink:0}}>{typeIcon}</span>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{doc.name}</div>
+                            <div style={{fontSize:9,color:"#475569"}}>
+                              {doc.size}MB · {doc.type==="error" ? <span style={{color:"#f87171"}}>{doc.error}</span> : <span style={{color:typeColor}}>{doc.type==="pdf"?"PDF (native)":`${(doc.content||"").length} chars extracted`}</span>}
+                            </div>
+                          </div>
+                          <button onClick={()=>removeDoc(doc.name)}
+                            style={{background:"none",border:"none",color:"#f87171",cursor:"pointer",fontSize:16,flexShrink:0,lineHeight:1}}>✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {uploadError && <div style={{fontSize:10,color:"#f87171",marginTop:4}}>⚠ {uploadError}</div>}
+                {uploadedDocs.length > 0 && (
+                  <div style={{fontSize:10,color:"#34d399",marginTop:6,padding:"5px 8px",background:"#021f14",borderRadius:6,border:"1px solid #15803d"}}>
+                    ✅ AI will analyze {uploadedDocs.length} document{uploadedDocs.length>1?"s":""} — PDFs and images sent natively to Claude; DOCX/XLSX/PPTX text extracted automatically
+                  </div>
+                )}
+              </div>
+
               <div style={{marginBottom:14}}>
                 <div className="lbl">Select Proposed Team</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
@@ -22121,7 +22330,11 @@ Return JSON: {
                 </div>
               </div>
               <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:13,padding:"10px"}} onClick={generateFullProposal} disabled={!!aiLoading}>
-                {aiLoading==="full"?"⏳ Generating...":"🚀 Generate Complete Proposal"}
+                {aiLoading==="full"
+                  ? "⏳ Generating..."
+                  : uploadedDocs.length > 0
+                    ? `🚀 Generate with AI + ${uploadedDocs.length} Doc${uploadedDocs.length>1?"s":""}`
+                    : "🚀 Generate Complete Proposal"}
               </button>
             </div>
 
