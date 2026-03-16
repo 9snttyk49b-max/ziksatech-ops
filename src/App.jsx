@@ -46,6 +46,9 @@ const RBAC = {
   soplibrary:   ["super_admin","admin"],
   certtracker:  ["super_admin","admin","hr_immigration"],
   sowgen:       ["super_admin","admin"],
+  ratequote:    ["super_admin","admin","accounts"],
+  availmatrix:  ["super_admin","admin","accounts"],
+  industrypitch:["super_admin","admin"],
   linkedin:     ["super_admin","admin"],
   marketing:    ["super_admin","admin","accounts"],
   contracts:    ["super_admin","admin","accounts"],
@@ -2134,6 +2137,9 @@ export default function ZiksatechOps() {
     { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
     { id:"prospectintel", label:"Prospect Intel",        icon:ICONS.pipeline, group:"Clients"     },
     { id:"sowgen",      label:"SOW Generator",         icon:ICONS.pl,       group:"Clients"     },
+    { id:"ratequote",   label:"Rate Card & Quote",      icon:ICONS.pl,       group:"Clients"     },
+    { id:"availmatrix", label:"Availability Matrix",    icon:ICONS.roster,   group:"Clients"     },
+    { id:"industrypitch",label:"Industry Pitches",      icon:ICONS.pl,       group:"Clients"     },
     { id:"linkedin",    label:"LinkedIn Posts",        icon:ICONS.pl,       group:"Clients"     },
     { id:"marketing",   label:"Marketing Hub",          icon:ICONS.pl,       group:"Clients"     },
     { id:"resourceplan",label:"Resource Planner AI",  icon:ICONS.roster,   group:"Delivery"    },
@@ -2692,6 +2698,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="ideapad"      && <IdeaPad authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="outreachtrk"  && <OutreachTracker crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="sowgen"     && <SOWGenerator   {...shared} />}
+        {tab==="ratequote"   && <RateCardQuote   roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} proposals={shared.proposals} setProposals={shared.setProposals} addAudit={shared.addAudit}/>}
+        {tab==="availmatrix" && <AvailabilityMatrix roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
+        {tab==="industrypitch"&& <IndustryPitchTemplates roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="marketing"  && <MarketingHub proposals={shared.proposals} clients={shared.clients} roster={shared.roster} crmDeals={shared.crmDeals} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
@@ -34021,6 +34030,866 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// RATE CARD & QUICK QUOTE GENERATOR
+// Standard rates by role/level · Markup structure · Email-ready quotes
+// ═══════════════════════════════════════════════════════════════════════════
+function RateCardQuote({ roster, clients, crmDeals, proposals, setProposals, addAudit }) {
+  const [view, setView]         = useState("ratebook");
+  const [quoteForm, setQuoteForm] = useState({
+    clientName:"", engType:"staff-aug", role:"", level:"senior",
+    duration:"6 months", startDate:"", headcount:1,
+    payType:"w2", targetRate:"", notes:""
+  });
+  const [generatedQuote, setGenQuote]   = useState(null);
+  const [aiLoading, setAiLoading]       = useState(false);
+  const [aiEmail,   setAiEmail]         = useState("");
+  const [copied,    setCopied]          = useState("");
+
+  const copy = (t,k) => { navigator.clipboard?.writeText(t).catch(()=>{}); setCopied(k); setTimeout(()=>setCopied(""),2500); };
+  const fmt  = v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1e3 ? `$${(v/1000).toFixed(0)}k` : `$${Math.round(v)}`;
+
+  // ── Standard Rate Book ───────────────────────────────────────────────────
+  const RATE_BOOK = [
+    // SAP Functional / Technical
+    { category:"SAP BRIM / Billing",       level:"Senior (8+ yrs)",   w2:"$145-165", c2c:"$160-185", margin:"22-28%", notes:"High demand, rare skillset" },
+    { category:"SAP BRIM / Billing",       level:"Mid (4-7 yrs)",     w2:"$115-135", c2c:"$130-150", margin:"20-25%", notes:"" },
+    { category:"SAP IS-U / Utilities",     level:"Senior (8+ yrs)",   w2:"$140-160", c2c:"$155-180", margin:"22-28%", notes:"Tolling + utilities specialists" },
+    { category:"SAP S/4HANA FI/CO",        level:"Senior (8+ yrs)",   w2:"$130-150", c2c:"$145-170", margin:"20-25%", notes:"FSCM, AR/AP, Asset Accounting" },
+    { category:"SAP S/4HANA FI/CO",        level:"Mid (4-7 yrs)",     w2:"$105-120", c2c:"$120-140", margin:"18-23%", notes:"" },
+    { category:"SAP SuccessFactors / HCM", level:"Senior (8+ yrs)",   w2:"$120-140", c2c:"$135-155", margin:"20-25%", notes:"EC, Payroll, Time, Recruiting" },
+    { category:"SAP SuccessFactors / HCM", level:"Mid (4-7 yrs)",     w2:"$95-115",  c2c:"$110-130", margin:"18-22%", notes:"" },
+    { category:"SAP MDG / Data Governance",level:"Senior (8+ yrs)",   w2:"$135-155", c2c:"$150-170", margin:"20-26%", notes:"MDG-M, MDG-F, BRIM + MDG combo" },
+    { category:"SAP MM / SD / PP",         level:"Senior (8+ yrs)",   w2:"$120-140", c2c:"$135-155", margin:"20-25%", notes:"Procure-to-Pay, Order-to-Cash" },
+    { category:"SAP MM / SD / PP",         level:"Mid (4-7 yrs)",     w2:"$95-115",  c2c:"$110-130", margin:"18-22%", notes:"" },
+    { category:"SAP BTP / Integration",    level:"Senior (8+ yrs)",   w2:"$140-165", c2c:"$155-180", margin:"22-28%", notes:"BTP, CPI, ABAP, API Management" },
+    { category:"SAP Project Manager",      level:"Senior / PMP",      w2:"$145-170", c2c:"$160-190", margin:"22-28%", notes:"SAP program + project management" },
+    { category:"SAP ABAP / Technical",     level:"Senior (8+ yrs)",   w2:"$125-145", c2c:"$140-165", margin:"20-26%", notes:"ABAP, Fiori, UI5, RFC/BAPI" },
+    // Data & AI
+    { category:"Databricks / Data Eng",    level:"Senior (6+ yrs)",   w2:"$140-165", c2c:"$155-185", margin:"22-28%", notes:"Databricks, PySpark, Delta Lake" },
+    { category:"AWS / Cloud Architect",    level:"Senior (6+ yrs)",   w2:"$145-170", c2c:"$160-190", margin:"22-28%", notes:"AWS + SAP on Cloud" },
+    { category:"AI / ML Engineer",         level:"Senior (5+ yrs)",   w2:"$155-185", c2c:"$170-205", margin:"20-26%", notes:"Python, MLflow, LLMs, BTP AI" },
+    { category:"Data Governance Analyst",  level:"Mid-Senior",        w2:"$95-120",  c2c:"$110-135", margin:"18-24%", notes:"MDM, data quality, stewardship" },
+  ];
+
+  const ROLES = [...new Set(RATE_BOOK.map(r=>r.category))];
+  const PAY_TYPES = [
+    { id:"w2",  label:"W-2 Employee",        tip:"Ziksatech employs — we handle payroll, taxes, benefits" },
+    { id:"c2c", label:"Corp-to-Corp (C2C)",  tip:"Contractor invoices through their LLC/S-Corp" },
+    { id:"1099",label:"1099 Independent",    tip:"Individual contractor — compliance risk if misclassified" },
+  ];
+
+  // ── Build quote ──────────────────────────────────────────────────────────
+  const buildQuote = () => {
+    const matched = RATE_BOOK.filter(r => r.category === quoteForm.role);
+    const row     = matched.find(r => r.level.toLowerCase().includes(quoteForm.level)) || matched[0];
+    if (!row) return alert("Select a role from the rate book first");
+    const rateStr  = quoteForm.payType === "c2c" ? row.c2c : row.w2;
+    const [lo, hi] = rateStr.split("-").map(r => parseInt(r.replace(/\D/g,"")));
+    const targetHr = parseInt(quoteForm.targetRate) || Math.round((lo+hi)/2);
+    const hrs      = 1920; // annual
+    const annualVal = targetHr * hrs * parseInt(quoteForm.headcount||1);
+    const durationMap = {"1 month":160,"3 months":480,"6 months":960,"12 months":1920,"ongoing":1920};
+    const engHrs    = durationMap[quoteForm.duration] || 960;
+    const engVal    = targetHr * engHrs * parseInt(quoteForm.headcount||1);
+    setGenQuote({ row, targetHr, rateRange:[lo,hi], annualVal, engVal, engHrs,
+      clientName:quoteForm.clientName, role:quoteForm.role, level:quoteForm.level,
+      headcount:parseInt(quoteForm.headcount||1), payType:quoteForm.payType,
+      duration:quoteForm.duration, startDate:quoteForm.startDate, notes:quoteForm.notes });
+  };
+
+  const genQuoteEmail = async () => {
+    if (!generatedQuote) return;
+    setAiLoading(true); setAiEmail("");
+    try {
+      const resp = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          system:"You are Manju Murthy, Managing Partner at Ziksatech LLC (WBE/HUB/WOSB certified IT staff augmentation, Plano TX). Write a professional, concise rate confirmation email. Plain text, no markdown.",
+          messages:[{ role:"user", content:`Write a rate confirmation / quick quote email to ${generatedQuote.clientName||"the client"} for:
+
+Role: ${generatedQuote.role} (${generatedQuote.level})
+Headcount: ${generatedQuote.headcount}
+Pay Type: ${generatedQuote.payType.toUpperCase()}
+Proposed Rate: $${generatedQuote.targetHr}/hr
+Engagement Duration: ${generatedQuote.duration}
+Start Date: ${generatedQuote.startDate||"Flexible, target ASAP"}
+Total Engagement Value: $${generatedQuote.engVal.toLocaleString()}
+Additional Notes: ${generatedQuote.notes||"None"}
+
+Email should:
+- Be 150-200 words
+- Confirm the rate and terms clearly
+- Mention our WBE/HUB/WOSB certification (procurement advantage)
+- Note that consultant background/resume available upon request
+- Include a soft CTA to confirm or schedule a call
+- Sign off as Manju Murthy, Managing Partner, Ziksatech LLC, mmurthy@ziksatech.com, 972-XXX-XXXX` }]
+        })
+      });
+      const data = await resp.json();
+      setAiEmail((data?.content||[]).map(b=>b.text||"").join(""));
+    } catch(e) { setAiEmail("Error: "+e.message); }
+    setAiLoading(false);
+  };
+
+  const tabBtn = (id, lbl) => (
+    <button onClick={()=>setView(id)} style={{ padding:"5px 16px", borderRadius:7, border:"none", cursor:"pointer", fontSize:12, fontWeight:600,
+      background:view===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent", color:view===id?"#fff":"#475569" }}>
+      {lbl}
+    </button>
+  );
+
+  const MARGIN_COL = m => m.includes("25")||m.includes("26")||m.includes("27")||m.includes("28") ? "#34d399" : "#f59e0b";
+
+  return (
+    <div>
+      <PH title="Rate Card & Quick Quote" sub="Standard DFW market rates · W-2 / C2C / 1099 structures · Instant quote builder · Email-ready proposals"/>
+
+      <div style={{display:"flex",gap:4,marginBottom:18,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabBtn("ratebook","📋 Rate Book")}
+        {tabBtn("quote",   "💰 Quick Quote")}
+        {tabBtn("margins", "📊 Margin Guide")}
+      </div>
+
+      {/* ── RATE BOOK ────────────────────────────────────────────────────── */}
+      {view==="ratebook" && (
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Ziksatech Standard Rate Book — DFW Market 2026</div>
+              <div style={{fontSize:10,color:"#475569",marginTop:2}}>Rates reflect DFW market. W-2 = what we bill client. Margin = our gross. C2C = C2C contractor billing rate.</div>
+            </div>
+            <button className="btn bp" style={{fontSize:11}} onClick={()=>setView("quote")}>+ Quick Quote →</button>
+          </div>
+          {/* Header */}
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 90px 90px 90px 1.2fr",gap:6,padding:"6px 12px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+            <div>Role / Skill Set</div><div>Level</div><div style={{textAlign:"right"}}>W-2 /hr</div><div style={{textAlign:"right"}}>C2C /hr</div><div style={{textAlign:"center"}}>Margin</div><div>Notes</div>
+          </div>
+          {/* Group by category */}
+          {[...new Set(RATE_BOOK.map(r=>r.category))].map(cat => {
+            const rows = RATE_BOOK.filter(r=>r.category===cat);
+            return rows.map((row,ri) => (
+              <div key={cat+ri} style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 90px 90px 90px 1.2fr",gap:6,padding:"9px 12px",borderRadius:6,marginBottom:3,
+                background:ri===0?"#060d1c":"#040810",border:`1px solid ${ri===0?"#1a2d45":"#0a1626"}`}}>
+                <div style={{fontSize:11,fontWeight:ri===0?700:400,color:ri===0?"#e2e8f0":"#94a3b8"}}>{ri===0?cat:""}</div>
+                <div style={{fontSize:10,color:"#94a3b8"}}>{row.level}</div>
+                <div style={{textAlign:"right",fontSize:11,fontWeight:700,color:"#38bdf8",fontFamily:"monospace"}}>{row.w2}</div>
+                <div style={{textAlign:"right",fontSize:11,color:"#94a3b8",fontFamily:"monospace"}}>{row.c2c}</div>
+                <div style={{textAlign:"center"}}>
+                  <span style={{fontSize:10,fontWeight:700,color:MARGIN_COL(row.margin)}}>{row.margin}</span>
+                </div>
+                <div style={{fontSize:9,color:"#334155"}}>{row.notes}</div>
+              </div>
+            ));
+          })}
+          <div style={{marginTop:12,padding:"8px 14px",background:"#0c1e3d",borderRadius:8,border:"1px solid #0369a1",fontSize:10,color:"#7dd3fc"}}>
+            💡 WBE/HUB/WOSB certification means many enterprise procurement teams have diversity spend mandates — use this to justify premium rates.
+          </div>
+        </div>
+      )}
+
+      {/* ── QUICK QUOTE ──────────────────────────────────────────────────── */}
+      {view==="quote" && (
+        <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:14,alignItems:"start"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>💰 Build a Quote</div>
+              {[["Client / Company *","clientName","text","Toyota, HPE, Lockheed..."],
+                ["Role / Skill Set *","role","select"],
+                ["Start Date","startDate","date"]].map(([lbl,key,type,ph])=>(
+                <div key={key} style={{marginBottom:8}}>
+                  <div className="lbl">{lbl}</div>
+                  {type==="select"
+                    ? <select className="inp" value={quoteForm[key]||""} onChange={e=>setQuoteForm(p=>({...p,[key]:e.target.value}))}>
+                        <option value="">— select role —</option>
+                        {ROLES.map(r=><option key={r}>{r}</option>)}
+                      </select>
+                    : <input type={type} className="inp" value={quoteForm[key]||""} onChange={e=>setQuoteForm(p=>({...p,[key]:e.target.value}))} placeholder={ph}/>
+                  }
+                </div>
+              ))}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                <div>
+                  <div className="lbl">Level</div>
+                  <select className="inp" value={quoteForm.level} onChange={e=>setQuoteForm(p=>({...p,level:e.target.value}))}>
+                    {["senior","mid","lead","manager"].map(l=><option key={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div className="lbl">Headcount</div>
+                  <input type="number" className="inp" min="1" max="20" value={quoteForm.headcount} onChange={e=>setQuoteForm(p=>({...p,headcount:e.target.value}))}/>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                <div>
+                  <div className="lbl">Duration</div>
+                  <select className="inp" value={quoteForm.duration} onChange={e=>setQuoteForm(p=>({...p,duration:e.target.value}))}>
+                    {["1 month","3 months","6 months","12 months","ongoing"].map(d=><option key={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div className="lbl">Pay Type</div>
+                  <select className="inp" value={quoteForm.payType} onChange={e=>setQuoteForm(p=>({...p,payType:e.target.value}))}>
+                    {PAY_TYPES.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{marginBottom:12}}>
+                <div className="lbl">Target Bill Rate ($/hr) — leave blank to use midpoint</div>
+                <input type="number" className="inp" value={quoteForm.targetRate} onChange={e=>setQuoteForm(p=>({...p,targetRate:e.target.value}))} placeholder="e.g. 155"/>
+              </div>
+              <div style={{marginBottom:12}}>
+                <div className="lbl">Special Notes</div>
+                <textarea className="inp" rows={2} value={quoteForm.notes} onChange={e=>setQuoteForm(p=>({...p,notes:e.target.value}))} placeholder="Remote only, required certifications, background check, etc."/>
+              </div>
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px"}} onClick={buildQuote}>
+                🧮 Calculate Quote
+              </button>
+            </div>
+            {/* Pay type explainer */}
+            <div className="card" style={{padding:"12px 14px"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Pay Structure Guide</div>
+              {PAY_TYPES.map(p=>(
+                <div key={p.id} style={{padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                  <div style={{fontSize:10,fontWeight:700,color:quoteForm.payType===p.id?"#38bdf8":"#94a3b8"}}>{p.label}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>{p.tip}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quote output */}
+          <div>
+            {!generatedQuote ? (
+              <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:40,marginBottom:12}}>💰</div>
+                <div style={{fontSize:13,color:"#334155"}}>Fill in the details and click Calculate Quote — get an instant quote with engagement value and a send-ready email</div>
+              </div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {/* Quote card */}
+                <div className="card" style={{padding:"20px 24px",border:"1px solid #c9a84c44"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+                    <div>
+                      <div style={{fontSize:11,color:"#3d5a7a",fontWeight:700,textTransform:"uppercase"}}>Proposed Quote — {generatedQuote.clientName||"Client"}</div>
+                      <div style={{fontSize:20,fontWeight:800,color:"#e2e8f0",marginTop:4}}>{generatedQuote.role}</div>
+                      <div style={{fontSize:11,color:"#475569"}}>{generatedQuote.level} · {generatedQuote.headcount} person{generatedQuote.headcount>1?"s":""} · {generatedQuote.payType.toUpperCase()}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:28,fontWeight:900,color:"#c9a84c",fontFamily:"monospace"}}>${generatedQuote.targetHr}<span style={{fontSize:14}}>/hr</span></div>
+                      <div style={{fontSize:10,color:"#475569"}}>Market range: {generatedQuote.payType==="c2c"?generatedQuote.row.c2c:generatedQuote.row.w2}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10,marginBottom:16}}>
+                    {[
+                      ["Duration",        generatedQuote.duration,                         "#94a3b8"],
+                      ["Engagement Value",`$${generatedQuote.engVal.toLocaleString()}`,     "#c9a84c"],
+                      ["Annual Run Rate",  `$${generatedQuote.annualVal.toLocaleString()}`, "#38bdf8"],
+                      ["Start Date",       generatedQuote.startDate||"Flexible",            "#34d399"],
+                    ].map(([lbl,val,col])=>(
+                      <div key={lbl} style={{padding:"10px 12px",background:"#040810",borderRadius:8}}>
+                        <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{lbl}</div>
+                        <div style={{fontSize:14,fontWeight:700,color:col,fontFamily:"monospace"}}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {generatedQuote.notes && <div style={{fontSize:10,color:"#475569",marginBottom:12,padding:"6px 10px",background:"#040810",borderRadius:6}}>Notes: {generatedQuote.notes}</div>}
+                  <div style={{display:"flex",gap:8}}>
+                    <button className="btn bg" style={{fontSize:11}} onClick={()=>copy(`Rate: $${generatedQuote.targetHr}/hr | ${generatedQuote.role} (${generatedQuote.level}) | ${generatedQuote.payType.toUpperCase()} | ${generatedQuote.duration} | Value: $${generatedQuote.engVal.toLocaleString()}`,"quote")}>
+                      {copied==="quote"?"✅ Copied":"📋 Copy Quote"}
+                    </button>
+                    <button className="btn bp" style={{fontSize:11}} onClick={genQuoteEmail} disabled={aiLoading}>
+                      {aiLoading?"⏳ Drafting...":"✉️ Generate Quote Email"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Email output */}
+                {aiEmail && (
+                  <div className="card" style={{padding:"18px 20px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                      <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>✉️ Quote Email — Ready to Send</div>
+                      <button className="btn bg" style={{fontSize:10}} onClick={()=>copy(aiEmail,"email")}>{copied==="email"?"✅ Copied":"📋 Copy Email"}</button>
+                    </div>
+                    <pre style={{fontSize:11,color:"#94a3b8",whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.7,margin:0}}>{aiEmail}</pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── MARGIN GUIDE ─────────────────────────────────────────────────── */}
+      {view==="margins" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📊 Margin by Pay Structure</div>
+            {[
+              { type:"W-2 Employee",     margin:"18-28%", desc:"We pay salary + burden (~18% payroll taxes + $7,200 benefits). Most common. Best for long-term placements.", pros:["Full control of employment","Easy to expand","WBE compliance"], cons:["Higher cost base","Benefit overhead"] },
+              { type:"C2C Contractor",   margin:"20-30%", desc:"Contractor invoices through their LLC. We invoice client at markup. Clean margin, lower risk.", pros:["Higher margin potential","No W-2 overhead","Contractor flexibility"], cons:["1099/C2C classification risk","Less control"] },
+              { type:"Sub-Contractor",   margin:"12-18%", desc:"Partner firm places their consultant through Ziksatech. Lower margin but zero sourcing risk.", pros:["Zero sourcing effort","Fill gaps fast","Scale quickly"], cons:["Lower margin","Partner dependency"] },
+            ].map(row=>(
+              <div key={row.type} style={{marginBottom:14,padding:"12px 14px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{row.type}</div>
+                  <span style={{fontSize:13,fontWeight:700,color:"#34d399",fontFamily:"monospace"}}>{row.margin}</span>
+                </div>
+                <div style={{fontSize:10,color:"#475569",marginBottom:8}}>{row.desc}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  <div>
+                    {row.pros.map(p=><div key={p} style={{fontSize:9,color:"#34d399"}}>✓ {p}</div>)}
+                  </div>
+                  <div>
+                    {row.cons.map(p=><div key={p} style={{fontSize:9,color:"#f87171"}}>✗ {p}</div>)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🎯 Pricing Strategy</div>
+              {[
+                ["WBE Premium",    "+$5-15/hr", "Clients with diversity mandates pay premium for certified WBE vendors. Always mention certification."],
+                ["SAP BRIM Scarcity","$155-185", "BRIM is one of the rarest SAP skills. Never discount below $145. Hold rate."],
+                ["Tolling + IS-U", "$165-190",  "NTTA/PTC/TX-DOT type work. Combination of IS-U + tolling custom modules. Very limited pool."],
+                ["Multi-placement","−$5-10/hr", "When placing 3+ consultants at same client, offer small volume discount to lock the account."],
+                ["Defense / Gov",  "SOW-based", "Lockheed, Raytheon types — use fixed-price SOWs. Your WBE status may be required for subcontracting."],
+              ].map(([lbl,rate,desc])=>(
+                <div key={lbl} style={{display:"flex",gap:12,padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{lbl}</div>
+                    <div style={{fontSize:9,color:"#475569"}}>{desc}</div>
+                  </div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#c9a84c",flexShrink:0,fontFamily:"monospace"}}>{rate}</div>
+                </div>
+              ))}
+            </div>
+            <div className="card" style={{padding:"14px 16px",border:"1px solid #c9a84c33"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#c9a84c",marginBottom:6}}>💡 Quick Negotiation Rules</div>
+              {["Never reveal your consultant's cost or salary to the client","Always anchor high — you can come down, never go up","W-2 rate + 35% = rough C2C equivalent (cover employer burden)","If client pushes back on rate, add scope — not cut rate","WBE/HUB/WOSB = 5-10% premium justified for procurement compliance"].map((t,i)=>(
+                <div key={i} style={{fontSize:10,color:"#475569",padding:"2px 0"}}>• {t}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SKILLS & AVAILABILITY MATRIX
+// Real-time grid: who's available, when, and what they know
+// ═══════════════════════════════════════════════════════════════════════════
+function AvailabilityMatrix({ roster, clients, crmDeals, addAudit }) {
+  const [filter,  setFilter]  = useState({ skill:"", industry:"", availability:"all", type:"all" });
+  const [selCon,  setSelCon]  = useState(null);
+  const [view,    setView]    = useState("matrix"); // matrix | availability | skills
+
+  const safeRoster  = roster  || [];
+  const safeClients = clients || [];
+  const safeDeals   = crmDeals|| [];
+
+  const openReqs = safeDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage));
+
+  // Skill taxonomy
+  const ALL_SKILLS = [
+    "SAP BRIM","SAP IS-U","SAP S/4HANA","SAP FI/CO","SAP SuccessFactors","SAP MDG",
+    "SAP MM/SD/PP","SAP BTP","SAP ABAP","Databricks","AWS","Data Engineering","AI/ML",
+    "SAP CPI","SAP Fiori","SAP PM","FSCM","Tolling","Data Governance",
+  ];
+
+  // Enrich roster with derived fields
+  const enriched = safeRoster.map(r => {
+    const cl = safeClients.find(c=>c.name && r.client && r.client.toLowerCase().includes(c.name.toLowerCase().split(" ")[0]));
+    const renewal = cl?.renewalDate;
+    const daysToRenewal = renewal ? Math.ceil((new Date(renewal) - new Date()) / 86400000) : null;
+    const rolloffSoon = daysToRenewal !== null && daysToRenewal <= 90;
+    const onBench = !r.client || r.util === 0;
+    const skillList = (r.skills||"").split(",").map(s=>s.trim()).filter(Boolean);
+    const matchedReqs = openReqs.filter(req =>
+      skillList.some(sk => req.name?.toLowerCase().includes(sk.toLowerCase().split(" ").pop() || "") ||
+        req.notes?.toLowerCase().includes(sk.toLowerCase().split(" ").pop() || ""))
+    );
+    return { ...r, cl, daysToRenewal, rolloffSoon, onBench, skillList, matchedReqs };
+  });
+
+  // Filter
+  const filtered = enriched.filter(r => {
+    if (filter.skill && !r.skillList.some(s=>s.toLowerCase().includes(filter.skill.toLowerCase()))) return false;
+    if (filter.availability === "available" && !r.onBench) return false;
+    if (filter.availability === "rolloff" && !r.rolloffSoon) return false;
+    if (filter.type !== "all" && r.type !== filter.type) return false;
+    return true;
+  });
+
+  const availableCount = enriched.filter(r=>r.onBench).length;
+  const rolloffCount   = enriched.filter(r=>r.rolloffSoon && !r.onBench).length;
+
+  // Skill coverage map
+  const skillMap = {};
+  ALL_SKILLS.forEach(sk => {
+    skillMap[sk] = enriched.filter(r=>r.skillList.some(s=>s.toLowerCase().includes(sk.toLowerCase().replace("sap ","")))).map(r=>r.name);
+  });
+
+  const AVAIL_COL = (r) => r.onBench ? "#34d399" : r.rolloffSoon ? "#f59e0b" : "#38bdf8";
+  const AVAIL_LBL = (r) => r.onBench ? "Available" : r.rolloffSoon ? `Rolls off ${r.daysToRenewal}d` : "Placed";
+
+  const tabBtn = (id, lbl) => (
+    <button onClick={()=>setView(id)} style={{padding:"5px 16px",borderRadius:7,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+      background:view===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:view===id?"#fff":"#475569"}}>
+      {lbl}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="Skills & Availability Matrix" sub="Real-time consultant availability · Skill coverage · Match to open reqs · BD sales tool"/>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Consultants",  v:safeRoster.length,          c:"#94a3b8"},
+          {l:"Available / Bench",  v:availableCount,              c:"#34d399"},
+          {l:"Rolling Off (<90d)", v:rolloffCount,                c:"#f59e0b"},
+          {l:"Fully Placed",       v:enriched.filter(r=>!r.onBench&&!r.rolloffSoon).length, c:"#38bdf8"},
+          {l:"Open Client Reqs",   v:openReqs.length,             c:"#a78bfa"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+          {tabBtn("matrix",    "👥 Consultant Matrix")}
+          {tabBtn("skills",    "🎯 Skill Coverage")}
+          {tabBtn("reqmatch",  "🔗 Req Matching")}
+        </div>
+        {/* Filters */}
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <input className="inp" style={{width:160,padding:"4px 10px",fontSize:11}} placeholder="Filter by skill..." value={filter.skill} onChange={e=>setFilter(p=>({...p,skill:e.target.value}))}/>
+          <select className="inp" style={{width:130,padding:"4px 8px",fontSize:11}} value={filter.availability} onChange={e=>setFilter(p=>({...p,availability:e.target.value}))}>
+            <option value="all">All Status</option>
+            <option value="available">Available</option>
+            <option value="rolloff">Rolling Off</option>
+          </select>
+          <select className="inp" style={{width:120,padding:"4px 8px",fontSize:11}} value={filter.type} onChange={e=>setFilter(p=>({...p,type:e.target.value}))}>
+            <option value="all">FTE + C2C</option>
+            <option value="FTE">FTE Only</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ── CONSULTANT MATRIX ─────────────────────────────────────────────── */}
+      {view==="matrix" && (
+        <div>
+          {/* Table header */}
+          <div style={{display:"grid",gridTemplateColumns:"1.8fr 1.5fr 90px 1fr 80px 80px 100px",gap:6,padding:"6px 14px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+            <div>Consultant</div><div>Role</div><div>Type</div><div>Skills</div><div style={{textAlign:"center"}}>Rate</div><div style={{textAlign:"center"}}>Util%</div><div style={{textAlign:"center"}}>Availability</div>
+          </div>
+          {filtered.map(r => (
+            <div key={r.id} onClick={()=>setSelCon(selCon?.id===r.id?null:r)}
+              style={{display:"grid",gridTemplateColumns:"1.8fr 1.5fr 90px 1fr 80px 80px 100px",gap:6,padding:"11px 14px",borderRadius:8,marginBottom:5,cursor:"pointer",
+                background:selCon?.id===r.id?"#0c2340":r.onBench?"#021f14":r.rolloffSoon?"#1a1005":"#060d1c",
+                border:`1px solid ${selCon?.id===r.id?"#0369a1":AVAIL_COL(r)+"33"}`}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div>
+                <div style={{fontSize:9,color:"#475569"}}>{r.client||"— on bench —"}</div>
+              </div>
+              <div style={{fontSize:11,color:"#94a3b8"}}>{r.role}</div>
+              <div style={{fontSize:10,padding:"1px 6px",borderRadius:6,background:"#040810",border:"1px solid #1a2d45",color:"#475569",width:"fit-content",height:"fit-content"}}>{r.type}</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+                {r.skillList.slice(0,3).map(sk=>(
+                  <span key={sk} style={{fontSize:8,padding:"1px 5px",borderRadius:8,background:"#0c1e3d",color:"#38bdf8",border:"1px solid #0369a133"}}>{sk}</span>
+                ))}
+                {r.skillList.length>3 && <span style={{fontSize:8,color:"#334155"}}>+{r.skillList.length-3}</span>}
+              </div>
+              <div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#38bdf8",fontFamily:"monospace"}}>${r.billRate}/hr</div>
+              <div style={{textAlign:"center",fontSize:11,color:"#94a3b8"}}>{Math.round((r.util||0)*100)}%</div>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:9,fontWeight:700,color:AVAIL_COL(r),padding:"2px 6px",borderRadius:8,background:AVAIL_COL(r)+"22",border:`1px solid ${AVAIL_COL(r)}44`}}>
+                  {AVAIL_LBL(r)}
+                </div>
+                {r.matchedReqs.length>0 && <div style={{fontSize:8,color:"#a78bfa",marginTop:2}}>{r.matchedReqs.length} req match</div>}
+              </div>
+            </div>
+          ))}
+          {filtered.length===0 && <div style={{padding:"40px",textAlign:"center",color:"#334155",fontSize:12}}>No consultants match the current filter</div>}
+
+          {/* Expanded detail */}
+          {selCon && (
+            <div className="card" style={{padding:"18px 20px",marginTop:12,border:`1px solid ${AVAIL_COL(selCon)}44`}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{selCon.name}</div>
+                  <div style={{fontSize:11,color:"#94a3b8",marginBottom:8}}>{selCon.role}</div>
+                  {[["Client",selCon.client||"On Bench","#34d399"],["Bill Rate",`$${selCon.billRate}/hr`,"#38bdf8"],["Type",selCon.type,"#94a3b8"],["Utilization",Math.round((selCon.util||0)*100)+"%","#94a3b8"]].map(([k,v,col])=>(
+                    <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                      <span style={{color:"#475569"}}>{k}</span><span style={{color:col,fontWeight:700}}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Full Skill Set</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {selCon.skillList.map(sk=>(
+                      <span key={sk} style={{fontSize:9,padding:"2px 7px",borderRadius:8,background:"#0c1e3d",color:"#38bdf8",border:"1px solid #0369a133"}}>{sk}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Open Req Matches</div>
+                  {selCon.matchedReqs.length===0
+                    ? <div style={{fontSize:10,color:"#334155"}}>No direct req matches</div>
+                    : selCon.matchedReqs.map(req=>(
+                      <div key={req.id} style={{padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:10}}>
+                        <div style={{color:"#a78bfa",fontWeight:600}}>{req.name}</div>
+                        <div style={{color:"#475569"}}>${req.value?.toLocaleString()} · {req.stage}</div>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SKILL COVERAGE MAP ─────────────────────────────────────────────── */}
+      {view==="skills" && (
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🎯 Skill Coverage — Who Knows What</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+            {ALL_SKILLS.map(sk => {
+              const names = skillMap[sk]||[];
+              const covered = names.length > 0;
+              return (
+                <div key={sk} style={{padding:"8px 12px",borderRadius:8,background:covered?"#060d1c":"#040810",border:`1px solid ${covered?"#1a2d45":"#0a1626"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                    <div style={{fontSize:11,fontWeight:600,color:covered?"#e2e8f0":"#334155"}}>{sk}</div>
+                    <span style={{fontSize:9,fontWeight:700,color:names.length>=2?"#34d399":names.length===1?"#f59e0b":"#f87171",
+                      padding:"1px 6px",borderRadius:8,background:(names.length>=2?"#021f14":names.length===1?"#1a1005":"#1a0808")}}>
+                      {names.length} consultant{names.length!==1?"s":""}
+                    </span>
+                  </div>
+                  {covered && <div style={{fontSize:9,color:"#475569"}}>{names.slice(0,3).join(", ")}{names.length>3?` +${names.length-3} more`:""}</div>}
+                  {!covered && <div style={{fontSize:9,color:"#334155"}}>Gap — no coverage</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── REQ MATCHING ──────────────────────────────────────────────────── */}
+      {view==="reqmatch" && (
+        <div>
+          {openReqs.length===0 ? (
+            <div style={{padding:"40px",textAlign:"center",color:"#334155",fontSize:12}}>No open pipeline deals to match against</div>
+          ) : openReqs.map(req=>{
+            const matches = enriched.filter(r=>r.skillList.some(sk=>req.name?.toLowerCase().includes(sk.toLowerCase().replace("sap ",""))||req.notes?.toLowerCase().includes(sk.toLowerCase().replace("sap ",""))));
+            const bestMatch = matches.filter(r=>r.onBench||r.rolloffSoon);
+            return (
+              <div key={req.id} className="card" style={{padding:"14px 18px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{req.name}</div>
+                    <div style={{fontSize:10,color:"#475569"}}>{req.stage} · ${req.value?.toLocaleString()} · Close: {req.closeDate}</div>
+                    <div style={{fontSize:10,color:"#334155",marginTop:2}}>{req.notes?.slice(0,80)}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:11,fontWeight:700,color:bestMatch.length>0?"#34d399":"#f87171"}}>
+                      {bestMatch.length>0?`${bestMatch.length} available`:"No one available"}
+                    </div>
+                    <div style={{fontSize:9,color:"#475569"}}>{matches.length} total skill match</div>
+                  </div>
+                </div>
+                {matches.length>0 && (
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {matches.slice(0,5).map(r=>(
+                      <div key={r.id} style={{padding:"5px 10px",borderRadius:8,background:AVAIL_COL(r)+"22",border:`1px solid ${AVAIL_COL(r)}44`,fontSize:10}}>
+                        <span style={{fontWeight:700,color:AVAIL_COL(r)}}>{r.name}</span>
+                        <span style={{color:"#475569",marginLeft:4}}>{AVAIL_LBL(r)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INDUSTRY PITCH TEMPLATES
+// Pre-built pitch decks by vertical for fast BD conversations
+// ═══════════════════════════════════════════════════════════════════════════
+function IndustryPitchTemplates({ roster, clients, crmDeals, addAudit }) {
+  const [selIndustry, setSelIndustry] = useState(null);
+  const [aiLoading,   setAiLoading]   = useState(false);
+  const [aiPitch,     setAiPitch]     = useState("");
+  const [pitchType,   setPitchType]   = useState("email"); // email | linkedin | call-script | capability
+  const [copied,      setCopied]      = useState("");
+
+  const copy = (t,k) => { navigator.clipboard?.writeText(t).catch(()=>{}); setCopied(k); setTimeout(()=>setCopied(""),2500); };
+
+  const safeRoster  = roster  || [];
+  const safeClients = clients || [];
+
+  const INDUSTRIES = [
+    {
+      id:"transportation",
+      icon:"🚗", label:"Transportation & Tolling",
+      clients:"NTTA, PTC, TX-DOT, state highway agencies",
+      pains:["Aging tolling billing systems","IS-U BRIM customizations","Revenue leakage in T2 billing","ECC end-of-life migration"],
+      ourStory:"Rajesh Kumar is our IS-U + tolling billing specialist — NTTA deployed. Nuthan has BRIM tolling experience from PTC.",
+      ourExperts:["Rajesh Kumar — IS-U / Tolling","Nuthan Joshi — SAP BRIM"],
+      wbeAngle:"NTTA and TX-DOT procurement actively seek WBE/HUB vendors. Our HUB certification is a major competitive advantage.",
+      modules:["SAP IS-U","SAP BRIM","Custom Tolling","Device Management","CCS"],
+      competitors:"TCS, Infosys, small IS-U boutiques",
+    },
+    {
+      id:"automotive",
+      icon:"🏎", label:"Automotive & Manufacturing",
+      clients:"Toyota, GM, Ford, tier-1 suppliers",
+      pains:["S/4HANA upgrade from ECC","SuccessFactors HCM global rollout","Databricks + AWS data pipelines","Manufacturing BOM + PP"],
+      ourStory:"Vivek is live at Toyota SuccessFactors HCM. Priya on data engineering at Toyota Connected.",
+      ourExperts:["Vivek Khajuria — SuccessFactors","Priya Rajan — Databricks / Data"],
+      wbeAngle:"Toyota supplier diversity program actively certifies WBE/WOSB vendors. Our certification opens procurement doors.",
+      modules:["SAP SuccessFactors","SAP S/4HANA MM/PP","Databricks","AWS","SAP BTP"],
+      competitors:"Accenture, Deloitte, iGate",
+    },
+    {
+      id:"technology",
+      icon:"💻", label:"Technology Companies",
+      clients:"HPE, Dell, Cisco, TI, software companies",
+      pains:["Cloud-first SAP strategy (BTP, RISE)","S/4HANA migration","Resource gaps for specific modules","Staff aug for program surge"],
+      ourStory:"Malla is at HPE on IS-U + S/4HANA. Quick placement, no ramp time.",
+      ourExperts:["Malla Reddy — IS-U / S4HANA","Kartheek — BTP / AI/ML"],
+      wbeAngle:"Tech companies often have supplier diversity scorecards. WBE certification counts toward their spend goals.",
+      modules:["SAP BTP","SAP ABAP","SAP S/4HANA","CPI","Fiori","AI/ML"],
+      competitors:"Wipro, HCL, Cognizant, boutique SAP firms",
+    },
+    {
+      id:"utilities",
+      icon:"⚡", label:"Energy & Utilities",
+      clients:"HOPE-IDI, Oncor, TXU, AEP, Atmos Energy",
+      pains:["Meter-to-cash transformation","IS-U to S/4HANA Utilities migration","MDG + data quality","AMI integration"],
+      ourStory:"HOPE-IDI is our anchor — Deepa + Arun live. Sudheendra leads MDG at SCG. Real multi-year utility experience.",
+      ourExperts:["Deepa Krishnan — PM / Architect","Arun Patel — S/4HANA","Sudheendra — MDG","Rajesh — IS-U"],
+      wbeAngle:"Utility companies under regulatory pressure for supplier diversity. Most have explicit spend targets for WBE/MBE vendors.",
+      modules:["SAP IS-U","SAP S/4HANA","SAP MDG","BRIM","AMI Integration"],
+      competitors:"IBM, Capgemini, NTT DATA, small utility boutiques",
+    },
+    {
+      id:"healthcare",
+      icon:"🏥", label:"Healthcare",
+      clients:"CHRISTUS Health, THR, HCA, Baylor Scott & White",
+      pains:["S/4HANA ERP migration from legacy","HIPAA-compliant data governance","Finance + supply chain integration","Staff aug for program delivery"],
+      ourStory:"Pursuing CHRISTUS Health S/4HANA assessment. Deepa + Arun best fit. Healthcare is a growing vertical.",
+      ourExperts:["Deepa Krishnan — Architecture","Arun Patel — S/4HANA","Sudheendra — Data Governance"],
+      wbeAngle:"Healthcare systems have strong DEI supplier mandates. WOSB certification is particularly valued.",
+      modules:["SAP S/4HANA","SAP MDG","SAP Finance","SAP MM/SD","Compliance"],
+      competitors:"Deloitte, Accenture, Mastech",
+    },
+    {
+      id:"defense",
+      icon:"🛡", label:"Defense & Government",
+      clients:"Lockheed Martin, Raytheon, L3 Harris, TX agencies",
+      pains:["ERP modernization mandates","SB/WBE teaming requirements","SAP compliance + auditability","Staff aug for classified programs"],
+      ourStory:"WBE/WOSB certification makes Ziksatech a prime candidate for teaming on defense contracts. SAP expertise + cleared consultant potential.",
+      ourExperts:["Deepa Krishnan — PM / Architecture","Full team available for staffing"],
+      wbeAngle:"WOSB certification is a CONTRACT REQUIREMENT for certain set-aside programs. This is the most powerful use of our certification.",
+      modules:["SAP ERP","SAP Finance","SAP MDG","SAP PM","Compliance"],
+      competitors:"SAIC, Leidos, Booz Allen (prime), small WBE shops (teaming)",
+    },
+    {
+      id:"media",
+      icon:"🎬", label:"Media, Events & Professional Services",
+      clients:"Freeman, media companies, professional services firms",
+      pains:["S/4HANA Finance modernization","Project billing + revenue recognition","Cost center / profit center reporting","Staff aug for finance transformation"],
+      ourStory:"Naveen is live at Freeman-Mouritech on S/4HANA Finance. Finance module is a strong Ziksatech capability.",
+      ourExperts:["Naveen — S/4HANA Finance","Arun Patel — S/4HANA FI/CO"],
+      wbeAngle:"Professional services firms have supplier diversity programs — especially publicly traded ones.",
+      modules:["SAP S/4HANA Finance","FSCM","SAP PS/PM","Revenue Accounting"],
+      competitors:"Mid-size SAP partners, Big 4 advisory",
+    },
+    {
+      id:"ai-data",
+      icon:"🤖", label:"AI, Data & Analytics",
+      clients:"AI startups, analytics firms, data-driven companies",
+      pains:["Building data platforms on cloud","SAP + Databricks integration","ML pipeline + BTP AI","Data governance for enterprise AI"],
+      ourStory:"Kartheek is our AI/ML + Databricks expert at Arhasi. Priya on data engineering at Toyota Connected.",
+      ourExperts:["Kartheek — AI/ML / BTP","Priya Rajan — Databricks / Data Engineering"],
+      wbeAngle:"AI companies increasingly need diverse supplier certification to win enterprise contracts.",
+      modules:["Databricks","AWS","SAP BTP","AI/ML","Python","Data Governance"],
+      competitors:"Boutique data firms, Big Tech consulting arms",
+    },
+  ];
+
+  const PITCH_TYPES = [
+    { id:"email",      label:"📧 Cold Email",         desc:"First outreach to hiring manager / IT director" },
+    { id:"linkedin",   label:"🔗 LinkedIn Message",   desc:"InMail or connection message" },
+    { id:"call-script",label:"📞 Call Script",        desc:"Discovery call opening + qualification questions" },
+    { id:"capability", label:"📄 Capability Blurb",   desc:"2-paragraph capability statement for RFPs / procurement" },
+  ];
+
+  const genPitch = async (industry) => {
+    setAiLoading(true); setAiPitch("");
+    const activeCons = safeRoster.filter(r=>industry.ourExperts.some(e=>e.includes(r.name.split(" ")[0]))).map(r=>`${r.name} (${r.role}, $${r.billRate}/hr)`).join(", ");
+    const curClients = safeClients.filter(c=>industry.clients.toLowerCase().includes(c.name.toLowerCase().split(" ")[0])).map(c=>c.name).join(", ");
+    const pitchDesc = PITCH_TYPES.find(p=>p.id===pitchType)?.desc || "";
+    try {
+      const resp = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          system:`You are Manju Murthy, Managing Partner at Ziksatech LLC — WBE/HUB/WOSB certified IT staff augmentation firm in Plano, TX. Specialize in SAP consulting + Data/AI. Write compelling, specific ${pitchDesc}. No generic phrases. Be specific to the industry. Plain text.`,
+          messages:[{ role:"user", content:`Write a ${PITCH_TYPES.find(p=>p.id===pitchType)?.label} for the ${industry.label} vertical.
+
+Target: ${industry.clients}
+Their Pain Points: ${industry.pains.join(", ")}
+Our Story: ${industry.ourStory}
+Our Experts on This: ${activeCons || industry.ourExperts.join(", ")}
+Current Clients in This Space: ${curClients||"Building presence"}
+WBE/WOSB Angle: ${industry.wbeAngle}
+Modules We Cover: ${industry.modules.join(", ")}
+
+Requirements:
+- Open with a hook specific to ${industry.label} (NOT generic)
+- Reference a real pain point or trend in this industry
+- Mention 1-2 consultants by role (not name unless confirmed)
+- Include WBE/WOSB cert naturally where it adds value
+- CTA: discovery call or resume exchange
+- Under 200 words
+- Sound like a person, not a chatbot` }]
+        })
+      });
+      const data = await resp.json();
+      setAiPitch((data?.content||[]).map(b=>b.text||"").join(""));
+    } catch(e) { setAiPitch("Error: "+e.message); }
+    setAiLoading(false);
+  };
+
+  return (
+    <div>
+      <PH title="Industry Pitch Templates" sub="Vertical-specific pitches for BD conversations · Cold email · LinkedIn · Call scripts · 8 DFW industries"/>
+
+      {/* Pitch type selector */}
+      <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+        {PITCH_TYPES.map(pt=>(
+          <div key={pt.id} onClick={()=>{setPitchType(pt.id);setAiPitch("");}}
+            style={{padding:"8px 14px",borderRadius:10,cursor:"pointer",border:`1px solid ${pitchType===pt.id?"#0369a1":"#1a2d45"}`,
+              background:pitchType===pt.id?"#0c2340":"#060d1c"}}>
+            <div style={{fontSize:11,fontWeight:600,color:pitchType===pt.id?"#38bdf8":"#94a3b8"}}>{pt.label}</div>
+            <div style={{fontSize:9,color:"#334155"}}>{pt.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:14,alignItems:"start"}}>
+        {/* Industry cards */}
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {INDUSTRIES.map(ind=>(
+            <div key={ind.id} onClick={()=>{setSelIndustry(ind);setAiPitch("");}}
+              style={{padding:"10px 14px",borderRadius:10,cursor:"pointer",
+                background:selIndustry?.id===ind.id?"#0c2340":"#060d1c",
+                border:`1px solid ${selIndustry?.id===ind.id?"#0369a1":"#1a2d45"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:600,color:selIndustry?.id===ind.id?"#38bdf8":"#e2e8f0"}}>{ind.icon} {ind.label}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>{ind.clients.slice(0,40)}</div>
+                </div>
+                {selIndustry?.id===ind.id && <span style={{fontSize:16,color:"#0369a1"}}>→</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Industry detail + pitch generator */}
+        <div>
+          {!selIndustry ? (
+            <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:40,marginBottom:12}}>🏭</div>
+              <div style={{fontSize:13,color:"#334155"}}>Select an industry to see the pitch intelligence and generate a customized {PITCH_TYPES.find(p=>p.id===pitchType)?.label}</div>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {/* Intelligence card */}
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>{selIndustry.icon} {selIndustry.label}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+                  {[
+                    ["Pain Points",    selIndustry.pains,         "#f87171"],
+                    ["Our Modules",    selIndustry.modules,       "#38bdf8"],
+                    ["Our Experts",    selIndustry.ourExperts,    "#34d399"],
+                    ["Competitors",    [selIndustry.competitors], "#f59e0b"],
+                  ].map(([title, items, col])=>(
+                    <div key={title} style={{padding:"8px 10px",background:"#040810",borderRadius:8,border:"1px solid #0a1826"}}>
+                      <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>{title}</div>
+                      {(Array.isArray(items)?items:[items]).map(item=>(
+                        <div key={item} style={{fontSize:9,color:col,padding:"1px 0"}}>• {item}</div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div style={{padding:"8px 12px",background:"#0c1e3d",borderRadius:8,border:"1px solid #0369a1",marginBottom:12}}>
+                  <div style={{fontSize:9,color:"#7dd3fc",fontWeight:700,marginBottom:2}}>🏅 WBE/WOSB PLAY</div>
+                  <div style={{fontSize:10,color:"#475569"}}>{selIndustry.wbeAngle}</div>
+                </div>
+                <div style={{padding:"8px 12px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45",marginBottom:12}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:2}}>📍 OUR STORY</div>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>{selIndustry.ourStory}</div>
+                </div>
+                <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px"}}
+                  onClick={()=>genPitch(selIndustry)} disabled={aiLoading}>
+                  {aiLoading?`⏳ Writing ${PITCH_TYPES.find(p=>p.id===pitchType)?.label}...`:`✨ Generate ${PITCH_TYPES.find(p=>p.id===pitchType)?.label}`}
+                </button>
+              </div>
+
+              {/* Generated pitch */}
+              {aiPitch && (
+                <div className="card" style={{padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{PITCH_TYPES.find(p=>p.id===pitchType)?.label} — {selIndustry.label}</div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button className="btn bg" style={{fontSize:10}} onClick={()=>copy(aiPitch,"pitch")}>{copied==="pitch"?"✅ Copied":"📋 Copy"}</button>
+                      <button className="btn bg" style={{fontSize:10}} onClick={()=>genPitch(selIndustry)}>↺ Regenerate</button>
+                    </div>
+                  </div>
+                  {pitchType==="linkedin" ? (
+                    <div style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+                        <div style={{width:36,height:36,borderRadius:"50%",background:"#0D1B2A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:"#C9A84C",fontWeight:900}}>M</div>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:700,color:"#1a1a1a"}}>Manju Murthy</div>
+                          <div style={{fontSize:10,color:"#6b7280"}}>Managing Partner · Ziksatech LLC</div>
+                        </div>
+                      </div>
+                      <pre style={{fontSize:12,color:"#374151",whiteSpace:"pre-wrap",fontFamily:"-apple-system,sans-serif",lineHeight:1.7,margin:0}}>{aiPitch}</pre>
+                    </div>
+                  ) : (
+                    <pre style={{fontSize:11,color:"#94a3b8",whiteSpace:"pre-wrap",fontFamily:"inherit",lineHeight:1.75,margin:0}}>{aiPitch}</pre>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
   dismissedAlerts, setDismissedAlerts }) {
@@ -34087,6 +34956,9 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
     { icon:"💳", label:"Vendors & AP",        value:fv(0),              sub:"Payables tracker",                                                                  color:"#64748b",  tab:"vendors" },
     { icon:"🏦", label:"Cash Flow",           value:"Forecast",         sub:"13-week rolling",                                                                   color:"#38bdf8",  tab:"cashflow" },
     { icon:"📣", label:"Marketing Hub",       value:"Create Content",  sub:"Posts · emails · campaigns",       color:"#c9a84c",  tab:"marketing"  },
+    { icon:"💰", label:"Rate Card & Quote",   value:"Quote",            sub:"Rates + instant quote builder",                                                    color:"#c9a84c",  tab:"ratequote" },
+    { icon:"👥", label:"Availability Matrix",  value:"Resource",         sub:"Who's available & when",                                                           color:"#34d399",  tab:"availmatrix" },
+    { icon:"🏭", label:"Industry Pitches",     value:"Pitch",            sub:"8 vertical pitch templates",                                                        color:"#a78bfa",  tab:"industrypitch" },
     { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn revenue share",                                                                color:"#f59e0b",  tab:"ideapad" },
   ];
 
