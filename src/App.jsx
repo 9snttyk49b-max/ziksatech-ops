@@ -47,6 +47,7 @@ const RBAC = {
   certtracker:  ["super_admin","admin","hr_immigration"],
   sowgen:       ["super_admin","admin"],
   linkedin:     ["super_admin","admin"],
+  marketing:    ["super_admin","admin","accounts"],
   contracts:    ["super_admin","admin","accounts"],
   renewals:     ["super_admin","admin","accounts"],
   renewaltrk:   ["super_admin","admin","accounts"],
@@ -2117,6 +2118,7 @@ export default function ZiksatechOps() {
     { id:"prospectintel", label:"Prospect Intel",        icon:ICONS.pipeline, group:"Clients"     },
     { id:"sowgen",      label:"SOW Generator",         icon:ICONS.pl,       group:"Clients"     },
     { id:"linkedin",    label:"LinkedIn Posts",        icon:ICONS.pl,       group:"Clients"     },
+    { id:"marketing",   label:"Marketing Hub",          icon:ICONS.pl,       group:"Clients"     },
     { id:"resourceplan",label:"Resource Planner AI",  icon:ICONS.roster,   group:"Delivery"    },
     { id:"minicalc",    label:"Mini Calculator",       icon:ICONS.pl,       group:"Overview"    },
     { id:"paffiles",    label:"PAF Files",             icon:ICONS.dash,     group:"Compliance"  },
@@ -2673,6 +2675,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="ideapad"      && <IdeaPad authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="outreachtrk"  && <OutreachTracker crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="sowgen"     && <SOWGenerator   {...shared} />}
+        {tab==="marketing"  && <MarketingHub proposals={shared.proposals} clients={shared.clients} roster={shared.roster} crmDeals={shared.crmDeals} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
         {tab==="minicalc"   && <MiniCalculator />}
@@ -31480,6 +31483,698 @@ function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile,
 // ═══════════════════════════════════════════════════════════════════════
 // HOME PAGE — appended at file end, uses only already-imported hooks
 // ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// MARKETING HUB
+// LinkedIn posts · Email campaigns · Win announcements · Case studies · Calendar
+// ═══════════════════════════════════════════════════════════════════════════
+function MarketingHub({ clients, roster, crmDeals, proposals, authProfile, addAudit }) {
+  const [sub, setSub] = useState("overview");
+  // ── LinkedIn Post Generator state ───────────────────────────────────────
+  const [liForm, setLiForm] = useState({
+    postType:"win", topic:"", highlights:"", tone:"professional", hashtags:true, callToAction:true
+  });
+  const [liOutput, setLiOutput]   = useState("");
+  const [liLoading, setLiLoad]    = useState(false);
+  // ── Email Campaign state ────────────────────────────────────────────────
+  const [emailForm, setEmailForm] = useState({
+    campaignType:"newsletter", audience:"prospects", subject:"", keyPoints:"", tone:"professional"
+  });
+  const [emailOutput, setEmailOutput]   = useState("");
+  const [emailLoading, setEmailLoad]    = useState(false);
+  // ── Win announcement state ──────────────────────────────────────────────
+  const [winForm, setWinForm] = useState({ client:"", project:"", outcome:"", channel:"linkedin" });
+  const [winOutput, setWinOutput]   = useState("");
+  const [winLoading, setWinLoad]    = useState(false);
+  // ── Content calendar ───────────────────────────────────────────────────
+  const [calendar, setCalendar]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-mkt-cal")||"[]"); } catch { return []; } });
+  const [calModal, setCalModal]     = useState(false);
+  const [calForm, setCalForm]       = useState({});
+  // ── Saved content ──────────────────────────────────────────────────────
+  const [savedContent, setSaved]    = useState(() => { try { return JSON.parse(localStorage.getItem("zt-mkt-saved")||"[]"); } catch { return []; } });
+  const [copied, setCopied]         = useState("");
+
+  const safeClients = clients  || [];
+  const safeDeals   = crmDeals || [];
+  const safeRoster  = roster   || [];
+  const safeProps   = proposals|| [];
+
+  const uid  = () => "mkt-" + Date.now() + Math.random().toString(36).slice(2,6);
+  const copy = (text, key) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(key); setTimeout(()=>setCopied(""), 2500); };
+  const saveCal    = d => { setCalendar(d);    localStorage.setItem("zt-mkt-cal",    JSON.stringify(d)); };
+  const savePosts  = d => { setSaved(d);       localStorage.setItem("zt-mkt-saved",  JSON.stringify(d)); };
+
+  const addToCalendar = (type, content, channel) => {
+    const rec = { id:uid(), type, content:content.slice(0,120)+"...", channel, date:new Date().toISOString().slice(0,10), fullContent:content, status:"draft", createdAt:new Date().toISOString() };
+    const upd = [rec, ...calendar];
+    saveCal(upd);
+    alert("✅ Added to Content Calendar!");
+  };
+
+  const saveToLibrary = (type, content) => {
+    const rec = { id:uid(), type, content, createdAt:new Date().toISOString() };
+    savePosts([rec, ...savedContent]);
+    addAudit?.("Marketing","Content Saved", type, content.slice(0,40));
+    alert("💾 Saved to Content Library!");
+  };
+
+  // ── KPIs ─────────────────────────────────────────────────────────────────
+  const wonDeals     = safeDeals.filter(d=>d.stage==="closed_won");
+  const wonProps     = safeProps.filter(p=>p.status==="accepted");
+  const calendarItems = calendar.filter(c=>c.status!=="archived");
+  const scheduledCnt  = calendar.filter(c=>c.status==="scheduled").length;
+  const draftCnt      = calendar.filter(c=>c.status==="draft").length;
+
+  // ── AI call helper ────────────────────────────────────────────────────────
+  const aiCall = async (prompt, system, setState, setLoad, key) => {
+    setLoad(true); setState("");
+    try {
+      const resp = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          system: system || "You are a marketing expert for Ziksatech LLC, a WBE/HUB/WOSB certified SAP consulting firm based in Plano, TX. Write compelling, professional marketing content.",
+          messages:[{ role:"user", content:prompt }]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||"").join("");
+      setState(text);
+    } catch(e) { setState("Error: "+e.message); }
+    setLoad(false);
+  };
+
+  // ── LinkedIn post generator ───────────────────────────────────────────────
+  const genLinkedIn = () => {
+    if (!liForm.topic) return alert("Enter a topic or subject");
+    const postTypeDesc = {
+      win:"project win or new client announcement",
+      milestone:"project milestone or go-live achievement",
+      insight:"industry insight or thought leadership",
+      hiring:"recruiting / we're hiring post",
+      service:"service promotion for SAP consulting",
+      team:"team spotlight or culture post",
+      event:"event or webinar announcement",
+      tip:"quick SAP/tech tip post",
+    }[liForm.postType] || "professional post";
+    aiCall(`Write a LinkedIn post for Ziksatech LLC about: ${liForm.topic}
+Post type: ${postTypeDesc}
+${liForm.highlights ? "Key highlights: "+liForm.highlights : ""}
+Tone: ${liForm.tone}
+${liForm.hashtags ? "Include 8-12 relevant hashtags at the end" : "No hashtags"}
+${liForm.callToAction ? "Include a call-to-action" : "No call-to-action"}
+
+Guidelines:
+- Open with a strong hook (first 2 lines must grab attention — they're visible without expanding)
+- Use line breaks for readability
+- Mention Ziksatech's WBE/HUB/WOSB certification naturally where relevant
+- Keep under 1,300 characters for best reach
+- Professional but engaging tone
+- No generic AI-sounding phrases`, null, setLiOutput, setLiLoad);
+  };
+
+  // ── Email campaign generator ──────────────────────────────────────────────
+  const genEmail = () => {
+    if (!emailForm.subject) return alert("Enter a subject or topic");
+    const audMap = { prospects:"SAP decision-makers at mid-to-large enterprises", existing:"existing Ziksatech clients", "warm-leads":"warm leads from CRM pipeline", partners:"strategic partners and referrers" };
+    aiCall(`Write a professional ${emailForm.campaignType} email for Ziksatech LLC.
+
+Subject line: ${emailForm.subject}
+Target audience: ${audMap[emailForm.audience]||emailForm.audience}
+Key points to cover: ${emailForm.keyPoints || "SAP consulting expertise, WBE/HUB/WOSB advantage, team expertise"}
+Tone: ${emailForm.tone}
+
+Requirements:
+- Professional but warm
+- 200-350 words ideal
+- Include: compelling opening, value proposition, 2-3 key points with benefits, clear CTA
+- Sign off from Manju Murthy, Managing Partner, Ziksatech LLC
+- Include mmurthy@ziksatech.com contact
+- Mention WBE/HUB/WOSB certification (competitive advantage for procurement)
+- Format with clear sections: Subject, Greeting, Body, CTA, Signature`, null, setEmailOutput, setEmailLoad);
+  };
+
+  // ── Win announcement generator ────────────────────────────────────────────
+  const genWinAnnouncement = () => {
+    if (!winForm.client || !winForm.project) return alert("Enter client name and project");
+    const channelContext = {
+      linkedin:"LinkedIn post (professional, exciting, under 1300 chars, with hashtags)",
+      email:"client success email to send to prospects (250-350 words)",
+      internal:"internal Slack/Teams announcement for the Ziksatech team",
+      press:"press release format (formal, 400-500 words)",
+    }[winForm.channel] || "LinkedIn post";
+    aiCall(`Write a ${channelContext} announcing a project win/success for Ziksatech LLC.
+
+Client: ${winForm.client}
+Project: ${winForm.project}
+Outcome/Results: ${winForm.outcome || "Successful SAP implementation delivered on time and within budget"}
+${winForm.teamMembers ? "Team: "+winForm.teamMembers : ""}
+
+Highlight:
+- Ziksatech's expertise that made this possible
+- Business impact for the client
+- WBE/HUB/WOSB certified firm advantage if relevant
+- Ziksatech's commitment to delivering results
+
+Make it specific, compelling, and client-focused. Avoid generic statements.`, null, setWinOutput, setWinLoad);
+  };
+
+  const POST_TYPE_OPTIONS = [
+    { id:"win",       icon:"🏆", label:"Project Win" },
+    { id:"milestone", icon:"🎯", label:"Milestone" },
+    { id:"insight",   icon:"💡", label:"Insight / Thought Leadership" },
+    { id:"hiring",    icon:"👥", label:"We're Hiring" },
+    { id:"service",   icon:"📢", label:"Service Promo" },
+    { id:"team",      icon:"🌟", label:"Team Spotlight" },
+    { id:"event",     icon:"📅", label:"Event / Webinar" },
+    { id:"tip",       icon:"🔧", label:"Quick SAP Tip" },
+  ];
+
+  const CAMPAIGN_TYPES = ["newsletter","cold-outreach","follow-up","case-study","product-announcement","invitation"];
+  const AUDIENCE_OPTIONS = [
+    { id:"prospects",  label:"New Prospects" },
+    { id:"existing",   label:"Existing Clients" },
+    { id:"warm-leads", label:"Warm Leads (CRM)" },
+    { id:"partners",   label:"Partners / Referrers" },
+  ];
+  const WIN_CHANNELS = [
+    { id:"linkedin",  icon:"🔗", label:"LinkedIn Post" },
+    { id:"email",     icon:"📧", label:"Email to Prospects" },
+    { id:"internal",  icon:"💬", label:"Internal Announcement" },
+    { id:"press",     icon:"📰", label:"Press Release" },
+  ];
+  const CAL_STATUS_COLOR = { draft:"#475569", scheduled:"#38bdf8", published:"#34d399", archived:"#334155" };
+
+  const tabBtn = (id, label, badge) => (
+    <button onClick={()=>setSub(id)}
+      style={{ padding:"7px 18px", borderRadius:8, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, position:"relative",
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569" }}>
+      {label}
+      {badge>0 && <span style={{position:"absolute",top:2,right:4,fontSize:8,background:"#f87171",color:"#fff",borderRadius:8,padding:"0 4px"}}>{badge}</span>}
+    </button>
+  );
+
+  const OutputPanel = ({ output, loading, loadingMsg, onCopy, onAddCal, onSave, channel, type }) => (
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      {loading && (
+        <div style={{ padding:"60px", textAlign:"center", background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12 }}>
+          <div style={{ fontSize:28, marginBottom:8 }}>✍️</div>
+          <div style={{ fontSize:12, color:"#38bdf8" }}>{loadingMsg || "Writing content..."}</div>
+        </div>
+      )}
+      {!output && !loading && (
+        <div style={{ padding:"50px 40px", textAlign:"center", background:"#060d1c", border:"1px dashed #1a2d45", borderRadius:12 }}>
+          <div style={{ fontSize:13, color:"#334155" }}>Fill in the details and click Generate</div>
+        </div>
+      )}
+      {output && !loading && (
+        <div>
+          {/* Action buttons */}
+          <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>copy(output, "output")}>
+              {copied==="output"?"✅ Copied!":"📋 Copy"}
+            </button>
+            {onAddCal && (
+              <button className="btn bg" style={{fontSize:11, color:"#a78bfa"}} onClick={()=>addToCalendar(type||"post", output, channel||"linkedin")}>
+                📅 Add to Calendar
+              </button>
+            )}
+            <button className="btn bg" style={{fontSize:11, color:"#34d399"}} onClick={()=>saveToLibrary(type||"content", output)}>
+              💾 Save to Library
+            </button>
+            <span style={{fontSize:10,color:"#334155",marginLeft:"auto",alignSelf:"center"}}>{output.length} chars</span>
+          </div>
+          {/* Content preview */}
+          {(type==="linkedin"||type==="win-linkedin") ? (
+            <div style={{ background:"#fff", borderRadius:12, padding:"18px 20px", boxShadow:"0 4px 24px rgba(0,0,0,0.4)" }}>
+              <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:12 }}>
+                <div style={{ width:42, height:42, borderRadius:"50%", background:"#0D1B2A", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, color:"#C9A84C", fontWeight:900, flexShrink:0 }}>Z</div>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>Ziksatech LLC</div>
+                  <div style={{ fontSize:11, color:"#6b7280" }}>SAP Consulting · WBE/HUB/WOSB · Just now</div>
+                </div>
+              </div>
+              <pre style={{ fontSize:12, color:"#1a1a1a", whiteSpace:"pre-wrap", fontFamily:"-apple-system,BlinkMacSystemFont,sans-serif", lineHeight:1.65, margin:0 }}>{output}</pre>
+              <div style={{ display:"flex", gap:16, marginTop:12, paddingTop:10, borderTop:"1px solid #e5e7eb" }}>
+                {["👍 Like","💬 Comment","🔁 Repost","📤 Send"].map(a=><span key={a} style={{fontSize:11,color:"#6b7280"}}>{a}</span>)}
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ padding:"18px 20px" }}>
+              <pre style={{ fontSize:12, color:"#94a3b8", whiteSpace:"pre-wrap", fontFamily:"inherit", lineHeight:1.7, margin:0 }}>{output}</pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      <PH title="Marketing Hub" sub="LinkedIn posts · Email campaigns · Win announcements · Content calendar · Brand library"/>
+
+      {/* KPIs */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:10, marginBottom:18 }}>
+        {[
+          { l:"Content Library",     v:savedContent.length,  c:"#38bdf8" },
+          { l:"Calendar Items",      v:calendarItems.length, c:"#a78bfa" },
+          { l:"Scheduled",           v:scheduledCnt,         c:"#34d399" },
+          { l:"Drafts",              v:draftCnt,             c:"#f59e0b" },
+          { l:"Recent Wins to Share",v:wonDeals.length + wonProps.length, c:"#c9a84c" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+          {tabBtn("overview",   "📊 Overview")}
+          {tabBtn("linkedin",   "🔗 LinkedIn")}
+          {tabBtn("email",      "📧 Email")}
+          {tabBtn("win",        "🏆 Win Story")}
+          {tabBtn("calendar",   "📅 Calendar", draftCnt)}
+          {tabBtn("library",    "💾 Library", savedContent.length||0)}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn bg" style={{fontSize:11}} onClick={()=>{setCalModal(true);setCalForm({date:new Date().toISOString().slice(0,10),status:"draft"});}}>+ Add to Calendar</button>
+        </div>
+      </div>
+
+      {/* ── OVERVIEW ──────────────────────────────────────────────────────── */}
+      {sub==="overview" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {/* Quick action cards */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🚀 Quick Actions</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[
+                { icon:"🔗", label:"LinkedIn Post",    sub:"Announce a win or share insight",      action:()=>setSub("linkedin"),  color:"#0369a1" },
+                { icon:"📧", label:"Email Campaign",   sub:"Newsletter or outreach email",         action:()=>setSub("email"),     color:"#7c3aed" },
+                { icon:"🏆", label:"Win Announcement", sub:"Celebrate a new client or milestone",  action:()=>setSub("win"),       color:"#c9a84c" },
+                { icon:"📅", label:"Content Calendar", sub:"Plan & schedule your marketing",       action:()=>setSub("calendar"),  color:"#0891b2" },
+              ].map(item=>(
+                <div key={item.label} onClick={item.action}
+                  style={{padding:"14px 16px",borderRadius:10,cursor:"pointer",background:"#040810",border:`1px solid ${item.color}33`,
+                    transition:"border-color 0.2s"}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor=item.color}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor=item.color+"33"}>
+                  <div style={{fontSize:22,marginBottom:6}}>{item.icon}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:item.color}}>{item.label}</div>
+                  <div style={{fontSize:10,color:"#475569",marginTop:2}}>{item.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Wins to announce */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🏆 Wins to Announce</div>
+            {wonDeals.length === 0 && wonProps.length === 0 ? (
+              <div style={{fontSize:11,color:"#334155",textAlign:"center",padding:"24px"}}>No recent wins recorded yet</div>
+            ) : [...wonDeals.slice(0,3).map(d=>({name:d.name,value:d.value,type:"CRM Deal",client:d.accountId})),
+                  ...wonProps.slice(0,2).map(p=>({name:p.title,value:(p.scopeItems||[]).reduce((s,i)=>s+(i.hours||0)*(i.rate||0),0),type:"Proposal",client:p.client}))
+                 ].map((w,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{w.name?.slice(0,36)}</div>
+                  <div style={{fontSize:9,color:"#475569"}}>{w.type} · {w.client}</div>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  {w.value>0 && <span style={{fontSize:10,color:"#c9a84c",fontFamily:"monospace"}}>${w.value>=1000?(w.value/1000).toFixed(0)+"k":w.value}</span>}
+                  <button className="btn bg" style={{fontSize:9,padding:"2px 7px",color:"#38bdf8"}}
+                    onClick={()=>{setWinForm(p=>({...p,client:w.client||"",project:w.name||""}));setSub("win");}}>
+                    📢 Announce
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Brand assets */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🎨 Ziksatech Brand Assets</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              {[
+                { label:"Primary Color", val:"#0D1B2A", desc:"Navy — backgrounds, headers" },
+                { label:"Accent Color",  val:"#C9A84C", desc:"Gold — highlights, CTA" },
+                { label:"Tagline",       val:"WBE·HUB·WOSB", desc:"Certifications — always include" },
+                { label:"Address",       val:"Plano, TX 75024", desc:"5400 Legacy Drive Ste 100" },
+              ].map(item=>(
+                <div key={item.label} style={{padding:"8px 10px",background:"#040810",borderRadius:6,border:"1px solid #1a2d45"}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,textTransform:"uppercase",marginBottom:2}}>{item.label}</div>
+                  <div style={{fontSize:11,fontWeight:700,color:item.val.startsWith("#")?item.val:"#e2e8f0",fontFamily:"monospace"}}>{item.val}</div>
+                  <div style={{fontSize:9,color:"#475569"}}>{item.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{padding:"8px 12px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#7dd3fc",marginBottom:3}}>Key Messaging Pillars</div>
+              {["SAP BRIM / S/4HANA specialization","WBE/HUB/WOSB certified — procurement advantage","Plano, TX based — local + remote","Proven delivery record","Competitive rates + flexible models"].map((msg,i)=>(
+                <div key={i} style={{fontSize:10,color:"#475569",padding:"1px 0"}}>• {msg}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Content calendar preview */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📅 Upcoming Content</div>
+              <button className="btn bg" style={{fontSize:10}} onClick={()=>setSub("calendar")}>View all →</button>
+            </div>
+            {calendar.filter(c=>c.status!=="archived").slice(0,5).map(item=>(
+              <div key={item.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{item.content?.slice(0,40)}...</div>
+                  <div style={{fontSize:9,color:"#475569"}}>{item.channel} · {item.date}</div>
+                </div>
+                <span style={{fontSize:9,padding:"1px 7px",borderRadius:8,background:(CAL_STATUS_COLOR[item.status]||"#94a3b8")+"22",color:CAL_STATUS_COLOR[item.status]||"#94a3b8",border:`1px solid ${(CAL_STATUS_COLOR[item.status]||"#94a3b8")}44`}}>
+                  {item.status}
+                </span>
+              </div>
+            ))}
+            {calendar.length===0&&<div style={{fontSize:11,color:"#334155",textAlign:"center",padding:"20px 0"}}>No content scheduled yet</div>}
+          </div>
+        </div>
+      )}
+
+      {/* ── LINKEDIN POST GENERATOR ───────────────────────────────────────── */}
+      {sub==="linkedin" && (
+        <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:14,alignItems:"start"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🔗 LinkedIn Post Builder</div>
+              {/* Post type selector */}
+              <div style={{marginBottom:12}}>
+                <div className="lbl">Post Type</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+                  {POST_TYPE_OPTIONS.map(pt=>(
+                    <div key={pt.id} onClick={()=>setLiForm(p=>({...p,postType:pt.id}))}
+                      style={{padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:10,fontWeight:600,
+                        background:liForm.postType===pt.id?"#0c2340":"#040810",
+                        border:`1px solid ${liForm.postType===pt.id?"#0369a1":"#1a2d45"}`,
+                        color:liForm.postType===pt.id?"#38bdf8":"#475569"}}>
+                      {pt.icon} {pt.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div className="lbl">Topic / Subject *</div>
+                <input className="inp" value={liForm.topic} onChange={e=>setLiForm(p=>({...p,topic:e.target.value}))}
+                  placeholder="e.g. AT&T BRIM implementation success, New S/4HANA service..."/>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div className="lbl">Key Highlights (optional)</div>
+                <textarea className="inp" rows={3} value={liForm.highlights} onChange={e=>setLiForm(p=>({...p,highlights:e.target.value}))}
+                  placeholder="e.g. 99.9% uptime, $2M savings, 18 months, 10 consultants..."/>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div className="lbl">Tone</div>
+                <div style={{display:"flex",gap:4}}>
+                  {["professional","enthusiastic","educational","casual"].map(t=>(
+                    <button key={t} onClick={()=>setLiForm(p=>({...p,tone:t}))}
+                      style={{flex:1,padding:"4px 0",borderRadius:5,border:`1px solid ${liForm.tone===t?"#0369a1":"#1a2d45"}`,
+                        background:liForm.tone===t?"#0c2340":"transparent",color:liForm.tone===t?"#38bdf8":"#475569",
+                        fontSize:9,cursor:"pointer",fontWeight:600,textTransform:"capitalize"}}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10,marginBottom:14}}>
+                {[["Hashtags","hashtags"],["Call-to-Action","callToAction"]].map(([label,key])=>(
+                  <label key={key} style={{display:"flex",gap:5,alignItems:"center",cursor:"pointer",fontSize:11,color:"#94a3b8"}}>
+                    <input type="checkbox" checked={!!liForm[key]} onChange={e=>setLiForm(p=>({...p,[key]:e.target.checked}))}/>
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px"}}
+                onClick={genLinkedIn} disabled={liLoading}>
+                {liLoading?"⏳ Writing...":"✨ Generate LinkedIn Post"}
+              </button>
+            </div>
+            {/* Recent wins quick-fill */}
+            {wonDeals.slice(0,3).length > 0 && (
+              <div className="card" style={{padding:"12px 14px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Quick Fill from Recent Wins</div>
+                {wonDeals.slice(0,3).map(d=>(
+                  <div key={d.id} style={{padding:"5px 0",borderBottom:"1px solid #0a1626",cursor:"pointer",fontSize:11,color:"#94a3b8"}}
+                    onClick={()=>setLiForm(p=>({...p,topic:d.name||"",postType:"win"}))}>
+                    🏆 {d.name?.slice(0,40)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <OutputPanel output={liOutput} loading={liLoading} loadingMsg="Crafting your LinkedIn post..." onCopy type="linkedin" onAddCal channel="linkedin"/>
+        </div>
+      )}
+
+      {/* ── EMAIL CAMPAIGN ────────────────────────────────────────────────── */}
+      {sub==="email" && (
+        <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:14,alignItems:"start"}}>
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📧 Email Campaign Builder</div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Campaign Type</div>
+              <select className="inp" value={emailForm.campaignType} onChange={e=>setEmailForm(p=>({...p,campaignType:e.target.value}))}>
+                {CAMPAIGN_TYPES.map(t=><option key={t} value={t}>{t.split("-").map(w=>w[0].toUpperCase()+w.slice(1)).join(" ")}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Target Audience</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+                {AUDIENCE_OPTIONS.map(a=>(
+                  <div key={a.id} onClick={()=>setEmailForm(p=>({...p,audience:a.id}))}
+                    style={{padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:10,fontWeight:600,textAlign:"center",
+                      background:emailForm.audience===a.id?"#0c2340":"#040810",
+                      border:`1px solid ${emailForm.audience===a.id?"#0369a1":"#1a2d45"}`,
+                      color:emailForm.audience===a.id?"#38bdf8":"#475569"}}>
+                    {a.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Subject / Topic *</div>
+              <input className="inp" value={emailForm.subject} onChange={e=>setEmailForm(p=>({...p,subject:e.target.value}))}
+                placeholder="e.g. Q1 SAP BRIM insights, introducing our new service..."/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Key Points to Cover</div>
+              <textarea className="inp" rows={3} value={emailForm.keyPoints} onChange={e=>setEmailForm(p=>({...p,keyPoints:e.target.value}))}
+                placeholder="Bullet points or notes for the email..."/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div className="lbl">Tone</div>
+              <div style={{display:"flex",gap:4}}>
+                {["professional","consultative","direct","friendly"].map(t=>(
+                  <button key={t} onClick={()=>setEmailForm(p=>({...p,tone:t}))}
+                    style={{flex:1,padding:"4px 0",borderRadius:5,border:`1px solid ${emailForm.tone===t?"#7c3aed":"#1a2d45"}`,
+                      background:emailForm.tone===t?"#1e1b4b":"transparent",
+                      color:emailForm.tone===t?"#a78bfa":"#475569",
+                      fontSize:9,cursor:"pointer",fontWeight:600,textTransform:"capitalize"}}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px"}}
+              onClick={genEmail} disabled={emailLoading}>
+              {emailLoading?"⏳ Writing...":"✨ Generate Email"}
+            </button>
+          </div>
+          <OutputPanel output={emailOutput} loading={emailLoading} loadingMsg="Composing your email campaign..." type="email" onAddCal channel="email"/>
+        </div>
+      )}
+
+      {/* ── WIN ANNOUNCEMENT ──────────────────────────────────────────────── */}
+      {sub==="win" && (
+        <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:14,alignItems:"start"}}>
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🏆 Win Announcement Builder</div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Client Name *</div>
+              <input className="inp" value={winForm.client} onChange={e=>setWinForm(p=>({...p,client:e.target.value}))}
+                placeholder="e.g. AT&T, HPE, Southwest Utility..."/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Project / Engagement *</div>
+              <input className="inp" value={winForm.project} onChange={e=>setWinForm(p=>({...p,project:e.target.value}))}
+                placeholder="e.g. SAP BRIM Phase 3, S/4HANA Migration..."/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Outcomes & Results</div>
+              <textarea className="inp" rows={3} value={winForm.outcome} onChange={e=>setWinForm(p=>({...p,outcome:e.target.value}))}
+                placeholder="e.g. 40% reduction in billing errors, $2M annual savings, delivered 2 weeks early..."/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div className="lbl">Channel</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+                {WIN_CHANNELS.map(ch=>(
+                  <div key={ch.id} onClick={()=>setWinForm(p=>({...p,channel:ch.id}))}
+                    style={{padding:"6px 8px",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:600,
+                      background:winForm.channel===ch.id?"#0c2340":"#040810",
+                      border:`1px solid ${winForm.channel===ch.id?"#c9a84c":"#1a2d45"}`,
+                      color:winForm.channel===ch.id?"#c9a84c":"#475569"}}>
+                    {ch.icon} {ch.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Quick fill from CRM wins */}
+            {wonDeals.length > 0 && (
+              <div style={{marginBottom:14,padding:"8px 10px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Quick Fill from CRM</div>
+                <select className="inp" style={{marginBottom:0}} onChange={e=>{
+                  const d = wonDeals.find(x=>x.id===e.target.value);
+                  if(d) setWinForm(p=>({...p, client:d.name||"", project:d.name||""}));
+                }}>
+                  <option value="">— select a won deal —</option>
+                  {wonDeals.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+            )}
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px"}}
+              onClick={genWinAnnouncement} disabled={winLoading}>
+              {winLoading?"⏳ Writing...":"✨ Generate Announcement"}
+            </button>
+          </div>
+          <OutputPanel output={winOutput} loading={winLoading} loadingMsg="Crafting your win announcement..."
+            type={winForm.channel==="linkedin"?"win-linkedin":"win-email"} onAddCal channel={winForm.channel}/>
+        </div>
+      )}
+
+      {/* ── CONTENT CALENDAR ──────────────────────────────────────────────── */}
+      {sub==="calendar" && (
+        <div>
+          {calendar.length === 0 ? (
+            <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:36,marginBottom:12}}>📅</div>
+              <div style={{fontSize:14,color:"#334155",marginBottom:16}}>No content scheduled yet</div>
+              <button className="btn bp" onClick={()=>{setCalModal(true);setCalForm({date:new Date().toISOString().slice(0,10),status:"draft"});}}>
+                + Add Content
+              </button>
+            </div>
+          ) : (
+            <div>
+              {/* Group by week */}
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[...calendar].sort((a,b)=>a.date?.localeCompare(b.date)).map(item=>(
+                  <div key={item.id} style={{display:"grid",gridTemplateColumns:"100px 80px 1fr 100px 120px",gap:10,
+                    padding:"12px 16px",borderRadius:10,background:"#060d1c",border:"1px solid #1a2d45",alignItems:"center"}}>
+                    <div style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8"}}>{item.date}</div>
+                    <div style={{fontSize:10,padding:"2px 7px",borderRadius:8,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45",textAlign:"center"}}>
+                      {item.channel}
+                    </div>
+                    <div style={{fontSize:11,color:"#94a3b8"}}>{item.content}</div>
+                    <div>
+                      <select style={{background:"#040810",border:"1px solid #1a2d45",color:"#94a3b8",padding:"3px 6px",borderRadius:6,fontSize:10,width:"100%"}}
+                        value={item.status} onChange={e=>{
+                          const upd = calendar.map(x=>x.id===item.id?{...x,status:e.target.value}:x);
+                          saveCal(upd);
+                        }}>
+                        {["draft","scheduled","published","archived"].map(s=><option key={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
+                      {item.fullContent && (
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}}
+                          onClick={()=>copy(item.fullContent,"cal"+item.id)}>
+                          {copied==="cal"+item.id?"✅":"📋"}
+                        </button>
+                      )}
+                      <button className="btn bg" style={{fontSize:9,padding:"2px 6px",color:"#f87171"}}
+                        onClick={()=>saveCal(calendar.filter(x=>x.id!==item.id))}>✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CONTENT LIBRARY ───────────────────────────────────────────────── */}
+      {sub==="library" && (
+        <div>
+          {savedContent.length === 0 ? (
+            <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:36,marginBottom:12}}>💾</div>
+              <div style={{fontSize:14,color:"#334155"}}>No saved content yet — generate posts and save them to your library</div>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {savedContent.map(item=>(
+                <div key={item.id} className="card" style={{padding:"14px 18px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div>
+                      <span style={{fontSize:9,padding:"1px 7px",borderRadius:8,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45",marginRight:8}}>{item.type}</span>
+                      <span style={{fontSize:9,color:"#334155"}}>{new Date(item.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div style={{display:"flex",gap:5}}>
+                      <button className="btn bg" style={{fontSize:10}} onClick={()=>copy(item.content,"lib"+item.id)}>
+                        {copied==="lib"+item.id?"✅ Copied!":"📋 Copy"}
+                      </button>
+                      <button className="btn bg" style={{fontSize:10,color:"#a78bfa"}} onClick={()=>addToCalendar(item.type,item.content,"linkedin")}>
+                        📅
+                      </button>
+                      <button className="btn bg" style={{fontSize:10,color:"#f87171"}} onClick={()=>savePosts(savedContent.filter(x=>x.id!==item.id))}>✕</button>
+                    </div>
+                  </div>
+                  <pre style={{fontSize:11,color:"#94a3b8",whiteSpace:"pre-wrap",margin:0,lineHeight:1.6,maxHeight:120,overflow:"hidden"}}>{item.content}</pre>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ADD TO CALENDAR MODAL ─────────────────────────────────────────── */}
+      {calModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setCalModal(false)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <MH title="Add to Content Calendar" onClose={()=>setCalModal(false)}/>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {[["Content / Note","content","textarea"],["Channel","channel","select"],["Date","date","date"],["Status","status","select"]].map(([label,key,type])=>(
+                <div key={key}>
+                  <div className="lbl">{label}</div>
+                  {type==="textarea"
+                    ? <textarea className="inp" rows={3} value={calForm[key]||""} onChange={e=>setCalForm(p=>({...p,[key]:e.target.value}))}/>
+                    : type==="select" && key==="channel"
+                    ? <select className="inp" value={calForm[key]||""} onChange={e=>setCalForm(p=>({...p,[key]:e.target.value}))}>
+                        {["linkedin","email","twitter","website","internal","other"].map(o=><option key={o}>{o}</option>)}
+                      </select>
+                    : type==="select" && key==="status"
+                    ? <select className="inp" value={calForm[key]||"draft"} onChange={e=>setCalForm(p=>({...p,[key]:e.target.value}))}>
+                        {["draft","scheduled","published"].map(o=><option key={o}>{o}</option>)}
+                      </select>
+                    : <input type={type} className="inp" value={calForm[key]||""} onChange={e=>setCalForm(p=>({...p,[key]:e.target.value}))}/>
+                  }
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setCalModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={()=>{
+                if(!calForm.content) return alert("Add content");
+                const rec={id:uid(),...calForm,createdAt:new Date().toISOString()};
+                saveCal([...calendar,rec]);
+                setCalModal(false);setCalForm({});
+              }}>💾 Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
   dismissedAlerts, setDismissedAlerts }) {
@@ -31545,6 +32240,7 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
     { icon:"📉", label:"P&L / Income",        value:"View",             sub:"Monthly income statement",                                                          color:"#f59e0b",  tab:"pl" },
     { icon:"💳", label:"Vendors & AP",        value:fv(0),              sub:"Payables tracker",                                                                  color:"#64748b",  tab:"vendors" },
     { icon:"🏦", label:"Cash Flow",           value:"Forecast",         sub:"13-week rolling",                                                                   color:"#38bdf8",  tab:"cashflow" },
+    { icon:"📣", label:"Marketing Hub",       value:"Create Content",  sub:"Posts · emails · campaigns",       color:"#c9a84c",  tab:"marketing"  },
     { icon:"💡", label:"IdeaPad",            value:"Share Ideas",      sub:"Earn revenue share",                                                                color:"#f59e0b",  tab:"ideapad" },
   ];
 
