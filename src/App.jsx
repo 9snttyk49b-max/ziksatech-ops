@@ -36,6 +36,7 @@ const RBAC = {
   clients:      ["super_admin","admin","accounts"],
   healthscore:  ["super_admin","admin","accounts"],
   revforecast:  ["super_admin","admin","accounts"],
+  perfreviews:  ["super_admin","admin","hr_immigration"],
   crm:          ["super_admin","admin"],
   proposals:    ["super_admin","admin"],
   rfpgen:       ["super_admin","admin"],
@@ -2065,6 +2066,7 @@ export default function ZiksatechOps() {
     { id:"clients",      label:"Client Portfolio",     icon:ICONS.clients,  group:"Clients"     },
     { id:"healthscore",  label:"Client Health ♥",       icon:ICONS.ebitda,   group:"Clients"     },
     { id:"revforecast",  label:"Revenue Forecast",         icon:ICONS.ebitda,   group:"Clients"     },
+    { id:"perfreviews",  label:"Performance Reviews",      icon:ICONS.dash,     group:"Team"        },
     { id:"crm",          label:"Sales CRM",            icon:ICONS.clients,  group:"Clients"     },
     { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Clients"     },
     { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
@@ -2593,6 +2595,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="roster"     && <Roster     {...shared}/>}
         {tab==="timesheet"  && <TimesheetApproval {...shared} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="clients"    && <ClientPortfolio {...shared}/>}
+        {tab==="perfreviews"  && <PerformanceReview roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} addAudit={shared.addAudit} authProfile={authProfile}/>}
         {tab==="revforecast"  && <RevenueForecast clients={shared.clients} roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} addAudit={shared.addAudit} setTab={setTab}/>}
         {tab==="healthscore" && <ClientHealthScorecard clients={shared.clients} setClients={shared.setClients} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} roster={shared.roster} contracts={shared.contracts} addAudit={shared.addAudit}/>}}
         {tab==="pipeline"   && <Pipeline   {...shared}/>}
@@ -4030,6 +4033,676 @@ Keep it concise but complete. Plain text format.`}]
             <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
               <button className="btn bg" onClick={()=>{setShowNew(false);setEditId(null);setForm({});}}>Cancel</button>
               <button className="btn bp" onClick={saveContract}>💾 Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERFORMANCE REVIEW SYSTEM
+// Quarterly cycles · 360° feedback · Goals · Compensation · Review letters
+// ═══════════════════════════════════════════════════════════════════════════
+function PerformanceReview({ roster, clients, finInvoices, addAudit, authProfile }) {
+  const [sub,        setSub]      = useState("dashboard");
+  const [reviews,    setReviews]  = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-perf-reviews") || "[]"); } catch { return []; }
+  });
+  const [goals,      setGoals]    = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-perf-goals") || "[]"); } catch { return []; }
+  });
+  const [selEmp,     setSelEmp]   = useState(null);
+  const [modal,      setModal]    = useState(null); // "review"|"goal"|"360"|"letter"
+  const [form,       setForm]     = useState({});
+  const [aiLoading,  setAiLoading] = useState(false);
+  const [aiResult,   setAiResult]  = useState("");
+
+  const safeRoster = roster || [];
+  const safeInv    = finInvoices || [];
+  const TODAY      = new Date().toISOString().slice(0,10);
+  const CUR_Q      = `Q${Math.ceil((new Date().getMonth()+1)/3)} ${new Date().getFullYear()}`;
+
+  const save = (type, data) => {
+    if (type === "review") {
+      const updated = data.id && reviews.find(r=>r.id===data.id)
+        ? reviews.map(r=>r.id===data.id?data:r)
+        : [...reviews, {...data, id:"rev"+Date.now(), createdAt:TODAY}];
+      setReviews(updated);
+      localStorage.setItem("zt-perf-reviews", JSON.stringify(updated));
+      addAudit?.("HR","Performance Review Saved","Reviews", data.employeeId);
+    } else {
+      const updated = data.id && goals.find(g=>g.id===data.id)
+        ? goals.map(g=>g.id===data.id?data:g)
+        : [...goals, {...data, id:"goal"+Date.now(), createdAt:TODAY}];
+      setGoals(updated);
+      localStorage.setItem("zt-perf-goals", JSON.stringify(updated));
+    }
+    setModal(null); setForm({});
+  };
+
+  const deleteReview = id => { const u=reviews.filter(r=>r.id!==id); setReviews(u); localStorage.setItem("zt-perf-reviews",JSON.stringify(u)); };
+  const deleteGoal   = id => { const u=goals.filter(g=>g.id!==id);     setGoals(u);   localStorage.setItem("zt-perf-goals",JSON.stringify(u)); };
+
+  // Compute per-employee stats
+  const empStats = safeRoster.map(r => {
+    const empReviews = reviews.filter(rv => rv.employeeId === r.id);
+    const lastReview = empReviews.sort((a,b)=>b.createdAt?.localeCompare(a.createdAt))[0];
+    const avgScore   = empReviews.length
+      ? Math.round(empReviews.reduce((s,rv)=>s+(rv.overallScore||0),0)/empReviews.length*10)/10 : null;
+    const empGoals   = goals.filter(g => g.employeeId === r.id);
+    const openGoals  = empGoals.filter(g => g.status !== "completed");
+    const doneGoals  = empGoals.filter(g => g.status === "completed");
+    // YTD revenue from invoices
+    const ytdRev = safeInv.reduce((s,inv)=>{
+      const lines = (inv.lines||[]).filter(l=>l.desc?.toLowerCase().includes(r.name.split(" ")[0].toLowerCase()));
+      return s + lines.reduce((ss,l)=>ss+l.amount,0);
+    },0);
+    const dueForReview = !lastReview || (new Date() - new Date(lastReview.createdAt)) / (86400000*90) >= 1;
+    return { ...r, empReviews, lastReview, avgScore, empGoals, openGoals, doneGoals, ytdRev, dueForReview };
+  });
+
+  const overdue = empStats.filter(e=>e.dueForReview).length;
+  const avgOrgScore = empStats.filter(e=>e.avgScore!==null).reduce((s,e)=>s+(e.avgScore||0),0) / Math.max(empStats.filter(e=>e.avgScore!==null).length,1);
+
+  // ── AI: Generate review letter ─────────────────────────────────────────
+  const generateReviewLetter = async (emp, review) => {
+    setAiLoading(true); setAiResult("");
+    try {
+      const resp = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1200,
+          system:`You are an HR manager at Ziksatech, LLC, a SAP consulting firm in Plano TX. Write professional, warm, and specific performance review letters. Today: ${TODAY}.`,
+          messages:[{role:"user",content:`Write a professional performance review letter for:
+
+Employee: ${emp.name}
+Title: ${emp.role}
+Review Period: ${review.period || CUR_Q}
+Overall Score: ${review.overallScore}/5
+Technical Skills: ${review.technicalScore}/5
+Delivery: ${review.deliveryScore}/5  
+Communication: ${review.communicationScore}/5
+Teamwork: ${review.teamworkScore}/5
+Manager Comments: ${review.managerComments || "Strong performer"}
+Strengths: ${review.strengths || "Technical expertise, client relationships"}
+Areas to Improve: ${review.improvements || "Documentation, knowledge sharing"}
+Goals for Next Period: ${review.nextGoals || "Expand skills, lead initiatives"}
+Compensation Change: ${review.compChange || "Merit increase per policy"}
+
+Write a complete, professional letter from Manju Murthy (Managing Partner) to the employee. Include: summary of performance, specific accomplishments, strengths, development areas, next period goals, and compensation/bonus if applicable. 3-4 paragraphs. Warm but professional tone.`}]
+        })
+      });
+      const data = await resp.json();
+      setAiResult((data?.content||[]).map(b=>b.text||"").join(""));
+    } catch(e) { setAiResult("Error: "+e.message); }
+    setAiLoading(false);
+  };
+
+  const downloadReviewPDF = async (emp, review) => {
+    if (!aiResult) return;
+    if (!window.jspdf) {
+      await new Promise(res=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';s.onload=res;document.head.appendChild(s);});
+    }
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"letter"});
+    const pw=doc.internal.pageSize.getWidth(),mg=20,maxW=pw-mg*2;
+    let y=18;
+    doc.setFillColor(13,27,42);doc.rect(0,0,pw,26,"F");
+    doc.setFont("helvetica","bold");doc.setFontSize(14);doc.setTextColor(201,168,76);
+    doc.text("ZIKSATECH, LLC",mg,11);
+    doc.setFontSize(7);doc.setTextColor(100,130,160);
+    doc.text("Performance Review — Confidential",mg,17);
+    doc.text("5400 Legacy Drive Suite 100, Plano TX 75024",mg,22);
+    y=34;
+    doc.setDrawColor(201,168,76);doc.setLineWidth(0.4);doc.line(mg,y,pw-mg,y);y+=8;
+    doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(20,20,20);
+    for (const line of aiResult.split("\n")) {
+      if(y>265){doc.addPage();y=20;}
+      if(!line.trim()){y+=3;continue;}
+      const wrapped=doc.splitTextToSize(line,maxW);
+      for(const wl of wrapped){if(y>265){doc.addPage();y=20;}doc.text(wl,mg,y);y+=5;}
+    }
+    const pages=doc.internal.getNumberOfPages();
+    for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150);doc.line(mg,278,pw-mg,278);doc.text(`Ziksatech, LLC · Performance Review · ${emp.name} · ${review.period||CUR_Q} · Confidential`,mg,282);}
+    doc.save(`PerformanceReview_${emp.name.replace(/\s+/g,"_")}_${review.period||CUR_Q}.pdf`);
+  };
+
+  const SCORE_LABELS = ["","Needs Improvement","Below Expectations","Meets Expectations","Exceeds Expectations","Outstanding"];
+  const scoreColor   = s => s>=4.5?"#34d399":s>=3.5?"#38bdf8":s>=2.5?"#f59e0b":"#f87171";
+  const tabBtn = (id,lbl,ico) => (
+    <button onClick={()=>setSub(id)}
+      style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569"}}>
+      {ico} {lbl}
+    </button>
+  );
+
+  const ScoreInput = ({label, field, val, onChange}) => (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+        <span className="lbl" style={{margin:0}}>{label}</span>
+        <span style={{fontSize:11,color:scoreColor(val||0),fontWeight:700}}>{val?SCORE_LABELS[val]||val:""}</span>
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        {[1,2,3,4,5].map(n=>(
+          <button key={n} onClick={()=>onChange(field,n)}
+            style={{flex:1,height:32,borderRadius:6,border:`2px solid ${val===n?scoreColor(n):"#1a2d45"}`,
+              background:val===n?(n>=4?"#021f14":n>=3?"#0c2340":"#1a0808"):"#060d1c",
+              color:val===n?scoreColor(n):"#334155",cursor:"pointer",fontSize:13,fontWeight:val===n?700:400}}>
+            {n}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <PH title="Performance Review System" sub="Quarterly cycles · 360° feedback · Goals · Compensation · AI-generated review letters"/>
+
+      {/* Overdue banner */}
+      {overdue > 0 && (
+        <div style={{padding:"10px 16px",background:"#1a1005",border:"1px solid #78350f",borderRadius:10,marginBottom:14,display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{fontSize:13,fontWeight:700,color:"#fbbf24"}}>⏰ {overdue} employee{overdue>1?"s":""} overdue for review (90+ days since last review)</span>
+          <button className="btn bg" style={{fontSize:11,marginLeft:"auto"}} onClick={()=>setSub("employees")}>View →</button>
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Team Size",         v:safeRoster.length,    c:"#94a3b8"},
+          {l:"Reviews This Cycle",v:reviews.filter(r=>r.period===CUR_Q).length, c:"#38bdf8"},
+          {l:"Avg Org Score",     v:avgOrgScore?avgOrgScore.toFixed(1)+"/5":"—",c:avgOrgScore>=4?"#34d399":avgOrgScore>=3?"#f59e0b":"#f87171"},
+          {l:"Active Goals",      v:goals.filter(g=>g.status!=="completed").length, c:"#a78bfa"},
+          {l:"Overdue Reviews",   v:overdue,              c:overdue>0?"#f87171":"#34d399"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:18,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabBtn("dashboard","Dashboard","📊")}
+        {tabBtn("employees","Employees","👥")}
+        {tabBtn("reviews",  "Reviews",  "📋")}
+        {tabBtn("goals",    "Goals",    "🎯")}
+        {tabBtn("letter",   "Review Letter","✍️")}
+      </div>
+
+      {/* ── DASHBOARD ──────────────────────────────────────────────────────── */}
+      {sub==="dashboard" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          {/* Score distribution */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🏆 Team Score Distribution — {CUR_Q}</div>
+            {[5,4,3,2,1].map(score=>{
+              const count = empStats.filter(e=>e.avgScore!==null&&Math.round(e.avgScore)===score).length;
+              const pctW  = empStats.filter(e=>e.avgScore!==null).length > 0
+                ? Math.round(count/empStats.filter(e=>e.avgScore!==null).length*100) : 0;
+              return (
+                <div key={score} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <div style={{width:24,fontSize:10,color:scoreColor(score),fontWeight:700,flexShrink:0}}>{score}★</div>
+                  <div style={{flex:1,height:20,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",background:scoreColor(score),width:pctW+"%",transition:"width 0.5s",display:"flex",alignItems:"center",paddingLeft:8}}>
+                      {pctW>15&&<span style={{fontSize:9,color:"#0a1626",fontWeight:700}}>{count}</span>}
+                    </div>
+                  </div>
+                  <div style={{width:40,fontSize:10,color:"#475569",textAlign:"right"}}>{count} ppl</div>
+                  <div style={{width:32,fontSize:9,color:"#334155"}}>{pctW}%</div>
+                </div>
+              );
+            })}
+            <div style={{marginTop:8,fontSize:10,color:"#334155"}}>
+              {empStats.filter(e=>e.avgScore===null).length} employees not yet reviewed
+            </div>
+          </div>
+
+          {/* Recent activity */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🕐 Recent Reviews</div>
+            {reviews.length === 0
+              ? <div style={{textAlign:"center",padding:"30px",color:"#334155",fontSize:12}}>No reviews yet.<br/>Start by selecting an employee below.</div>
+              : [...reviews].sort((a,b)=>b.createdAt?.localeCompare(a.createdAt)).slice(0,6).map(rv=>{
+                const emp = safeRoster.find(r=>r.id===rv.employeeId);
+                return (
+                  <div key={rv.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+                    <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#0284c7)",
+                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>
+                      {emp?.name?.split(" ").map(w=>w[0]).join("").slice(0,2)||"?"}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{emp?.name||"Unknown"}</div>
+                      <div style={{fontSize:10,color:"#475569"}}>{rv.period} · {rv.createdAt}</div>
+                    </div>
+                    <div style={{fontSize:16,fontWeight:700,color:scoreColor(rv.overallScore||0)}}>{rv.overallScore||"—"}</div>
+                  </div>
+                );
+              })
+            }
+          </div>
+
+          {/* Goals summary */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🎯 Goals Overview</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+              {[
+                {l:"Total",    v:goals.length,                                  c:"#94a3b8"},
+                {l:"In Progress",v:goals.filter(g=>g.status==="in_progress").length, c:"#38bdf8"},
+                {l:"Completed",v:goals.filter(g=>g.status==="completed").length,    c:"#34d399"},
+              ].map(s=>(
+                <div key={s.l} style={{textAlign:"center",padding:"10px",background:"#0a1626",borderRadius:8}}>
+                  <div style={{fontSize:18,fontWeight:800,color:s.c}}>{s.v}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+            {goals.filter(g=>g.status!=="completed").slice(0,5).map(g=>{
+              const emp = safeRoster.find(r=>r.id===g.employeeId);
+              const sc  = g.status==="in_progress"?"#38bdf8":g.status==="at_risk"?"#f87171":"#f59e0b";
+              return (
+                <div key={g.id} style={{display:"flex",gap:10,alignItems:"center",padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
+                  <span style={{fontSize:9,padding:"2px 7px",borderRadius:8,background:sc+"22",color:sc,flexShrink:0}}>{g.status}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.title}</div>
+                    <div style={{fontSize:9,color:"#334155"}}>{emp?.name||"?"} · Due: {g.dueDate||"—"}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Upcoming reviews */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📅 Review Calendar</div>
+            <div style={{display:"flex",gap:8,marginBottom:12}}>
+              <button className="btn bp" style={{fontSize:12,flex:1,justifyContent:"center"}} onClick={()=>{setSub("reviews");setModal("review");setForm({period:CUR_Q});}}>
+                + Start New Review
+              </button>
+            </div>
+            {empStats.map(e=>{
+              const daysSince = e.lastReview ? Math.floor((new Date()-new Date(e.lastReview.createdAt))/86400000) : 999;
+              const nextDue   = 90 - (daysSince % 90);
+              const urgency   = daysSince >= 90 ? "overdue" : daysSince >= 75 ? "soon" : "ok";
+              const uc = urgency==="overdue"?"#f87171":urgency==="soon"?"#fbbf24":"#34d399";
+              return (
+                <div key={e.id} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{e.name}</div>
+                    <div style={{fontSize:9,color:"#475569"}}>Last: {e.lastReview?.createdAt||"Never"}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    {urgency==="overdue"
+                      ? <span style={{fontSize:10,color:"#f87171",fontWeight:700}}>OVERDUE</span>
+                      : <span style={{fontSize:10,color:uc}}>Due in {nextDue}d</span>
+                    }
+                  </div>
+                  <button className="btn bg" style={{fontSize:9,padding:"2px 8px"}} onClick={()=>{setSelEmp(e.id);setSub("reviews");setModal("review");setForm({employeeId:e.id,period:CUR_Q});}}>
+                    Review
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── EMPLOYEES TAB ──────────────────────────────────────────────────── */}
+      {sub==="employees" && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+          {empStats.map(e=>{
+            const avgS = e.avgScore;
+            return (
+              <div key={e.id} style={{padding:"16px",borderRadius:12,background:"#060d1c",
+                border:`1px solid ${e.dueForReview?"#78350f":"#1a2d45"}`}}>
+                {/* Header */}
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                  <div style={{width:40,height:40,borderRadius:"50%",background:"linear-gradient(135deg,#0369a1,#0284c7)",
+                    display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff",flexShrink:0}}>
+                    {e.name.split(" ").map(w=>w[0]).join("").slice(0,2)}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{e.name}</div>
+                    <div style={{fontSize:10,color:"#475569"}}>{e.role} · {e.type}</div>
+                  </div>
+                  {avgS !== null && (
+                    <div style={{textAlign:"center"}}>
+                      <div style={{fontSize:22,fontWeight:900,color:scoreColor(avgS),lineHeight:1}}>{avgS}</div>
+                      <div style={{fontSize:8,color:"#334155"}}>avg</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Metrics */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:12}}>
+                  {[
+                    {l:"Reviews",    v:e.empReviews.length},
+                    {l:"Open Goals", v:e.openGoals.length},
+                    {l:"Done Goals", v:e.doneGoals.length},
+                    {l:"YTD Rev",    v:e.ytdRev>0?"$"+(e.ytdRev/1000).toFixed(0)+"k":"—"},
+                  ].map(m=>(
+                    <div key={m.l} style={{padding:"6px 8px",background:"#040810",borderRadius:6,textAlign:"center"}}>
+                      <div style={{fontSize:13,fontWeight:700,color:"#38bdf8"}}>{m.v}</div>
+                      <div style={{fontSize:9,color:"#334155"}}>{m.l}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {e.dueForReview && (
+                  <div style={{fontSize:10,color:"#fbbf24",marginBottom:8,padding:"4px 8px",background:"#1a1005",borderRadius:6,textAlign:"center"}}>
+                    ⏰ Review overdue
+                  </div>
+                )}
+
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:11}}
+                    onClick={()=>{setSelEmp(e.id);setSub("reviews");setModal("review");setForm({employeeId:e.id,period:CUR_Q});}}>
+                    + Review
+                  </button>
+                  <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}}
+                    onClick={()=>{setSelEmp(e.id);setSub("goals");setModal("goal");setForm({employeeId:e.id});}}>
+                    + Goal
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── REVIEWS TAB ────────────────────────────────────────────────────── */}
+      {sub==="reviews" && (
+        <div>
+          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+            <button className="btn bp" style={{fontSize:12}} onClick={()=>{setModal("review");setForm({period:CUR_Q});}}>+ New Review</button>
+          </div>
+          {reviews.length === 0
+            ? <div style={{textAlign:"center",padding:"60px",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:32,marginBottom:8}}>📋</div>
+                <div style={{fontSize:14,color:"#334155"}}>No reviews yet — start your first one</div>
+              </div>
+            : <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {/* Group by period */}
+              {[...new Set(reviews.map(r=>r.period))].sort().reverse().map(period=>(
+                <div key={period}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",marginBottom:6,marginTop:8}}>{period}</div>
+                  {reviews.filter(r=>r.period===period).map(rv=>{
+                    const emp = safeRoster.find(r=>r.id===rv.employeeId);
+                    return (
+                      <div key={rv.id} style={{display:"grid",gridTemplateColumns:"2fr 80px 80px 80px 80px 80px 120px",
+                        gap:8,alignItems:"center",padding:"12px 16px",borderRadius:10,marginBottom:4,
+                        background:"#060d1c",border:"1px solid #1a2d45"}}>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{emp?.name||"Unknown"}</div>
+                          <div style={{fontSize:10,color:"#475569"}}>{emp?.role} · {rv.createdAt}</div>
+                        </div>
+                        {["overallScore","technicalScore","deliveryScore","communicationScore","teamworkScore"].map(f=>(
+                          <div key={f} style={{textAlign:"center"}}>
+                            <div style={{fontSize:18,fontWeight:700,color:scoreColor(rv[f]||0)}}>{rv[f]||"—"}</div>
+                            <div style={{fontSize:8,color:"#334155"}}>{f.replace("Score","").replace("overall","overall").slice(0,6)}</div>
+                          </div>
+                        ))}
+                        <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                          <button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>{setModal("letter");setSelEmp(rv.employeeId);setForm(rv);setAiResult("");}}>📄 Letter</button>
+                          <button className="btn bg" style={{fontSize:9,padding:"2px 7px",color:"#f87171"}} onClick={()=>deleteReview(rv.id)}>✕</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          }
+        </div>
+      )}
+
+      {/* ── GOALS TAB ──────────────────────────────────────────────────────── */}
+      {sub==="goals" && (
+        <div>
+          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+            <button className="btn bp" style={{fontSize:12}} onClick={()=>{setModal("goal");setForm({status:"not_started",dueDate:""});}}>+ Add Goal</button>
+          </div>
+          {goals.length === 0
+            ? <div style={{textAlign:"center",padding:"60px",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:32,marginBottom:8}}>🎯</div>
+                <div style={{fontSize:14,color:"#334155"}}>No goals set yet</div>
+              </div>
+            : (
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {/* Column headers */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 140px 80px 100px 80px 80px",gap:8,padding:"6px 14px",fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600,background:"#040810",borderRadius:6}}>
+                  <div>Goal</div><div>Employee</div><div>Category</div><div>Due Date</div><div>Status</div><div></div>
+                </div>
+                {goals.map(g=>{
+                  const emp = safeRoster.find(r=>r.id===g.employeeId);
+                  const sc  = g.status==="completed"?"#34d399":g.status==="in_progress"?"#38bdf8":g.status==="at_risk"?"#f87171":"#f59e0b";
+                  return (
+                    <div key={g.id} style={{display:"grid",gridTemplateColumns:"1fr 140px 80px 100px 80px 80px",gap:8,padding:"10px 14px",borderRadius:8,background:"#060d1c",border:"1px solid #1a2d45",alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{g.title}</div>
+                        {g.description&&<div style={{fontSize:10,color:"#475569",marginTop:1}}>{g.description.slice(0,60)}{g.description.length>60?"...":""}</div>}
+                      </div>
+                      <div style={{fontSize:11,color:"#94a3b8"}}>{emp?.name||"—"}</div>
+                      <div><span style={{fontSize:9,padding:"2px 7px",borderRadius:8,background:"#0a1626",color:"#7dd3fc"}}>{g.category||"—"}</span></div>
+                      <div style={{fontSize:11,color:g.dueDate&&new Date(g.dueDate)<new Date()?"#f87171":"#94a3b8"}}>{g.dueDate||"—"}</div>
+                      <div>
+                        <select value={g.status||"not_started"} onChange={e=>{
+                          const u=goals.map(gg=>gg.id===g.id?{...gg,status:e.target.value}:gg);
+                          setGoals(u);localStorage.setItem("zt-perf-goals",JSON.stringify(u));
+                        }} style={{background:"#0a1626",border:`1px solid ${sc}`,borderRadius:5,color:sc,padding:"2px 6px",fontSize:10,cursor:"pointer"}}>
+                          {["not_started","in_progress","completed","at_risk"].map(s=><option key={s} value={s}>{s.replace("_"," ")}</option>)}
+                        </select>
+                      </div>
+                      <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 6px",color:"#f87171"}} onClick={()=>deleteGoal(g.id)}>✕</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          }
+        </div>
+      )}
+
+      {/* ── REVIEW LETTER TAB ──────────────────────────────────────────────── */}
+      {sub==="letter" && (
+        <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:16,alignItems:"start"}}>
+          {/* Employee + review picker */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>Select Employee & Review</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {empStats.map(e=>{
+                const empRevs = reviews.filter(r=>r.employeeId===e.id);
+                return empRevs.length > 0 ? (
+                  <div key={e.id}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#94a3b8",marginBottom:4}}>{e.name}</div>
+                    {empRevs.map(rv=>(
+                      <div key={rv.id} onClick={()=>{setSelEmp(e.id);setForm(rv);setAiResult("");}}
+                        style={{padding:"8px 10px",borderRadius:6,cursor:"pointer",marginBottom:3,
+                          background:form.id===rv.id?"#0c2340":"#040810",border:`1px solid ${form.id===rv.id?"#0369a1":"#1a2d45"}`}}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
+                          <span style={{color:"#7dd3fc"}}>{rv.period}</span>
+                          <span style={{color:scoreColor(rv.overallScore||0),fontWeight:700}}>{rv.overallScore}/5</span>
+                        </div>
+                        <div style={{fontSize:9,color:"#334155"}}>{rv.createdAt}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null;
+              })}
+              {reviews.length===0&&<div style={{fontSize:11,color:"#334155",textAlign:"center",padding:"20px 0"}}>No reviews yet</div>}
+            </div>
+          </div>
+
+          {/* Generator */}
+          <div>
+            {!form.employeeId
+              ? <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                  <div style={{fontSize:32,marginBottom:8}}>✍️</div>
+                  <div style={{fontSize:14,color:"#334155"}}>Select a review on the left to generate the letter</div>
+                </div>
+              : <div className="card" style={{padding:"20px 24px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>
+                        {safeRoster.find(r=>r.id===form.employeeId)?.name} — {form.period}
+                      </div>
+                      <div style={{fontSize:11,color:"#3d5a7a",marginTop:2}}>Overall score: {form.overallScore}/5</div>
+                    </div>
+                    <button className="btn bp" style={{fontSize:12}}
+                      onClick={()=>generateReviewLetter(safeRoster.find(r=>r.id===form.employeeId),form)}
+                      disabled={aiLoading}>
+                      {aiLoading?"⏳ Generating...":"✨ Generate Letter"}
+                    </button>
+                  </div>
+                  {aiLoading&&<div style={{textAlign:"center",padding:"40px",color:"#38bdf8"}}>⏳ Writing review letter...</div>}
+                  {aiResult&&!aiLoading&&(
+                    <div>
+                      <div style={{display:"flex",gap:8,marginBottom:12}}>
+                        <button className="btn bg" style={{fontSize:11}} onClick={()=>navigator.clipboard.writeText(aiResult)}>📋 Copy</button>
+                        <button className="btn bp" style={{fontSize:11}} onClick={()=>downloadReviewPDF(safeRoster.find(r=>r.id===form.employeeId),form)}>⬇ PDF</button>
+                        <button className="btn bg" style={{fontSize:11}} onClick={()=>generateReviewLetter(safeRoster.find(r=>r.id===form.employeeId),form)}>↺ Regenerate</button>
+                      </div>
+                      <div style={{background:"#fff",borderRadius:12,padding:"32px 40px",boxShadow:"0 4px 24px rgba(0,0,0,0.4)"}}>
+                        <div style={{background:"#0d1b2a",padding:"12px 18px",marginBottom:18,borderRadius:8}}>
+                          <div style={{fontSize:14,fontWeight:900,color:"#c9a84c"}}>ZIKSATECH, LLC</div>
+                          <div style={{fontSize:8,color:"#64748b",marginTop:2}}>Performance Review — Confidential</div>
+                        </div>
+                        <pre style={{fontSize:11,color:"#1e293b",whiteSpace:"pre-wrap",fontFamily:"Georgia,serif",lineHeight:1.8,margin:0}}>{aiResult}</pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+            }
+          </div>
+        </div>
+      )}
+
+      {/* ── NEW REVIEW MODAL ────────────────────────────────────────────────── */}
+      {modal==="review" && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div className="modal" style={{maxWidth:580,maxHeight:"90vh",overflowY:"auto"}}>
+            <MH title="Performance Review" onClose={()=>{setModal(null);setForm({});}}/>
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div>
+                  <div className="lbl">Employee *</div>
+                  <select className="inp" value={form.employeeId||""} onChange={e=>setForm(p=>({...p,employeeId:e.target.value}))}>
+                    <option value="">— select —</option>
+                    {safeRoster.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div className="lbl">Review Period *</div>
+                  <input className="inp" value={form.period||""} onChange={e=>setForm(p=>({...p,period:e.target.value}))} placeholder={CUR_Q}/>
+                </div>
+              </div>
+
+              {/* Score inputs */}
+              <div style={{padding:"14px 16px",background:"#0a1626",borderRadius:10,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:12,textTransform:"uppercase"}}>Scores (1=Needs Improvement · 5=Outstanding)</div>
+                <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                  {[
+                    ["Overall Performance","overallScore"],
+                    ["Technical Skills","technicalScore"],
+                    ["Delivery & Quality","deliveryScore"],
+                    ["Communication","communicationScore"],
+                    ["Teamwork & Collaboration","teamworkScore"],
+                  ].map(([lbl,fld])=>(
+                    <ScoreInput key={fld} label={lbl} field={fld} val={form[fld]} onChange={(f,v)=>setForm(p=>({...p,[f]:v}))}/>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="lbl">Key Strengths</div>
+                <textarea className="inp" rows={2} value={form.strengths||""} onChange={e=>setForm(p=>({...p,strengths:e.target.value}))} placeholder="What did this person excel at?"/>
+              </div>
+              <div>
+                <div className="lbl">Areas to Improve</div>
+                <textarea className="inp" rows={2} value={form.improvements||""} onChange={e=>setForm(p=>({...p,improvements:e.target.value}))} placeholder="Where should they focus next?"/>
+              </div>
+              <div>
+                <div className="lbl">Goals for Next Period</div>
+                <textarea className="inp" rows={2} value={form.nextGoals||""} onChange={e=>setForm(p=>({...p,nextGoals:e.target.value}))} placeholder="Specific goals and milestones"/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div>
+                  <div className="lbl">Compensation Change</div>
+                  <input className="inp" value={form.compChange||""} onChange={e=>setForm(p=>({...p,compChange:e.target.value}))} placeholder="e.g. 5% merit increase"/>
+                </div>
+                <div>
+                  <div className="lbl">Bonus Amount</div>
+                  <input className="inp" value={form.bonus||""} onChange={e=>setForm(p=>({...p,bonus:e.target.value}))} placeholder="e.g. $2,500"/>
+                </div>
+              </div>
+              <div>
+                <div className="lbl">Manager Comments</div>
+                <textarea className="inp" rows={3} value={form.managerComments||""} onChange={e=>setForm(p=>({...p,managerComments:e.target.value}))} placeholder="Overall assessment and forward-looking guidance"/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>{setModal(null);setForm({});}}>Cancel</button>
+              <button className="btn bp" onClick={()=>save("review",form)} disabled={!form.employeeId||!form.period||!form.overallScore}>
+                💾 Save Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── NEW GOAL MODAL ───────────────────────────────────────────────────── */}
+      {modal==="goal" && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div className="modal" style={{maxWidth:500}}>
+            <MH title="Add Goal" onClose={()=>{setModal(null);setForm({});}}/>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <div className="lbl">Employee *</div>
+                <select className="inp" value={form.employeeId||""} onChange={e=>setForm(p=>({...p,employeeId:e.target.value}))}>
+                  <option value="">— select —</option>
+                  {safeRoster.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Goal Title *</div>
+                <input className="inp" value={form.title||""} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="e.g. Complete SAP BTP certification"/>
+              </div>
+              <div>
+                <div className="lbl">Description</div>
+                <textarea className="inp" rows={2} value={form.description||""} onChange={e=>setForm(p=>({...p,description:e.target.value}))}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                <div>
+                  <div className="lbl">Category</div>
+                  <select className="inp" value={form.category||""} onChange={e=>setForm(p=>({...p,category:e.target.value}))}>
+                    <option value="">—</option>
+                    {["Technical","Business","Leadership","Certification","Client","Process"].map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div className="lbl">Due Date</div>
+                  <input type="date" className="inp" value={form.dueDate||""} onChange={e=>setForm(p=>({...p,dueDate:e.target.value}))}/>
+                </div>
+                <div>
+                  <div className="lbl">Status</div>
+                  <select className="inp" value={form.status||"not_started"} onChange={e=>setForm(p=>({...p,status:e.target.value}))}>
+                    {["not_started","in_progress","completed","at_risk"].map(s=><option key={s} value={s}>{s.replace("_"," ")}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>{setModal(null);setForm({});}}>Cancel</button>
+              <button className="btn bp" onClick={()=>save("goal",form)} disabled={!form.employeeId||!form.title}>💾 Save Goal</button>
             </div>
           </div>
         </div>
