@@ -18152,11 +18152,6 @@ function NotificationsHub({
     });
 
     // Build both MessageCard (legacy) and Adaptive Card formats
-    const title = isDigest ? `📋 Daily Digest — ${new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}` : `🚨 ${company} — Alert Summary`;
-    const critical = alertList.filter(a => a.sev === "critical");
-    const warning  = alertList.filter(a => a.sev === "warning");
-    const info     = alertList.filter(a => a.sev === "info");
-
     // Group alerts by category for display
     const grouped = alertList.reduce((acc,a)=>{if(!acc[a.cat])acc[a.cat]=[];acc[a.cat].push(a);return acc;},{});
 
