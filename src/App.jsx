@@ -2726,7 +2726,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="changeorders" && <ChangeOrderModule {...shared}/>}
         {tab==="crm"         && <SalesCRM {...shared}/> }
         {tab==="lirecruiter"  && <LinkedInRecruiter candidates={shared.candidates} setCandidates={shared.setCandidates} offers={shared.offers} roster={shared.roster} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
-        {tabtab==="recruiting"  && <RecruitingModule {...shared}/>}
+        {tab==="recruiting"      && <RecruitingModule {...shared}/>}
         {tab==="pto"        && <PTOModule {...shared}/>}
         {tab==="consultanthub" && <ConsultantHub roster={shared.roster} authProfile={authProfile}/>}
         {tab==="immigration" && <ImmigrationCalendar workAuth={shared.workAuth} setWorkAuth={shared.setWorkAuth} roster={shared.roster} addAudit={shared.addAudit}/>}
