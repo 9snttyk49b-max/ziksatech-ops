@@ -47,6 +47,7 @@ const RBAC = {
   sowgen:       ["super_admin","admin"],
   linkedin:     ["super_admin","admin"],
   contracts:    ["super_admin","admin","accounts"],
+  renewals:     ["super_admin","admin","accounts"],
   renewaltrk:   ["super_admin","admin","accounts"],
   emailtpl:     ["super_admin","admin"],
   doctemplates: ["super_admin","admin","hr_immigration"],
@@ -630,6 +631,7 @@ const ALL_MODULES = [
   { id:"offboarding", label:"Offboarding",            group:"Hiring"      },
   { id:"crm",        label:"Sales CRM",            group:"Sales"      },
   { id:"contracts",  label:"Contracts & SOW",      group:"Sales"      },
+  { id:"renewals",  label:"Contract Renewals",    group:"Clients"    },
   { id:"projects",   label:"Project Tracker",       group:"Delivery"   },
   { id:"profitability",label:"Project P&L",           group:"Delivery"   },
   { id:"roster",     label:"Team Roster",           group:"Delivery"   },
@@ -2076,6 +2078,7 @@ export default function ZiksatechOps() {
     { id:"reconcile",   label:"Reconciliation",        icon:ICONS.pl,       group:"Finance"     },
     { id:"bankanalyzer",label:"Bank & Card Analysis",   icon:ICONS.dash,     group:"Finance"     },
     { id:"contracts",    label:"Contracts & SOW",      icon:ICONS.clients,  group:"Clients"     },
+    { id:"renewals",    label:"Contract Renewals ↻",      icon:ICONS.dash,     group:"Clients"     },
     { id:"renewaltrk",  label:"Renewal Tracker",        icon:ICONS.ebitda,   group:"Clients"     },
     { id:"emailtpl",     label:"Email Templates",      icon:ICONS.dash,     group:"Clients"     },
     { id:"doctemplates", label:"Doc Templates",         icon:ICONS.dash,     group:"Team"        },
@@ -2601,7 +2604,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="adp"        && <ADPPayroll {...shared}/>}
         {tab==="org"          && <OrgAccessModule {...shared}/>}
         {tab==="contracts"   && <ContractsModule {...shared}/> }
-        {tab==="renewaltrk"  && <ContractRenewal contracts={shared.contracts} setContracts={shared.setContracts} sows={shared.sows} clients={shared.clients} roster={shared.roster} addAudit={shared.addAudit} setTab={setTab}/>}
+        {tab==="renewals"    && <ContractRenewalTracker contracts={shared.contracts} setContracts={shared.setContracts} clients={shared.clients} crmDeals={shared.crmDeals} roster={shared.roster} addAudit={shared.addAudit} setTab={setTab}/>}
+        {{tab==="renewaltrk"  && <ContractRenewal contracts={shared.contracts} setContracts={shared.setContracts} sows={shared.sows} clients={shared.clients} roster={shared.roster} addAudit={shared.addAudit} setTab={setTab}/>}
         {tab==="projects"    && <ProjectTracker {...shared}/>}
         {tab==="profitability"&& <ProjectProfitability {...shared}/>}
         {tab==="changeorders" && <ChangeOrderModule {...shared}/>}
@@ -3530,6 +3534,509 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 
 // ─── CLIENT PORTFOLIO ─────────────────────────────────────────────────────────
 
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTRACT RENEWAL TRACKER
+// Countdown timers · Auto-renewal SOW · Pipeline · Revenue at risk
+// ═══════════════════════════════════════════════════════════════════════════
+function ContractRenewalTracker({ contracts, setContracts, clients, crmDeals, roster, addAudit, setTab }) {
+  const [sub,        setSub]      = useState("overview"); // overview | timeline | renewal
+  const [selId,      setSel]      = useState(null);
+  const [editId,     setEditId]   = useState(null);
+  const [form,       setForm]     = useState({});
+  const [showNew,    setShowNew]  = useState(false);
+  const [genSOW,     setGenSOW]   = useState(null);
+  const [sowLoading, setSowLoading] = useState(false);
+  const [sowResult,  setSowResult]  = useState("");
+
+  const safeCon    = contracts  || [];
+  const safeClients = clients   || [];
+  const safeDeals  = crmDeals   || [];
+  const safeRoster = roster     || [];
+
+  const TODAY      = new Date();
+  const TODAY_STR  = TODAY.toISOString().slice(0,10);
+
+  const daysUntil  = dateStr => dateStr ? Math.ceil((new Date(dateStr) - TODAY) / 86400000) : null;
+  const fmt        = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${v}`;
+  const fmtDate    = d => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
+  const ff         = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  // Enrich contracts with computed fields
+  const enriched = safeCon.map(con => {
+    const days    = daysUntil(con.endDate);
+    const urgent  = days !== null && days <= (con.renewalAlert || 60);
+    const status  = days === null ? con.status
+                  : days < 0     ? "expired"
+                  : days <= 30   ? "critical"
+                  : days <= 60   ? "expiring"
+                  : days <= 90   ? "watch"
+                  : con.status || "active";
+    const client  = safeClients.find(c => c.id === con.accountId);
+    const linkedDeal = safeDeals.find(d => d.id === con.dealId);
+    return { ...con, days, urgent, computedStatus: status, client, linkedDeal };
+  });
+
+  // Sort: expired first, then by days
+  const sorted = [...enriched].sort((a, b) => {
+    if (a.days === null && b.days === null) return 0;
+    if (a.days === null) return 1;
+    if (b.days === null) return -1;
+    return (a.days ?? 9999) - (b.days ?? 9999);
+  });
+
+  const critical  = sorted.filter(c => c.computedStatus === "critical");
+  const expiring  = sorted.filter(c => c.computedStatus === "expiring");
+  const watch     = sorted.filter(c => c.computedStatus === "watch");
+  const active    = sorted.filter(c => c.computedStatus === "active");
+  const expired   = sorted.filter(c => c.computedStatus === "expired");
+  const revenueAtRisk = [...critical, ...expiring].reduce((s,c) => s + (c.value||0), 0);
+
+  const SC = {
+    critical: { bg:"#1a0808", br:"#7f1d1d", tx:"#f87171", dot:"#ef4444", label:"Critical ≤30d" },
+    expiring: { bg:"#1a1005", br:"#78350f", tx:"#fbbf24", dot:"#f59e0b", label:"Expiring ≤60d" },
+    watch:    { bg:"#0a1a1a", br:"#065f46", tx:"#34d399", dot:"#10b981", label:"Watch ≤90d" },
+    active:   { bg:"#060d1c", br:"#1a2d45", tx:"#38bdf8", dot:"#0369a1", label:"Active" },
+    expired:  { bg:"#0a0a0a", br:"#1a1a1a", tx:"#475569", dot:"#334155", label:"Expired" },
+    pending:  { bg:"#0c1a2e", br:"#1e3a5f", tx:"#7dd3fc", dot:"#38bdf8", label:"Pending" },
+  };
+
+  const getStatusColor = s => SC[s] || SC.active;
+
+  // ── Save / Edit ─────────────────────────────────────────────────────────
+  const saveContract = () => {
+    if (!form.name || !form.endDate) return alert("Name and end date required");
+    const isNew = !form.id;
+    const rec   = { ...form, id: form.id || "con" + Date.now() };
+    const updated = isNew
+      ? [...safeCon, rec]
+      : safeCon.map(c => c.id === rec.id ? rec : c);
+    setContracts(updated);
+    addAudit?.("Contracts","Contract "+(isNew?"Created":"Updated"),"Renewal Tracker", rec.name);
+    setEditId(null); setShowNew(false); setForm({});
+  };
+
+  const deleteContract = id => {
+    if (!window.confirm("Delete this contract?")) return;
+    setContracts(safeCon.filter(c => c.id !== id));
+    if (selId === id) setSel(null);
+  };
+
+  // ── AI Renewal SOW Generator ─────────────────────────────────────────────
+  const generateRenewalSOW = async (con) => {
+    setGenSOW(con); setSowLoading(true); setSowResult("");
+    try {
+      const resp = await fetch("/api/claude", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:1500,
+          system:`You are a professional contract writer for Ziksatech, LLC, a WBE/HUB/WOSB certified SAP consulting firm in Plano, TX. Write clear, professional SOW renewal documents. Today: ${TODAY_STR}.`,
+          messages:[{role:"user",content:`Generate a professional SOW Renewal document for:
+
+Contract: ${con.name}
+Client: ${con.counterparty || con.client?.name || "Client"}
+Original Value: $${(con.value||0).toLocaleString()}
+Original Period: ${con.startDate} to ${con.endDate}
+New Period: ${con.endDate} to ${new Date(new Date(con.endDate).setFullYear(new Date(con.endDate).getFullYear()+1)).toISOString().slice(0,10)}
+Contract Type: ${con.type}
+Owner: ${con.owner || "Manju Murthy"}
+Notes: ${con.notes || "Standard renewal terms"}
+
+Write a complete, professional SOW Renewal with:
+1. Parties and recitals
+2. Renewal term (1 year from expiry)
+3. Scope of services (continue existing services as described)
+4. Compensation (same rate unless noted)
+5. Standard terms by reference to Master Agreement
+6. Signature blocks for both parties
+
+Keep it concise but complete. Plain text format.`}]
+        })
+      });
+      const data  = await resp.json();
+      setSowResult((data?.content||[]).map(b=>b.text||"").join(""));
+    } catch(e) { setSowResult("Error: "+e.message); }
+    setSowLoading(false);
+  };
+
+  const downloadSOWPDF = async (con) => {
+    if (!sowResult) return;
+    if (!window.jspdf) {
+      await new Promise(res=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';s.onload=res;document.head.appendChild(s);});
+    }
+    const {jsPDF} = window.jspdf;
+    const doc = new jsPDF({orientation:"portrait",unit:"mm",format:"letter"});
+    const pw = doc.internal.pageSize.getWidth(), mg = 20, maxW = pw - mg*2;
+    let y = 18;
+    doc.setFillColor(13,27,42); doc.rect(0,0,pw,26,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(201,168,76);
+    doc.text("ZIKSATECH, LLC", mg, 11);
+    doc.setFontSize(7); doc.setTextColor(100,130,160);
+    doc.text("WBE · HUB · WOSB Certified SAP Consulting", mg, 17);
+    doc.text("5400 Legacy Drive Suite 100, Plano TX 75024  |  mmurthy@ziksatech.com", mg, 22);
+    y = 34;
+    doc.setDrawColor(201,168,76); doc.setLineWidth(0.4); doc.line(mg,y,pw-mg,y); y+=8;
+    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(20,20,20);
+    for (const line of sowResult.split("\n")) {
+      if (y > 265) { doc.addPage(); y = 20; }
+      if (!line.trim()) { y += 3; continue; }
+      const isHdr = /^[A-Z\s]{4,}:?\s*$/.test(line.trim()) || line.startsWith("===") || line.startsWith("---");
+      if (isHdr) { y+=2; doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(13,60,120); }
+      else { doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(20,20,20); }
+      const wrapped = doc.splitTextToSize(line.trim(), maxW);
+      for (const wl of wrapped) { if (y>265){doc.addPage();y=20;} doc.text(wl,mg,y); y+=5; }
+    }
+    const pages = doc.internal.getNumberOfPages();
+    for (let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(150);doc.line(mg,278,pw-mg,278);doc.text(`Ziksatech, LLC · Confidential · Page ${i}/${pages}`,mg,282);}
+    doc.save(`SOW_Renewal_${(con.counterparty||"Client").replace(/\s+/g,"_")}_${TODAY_STR}.pdf`);
+  };
+
+  const tabBtn = (id, label) => (
+    <button onClick={()=>setSub(id)}
+      style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569"}}>
+      {label}
+    </button>
+  );
+
+  const ContractForm = ({init={}}) => {
+    const [lf, setLf] = useState({...init});
+    const lff = (k,v) => setLf(p=>({...p,[k]:v}));
+    return (
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        {[[["Contract Name","name","text",2],["Counterparty","counterparty","text",1],["Contract Type","type","select",1]],
+          [["Status","status","select",1],["Value ($)","value","number",1],["Owner","owner","text",1]],
+          [["Start Date","startDate","date",1],["End Date","endDate","date",1],["Renewal Alert (days)","renewalAlert","number",1]],
+          [["Notes","notes","textarea",2]]
+        ].map((row,ri)=>row.map(([label,key,type,span])=>(
+          <div key={key} style={{gridColumn:`span ${span}`}}>
+            <div className="lbl">{label}</div>
+            {type==="select" && key==="type"
+              ? <select className="inp" value={lf[key]||""} onChange={e=>{lff(key,e.target.value);setForm(p=>({...p,[key]:e.target.value}));}}>
+                  <option value="">— select —</option>
+                  {["MSA","SOW","NDA","MSA Amendment","Staff Aug","Fixed Price","T&M"].map(o=><option key={o}>{o}</option>)}
+                </select>
+              : type==="select" && key==="status"
+              ? <select className="inp" value={lf[key]||""} onChange={e=>{lff(key,e.target.value);setForm(p=>({...p,[key]:e.target.value}));}}>
+                  {["active","pending","expiring","expired","terminated"].map(o=><option key={o}>{o}</option>)}
+                </select>
+              : type==="textarea"
+              ? <textarea className="inp" rows={2} value={lf[key]||""} onChange={e=>{lff(key,e.target.value);setForm(p=>({...p,[key]:e.target.value}));}} style={{resize:"vertical"}}/>
+              : <input type={type} className="inp" value={lf[key]||""} onChange={e=>{lff(key,e.target.value);setForm(p=>({...p,[key]:e.target.value}));}}/>
+            }
+          </div>
+        )))}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <PH title="Contract Renewal Tracker" sub="Countdown timers · Revenue at risk · Auto-generate renewal SOW · Never miss a renewal"/>
+
+      {/* Alert banner */}
+      {(critical.length > 0 || expiring.length > 0) && (
+        <div style={{padding:"10px 16px",background:"#1a0808",border:"1px solid #7f1d1d",borderRadius:10,marginBottom:14,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:13,fontWeight:700,color:"#f87171"}}>⚠️ Renewal Alerts</span>
+          {critical.map(c=>(
+            <span key={c.id} style={{fontSize:11,background:"#7f1d1d22",color:"#f87171",padding:"3px 10px",borderRadius:10,border:"1px solid #7f1d1d",cursor:"pointer"}}
+              onClick={()=>setSel(c.id)}>
+              🔴 {c.name} — {c.days}d
+            </span>
+          ))}
+          {expiring.map(c=>(
+            <span key={c.id} style={{fontSize:11,background:"#78350f22",color:"#fbbf24",padding:"3px 10px",borderRadius:10,border:"1px solid #78350f",cursor:"pointer"}}
+              onClick={()=>setSel(c.id)}>
+              🟡 {c.name} — {c.days}d
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Top KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Total Contracts",   v:safeCon.length,           c:"#94a3b8"},
+          {l:"Active",           v:active.length+watch.length+expiring.length+critical.length, c:"#38bdf8"},
+          {l:"Critical ≤30d",   v:critical.length,           c:"#f87171"},
+          {l:"Expiring ≤60d",   v:expiring.length,           c:"#fbbf24"},
+          {l:"Revenue at Risk",  v:fmt(revenueAtRisk),        c:revenueAtRisk>0?"#f87171":"#34d399"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs + Add button */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45"}}>
+          {tabBtn("overview","📋 All Contracts")}
+          {tabBtn("timeline","📅 Timeline")}
+          {tabBtn("renewal","✍️ Renewal SOW")}
+        </div>
+        <button className="btn bp" style={{fontSize:12}} onClick={()=>{setShowNew(true);setForm({status:"active",renewalAlert:60,owner:"Manju"});}}>
+          + Add Contract
+        </button>
+      </div>
+
+      {/* ── OVERVIEW TAB ────────────────────────────────────────────────── */}
+      {sub === "overview" && (
+        <div>
+          {/* Group by urgency */}
+          {[
+            {label:"🔴 Critical — Renew Now (≤30 days)", items:critical, key:"critical"},
+            {label:"🟡 Expiring Soon (31–60 days)",       items:expiring, key:"expiring"},
+            {label:"👀 Watch List (61–90 days)",          items:watch,    key:"watch"},
+            {label:"✅ Active",                          items:active,   key:"active"},
+            {label:"⏸ Pending",                          items:sorted.filter(c=>c.computedStatus==="pending"), key:"pending"},
+            {label:"⬜ Expired",                         items:expired,  key:"expired"},
+          ].filter(g => g.items.length > 0).map(group => {
+            const sc = getStatusColor(group.key);
+            return (
+              <div key={group.key} style={{marginBottom:20}}>
+                <div style={{fontSize:11,fontWeight:700,color:sc.tx,marginBottom:8,padding:"4px 10px",
+                  background:sc.bg,borderRadius:6,border:`1px solid ${sc.br}`,width:"fit-content"}}>
+                  {group.label} ({group.items.length})
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {group.items.map(con => {
+                    const s = getStatusColor(con.computedStatus);
+                    const isSelected = selId === con.id;
+                    return (
+                      <div key={con.id}>
+                        <div onClick={()=>setSel(isSelected?null:con.id)}
+                          style={{display:"grid",gridTemplateColumns:"2fr 1fr 100px 90px 90px 130px 100px",
+                            gap:8,alignItems:"center",padding:"12px 16px",borderRadius:10,cursor:"pointer",
+                            background:isSelected?"#0c2340":s.bg,border:`1px solid ${isSelected?"#0369a1":s.br}`,
+                            transition:"all 0.15s"}}>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{con.name}</div>
+                            <div style={{fontSize:10,color:"#475569"}}>{con.counterparty||"—"} · {con.type}</div>
+                          </div>
+                          <div style={{fontSize:11,color:"#38bdf8",fontFamily:"monospace"}}>{fmt(con.value||0)}</div>
+                          <div style={{textAlign:"center"}}>
+                            <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:s.bg,color:s.tx,border:`1px solid ${s.br}`,fontWeight:600}}>
+                              {con.computedStatus}
+                            </span>
+                          </div>
+                          <div style={{textAlign:"center",fontSize:11,color:"#475569"}}>{fmtDate(con.startDate)}</div>
+                          <div style={{textAlign:"center",fontSize:11,
+                            color:con.days<=30?"#f87171":con.days<=60?"#fbbf24":con.days<=90?"#34d399":"#94a3b8",
+                            fontWeight:con.days<=60?700:400}}>
+                            {con.endDate ? (con.days < 0 ? `${Math.abs(con.days)}d ago` : `${con.days}d left`) : "—"}
+                          </div>
+                          <div style={{textAlign:"center",fontSize:10,color:"#475569"}}>{fmtDate(con.endDate)}</div>
+                          <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
+                            <button className="btn bg" style={{fontSize:9,padding:"2px 8px"}} onClick={e=>{e.stopPropagation();setEditId(con.id);setForm({...con});}}>Edit</button>
+                            <button className="btn bg" style={{fontSize:9,padding:"2px 8px",color:"#a78bfa"}} onClick={e=>{e.stopPropagation();setSub("renewal");setGenSOW(con);setSowResult("");}}>↺ Renew</button>
+                            <button className="btn bg" style={{fontSize:9,padding:"2px 8px",color:"#f87171"}} onClick={e=>{e.stopPropagation();deleteContract(con.id);}}>✕</button>
+                          </div>
+                        </div>
+
+                        {/* Expanded detail */}
+                        {isSelected && (
+                          <div style={{padding:"14px 18px",background:"#040810",borderRadius:"0 0 10px 10px",border:`1px solid ${s.br}`,borderTop:"none",marginTop:-4}}>
+                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+                              <div>
+                                <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Contract Details</div>
+                                {[["Client",con.counterparty||"—"],["Type",con.type||"—"],["Owner",con.owner||"—"],
+                                  ["Signed",fmtDate(con.signedDate)],["Value",fmt(con.value||0)],
+                                  ["Alert at",`${con.renewalAlert||60} days`]
+                                ].map(([k,v])=>(
+                                  <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                                    <span style={{color:"#475569"}}>{k}</span><span style={{color:"#94a3b8"}}>{v}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div>
+                                <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Timeline</div>
+                                {[["Start",fmtDate(con.startDate)],["End",fmtDate(con.endDate)],
+                                  ["Days Remaining",con.days!==null?con.days+"d":"—"],
+                                  ["Duration",con.startDate&&con.endDate?Math.round((new Date(con.endDate)-new Date(con.startDate))/86400000/30)+" months":"—"],
+                                ].map(([k,v])=>(
+                                  <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                                    <span style={{color:"#475569"}}>{k}</span><span style={{color:"#94a3b8"}}>{v}</span>
+                                  </div>
+                                ))}
+                                {/* Countdown ring */}
+                                {con.days !== null && con.days >= 0 && (
+                                  <div style={{marginTop:12,textAlign:"center"}}>
+                                    <div style={{fontSize:32,fontWeight:900,color:con.days<=30?"#f87171":con.days<=60?"#fbbf24":"#34d399"}}>{con.days}</div>
+                                    <div style={{fontSize:10,color:"#334155"}}>days remaining</div>
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Notes</div>
+                                <div style={{fontSize:11,color:"#475569",lineHeight:1.7}}>{con.notes||"No notes"}</div>
+                                <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:6}}>
+                                  <button className="btn bp" style={{justifyContent:"center",fontSize:11}} onClick={()=>{setSub("renewal");setGenSOW(con);setSowResult("");}}>
+                                    ✍️ Generate Renewal SOW
+                                  </button>
+                                  <button className="btn bg" style={{justifyContent:"center",fontSize:11}} onClick={()=>{setEditId(con.id);setForm({...con});}}>
+                                    ✏️ Edit Contract
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── TIMELINE TAB ────────────────────────────────────────────────── */}
+      {sub === "timeline" && (
+        <div className="card" style={{padding:"20px 24px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:20}}>📅 Contract Timeline — {new Date().getFullYear()}</div>
+          {/* Month headers */}
+          <div style={{display:"grid",gridTemplateColumns:"180px repeat(12,1fr)",gap:2,marginBottom:4}}>
+            <div/>
+            {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].map((m,i)=>(
+              <div key={m} style={{fontSize:9,textAlign:"center",color:i===new Date().getMonth()?"#38bdf8":"#334155",fontWeight:i===new Date().getMonth()?700:400,borderBottom:i===new Date().getMonth()?"2px solid #0369a1":"none"}}>{m}</div>
+            ))}
+          </div>
+          {sorted.filter(c=>c.computedStatus!=="expired"||(c.days&&c.days>-180)).map(con => {
+            const s = getStatusColor(con.computedStatus);
+            const startMo = con.startDate ? new Date(con.startDate).getMonth() : 0;
+            const endMo   = con.endDate   ? Math.min(11, new Date(con.endDate).getMonth()) : 11;
+            const startYr = con.startDate ? new Date(con.startDate).getFullYear() : 2025;
+            const endYr   = con.endDate   ? new Date(con.endDate).getFullYear()   : 2026;
+            const curYr   = new Date().getFullYear();
+            const colStart = startYr < curYr ? 1 : startMo + 1;
+            const colEnd   = endYr   > curYr ? 12 : endMo + 1;
+            return (
+              <div key={con.id} style={{display:"grid",gridTemplateColumns:"180px repeat(12,1fr)",gap:2,marginBottom:4,alignItems:"center"}}>
+                <div style={{fontSize:10,color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:4}}
+                  title={con.name}>{con.name}</div>
+                {Array.from({length:12},(_,i)=>{
+                  const inRange = i+1 >= colStart && i+1 <= colEnd;
+                  const isEnd   = i+1 === colEnd && endYr === curYr;
+                  return (
+                    <div key={i} style={{height:16,background:inRange?s.dot+"66":"transparent",borderRadius:inRange?(i+1===colStart?"4px 0 0 4px":isEnd?"0 4px 4px 0":"0"):"0",
+                      position:"relative",cursor:"pointer"}} onClick={()=>{setSub("overview");setSel(con.id);}}>
+                      {isEnd && <div style={{position:"absolute",right:0,top:0,bottom:0,width:3,background:s.dot,borderRadius:"0 4px 4px 0"}}/>}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+          <div style={{display:"flex",gap:16,marginTop:16,flexWrap:"wrap"}}>
+            {Object.entries(SC).slice(0,5).map(([k,v])=>(
+              <div key={k} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:v.tx}}>
+                <div style={{width:12,height:8,background:v.dot+"66",borderRadius:2}}/> {v.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── RENEWAL SOW TAB ─────────────────────────────────────────────── */}
+      {sub === "renewal" && (
+        <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:16,alignItems:"start"}}>
+          {/* Contract picker */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Select Contract to Renew</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {sorted.filter(c=>c.computedStatus!=="expired").map(con=>{
+                const s = getStatusColor(con.computedStatus);
+                return (
+                  <div key={con.id} onClick={()=>{setGenSOW(con);setSowResult("");}}
+                    style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",
+                      background:genSOW?.id===con.id?"#0c2340":s.bg,border:`1px solid ${genSOW?.id===con.id?"#0369a1":s.br}`}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0",marginBottom:2}}>{con.name}</div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10}}>
+                      <span style={{color:"#475569"}}>{con.counterparty||"—"}</span>
+                      <span style={{color:s.tx}}>{con.days!==null?con.days+"d":"—"}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SOW generator */}
+          <div>
+            {!genSOW ? (
+              <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:32,marginBottom:12}}>✍️</div>
+                <div style={{fontSize:14,color:"#334155"}}>Select a contract on the left to generate its renewal SOW</div>
+              </div>
+            ) : (
+              <div className="card" style={{padding:"20px 24px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>✍️ Renewal SOW — {genSOW.counterparty||genSOW.name}</div>
+                    <div style={{fontSize:11,color:"#3d5a7a",marginTop:2}}>Current end: {fmtDate(genSOW.endDate)} · {genSOW.days}d remaining</div>
+                  </div>
+                  <button className="btn bp" style={{fontSize:12}} onClick={()=>generateRenewalSOW(genSOW)} disabled={sowLoading}>
+                    {sowLoading ? "⏳ Generating..." : "✨ Generate SOW"}
+                  </button>
+                </div>
+
+                {sowLoading && (
+                  <div style={{padding:"40px",textAlign:"center",color:"#38bdf8"}}>
+                    <div style={{fontSize:24,marginBottom:8}}>⏳</div>
+                    <div>Generating renewal SOW...</div>
+                  </div>
+                )}
+
+                {sowResult && !sowLoading && (
+                  <div>
+                    <div style={{display:"flex",gap:8,marginBottom:12}}>
+                      <button className="btn bg" style={{fontSize:11}} onClick={()=>{navigator.clipboard.writeText(sowResult);}}>📋 Copy</button>
+                      <button className="btn bp" style={{fontSize:11}} onClick={()=>downloadSOWPDF(genSOW)}>⬇ Download PDF</button>
+                      <button className="btn bg" style={{fontSize:11}} onClick={()=>generateRenewalSOW(genSOW)}>↺ Regenerate</button>
+                    </div>
+                    {/* Preview */}
+                    <div style={{background:"#fff",borderRadius:12,padding:"32px 40px",boxShadow:"0 4px 24px rgba(0,0,0,0.4)"}}>
+                      <div style={{background:"#0d1b2a",padding:"12px 18px",marginBottom:18,borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div style={{fontSize:14,fontWeight:900,color:"#c9a84c",letterSpacing:"0.06em"}}>ZIKSATECH, LLC</div>
+                        <div style={{textAlign:"right",fontSize:8,color:"#64748b"}}>
+                          <div>5400 Legacy Drive, Suite 100</div><div>Plano, TX 75024</div>
+                        </div>
+                      </div>
+                      <pre style={{fontSize:11,color:"#1e293b",whiteSpace:"pre-wrap",fontFamily:"Georgia,serif",lineHeight:1.8,margin:0}}>
+                        {sowResult}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit modal */}
+      {(showNew || editId) && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&(setShowNew(false)||setEditId(null))}>
+          <div className="modal" style={{maxWidth:640}}>
+            <MH title={editId?"Edit Contract":"Add New Contract"} onClose={()=>{setShowNew(false);setEditId(null);setForm({});}}/>
+            <ContractForm init={form}/>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>{setShowNew(false);setEditId(null);setForm({});}}>Cancel</button>
+              <button className="btn bp" onClick={saveContract}>💾 Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REVENUE FORECASTING & COMMISSION TRACKER
