@@ -47,6 +47,7 @@ const RBAC = {
   sowgen:       ["super_admin","admin"],
   linkedin:     ["super_admin","admin"],
   contracts:    ["super_admin","admin","accounts"],
+  renewaltrk:   ["super_admin","admin","accounts"],
   emailtpl:     ["super_admin","admin"],
   doctemplates: ["super_admin","admin","hr_immigration"],
   esign:        ["super_admin","admin","accounts"],
@@ -2075,6 +2076,7 @@ export default function ZiksatechOps() {
     { id:"reconcile",   label:"Reconciliation",        icon:ICONS.pl,       group:"Finance"     },
     { id:"bankanalyzer",label:"Bank & Card Analysis",   icon:ICONS.dash,     group:"Finance"     },
     { id:"contracts",    label:"Contracts & SOW",      icon:ICONS.clients,  group:"Clients"     },
+    { id:"renewaltrk",  label:"Renewal Tracker",        icon:ICONS.ebitda,   group:"Clients"     },
     { id:"emailtpl",     label:"Email Templates",      icon:ICONS.dash,     group:"Clients"     },
     { id:"doctemplates", label:"Doc Templates",         icon:ICONS.dash,     group:"Team"        },
     { id:"esign",        label:"E-Signature",          icon:ICONS.pl,       group:"Clients"     },
@@ -2599,6 +2601,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="adp"        && <ADPPayroll {...shared}/>}
         {tab==="org"          && <OrgAccessModule {...shared}/>}
         {tab==="contracts"   && <ContractsModule {...shared}/> }
+        {tab==="renewaltrk"  && <ContractRenewal contracts={shared.contracts} setContracts={shared.setContracts} sows={shared.sows} clients={shared.clients} roster={shared.roster} addAudit={shared.addAudit} setTab={setTab}/>}
         {tab==="projects"    && <ProjectTracker {...shared}/>}
         {tab==="profitability"&& <ProjectProfitability {...shared}/>}
         {tab==="changeorders" && <ChangeOrderModule {...shared}/>}
@@ -9145,6 +9148,458 @@ function ContractsOverview({ contracts, sows, crmAccounts }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTRACT RENEWAL TRACKER
+// Countdown timers · Auto-renewal SOW · Renewal pipeline · ARR at risk
+// ═══════════════════════════════════════════════════════════════════════════
+function ContractRenewal({ contracts, setContracts, sows, clients, roster, addAudit, setTab }) {
+  const [view,       setView]      = useState("board");   // board | list | calendar
+  const [selId,      setSel]       = useState(null);
+  const [renewModal, setRenewModal] = useState(null);      // contract to renew
+  const [renewForm,  setRenewForm]  = useState({});
+  const [filterSt,   setFilterSt]   = useState("all");
+  const [noteModal,  setNoteModal]  = useState(null);
+  const [noteText,   setNoteText]   = useState("");
+
+  const safeCons  = contracts || [];
+  const safeSows  = sows      || [];
+  const safeCli   = clients   || [];
+  const safeRost  = roster    || [];
+
+  // ── Enrich contracts with countdown data ────────────────────────────────
+  const enriched = safeCons.map(con => {
+    const endDate     = con.endDate ? new Date(con.endDate) : null;
+    const today       = new Date();
+    const daysLeft    = endDate ? Math.ceil((endDate - today) / 86400000) : null;
+    const alertDays   = con.renewalAlert || 60;
+    const isExpired   = daysLeft !== null && daysLeft < 0;
+    const isUrgent    = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
+    const isWarning   = daysLeft !== null && daysLeft > 30 && daysLeft <= alertDays;
+    const isHealthy   = daysLeft !== null && daysLeft > alertDays;
+    const linkedClient = safeCli.find(c => c.id === con.accountId);
+    const linkedSow    = safeSows.find(s => s.contractId === con.id);
+    const urgency      = isExpired ? "expired" : isUrgent ? "urgent" : isWarning ? "warning" : "healthy";
+    return { ...con, daysLeft, endDate, isExpired, isUrgent, isWarning, isHealthy, urgency, linkedClient, linkedSow };
+  });
+
+  const filtered = filterSt === "all" ? enriched
+    : enriched.filter(c => c.urgency === filterSt || (filterSt === "active" && c.status === "active"));
+
+  // Stats
+  const expired  = enriched.filter(c => c.isExpired);
+  const urgent   = enriched.filter(c => c.isUrgent);
+  const warning  = enriched.filter(c => c.isWarning);
+  const healthy  = enriched.filter(c => c.isHealthy);
+  const totalARR = enriched.filter(c=>!c.isExpired&&c.status==="active").reduce((s,c)=>s+(c.value||0),0);
+  const atRiskARR= [...expired,...urgent].reduce((s,c)=>s+(c.value||0),0);
+  const renewNext90 = enriched.filter(c=>c.daysLeft!==null&&c.daysLeft>=0&&c.daysLeft<=90);
+
+  const fmt = v => v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1e3?`$${(v/1e3).toFixed(0)}k`:`$${v}`;
+
+  // ── Urgency config ───────────────────────────────────────────────────────
+  const UC = {
+    expired: { bg:"#1a0808", br:"#7f1d1d", tx:"#f87171", dot:"#ef4444", label:"Expired",      icon:"🔴" },
+    urgent:  { bg:"#1a0808", br:"#7f1d1d", tx:"#f87171", dot:"#f87171", label:"Urgent ≤30d",  icon:"⚠️" },
+    warning: { bg:"#1a1005", br:"#92400e", tx:"#fbbf24", dot:"#f59e0b", label:"Warning",       icon:"🟡" },
+    healthy: { bg:"#021f14", br:"#15803d", tx:"#34d399", dot:"#22c55e", label:"Healthy",       icon:"🟢" },
+  };
+
+  // ── Open renewal modal ───────────────────────────────────────────────────
+  const openRenew = (con) => {
+    const newStart = con.endDate ? new Date(con.endDate) : new Date();
+    newStart.setDate(newStart.getDate() + 1);
+    const newEnd = new Date(newStart);
+    newEnd.setFullYear(newEnd.getFullYear() + 1);
+    setRenewForm({
+      name:       con.name + " (Renewal)",
+      value:      con.value || "",
+      startDate:  newStart.toISOString().slice(0,10),
+      endDate:    newEnd.toISOString().slice(0,10),
+      notes:      "",
+      renewalAlert: con.renewalAlert || 60,
+    });
+    setRenewModal(con);
+  };
+
+  const submitRenewal = () => {
+    if (!renewModal) return;
+    // Close old contract
+    const updated = safeCons.map(c => c.id === renewModal.id ? { ...c, status: "renewed" } : c);
+    // Add new renewed contract
+    const newId = "con-r-" + Date.now();
+    const newCon = {
+      ...renewModal,
+      id:          newId,
+      name:        renewForm.name,
+      value:       +renewForm.value || renewModal.value,
+      startDate:   renewForm.startDate,
+      endDate:     renewForm.endDate,
+      signedDate:  new Date().toISOString().slice(0,10),
+      status:      "active",
+      renewalAlert: +renewForm.renewalAlert || 60,
+      notes:       renewForm.notes,
+      renewedFrom: renewModal.id,
+    };
+    setContracts([...updated, newCon]);
+    addAudit?.("Contracts", "Contract Renewed", renewModal.name,
+      `Renewed → ${renewForm.endDate}, value: ${fmt(+renewForm.value||renewModal.value)}`);
+    setRenewModal(null);
+  };
+
+  // ── Add note ─────────────────────────────────────────────────────────────
+  const saveNote = () => {
+    if (!noteModal || !noteText.trim()) return;
+    const updated = safeCons.map(c => c.id === noteModal.id
+      ? { ...c, notes: ((c.notes||"") + "\n\n["+new Date().toLocaleDateString()+"] "+noteText).trim() }
+      : c);
+    setContracts(updated);
+    addAudit?.("Contracts","Note Added",noteModal.name,noteText.slice(0,80));
+    setNoteModal(null); setNoteText("");
+  };
+
+  // ── Countdown ring SVG ───────────────────────────────────────────────────
+  const Ring = ({ days, total=365, color="#34d399", size=52 }) => {
+    const r   = (size-8)/2;
+    const circ = 2 * Math.PI * r;
+    const pct  = total > 0 ? Math.max(0, Math.min(1, days/total)) : 0;
+    return (
+      <svg width={size} height={size} style={{flexShrink:0}}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#0a1626" strokeWidth={5}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={5}
+          strokeDasharray={circ} strokeDashoffset={circ*(1-pct)}
+          strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`}
+          style={{transition:"stroke-dashoffset 0.6s"}}/>
+        <text x={size/2} y={size/2+1} textAnchor="middle" dominantBaseline="middle"
+          fill={color} fontSize={days>99?9:11} fontWeight="800" fontFamily="monospace">
+          {days < 0 ? "EXP" : days > 999 ? "∞" : days}
+        </text>
+        {days >= 0 && days <= 999 && (
+          <text x={size/2} y={size/2+11} textAnchor="middle" fill={color} fontSize={7} opacity={0.7}>
+            days
+          </text>
+        )}
+      </svg>
+    );
+  };
+
+  const selected = enriched.find(c => c.id === selId);
+
+  return (
+    <div>
+      <PH title="Contract Renewal Tracker" sub="Countdown timers · Renewal alerts · ARR at risk · One-click renewal"/>
+
+      {/* KPI strip */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+        {[
+          { l:"Active ARR",      v:fmt(totalARR),     c:"#38bdf8", sub:`${enriched.filter(c=>c.status==="active").length} contracts` },
+          { l:"ARR at Risk",     v:fmt(atRiskARR),    c:atRiskARR>0?"#f87171":"#34d399", sub:`expired + urgent` },
+          { l:"Renewing ≤90d",   v:renewNext90.length,c:renewNext90.length>0?"#f59e0b":"#34d399", sub:`action required` },
+          { l:"Urgent ≤30d",     v:urgent.length,     c:urgent.length>0?"#f87171":"#64748b",  sub:`immediate action` },
+          { l:"Expired",         v:expired.length,    c:expired.length>0?"#f87171":"#64748b",  sub:`needs renewal` },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+            <div style={{fontSize:9,color:"#334155",marginTop:2}}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Alert banner */}
+      {(expired.length > 0 || urgent.length > 0) && (
+        <div style={{padding:"10px 16px",background:"#1a0808",border:"1px solid #7f1d1d",borderRadius:10,marginBottom:14,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:13,fontWeight:700,color:"#f87171"}}>🚨 Action Required</span>
+          {[...expired,...urgent].map(c=>(
+            <span key={c.id} style={{fontSize:11,padding:"3px 12px",borderRadius:10,background:"#7f1d1d22",
+              border:"1px solid #7f1d1d",color:"#f87171",cursor:"pointer"}}
+              onClick={()=>setSel(c.id)}>
+              {c.name.slice(0,30)} — {c.isExpired?"EXPIRED":`${c.daysLeft}d`}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Filters + view toggle */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {[
+            {id:"all",     label:`All (${enriched.length})`,          c:"#94a3b8"},
+            {id:"expired", label:`Expired (${expired.length})`,       c:"#f87171"},
+            {id:"urgent",  label:`Urgent (${urgent.length})`,         c:"#f87171"},
+            {id:"warning", label:`Warning (${warning.length})`,       c:"#fbbf24"},
+            {id:"healthy", label:`Healthy (${healthy.length})`,       c:"#34d399"},
+          ].map(f=>(
+            <button key={f.id} onClick={()=>setFilterSt(f.id)}
+              style={{padding:"4px 14px",borderRadius:20,border:`1px solid ${filterSt===f.id?"#0369a1":"#1a2d45"}`,
+                background:filterSt===f.id?"#0369a1":"transparent",
+                color:filterSt===f.id?"#fff":f.c,fontSize:11,cursor:"pointer",fontWeight:600}}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          {["board","list"].map(v=>(
+            <button key={v} onClick={()=>setView(v)}
+              style={{padding:"5px 12px",borderRadius:7,border:"none",cursor:"pointer",fontSize:11,
+                background:view===v?"#0369a1":"#0a1626",color:view===v?"#fff":"#475569"}}>
+              {v==="board"?"⊞ Board":"≡ List"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Board view */}
+      {view === "board" && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12,marginBottom:16}}>
+          {filtered.map(con => {
+            const uc  = UC[con.urgency];
+            const isSel = selId === con.id;
+            const contDays = con.endDate && con.startDate
+              ? Math.ceil((con.endDate - new Date(con.startDate)) / 86400000) : 365;
+            return (
+              <div key={con.id} onClick={()=>setSel(isSel?null:con.id)}
+                style={{padding:"16px",borderRadius:12,cursor:"pointer",transition:"all 0.15s",
+                  background:isSel?"#0c2340":uc.bg,border:`1px solid ${isSel?"#0369a1":uc.br}`}}>
+                {/* Header */}
+                <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10}}>
+                  <Ring days={con.daysLeft??0} total={Math.max(contDays,1)} color={uc.dot}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",lineHeight:1.3,marginBottom:3}}>{con.name}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      <span style={{fontSize:9,padding:"1px 7px",borderRadius:8,background:uc.bg+"80",color:uc.tx,border:`1px solid ${uc.br}`,fontWeight:700}}>
+                        {uc.icon} {uc.label}
+                      </span>
+                      <span style={{fontSize:9,padding:"1px 7px",borderRadius:8,background:"#0a1626",color:"#64748b",border:"1px solid #1a2d45"}}>{con.type}</span>
+                      <span style={{fontSize:9,padding:"1px 7px",borderRadius:8,background:"#0a1626",color:"#475569",border:"1px solid #1a2d45"}}>{con.status}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key info */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10,fontSize:10}}>
+                  <div style={{color:"#475569"}}>Value<div style={{color:"#38bdf8",fontFamily:"monospace",fontWeight:700}}>{fmt(con.value||0)}</div></div>
+                  <div style={{color:"#475569"}}>Client<div style={{color:"#94a3b8"}}>{con.linkedClient?.name||con.counterparty||"—"}</div></div>
+                  <div style={{color:"#475569"}}>Start<div style={{color:"#94a3b8"}}>{con.startDate||"—"}</div></div>
+                  <div style={{color:"#475569"}}>End<div style={{color:uc.tx,fontWeight:600}}>{con.endDate?.toISOString?.()?.slice(0,10)||con.endDate||"—"}</div></div>
+                </div>
+
+                {/* Actions */}
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:10}}
+                    onClick={e=>{e.stopPropagation();openRenew(con);}}>
+                    🔄 Renew
+                  </button>
+                  <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:10}}
+                    onClick={e=>{e.stopPropagation();setNoteModal(con);setNoteText("");}}>
+                    📝 Note
+                  </button>
+                  {con.linkedSow && (
+                    <button className="btn bg" style={{fontSize:10,padding:"4px 8px"}}
+                      onClick={e=>{e.stopPropagation();setTab&&setTab("contracts");}}>
+                      📋 SOW
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div style={{gridColumn:"1/-1",textAlign:"center",padding:"60px 20px",color:"#334155"}}>
+              <div style={{fontSize:36,marginBottom:12}}>📋</div>
+              <div style={{fontSize:14}}>No contracts in this filter</div>
+              <div style={{fontSize:11,marginTop:6}}>Contracts are added via Contracts & SOW</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* List view */}
+      {view === "list" && (
+        <div className="card" style={{padding:0,overflow:"hidden",marginBottom:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px 120px",
+            padding:"8px 16px",background:"#040810",fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+            <div>Contract</div><div>Client</div><div style={{textAlign:"right"}}>Value</div>
+            <div>Ends</div><div>Status</div><div style={{textAlign:"center"}}>Days Left</div><div style={{textAlign:"center"}}>Actions</div>
+          </div>
+          {filtered.map((con,i)=>{
+            const uc = UC[con.urgency];
+            return (
+              <div key={con.id} onClick={()=>setSel(selId===con.id?null:con.id)}
+                style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px 120px",
+                  padding:"10px 16px",borderTop:i>0?"1px solid #0a1826":"none",
+                  background:selId===con.id?"#0c2340":"transparent",cursor:"pointer",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{con.name}</div>
+                  <div style={{fontSize:9,color:"#3d5a7a"}}>{con.type} · Owner: {con.owner||"—"}</div>
+                </div>
+                <div style={{fontSize:11,color:"#94a3b8"}}>{con.linkedClient?.name||con.counterparty||"—"}</div>
+                <div style={{fontSize:11,fontFamily:"monospace",color:"#38bdf8",textAlign:"right"}}>{fmt(con.value||0)}</div>
+                <div style={{fontSize:11,color:uc.tx}}>{con.endDate?.toISOString?.()?.slice(0,10)||con.endDate||"—"}</div>
+                <div>
+                  <span style={{fontSize:9,padding:"2px 8px",borderRadius:8,background:uc.bg,color:uc.tx,border:`1px solid ${uc.br}`}}>{con.status}</span>
+                </div>
+                <div style={{textAlign:"center"}}>
+                  <span style={{fontSize:13,fontWeight:900,color:uc.tx,fontFamily:"monospace"}}>
+                    {con.daysLeft===null?"—":con.daysLeft<0?"EXP":con.daysLeft}
+                  </span>
+                </div>
+                <div style={{display:"flex",gap:4,justifyContent:"center"}}>
+                  <button className="btn bp" style={{fontSize:9,padding:"3px 8px"}} onClick={e=>{e.stopPropagation();openRenew(con);}}>Renew</button>
+                  <button className="btn bg" style={{fontSize:9,padding:"3px 8px"}} onClick={e=>{e.stopPropagation();setNoteModal(con);setNoteText("");}}>Note</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Selected contract detail */}
+      {selected && (
+        <div className="card" style={{padding:"20px 24px",marginBottom:16,border:`1px solid ${UC[selected.urgency].br}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontSize:15,fontWeight:800,color:"#e2e8f0"}}>{selected.name}</div>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>setSel(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,textTransform:"uppercase"}}>Contract Details</div>
+              {[
+                ["Type",        selected.type],
+                ["Status",      selected.status],
+                ["Value",       fmt(selected.value||0)],
+                ["Start Date",  selected.startDate],
+                ["End Date",    selected.endDate?.toISOString?.()?.slice(0,10)||selected.endDate],
+                ["Signed",      selected.signedDate||"—"],
+                ["Owner",       selected.owner||"—"],
+                ["Alert At",    (selected.renewalAlert||60)+" days before expiry"],
+                ["PO Number",   selected.linkedSow?.poNumber||"—"],
+              ].map(([l,v])=>(
+                <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                  <span style={{color:"#475569"}}>{l}</span>
+                  <span style={{color:"#e2e8f0",fontFamily:"monospace"}}>{v||"—"}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,textTransform:"uppercase"}}>Renewal Status</div>
+              <div style={{textAlign:"center",padding:"20px 0"}}>
+                <Ring days={selected.daysLeft??0} total={365} color={UC[selected.urgency].dot} size={80}/>
+                <div style={{marginTop:8,fontSize:12,fontWeight:700,color:UC[selected.urgency].tx}}>
+                  {selected.isExpired ? "CONTRACT EXPIRED" : `${selected.daysLeft} days until renewal`}
+                </div>
+                <div style={{fontSize:10,color:"#334155",marginTop:4}}>
+                  {selected.isUrgent&&"⚠️ Urgent — initiate renewal immediately"}
+                  {selected.isWarning&&"📋 Within alert window — begin renewal discussions"}
+                  {selected.isHealthy&&"✅ Plenty of time — schedule renewal review"}
+                  {selected.isExpired&&"🔴 Expired — contract needs renewal or termination"}
+                </div>
+              </div>
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",marginTop:8}}
+                onClick={()=>openRenew(selected)}>
+                🔄 Start Renewal Process
+              </button>
+            </div>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,textTransform:"uppercase"}}>Notes</div>
+              <div style={{fontSize:11,color:"#475569",lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:80}}>
+                {selected.notes||<span style={{color:"#334155",fontStyle:"italic"}}>No notes yet</span>}
+              </div>
+              <button className="btn bg" style={{marginTop:8,fontSize:10,width:"100%",justifyContent:"center"}}
+                onClick={()=>{setNoteModal(selected);setNoteText("");}}>
+                + Add Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Renewal Timeline — next 12 months */}
+      <div className="card" style={{padding:"18px 20px",marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📅 Renewal Timeline — Next 12 Months</div>
+        <div style={{display:"flex",gap:0,overflowX:"auto",paddingBottom:8}}>
+          {Array.from({length:12},(_,i)=>{
+            const d = new Date(); d.setMonth(d.getMonth()+i);
+            const mKey = d.toISOString().slice(0,7);
+            const mContracts = enriched.filter(c=>{
+              const e = c.endDate?.toISOString?.()?.slice(0,7)||c.endDate?.slice?.(0,7);
+              return e === mKey;
+            });
+            const mLabel = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+            const isNow = i === 0;
+            return (
+              <div key={mKey} style={{minWidth:90,flexShrink:0,padding:"0 4px",borderLeft:isNow?"2px solid #0369a1":"1px solid #0a1626"}}>
+                <div style={{fontSize:9,color:isNow?"#38bdf8":"#334155",fontWeight:isNow?700:400,textAlign:"center",marginBottom:6,padding:"3px 0",background:isNow?"#05122a":"transparent",borderRadius:3}}>
+                  {mLabel} {d.getFullYear()===new Date().getFullYear()?"":d.getFullYear()}
+                </div>
+                {mContracts.length === 0
+                  ? <div style={{height:24,borderRadius:4,background:"#040810",opacity:0.3}}/>
+                  : mContracts.map(c=>{
+                    const uc = UC[c.urgency];
+                    return (
+                      <div key={c.id} onClick={()=>setSel(c.id)}
+                        style={{padding:"3px 5px",borderRadius:4,background:uc.bg,border:`1px solid ${uc.br}`,
+                          marginBottom:3,cursor:"pointer",fontSize:8,color:uc.tx,lineHeight:1.4}}>
+                        <div style={{fontWeight:700,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{c.name.slice(0,18)}</div>
+                        <div style={{fontSize:7,opacity:0.8}}>{fmt(c.value||0)}</div>
+                      </div>
+                    );
+                  })
+                }
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── RENEWAL MODAL ────────────────────────────────────────────────── */}
+      {renewModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setRenewModal(null)}>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title={`🔄 Renew — ${renewModal.name}`} onClose={()=>setRenewModal(null)}/>
+            <div style={{padding:"10px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1",marginBottom:16,fontSize:11,color:"#7dd3fc"}}>
+              Current contract ends: <strong>{renewModal.endDate?.toISOString?.()?.slice(0,10)||renewModal.endDate}</strong> · Value: <strong>{fmt(renewModal.value||0)}</strong>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{gridColumn:"1/-1"}}><div className="lbl">New Contract Name</div>
+                <input className="inp" value={renewForm.name||""} onChange={e=>setRenewForm(p=>({...p,name:e.target.value}))}/></div>
+              <div><div className="lbl">New Start Date</div>
+                <input type="date" className="inp" value={renewForm.startDate||""} onChange={e=>setRenewForm(p=>({...p,startDate:e.target.value}))}/></div>
+              <div><div className="lbl">New End Date</div>
+                <input type="date" className="inp" value={renewForm.endDate||""} onChange={e=>setRenewForm(p=>({...p,endDate:e.target.value}))}/></div>
+              <div><div className="lbl">Contract Value ($)</div>
+                <input type="number" className="inp" value={renewForm.value||""} onChange={e=>setRenewForm(p=>({...p,value:e.target.value}))}/></div>
+              <div><div className="lbl">Alert Window (days before expiry)</div>
+                <input type="number" className="inp" value={renewForm.renewalAlert||60} onChange={e=>setRenewForm(p=>({...p,renewalAlert:e.target.value}))}/></div>
+              <div style={{gridColumn:"1/-1"}}><div className="lbl">Renewal Notes</div>
+                <textarea className="inp" rows={2} value={renewForm.notes||""} onChange={e=>setRenewForm(p=>({...p,notes:e.target.value}))} placeholder="Rate adjustments, scope changes, key terms..."/></div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setRenewModal(null)}>Cancel</button>
+              <button className="btn bp" onClick={submitRenewal}>✅ Confirm Renewal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Note Modal */}
+      {noteModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setNoteModal(null)}>
+          <div className="modal" style={{maxWidth:440}}>
+            <MH title={`📝 Add Note — ${noteModal.name}`} onClose={()=>setNoteModal(null)}/>
+            <textarea className="inp" rows={4} value={noteText} onChange={e=>setNoteText(e.target.value)}
+              placeholder="Renewal discussion update, client feedback, terms under negotiation..." style={{resize:"vertical"}}/>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:12}}>
+              <button className="btn bg" onClick={()=>setNoteModal(null)}>Cancel</button>
+              <button className="btn bp" onClick={saveNote} disabled={!noteText.trim()}>Save Note</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
