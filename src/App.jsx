@@ -2712,7 +2712,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="clients"    && <ClientPortfolio {...shared}/>}
         {tab==="perfreviews"  && <PerformanceReview roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} addAudit={shared.addAudit} authProfile={authProfile}/>}
         {tab==="revforecast"  && <RevenueForecast clients={shared.clients} roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} addAudit={shared.addAudit} setTab={setTab}/>}
-        {tab==="healthscore" && <ClientHealthScorecard clients={shared.clients} setClients={shared.setClients} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} roster={shared.roster} contracts={shared.contracts} addAudit={shared.addAudit}/>}}
+        {tab==="healthscore" && <ClientHealthScorecard clients={shared.clients} setClients={shared.setClients} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} roster={shared.roster} contracts={shared.contracts} addAudit={shared.addAudit}/>}
         {tab==="pipeline"   && <Pipeline   {...shared}/>}
         {tab==="ebitda"     && <EbitdaOpt  ebitdaLevers={shared.ebitdaLevers} setEbitdaLevers={shared.setEbitdaLevers} finInvoices={shared.finInvoices} finPayments={shared.finPayments} finExpenses={shared.finExpenses} roster={shared.roster} apInvoices={shared.apInvoices} adpRuns={shared.adpRuns}/>}
         {tab==="pl"         && <PandL      {...shared}/>}
@@ -31751,80 +31751,76 @@ function LeadNurtureBuilder({ clients, crmDeals, proposals, savedContent, addAud
     if (!form.personaType || !form.name) return alert("Enter sequence name and select a persona");
     setLoading(true); setResult(null);
     const persona = PERSONAS.find(p=>p.id===form.personaType);
-    const wonDeals = (crmDeals||[]).filter(d=>d.stage==="closed_won");
     const touchCount = parseInt(form.touchCount)||5;
+    const wonDeals = (crmDeals||[]).filter(d=>d.stage==="closed_won");
+    const template = SEQUENCE_TEMPLATES.find(t=>t.id===form.sequenceType);
     try {
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:8000,
-          system:"You are a B2B email marketing specialist for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm in Plano TX. Write high-performing nurture sequences for enterprise SAP buyers. Use the EXACT format specified — no deviations.",
-          messages:[{ role:"user", content:`Write a ${touchCount}-email nurture sequence for Ziksatech LLC.
-
-Target: ${persona?.label} — ${form.pain || persona?.pain}
-Industry: ${form.industry || "enterprise"}
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          system:"You are a B2B email specialist for Ziksatech LLC (WBE/HUB/WOSB certified SAP consulting, Plano TX). Write nurture emails using EXACTLY the delimited format shown. Each email under 140 words. No JSON.",
+          messages:[{ role:"user", content:`Write a ${touchCount}-email nurture sequence.
+Persona: ${persona?.label}
+Pain: ${form.pain||persona?.pain}
+Industry: ${form.industry||"enterprise"}
 Tone: ${form.tone}
-Goal: ${form.sequenceType ? SEQUENCE_TEMPLATES.find(t=>t.id===form.sequenceType)?.desc : "Convert lead to discovery call"}
-Context: WBE/HUB/WOSB certified SAP firm, ${wonDeals.length} client wins, BRIM/S4/IS-U expertise
+Goal: ${template?.desc||"Convert cold lead to discovery call"}
+Context: Ziksatech – SAP BRIM/S4HANA specialists, WBE/HUB/WOSB certified, won ${wonDeals.length} engagements
 
-IMPORTANT: Use EXACTLY this format for each email, separated by "---EMAIL---":
-
+Format EACH email EXACTLY like this — no deviations:
 ---EMAIL---
 TOUCH: [number]
-DAY: [day offset from start, e.g. 0]
-SUBJECT: [subject line under 60 chars]
-PREVIEW: [preview text under 80 chars]
-TIMING: [e.g. "Day 1 - First impression"]
+DAY: [number]
+SUBJECT: [subject line]
+PREVIEW: [preview text 1 line]
 BODY:
-[Email body, 80-120 words, conversational, personal, no generic phrases. Sign as Manju Murthy, Ziksatech.]
-CTA: [button text, e.g. "Schedule 20 min call"]
-WHY: [One sentence on the psychology behind this email]
----EMAIL---
+[email body 100-130 words]
+CTA: [button text]
+TIMING: [e.g. Day 1 — first impression]
+WHY: [1 sentence psychology note]
+---END---
 
-Write all ${touchCount} emails now. Keep each body to 80-120 words max.` }]
+Write all ${touchCount} emails now. After the last email add:
+BESTDAYS: [best send days]
+GOAL: [one sentence sequence goal]
+TIP1: [tip]
+TIP2: [tip]` }]
         })
       });
       const data = await resp.json();
-      const raw = (data?.content||[]).map(b=>b.text||"").join("").trim();
+      const raw = (data?.content||[]).map(b=>b.text||"").join("");
 
-      // Parse delimited format — resilient to partial responses
-      const blocks = raw.split(/---EMAIL---/).map(b=>b.trim()).filter(b=>b.length>50);
-      if (blocks.length === 0) throw new Error("No email blocks found in response");
-
-      const emails = blocks.map((block, i) => {
-        const lines = block.split("\n");
+      // Parse delimited text format
+      const emails = [];
+      const blocks = raw.split("---EMAIL---").slice(1);
+      for (const block of blocks) {
+        const end = block.indexOf("---END---");
+        const text = end > 0 ? block.slice(0, end) : block;
         const get = (key) => {
-          const line = lines.find(l => l.startsWith(key + ":"));
-          return line ? line.slice(key.length + 1).trim() : "";
+          const re = new RegExp(key+":\s*(.+?)(?=\n[A-Z]+:|$)", "s");
+          const m = text.match(re);
+          return m ? m[1].trim() : "";
         };
-        const bodyStart = lines.findIndex(l => l.trim().startsWith("BODY:"));
-        const ctaStart  = lines.findIndex(l => l.trim().startsWith("CTA:"));
-        const bodyLines = bodyStart >= 0
-          ? lines.slice(bodyStart + 1, ctaStart > bodyStart ? ctaStart : lines.length)
-          : [];
-        const body = bodyLines.join("\n").trim();
-        return {
-          touch:       parseInt(get("TOUCH")) || i+1,
-          dayOffset:   parseInt(get("DAY"))   || i*7,
-          subjectLine: get("SUBJECT"),
-          previewText: get("PREVIEW"),
-          sendTiming:  get("TIMING"),
-          body,
-          ctaText:     get("CTA"),
+        const bodyMatch = text.match(/BODY:\n([\s\S]*?)(?=\nCTA:|$)/);
+        emails.push({
+          touch:    parseInt(get("TOUCH"))||emails.length+1,
+          dayOffset:parseInt(get("DAY"))||0,
+          subjectLine:  get("SUBJECT"),
+          previewText:  get("PREVIEW"),
+          body:         bodyMatch ? bodyMatch[1].trim() : get("BODY"),
+          ctaText:      get("CTA"),
+          sendTiming:   get("TIMING"),
           psychologyNote: get("WHY"),
-        };
-      });
+        });
+      }
+      if (emails.length === 0) throw new Error("No emails parsed — try again");
 
-      const parsed = {
-        sequenceName: form.name,
-        persona:      persona?.label || "",
-        goal:         SEQUENCE_TEMPLATES.find(t=>t.id===form.sequenceType)?.desc || "Convert lead to discovery call",
-        bestSendDays: "Tuesday–Thursday",
-        emails,
-        tips: [`Personalize each email with their company name before sending`, `Test subject lines — aim for 25-35% open rate`],
-      };
+      const bestDays = raw.match(/BESTDAYS:\s*(.+)/)?.[1]?.trim()||"Tue-Thu";
+      const goal     = raw.match(/GOAL:\s*(.+)/)?.[1]?.trim()||template?.desc||"Convert to discovery call";
+      const tips     = [raw.match(/TIP1:\s*(.+)/)?.[1]?.trim(), raw.match(/TIP2:\s*(.+)/)?.[1]?.trim()].filter(Boolean);
 
-      setResult(parsed);
+      setResult({ sequenceName:form.name, persona:persona?.label, goal, bestSendDays:bestDays, emails, tips });
       setSelEmail(0);
       setView("preview");
     } catch(e) { alert("Error: "+e.message); }
