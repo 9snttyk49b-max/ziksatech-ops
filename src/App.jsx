@@ -33404,7 +33404,7 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
 
   const tabBtn = (id, label, badge) => (
     <button onClick={()=>setSub(id)}
-      style={{ padding:"7px 18px", borderRadius:8, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, position:"relative",
+      style={{ padding:"5px 12px", borderRadius:7, border:"none", cursor:"pointer", fontSize:11, fontWeight:600, position:"relative", whiteSpace:"nowrap",
         background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
         color:sub===id?"#fff":"#475569" }}>
       {label}
@@ -33489,7 +33489,7 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
 
       {/* Tabs */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",flexWrap:"wrap",maxWidth:900}}>
+        <div style={{display:"flex",flexWrap:"wrap",gap:3,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"100%"}}
           {tabBtn("overview",   "📊 Overview")}
           {tabBtn("linkedin",   "🔗 LinkedIn")}
           {tabBtn("email",      "📧 Email")}
