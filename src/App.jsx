@@ -82,6 +82,7 @@ const RBAC = {
   reconcile:    ["super_admin","admin","accounts","employee","contractor"],
   bankanalyzer: ["super_admin","admin","accounts"],  // NEW: Bank & CC Analyzer
   recruiting:   ["super_admin","admin","hr_immigration"],
+  lirecruiter:  ["super_admin","admin","hr_immigration"],
   pipeline:     ["super_admin","admin","hr_immigration"],
   resourceplan: ["super_admin","admin","hr_immigration"],
   consultanthub: ["super_admin","admin","hr_immigration","employee","contractor"],
@@ -656,6 +657,7 @@ const ALL_MODULES = [
   { id:"freshbooks", label:"FreshBooks",            group:"Finance"    },
   { id:"pipeline",   label:"Hiring Pipeline",       group:"Hiring"     },
   { id:"recruiting", label:"Recruiting",            group:"Hiring"     },
+  { id:"lirecruiter", label:"LinkedIn Recruiter",    group:"Hiring"     },
   { id:"pto",        label:"PTO & Leave",           group:"Compliance" },
   { id:"compliance", label:"Compliance",            group:"Compliance" },
   { id:"immigration",label:"Immigration Calendar",   group:"Compliance" },
@@ -2152,6 +2154,7 @@ export default function ZiksatechOps() {
     { id:"taxcal",       label:"Tax Calendar",         icon:ICONS.pl,       group:"Finance"     },
     { id:"benefits",     label:"Benefits Tracker",     icon:ICONS.pl,       group:"Finance"     },
     { id:"recruiting",   label:"Recruiting",           icon:ICONS.pipeline, group:"Hiring"      },
+    { id:"lirecruiter",  label:"LinkedIn Recruiter",      icon:ICONS.roster,   group:"Hiring"      },
     { id:"pipeline",     label:"Hiring Pipeline",      icon:ICONS.pipeline, group:"Hiring"      },
     { id:"offboarding",  label:"Offboarding",           icon:ICONS.roster,   group:"Hiring"      },
     { id:"compliance",   label:"Compliance",           icon:ICONS.dash,     group:"Compliance"  },
@@ -2722,7 +2725,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="profitability"&& <ProjectProfitability {...shared}/>}
         {tab==="changeorders" && <ChangeOrderModule {...shared}/>}
         {tab==="crm"         && <SalesCRM {...shared}/> }
-        {tab==="recruiting"  && <RecruitingModule {...shared}/>}
+        {tab==="lirecruiter"  && <LinkedInRecruiter candidates={shared.candidates} setCandidates={shared.setCandidates} offers={shared.offers} roster={shared.roster} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
+        {tabtab==="recruiting"  && <RecruitingModule {...shared}/>}
         {tab==="pto"        && <PTOModule {...shared}/>}
         {tab==="consultanthub" && <ConsultantHub roster={shared.roster} authProfile={authProfile}/>}
         {tab==="immigration" && <ImmigrationCalendar workAuth={shared.workAuth} setWorkAuth={shared.setWorkAuth} roster={shared.roster} addAudit={shared.addAudit}/>}
@@ -8341,6 +8345,728 @@ function FinWaterfall({ roster, clients, tsHours, finInvoices, finPayments }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // RECRUITING MODULE — Phase 4
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LINKEDIN RECRUITER INTEGRATION
+// Profile import · Job post generator · Outreach composer · Pipeline sync
+// ═══════════════════════════════════════════════════════════════════════════
+function LinkedInRecruiter({ candidates, setCandidates, offers, roster, crmDeals, addAudit }) {
+  const [sub,         setSub]       = useState("sourcing");   // sourcing | jobs | outreach | analytics
+  const [profileText, setProfile]   = useState("");           // pasted LinkedIn profile
+  const [aiLoading,   setAiLoad]    = useState("");
+  const [parsedCand,  setParsed]    = useState(null);
+  const [savedCands,  setSaved]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-li-imported")||"[]"); } catch { return []; } });
+  const [jobForm,     setJobForm]   = useState({ role:"", seniority:"", skills:"", remote:"Hybrid", type:"Contract", rate:"" });
+  const [jobResult,   setJobResult] = useState("");
+  const [outForm,     setOutForm]   = useState({ candidateName:"", candidateRole:"", openRole:"", tone:"professional" });
+  const [outResult,   setOutResult] = useState({ message:"", inmail:"", followup:"" });
+  const [copiedKey,   setCopied]    = useState("");
+  const [selCand,     setSelCand]   = useState(null);
+  const [showImport,  setShowImport] = useState(false);
+
+  const safeCands  = candidates  || [];
+  const safeDeals  = crmDeals    || [];
+  const safeRoster = roster      || [];
+
+  const uid  = () => "li-" + Date.now() + Math.random().toString(36).slice(2,6);
+  const copy = (text, key) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(key); setTimeout(()=>setCopied(""), 2500); };
+  const saveSourcing = (data) => { setSaved(data); localStorage.setItem("zt-li-imported", JSON.stringify(data)); };
+  const ff  = (setter) => (k, v) => setter(p => ({...p, [k]: v}));
+
+  // ── 1. AI Parse LinkedIn Profile ────────────────────────────────────────
+  const parseProfile = async () => {
+    if (!profileText.trim()) return alert("Paste a LinkedIn profile or resume text first");
+    setAiLoad("parse"); setParsed(null);
+    try {
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: "You are an expert SAP recruiter for Ziksatech LLC. Parse LinkedIn profiles and resumes into structured candidate data. Return JSON only, no markdown.",
+          messages: [{ role: "user", content: `Parse this LinkedIn profile or resume into a structured candidate record:
+
+${profileText.slice(0, 5000)}
+
+Return JSON:
+{
+  "name": "full name",
+  "role": "most recent job title",
+  "currentCompany": "current employer",
+  "email": "email if found or empty",
+  "phone": "phone if found or empty",
+  "location": "city, state",
+  "visa": "H-1B|GC|USC|OPT|TN|Other",
+  "skills": "comma-separated SAP/tech skills",
+  "experience": "X years",
+  "education": "highest degree + school",
+  "summary": "2-sentence professional summary",
+  "linkedinUrl": "linkedin.com/in/... if visible or empty",
+  "availableFrom": "immediate|2 weeks|1 month|3 months",
+  "expectedRate": "hourly rate range if mentioned or empty",
+  "sapModules": "specific SAP modules they know",
+  "certifications": "relevant certifications",
+  "fitScore": 0-100,
+  "fitReason": "why they fit Ziksatech SAP consulting roles",
+  "redFlags": ["any concerns"]
+}` }]
+        })
+      });
+      const data  = await resp.json();
+      const text  = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(text);
+      setParsed(parsed);
+    } catch(e) { alert("Parse failed: " + e.message); }
+    setAiLoad("");
+  };
+
+  const importToRecruits = () => {
+    if (!parsedCand) return;
+    const rec = {
+      id: uid(),
+      name:     parsedCand.name || "Unknown",
+      role:     parsedCand.role || "",
+      email:    parsedCand.email || "",
+      phone:    parsedCand.phone || "",
+      source:   "LinkedIn",
+      visa:     parsedCand.visa || "Unknown",
+      skills:   parsedCand.skills || "",
+      status:   "new",
+      location: parsedCand.location || "",
+      linkedin: parsedCand.linkedinUrl || "",
+      summary:  parsedCand.summary || "",
+      fitScore: parsedCand.fitScore || 0,
+      experience: parsedCand.experience || "",
+      importedAt: new Date().toISOString(),
+      liData: parsedCand,
+    };
+    // Add to main candidates state
+    setCandidates([rec, ...safeCands]);
+    // Track in local sourcing list
+    saveSourcing([rec, ...savedCands]);
+    addAudit?.("Recruiting", "LinkedIn Candidate Imported", rec.name, rec.role);
+    setParsed(null); setProfile("");
+    setShowImport(false);
+    alert(`✅ ${rec.name} added to Recruiting Pipeline!`);
+  };
+
+  // ── 2. AI Job Post Generator ─────────────────────────────────────────────
+  const generateJobPost = async () => {
+    if (!jobForm.role) return alert("Enter a role title");
+    setAiLoad("job"); setJobResult("");
+    try {
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: "You are a LinkedIn content expert for Ziksatech LLC, a WBE/HUB/WOSB certified SAP consulting firm in Plano, TX. Write compelling, LinkedIn-optimized job posts that attract top SAP talent. Use professional but energetic tone. Include relevant emojis for LinkedIn format.",
+          messages: [{ role: "user", content: `Write a LinkedIn job post for:
+
+Role: ${jobForm.role}
+Seniority: ${jobForm.seniority || "Senior"}
+Key Skills: ${jobForm.skills || "SAP consulting"}
+Work Model: ${jobForm.remote}
+Type: ${jobForm.type} (${jobForm.rate ? "$"+jobForm.rate+"/hr" : "competitive"})
+
+The post should:
+1. Open with an attention-grabbing hook (1-2 sentences)
+2. About the role (3-4 bullet points of key responsibilities)
+3. What we're looking for (4-5 required skills/experience bullets)
+4. Why Ziksatech (WBE/HUB/WOSB certified, growing SAP practice, great culture, competitive rates, Plano TX + remote options)
+5. How to apply (DM or email mmurthy@ziksatech.com)
+6. Relevant hashtags (10-12 SAP/consulting/hiring hashtags)
+
+Keep it under 1,300 characters for best LinkedIn reach. Make it scroll-stopping.` }]
+        })
+      });
+      const data = await resp.json();
+      setJobResult((data?.content||[]).map(b=>b.text||"").join(""));
+    } catch(e) { setJobResult("Error: " + e.message); }
+    setAiLoad("");
+  };
+
+  // ── 3. AI Outreach Message Composer ─────────────────────────────────────
+  const generateOutreach = async () => {
+    if (!outForm.candidateName || !outForm.openRole) return alert("Fill candidate name and open role");
+    setAiLoad("outreach"); setOutResult({ message:"", inmail:"", followup:"" });
+    try {
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: "You are a LinkedIn recruiter for Ziksatech LLC. Write personalized, ${outForm.tone} outreach messages that get responses. Be concise — connection requests max 300 chars, InMails max 1900 chars. Return JSON only.",
+          messages: [{ role: "user", content: `Write LinkedIn outreach for:
+
+Candidate: ${outForm.candidateName}
+Their Role: ${outForm.candidateRole || "SAP Consultant"}
+Our Opening: ${outForm.openRole}
+Tone: ${outForm.tone}
+${outForm.notes ? "Notes: " + outForm.notes : ""}
+
+Return JSON:
+{
+  "connectionRequest": "LinkedIn connection request note (under 300 chars, personalized, mention specific skill overlap)",
+  "inmail": "LinkedIn InMail subject + body (under 1900 chars total, compelling, mention Ziksatech WBE/HUB/WOSB advantage, specific to their background)",
+  "followup": "Follow-up message if no response after 1 week (under 500 chars, adds value, different angle)",
+  "subjectLine": "InMail subject line only"
+}` }]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(text);
+      setOutResult({ message: parsed.connectionRequest, inmail: parsed.inmail, followup: parsed.followup, subject: parsed.subjectLine });
+    } catch(e) { setOutResult({ message:"Error: "+e.message, inmail:"", followup:"" }); }
+    setAiLoad("");
+  };
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  const liCands     = safeCands.filter(c => c.source === "LinkedIn");
+  const refCands    = safeCands.filter(c => c.source === "Referral");
+  const jobBoardCands = safeCands.filter(c => c.source && !["LinkedIn","Referral"].includes(c.source));
+  const totalImported = savedCands.length;
+  const avgFit      = savedCands.length > 0 ? Math.round(savedCands.reduce((s,c)=>s+(c.fitScore||0),0)/savedCands.length) : 0;
+  const placedFromLI = safeCands.filter(c => c.source==="LinkedIn" && (c.status==="placed"||c.status==="offered")).length;
+
+  const FIT_COLOR = (score) => score >= 80 ? "#34d399" : score >= 60 ? "#f59e0b" : "#f87171";
+
+  const tabBtn = (id, label) => (
+    <button onClick={() => setSub(id)}
+      style={{ padding:"7px 18px", borderRadius:8, border:"none", cursor:"pointer", fontSize:12, fontWeight:600,
+        background: sub===id ? "linear-gradient(135deg,#0369a1,#0284c7)" : "transparent",
+        color: sub===id ? "#fff" : "#475569" }}>
+      {label}
+    </button>
+  );
+
+  const TONE_COLORS = { professional:"#38bdf8", casual:"#34d399", direct:"#f59e0b", warm:"#a78bfa" };
+
+  return (
+    <div>
+      <PH title="LinkedIn Recruiter" sub="AI profile import · Job post generator · Personalized outreach · Pipeline sync"/>
+
+      {/* KPIs */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:10, marginBottom:18 }}>
+        {[
+          { l:"Imported from LinkedIn",  v: totalImported,  c:"#38bdf8" },
+          { l:"Avg Fit Score",           v: avgFit + "%",   c: avgFit>=70?"#34d399":avgFit>=50?"#f59e0b":"#f87171" },
+          { l:"In Pipeline",             v: liCands.length, c:"#a78bfa" },
+          { l:"Placed / Offered",        v: placedFromLI,   c:"#34d399" },
+          { l:"Open Roles",              v: safeDeals.filter(d=>d.stage!=="closed_won"&&d.stage!=="closed_lost").length, c:"#f59e0b" },
+        ].map(k => (
+          <div key={k.l} className="card" style={{ padding:"12px 16px", textAlign:"center" }}>
+            <div style={{ fontSize:9, color:"#3d5a7a", textTransform:"uppercase", marginBottom:3 }}>{k.l}</div>
+            <div style={{ fontSize:22, fontWeight:900, color:k.c, fontFamily:"monospace" }}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs + Import button */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
+        <div style={{ display:"flex", gap:4, background:"#060d1c", borderRadius:10, padding:4, border:"1px solid #1a2d45", width:"fit-content" }}>
+          {tabBtn("sourcing",  "🔍 Profile Import")}
+          {tabBtn("jobs",      "📢 Job Posts")}
+          {tabBtn("outreach",  "✉️ Outreach")}
+          {tabBtn("analytics", "📊 Analytics")}
+        </div>
+        <button className="btn bp" style={{ fontSize:12 }} onClick={() => setShowImport(true)}>
+          + Import LinkedIn Profile
+        </button>
+      </div>
+
+      {/* ── SOURCING / PROFILE IMPORT ─────────────────────────────────────── */}
+      {sub === "sourcing" && (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+          {/* Left: input */}
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            <div className="card" style={{ padding:"16px 20px" }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:4 }}>🔍 LinkedIn Profile Parser</div>
+              <div style={{ fontSize:11, color:"#475569", marginBottom:14 }}>
+                Paste a LinkedIn profile text, resume, or candidate bio — AI extracts all key details and scores fit for Ziksatech SAP roles
+              </div>
+              <div style={{ fontSize:10, color:"#3d5a7a", fontWeight:700, marginBottom:4, textTransform:"uppercase" }}>Paste Profile / Resume Text</div>
+              <textarea className="inp" rows={14} value={profileText} onChange={e => setProfile(e.target.value)}
+                placeholder={`Paste LinkedIn profile or resume here...\n\nExample:\nArjun Reddy · SAP BRIM Senior Consultant\nDallas, TX · Open to opportunities\n\nExperience:\n• SAP BRIM/CC&B at AT&T (3 years)\n• SAP IS-U implementation at Oncor (2 years)\n\nSkills: SAP BRIM, ABAP, S/4HANA, FI-CA...\nVisa: H-1B · Available: Immediate`}
+                style={{ resize:"vertical", minHeight:220 }}/>
+              <button className="btn bp" style={{ width:"100%", justifyContent:"center", marginTop:10, fontSize:13, padding:"10px" }}
+                onClick={parseProfile} disabled={!!aiLoading}>
+                {aiLoading==="parse" ? "⏳ Parsing with AI..." : "🧠 Parse Profile with AI"}
+              </button>
+            </div>
+
+            {/* How to copy from LinkedIn */}
+            <div className="card" style={{ padding:"14px 16px" }}>
+              <div style={{ fontSize:11, fontWeight:700, color:"#e2e8f0", marginBottom:8 }}>📋 How to Copy from LinkedIn</div>
+              {[
+                ["Open profile", "Go to any LinkedIn profile page"],
+                ["Select all text", "Ctrl+A (Windows) or Cmd+A (Mac)"],
+                ["Copy", "Ctrl+C / Cmd+C"],
+                ["Paste here", "Paste into the field above and click Parse"],
+                ["Tip", "Also works with PDF resumes — copy text from any PDF viewer"],
+              ].map(([step, desc]) => (
+                <div key={step} style={{ display:"flex", gap:10, padding:"5px 0", borderBottom:"1px solid #0a1626" }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:"#0369a1", minWidth:60 }}>{step}</span>
+                  <span style={{ fontSize:10, color:"#475569" }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: parsed result */}
+          <div>
+            {!parsedCand && !aiLoading && (
+              <div style={{ padding:"60px 40px", textAlign:"center", background:"#060d1c", border:"1px dashed #1a2d45", borderRadius:12 }}>
+                <div style={{ fontSize:36, marginBottom:12 }}>🤖</div>
+                <div style={{ fontSize:13, color:"#334155" }}>Paste a profile on the left and click Parse — AI will extract all details in seconds</div>
+              </div>
+            )}
+            {aiLoading==="parse" && (
+              <div style={{ padding:"60px", textAlign:"center", background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12 }}>
+                <div style={{ fontSize:28, marginBottom:8 }}>⏳</div>
+                <div style={{ fontSize:12, color:"#38bdf8" }}>Analyzing profile...</div>
+              </div>
+            )}
+            {parsedCand && !aiLoading && (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {/* Fit score banner */}
+                <div style={{ padding:"14px 18px", borderRadius:12,
+                  background: parsedCand.fitScore>=80 ? "#021f14" : parsedCand.fitScore>=60 ? "#1a1005" : "#1a0808",
+                  border:`1px solid ${FIT_COLOR(parsedCand.fitScore)}44` }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#e2e8f0" }}>
+                      {parsedCand.name} <span style={{ fontSize:10, color:"#475569", fontWeight:400 }}>· {parsedCand.currentCompany}</span>
+                    </div>
+                    <div style={{ textAlign:"center" }}>
+                      <div style={{ fontSize:28, fontWeight:900, color:FIT_COLOR(parsedCand.fitScore) }}>{parsedCand.fitScore}%</div>
+                      <div style={{ fontSize:8, color:"#334155" }}>fit score</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.6 }}>{parsedCand.fitReason}</div>
+                </div>
+
+                {/* Details grid */}
+                <div className="card" style={{ padding:"16px 18px" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                    {[
+                      ["Role",         parsedCand.role],
+                      ["Location",     parsedCand.location],
+                      ["Experience",   parsedCand.experience],
+                      ["Visa",         parsedCand.visa],
+                      ["Available",    parsedCand.availableFrom],
+                      ["Rate",         parsedCand.expectedRate||"Not specified"],
+                      ["Education",    parsedCand.education],
+                      ["SAP Modules",  parsedCand.sapModules],
+                    ].map(([k,v]) => v ? (
+                      <div key={k}>
+                        <div style={{ fontSize:9, color:"#3d5a7a", fontWeight:700, textTransform:"uppercase", marginBottom:2 }}>{k}</div>
+                        <div style={{ fontSize:11, color:"#e2e8f0" }}>{v}</div>
+                      </div>
+                    ) : null)}
+                  </div>
+                  <div style={{ marginTop:10 }}>
+                    <div style={{ fontSize:9, color:"#3d5a7a", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>Skills</div>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                      {(parsedCand.skills||"").split(",").map(s => s.trim()).filter(Boolean).map(sk => (
+                        <span key={sk} style={{ fontSize:9, padding:"1px 7px", borderRadius:8, background:"#0c1e3d", color:"#7dd3fc", border:"1px solid #1a2d45" }}>{sk}</span>
+                      ))}
+                    </div>
+                  </div>
+                  {parsedCand.redFlags?.length > 0 && (
+                    <div style={{ marginTop:8, padding:"6px 10px", background:"#1a0808", borderRadius:6, border:"1px solid #7f1d1d" }}>
+                      <div style={{ fontSize:9, color:"#f87171", fontWeight:700, marginBottom:2 }}>⚠ Red Flags</div>
+                      {parsedCand.redFlags.map((f,i) => <div key={i} style={{ fontSize:10, color:"#f87171" }}>• {f}</div>)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Summary */}
+                {parsedCand.summary && (
+                  <div className="card" style={{ padding:"12px 16px" }}>
+                    <div style={{ fontSize:9, color:"#3d5a7a", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>AI Summary</div>
+                    <div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.7 }}>{parsedCand.summary}</div>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div style={{ display:"flex", gap:8 }}>
+                  <button className="btn bp" style={{ flex:1, justifyContent:"center", fontSize:12 }} onClick={importToRecruits}>
+                    ✅ Import to Pipeline
+                  </button>
+                  <button className="btn bg" style={{ fontSize:11 }} onClick={() => {
+                    setOutForm(p => ({ ...p, candidateName: parsedCand.name, candidateRole: parsedCand.role }));
+                    setSub("outreach");
+                  }}>
+                    ✉️ Draft Outreach
+                  </button>
+                  <button className="btn bg" style={{ fontSize:11, color:"#f87171" }} onClick={() => setParsed(null)}>
+                    ✕ Clear
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── JOB POST GENERATOR ───────────────────────────────────────────── */}
+      {sub === "jobs" && (
+        <div style={{ display:"grid", gridTemplateColumns:"380px 1fr", gap:14, alignItems:"start" }}>
+          {/* Config */}
+          <div className="card" style={{ padding:"16px 20px" }}>
+            <div style={{ fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:14 }}>📢 Job Post Generator</div>
+            {[
+              ["Role Title *", "role", "text"],
+              ["Seniority Level", "seniority", "select"],
+              ["Key Skills", "skills", "text"],
+              ["Bill Rate ($/hr)", "rate", "number"],
+            ].map(([label, key, type]) => (
+              <div key={key} style={{ marginBottom:10 }}>
+                <div className="lbl">{label}</div>
+                {type==="select" ? (
+                  <select className="inp" value={jobForm.seniority} onChange={e=>setJobForm(p=>({...p,seniority:e.target.value}))}>
+                    {["Junior (2-4yr)","Mid-level (4-7yr)","Senior (7-12yr)","Principal (12+yr)","Architect"].map(o=><option key={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input type={type} className="inp" value={jobForm[key]||""} onChange={e=>setJobForm(p=>({...p,[key]:e.target.value}))}
+                    placeholder={key==="role"?"e.g. SAP BRIM Consultant":key==="skills"?"e.g. SAP BRIM, ABAP, S/4HANA":""}/>
+                )}
+              </div>
+            ))}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+              <div>
+                <div className="lbl">Work Model</div>
+                <select className="inp" value={jobForm.remote} onChange={e=>setJobForm(p=>({...p,remote:e.target.value}))}>
+                  {["Remote","Hybrid","On-site"].map(o=><option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Type</div>
+                <select className="inp" value={jobForm.type} onChange={e=>setJobForm(p=>({...p,type:e.target.value}))}>
+                  {["Contract","Contract-to-hire","Full Time","Part Time"].map(o=><option key={o}>{o}</option>)}
+                </select>
+              </div>
+            </div>
+            {/* Open roles from CRM */}
+            {safeDeals.filter(d=>d.stage!=="closed_won"&&d.stage!=="closed_lost").length > 0 && (
+              <div style={{ marginBottom:14 }}>
+                <div className="lbl">Quick Fill from Open Deal</div>
+                <select className="inp" onChange={e=>{
+                  const d = safeDeals.find(x=>x.id===e.target.value);
+                  if(d) setJobForm(p=>({...p, role:d.name?.split(" ").slice(0,3).join(" ")||p.role}));
+                }}>
+                  <option value="">— select deal —</option>
+                  {safeDeals.filter(d=>d.stage!=="closed_won"&&d.stage!=="closed_lost").map(d=>(
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <button className="btn bp" style={{ width:"100%", justifyContent:"center", fontSize:13, padding:"10px" }}
+              onClick={generateJobPost} disabled={!!aiLoading}>
+              {aiLoading==="job" ? "⏳ Writing Post..." : "📢 Generate LinkedIn Post"}
+            </button>
+          </div>
+
+          {/* Result */}
+          <div>
+            {!jobResult && !aiLoading && (
+              <div style={{ padding:"60px 40px", textAlign:"center", background:"#060d1c", border:"1px dashed #1a2d45", borderRadius:12 }}>
+                <div style={{ fontSize:36, marginBottom:12 }}>📢</div>
+                <div style={{ fontSize:13, color:"#334155" }}>Fill in the role details and generate a LinkedIn-optimized job post</div>
+              </div>
+            )}
+            {aiLoading==="job" && (
+              <div style={{ padding:"60px", textAlign:"center", background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12 }}>
+                <div style={{ fontSize:24, marginBottom:8 }}>✍️</div>
+                <div style={{ fontSize:12, color:"#38bdf8" }}>Crafting your LinkedIn post...</div>
+              </div>
+            )}
+            {jobResult && !aiLoading && (
+              <div className="card" style={{ padding:"18px 20px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#e2e8f0" }}>📢 LinkedIn Job Post — Ready to publish</div>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <span style={{ fontSize:10, color:"#475569" }}>{jobResult.length} chars</span>
+                    <button className="btn bg" style={{ fontSize:11 }} onClick={() => copy(jobResult, "job")}>
+                      {copiedKey==="job" ? "✅ Copied!" : "📋 Copy"}
+                    </button>
+                    <button className="btn bg" style={{ fontSize:11 }} onClick={generateJobPost}>↺ Regenerate</button>
+                  </div>
+                </div>
+                {/* LinkedIn preview card */}
+                <div style={{ background:"#fff", borderRadius:10, padding:"18px 20px", boxShadow:"0 4px 20px rgba(0,0,0,0.3)" }}>
+                  {/* LinkedIn UI mock */}
+                  <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:12 }}>
+                    <div style={{ width:40, height:40, borderRadius:"50%", background:"#0D1B2A", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:"#C9A84C", fontWeight:900, flexShrink:0 }}>Z</div>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>Manju Murthy</div>
+                      <div style={{ fontSize:11, color:"#6b7280" }}>Managing Partner at Ziksatech, LLC · 1st</div>
+                      <div style={{ fontSize:10, color:"#9ca3af" }}>Just now · 🌐</div>
+                    </div>
+                  </div>
+                  <pre style={{ fontSize:12, color:"#1a1a1a", whiteSpace:"pre-wrap", fontFamily:"-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif", lineHeight:1.6, margin:0 }}>
+                    {jobResult}
+                  </pre>
+                  <div style={{ display:"flex", gap:16, marginTop:12, paddingTop:10, borderTop:"1px solid #e5e7eb" }}>
+                    {["👍 Like","💬 Comment","🔁 Repost","📤 Send"].map(action => (
+                      <span key={action} style={{ fontSize:11, color:"#6b7280", cursor:"pointer" }}>{action}</span>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginTop:10, padding:"8px 12px", background:"#0c2340", borderRadius:8, fontSize:10, color:"#7dd3fc" }}>
+                  💡 Tip: Post Tuesday–Thursday 8–10am CST for maximum reach. Tag relevant skills in the post. Add "1st comment" with the application link.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── OUTREACH COMPOSER ────────────────────────────────────────────── */}
+      {sub === "outreach" && (
+        <div style={{ display:"grid", gridTemplateColumns:"340px 1fr", gap:14, alignItems:"start" }}>
+          {/* Config */}
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <div className="card" style={{ padding:"16px 18px" }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:14 }}>✉️ Outreach Composer</div>
+              {[
+                ["Candidate Name *", "candidateName", "text"],
+                ["Candidate's Current Role", "candidateRole", "text"],
+                ["Open Role at Ziksatech *", "openRole", "text"],
+                ["Additional Notes", "notes", "text"],
+              ].map(([label, key, type]) => (
+                <div key={key} style={{ marginBottom:10 }}>
+                  <div className="lbl">{label}</div>
+                  <input className="inp" value={outForm[key]||""} onChange={e=>setOutForm(p=>({...p,[key]:e.target.value}))}
+                    placeholder={key==="openRole"?"e.g. SAP BRIM Sr Consultant":key==="notes"?"e.g. saw their AT&T project...":""}/>
+                </div>
+              ))}
+              {/* Tone selector */}
+              <div style={{ marginBottom:14 }}>
+                <div className="lbl">Message Tone</div>
+                <div style={{ display:"flex", gap:6 }}>
+                  {["professional","casual","direct","warm"].map(tone => (
+                    <button key={tone} onClick={() => setOutForm(p=>({...p,tone}))}
+                      style={{ flex:1, padding:"5px 0", borderRadius:6, border:`1px solid ${outForm.tone===tone?TONE_COLORS[tone]:"#1a2d45"}`,
+                        background: outForm.tone===tone ? TONE_COLORS[tone]+"22" : "transparent",
+                        color: outForm.tone===tone ? TONE_COLORS[tone] : "#475569",
+                        fontSize:10, cursor:"pointer", fontWeight:600, textTransform:"capitalize" }}>
+                      {tone}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Quick fill from imported candidates */}
+              {savedCands.length > 0 && (
+                <div style={{ marginBottom:14 }}>
+                  <div className="lbl">Quick Fill from Imported</div>
+                  <select className="inp" onChange={e => {
+                    const c = savedCands.find(x=>x.id===e.target.value);
+                    if(c) setOutForm(p=>({...p, candidateName:c.name, candidateRole:c.role}));
+                  }}>
+                    <option value="">— select candidate —</option>
+                    {savedCands.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+              <button className="btn bp" style={{ width:"100%", justifyContent:"center", fontSize:12, padding:"9px" }}
+                onClick={generateOutreach} disabled={!!aiLoading}>
+                {aiLoading==="outreach" ? "⏳ Writing Messages..." : "✨ Generate All 3 Messages"}
+              </button>
+            </div>
+            {/* Tips */}
+            <div className="card" style={{ padding:"14px 16px" }}>
+              <div style={{ fontSize:11, fontWeight:700, color:"#e2e8f0", marginBottom:8 }}>💡 LinkedIn Outreach Tips</div>
+              {[["Connection request","300 char max, mention specific mutual skill/project, no 'I'd like to add you'"],
+                ["InMail subject","Make it about THEM, not the role — 'Your SAP BRIM work at AT&T'"],
+                ["Follow-up timing","Wait 7 days, different angle — share something useful"],
+                ["Response rate","Personalized messages get 3–5× more responses than templates"],
+              ].map(([label,tip]) => (
+                <div key={label} style={{ padding:"5px 0", borderBottom:"1px solid #0a1626" }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#38bdf8" }}>{label}</div>
+                  <div style={{ fontSize:9, color:"#475569", marginTop:1 }}>{tip}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Results: 3 messages */}
+          <div>
+            {!outResult.message && !aiLoading && (
+              <div style={{ padding:"60px 40px", textAlign:"center", background:"#060d1c", border:"1px dashed #1a2d45", borderRadius:12 }}>
+                <div style={{ fontSize:36, marginBottom:12 }}>✉️</div>
+                <div style={{ fontSize:13, color:"#334155" }}>Fill in the candidate details and generate all 3 messages at once</div>
+              </div>
+            )}
+            {aiLoading==="outreach" && (
+              <div style={{ padding:"60px", textAlign:"center", background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12 }}>
+                <div style={{ fontSize:24, marginBottom:8 }}>✍️</div>
+                <div style={{ fontSize:12, color:"#38bdf8" }}>Writing personalized messages...</div>
+              </div>
+            )}
+            {outResult.message && !aiLoading && (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {[
+                  { key:"message",  icon:"🤝", label:"Connection Request",  charLimit:300,  color:"#38bdf8", content: outResult.message },
+                  { key:"inmail",   icon:"📧", label:"InMail Message",       charLimit:1900, color:"#a78bfa",
+                    header: outResult.subject ? `Subject: ${outResult.subject}` : null,
+                    content: outResult.inmail },
+                  { key:"followup", icon:"🔁", label:"7-Day Follow-Up",      charLimit:500,  color:"#34d399", content: outResult.followup },
+                ].map(msg => (
+                  <div key={msg.key} className="card" style={{ padding:"14px 18px", border:`1px solid ${msg.color}22` }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <span style={{ fontSize:16 }}>{msg.icon}</span>
+                        <span style={{ fontSize:12, fontWeight:700, color:msg.color }}>{msg.label}</span>
+                        <span style={{ fontSize:9, color:"#334155" }}>(max {msg.charLimit} chars)</span>
+                      </div>
+                      <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                        <span style={{ fontSize:9, color:(msg.content||"").length > msg.charLimit ? "#f87171" : "#475569" }}>
+                          {(msg.content||"").length} chars
+                        </span>
+                        <button className="btn bg" style={{ fontSize:10 }} onClick={() => copy(msg.content||"", msg.key)}>
+                          {copiedKey===msg.key ? "✅ Copied!" : "📋 Copy"}
+                        </button>
+                      </div>
+                    </div>
+                    {msg.header && <div style={{ fontSize:11, fontWeight:700, color:"#e2e8f0", marginBottom:6, padding:"4px 8px", background:"#0c1e3d", borderRadius:4 }}>{msg.header}</div>}
+                    <div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.7, whiteSpace:"pre-wrap" }}>{msg.content}</div>
+                  </div>
+                ))}
+                <button className="btn bg" style={{ justifyContent:"center", fontSize:11 }} onClick={generateOutreach}>
+                  ↺ Regenerate All Messages
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ANALYTICS ────────────────────────────────────────────────────── */}
+      {sub === "analytics" && (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+          {/* Source breakdown */}
+          <div className="card" style={{ padding:"18px 20px" }}>
+            <div style={{ fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:14 }}>📊 Source Analytics</div>
+            {[
+              { source:"LinkedIn",   count: liCands.length,      color:"#0369a1", icon:"🔗" },
+              { source:"Referral",   count: refCands.length,     color:"#34d399", icon:"👤" },
+              { source:"Job Boards", count: jobBoardCands.length, color:"#f59e0b", icon:"📋" },
+              { source:"Direct",     count: safeCands.filter(c=>!c.source||c.source==="Direct").length, color:"#a78bfa", icon:"✉️" },
+            ].map(s => {
+              const pct = safeCands.length > 0 ? Math.round(s.count/safeCands.length*100) : 0;
+              return (
+                <div key={s.source} style={{ marginBottom:12 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                    <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                      <span>{s.icon}</span>
+                      <span style={{ fontSize:12, fontWeight:600, color:"#e2e8f0" }}>{s.source}</span>
+                    </div>
+                    <div style={{ fontSize:12, fontWeight:700, color:s.color }}>{s.count} ({pct}%)</div>
+                  </div>
+                  <div style={{ height:8, background:"#0a1626", borderRadius:4, overflow:"hidden" }}>
+                    <div style={{ height:"100%", borderRadius:4, background:s.color, width:pct+"%", transition:"width 0.5s" }}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Imported candidates list */}
+          <div className="card" style={{ padding:"18px 20px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#e2e8f0" }}>🔗 LinkedIn Imports ({totalImported})</div>
+              {totalImported > 0 && (
+                <button className="btn bg" style={{ fontSize:10, color:"#f87171" }}
+                  onClick={() => { if(window.confirm("Clear import history?")) saveSourcing([]); }}>
+                  Clear
+                </button>
+              )}
+            </div>
+            {savedCands.length === 0 ? (
+              <div style={{ padding:"30px", textAlign:"center", color:"#334155", fontSize:11 }}>
+                No profiles imported yet — use Profile Import tab to get started
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {savedCands.map(c => (
+                  <div key={c.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 10px", borderRadius:8, background:"#060d1c", border:"1px solid #1a2d45" }}>
+                    <div>
+                      <div style={{ fontSize:12, fontWeight:600, color:"#e2e8f0" }}>{c.name}</div>
+                      <div style={{ fontSize:10, color:"#475569" }}>{c.role} · {c.location||"—"} · {c.visa}</div>
+                    </div>
+                    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                      <div style={{ textAlign:"center" }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:FIT_COLOR(c.fitScore||0) }}>{c.fitScore||0}%</div>
+                        <div style={{ fontSize:8, color:"#334155" }}>fit</div>
+                      </div>
+                      <button className="btn bg" style={{ fontSize:9 }} onClick={() => {
+                        setOutForm(p=>({...p, candidateName:c.name, candidateRole:c.role}));
+                        setSub("outreach");
+                      }}>✉️</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Status funnel */}
+          <div className="card" style={{ padding:"18px 20px", gridColumn:"1/-1" }}>
+            <div style={{ fontSize:13, fontWeight:700, color:"#e2e8f0", marginBottom:14 }}>🔻 Recruiting Funnel</div>
+            {[
+              { label:"Sourced (LinkedIn)",  count: totalImported,                                                                 color:"#38bdf8" },
+              { label:"In Pipeline",         count: liCands.length,                                                                color:"#0369a1" },
+              { label:"Interviewed",         count: liCands.filter(c=>c.status==="interviewed").length,                            color:"#f59e0b" },
+              { label:"Offers Extended",     count: liCands.filter(c=>c.status==="offered"||c.status==="offer").length,            color:"#a78bfa" },
+              { label:"Placed",              count: liCands.filter(c=>c.status==="placed").length,                                 color:"#34d399" },
+            ].map((s, i) => {
+              const pct = totalImported > 0 ? Math.round(s.count/totalImported*100) : 0;
+              const width = Math.max(pct, 4);
+              return (
+                <div key={s.label} style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+                  <div style={{ width:160, fontSize:11, color:"#94a3b8", textAlign:"right", flexShrink:0 }}>{s.label}</div>
+                  <div style={{ flex:1, height:24, background:"#0a1626", borderRadius:4, overflow:"hidden" }}>
+                    <div style={{ height:"100%", borderRadius:4, background:s.color, width:width+"%", display:"flex", alignItems:"center", justifyContent:"flex-end", paddingRight:8, transition:"width 0.5s" }}>
+                      <span style={{ fontSize:10, fontWeight:700, color:"#fff" }}>{s.count}</span>
+                    </div>
+                  </div>
+                  <div style={{ width:40, fontSize:11, color:s.color, fontWeight:700, flexShrink:0 }}>{pct}%</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Import modal */}
+      {showImport && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setShowImport(false)}>
+          <div className="modal" style={{ maxWidth:600 }}>
+            <MH title="Import LinkedIn Profile" onClose={()=>setShowImport(false)}/>
+            <div style={{ fontSize:11, color:"#475569", marginBottom:12 }}>
+              Paste any LinkedIn profile text, resume, or bio. AI will parse and score it automatically.
+            </div>
+            <textarea className="inp" rows={12} value={profileText} onChange={e=>setProfile(e.target.value)}
+              placeholder="Paste LinkedIn profile or resume text here..." style={{ resize:"vertical" }}/>
+            <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:12 }}>
+              <button className="btn bg" onClick={()=>setShowImport(false)}>Cancel</button>
+              <button className="btn bp" onClick={()=>{setShowImport(false);setSub("sourcing");parseProfile();}} disabled={!profileText.trim()}>
+                🧠 Parse with AI
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RecruitingModule({ candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, clients, roster, addAudit }) {
   const [sub, setSub] = useState("overview");
   const tabs = [
