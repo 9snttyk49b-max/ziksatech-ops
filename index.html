@@ -2,8 +2,47 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Ziksatech" />
+    <meta name="application-name" content="Ziksatech Ops" />
+    <meta name="theme-color" content="#0D1B2A" />
+    <meta name="msapplication-TileColor" content="#0D1B2A" />
+    <meta name="description" content="Ziksatech Operations Center — Finance, HR, CRM, Compliance" />
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="72x72"   href="/icons/icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="96x96"   href="/icons/icon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="128x128" href="/icons/icon-128x128.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+
+    <!-- Safari Splash Screens (iPhone SE, iPhone 14, iPad) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- OG tags for sharing -->
+    <meta property="og:title" content="Ziksatech Ops Center" />
+    <meta property="og:description" content="Internal operations platform" />
+    <meta property="og:type" content="website" />
+
     <title>Ziksatech Ops Center</title>
+
+    <style>
+      /* Prevent flash of unstyled content */
+      html, body { background: #0D1B2A; margin: 0; padding: 0; }
+      #root { min-height: 100dvh; }
+      /* iOS safe area support */
+      body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    </style>
   </head>
   <body>
     <div id="root"></div>
