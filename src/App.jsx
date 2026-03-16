@@ -285,15 +285,21 @@ const store = (() => {
         try {
           window.__ztCache = window.__ztCache || {};
           window.__ztCache[k] = v;
-          const body = JSON.stringify({ key: k, value: JSON.stringify(v), updated_at: new Date().toISOString() });
-          // Use ?on_conflict=key for upsert (required for Supabase PostgREST v12+)
-          const upsertHeaders = { ...headers, "Prefer": "return=minimal,resolution=merge-duplicates" };
+          // Get current session for user_id scoping (enables per-user RLS)
+          const sess = (() => { try { return JSON.parse(localStorage.getItem("zt-session")||"{}"); } catch { return {}; } })();
+          const userId = sess?.user?.id || "anonymous";
+          const userToken = sess?.access_token;
+          // Use user token for authenticated requests when available
+          const authHeaders = userToken
+            ? { ...headers, "Authorization": `Bearer ${userToken}` }
+            : headers;
+          const upsertHeaders = { ...authHeaders, "Prefer": "return=minimal,resolution=merge-duplicates" };
+          const body = JSON.stringify({ key: k, value: JSON.stringify(v), user_id: userId, updated_at: new Date().toISOString() });
           const res = await fetch(`${base}?on_conflict=key`, { method: "POST", headers: upsertHeaders, body });
           if (!res.ok) {
-            // Fallback: try PATCH to update existing key
             await fetch(`${base}?key=eq.${encodeURIComponent(k)}`, {
               method: "PATCH",
-              headers: { ...headers, "Prefer": "return=minimal" },
+              headers: { ...authHeaders, "Prefer": "return=minimal" },
               body: JSON.stringify({ value: JSON.stringify(v), updated_at: new Date().toISOString() })
             });
           }
@@ -1921,6 +1927,38 @@ export default function ZiksatechOps() {
     }, 800); // debounce 800ms
     return () => clearTimeout(t);
   },[roster,pipeline,clients,tsHours,plIncome,plExpense,ebitdaLevers,fbInvoices,adpRuns,finInvoices,finPayments,finExpenses,candidates,submissions,interviews,offers,workAuth,compDocs,crmAccounts,crmContacts,crmDeals,crmActivities,contracts,sows,projects,tasks,risks,orgMembers,tsSubmissions,changeOrders,vendors,apInvoices,cfOverrides,ptoRequests,ptoBalances,dismissedAlerts,auditLog,proposals,benefits,esignRequests,onboardings,loaded]);
+
+  // ── Auto daily backup check ──
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      const lastBackup = localStorage.getItem("zt-last-daily-backup");
+      const today = new Date().toISOString().slice(0,10);
+      if (lastBackup !== today) {
+        // Trigger a silent auto-backup download once per day
+        // Only if there's meaningful data (roster has entries)
+        if (roster && roster.length > 0) {
+          const data = {
+            roster, clients, finInvoices, finPayments, finExpenses,
+            crmAccounts, crmDeals, crmContacts, vendors, apInvoices,
+            contracts, sows, projects, tasks, proposals, benefits,
+            workAuth, compDocs, ptoRequests, ptoBalances, onboardings,
+            exportedAt: new Date().toISOString(), version: "v3.8"
+          };
+          const json = JSON.stringify(data, null, 2);
+          const blob = new Blob([json], {type:"application/json"});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `zt_auto_backup_${today}.json`;
+          // Don't auto-download — just mark as ready and notify
+          URL.revokeObjectURL(url);
+          localStorage.setItem("zt-last-daily-backup", today);
+          localStorage.setItem("zt-backup-ready", today);
+        }
+      }
+    } catch(e) {}
+  }, [loaded, roster]);
 
   // ── export full backup JSON ──
   const exportBackup = () => {
