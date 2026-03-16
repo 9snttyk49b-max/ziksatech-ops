@@ -31494,1030 +31494,19 @@ function ProfileMenu({ authProfile, authSession, setAuthSession, setAuthProfile,
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ─── MARKET INTELLIGENCE SCANNER ─────────────────────────────────────────
-function MktIntelScanner({ clients, crmDeals }) {
-  const [loading, setLoading]     = useState(false);
-  const [insights, setInsights]   = useState(null);
-  const [topic,   setTopic]       = useState("SAP BRIM consulting market trends");
-  const [saved,   setSaved]       = useState(() => { try { return JSON.parse(localStorage.getItem("zt-mkt-intel")||"[]"); } catch { return []; } });
-
-  const scan = async () => {
-    setLoading(true); setInsights(null);
-    try {
-      const resp = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:`You are a marketing intelligence analyst for Ziksatech LLC, a WBE/HUB/WOSB certified SAP consulting firm in Plano TX. 
-Analyze market trends and identify actionable opportunities. Today: ${new Date().toLocaleDateString()}. Return JSON only.`,
-          messages:[{ role:"user", content:`Analyze this topic for marketing intelligence: "${topic}"
-
-Return JSON:
-{
-  "trendSummary": "2-3 sentence market summary",
-  "keyTrends": [{"trend":"...", "impact":"high/medium/low", "opportunity":"how Ziksatech can capitalize"}],
-  "hotTopics": ["topic 1", "topic 2", "topic 3", "topic 4", "topic 5"],
-  "contentAngles": ["LinkedIn post angle 1", "angle 2", "angle 3"],
-  "buyingSignals": ["signal to watch for in prospects"],
-  "competitiveInsight": "one key competitive observation",
-  "urgency": "immediate/this-week/this-month",
-  "recommendedAction": "the single best marketing action to take right now"
-}` }]
-        })
-      });
-      const data = await resp.json();
-      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      setInsights(JSON.parse(text));
-    } catch(e) { setInsights({ error: e.message }); }
-    setLoading(false);
-  };
-
-  const saveInsight = () => {
-    if (!insights) return;
-    const rec = { id:"i"+Date.now(), topic, insights, savedAt: new Date().toISOString() };
-    const upd = [rec, ...saved.slice(0,9)];
-    setSaved(upd); localStorage.setItem("zt-mkt-intel", JSON.stringify(upd));
-  };
-
-  const PRESET_TOPICS = [
-    "SAP BRIM consulting demand 2025-2026",
-    "S/4HANA migration market opportunity",
-    "WBE HUB certified IT consulting procurement",
-    "SAP IS-U utilities market",
-    "SAP BTP cloud platform adoption",
-    "Texas enterprise SAP spending",
-    "SAP partner ecosystem opportunities",
-  ];
-
-  const URGENCY_COL = { immediate:"#f87171", "this-week":"#f59e0b", "this-month":"#38bdf8" };
-  const IMPACT_COL  = { high:"#f87171", medium:"#f59e0b", low:"#34d399" };
-
-  return (
-    <div>
-      <div style={{fontSize:11,color:"#475569",marginBottom:14,padding:"8px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
-        🧠 Market Scanner uses AI to analyze SAP industry trends and identify actionable marketing opportunities for Ziksatech
-      </div>
-
-      {/* Topic input */}
-      <div className="card" style={{padding:"16px 20px",marginBottom:14}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>🔍 Intelligence Topic</div>
-        <div style={{display:"flex",gap:8,marginBottom:10}}>
-          <input className="inp" style={{flex:1}} value={topic} onChange={e=>setTopic(e.target.value)}
-            placeholder="Enter a market topic, trend, or industry to analyze..."/>
-          <button className="btn bp" style={{fontSize:12,whiteSpace:"nowrap",flexShrink:0}} onClick={scan} disabled={loading}>
-            {loading?"⏳ Scanning...":"🔍 Scan Market"}
-          </button>
-        </div>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-          {PRESET_TOPICS.map(t=>(
-            <button key={t} onClick={()=>setTopic(t)}
-              style={{padding:"3px 10px",borderRadius:20,fontSize:9,border:`1px solid ${topic===t?"#0369a1":"#1a2d45"}`,
-                background:topic===t?"#0c2340":"transparent",color:topic===t?"#38bdf8":"#475569",cursor:"pointer"}}>
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Results */}
-      {loading && (
-        <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
-          <div style={{fontSize:28,marginBottom:8,animation:"spin 1s linear infinite"}}>🔍</div>
-          <div style={{fontSize:12,color:"#38bdf8"}}>Scanning SAP market intelligence...</div>
-        </div>
-      )}
-
-      {insights && !insights.error && !loading && (
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-          {/* Trend summary + action */}
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            <div className="card" style={{padding:"16px 18px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📊 Market Summary</div>
-                {insights.urgency && (
-                  <span style={{fontSize:10,padding:"2px 9px",borderRadius:8,
-                    background:(URGENCY_COL[insights.urgency]||"#94a3b8")+"22",
-                    color:URGENCY_COL[insights.urgency]||"#94a3b8",
-                    border:`1px solid ${(URGENCY_COL[insights.urgency]||"#94a3b8")}44`,fontWeight:700}}>
-                    {insights.urgency}
-                  </span>
-                )}
-              </div>
-              <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.7,marginBottom:12}}>{insights.trendSummary}</div>
-              {insights.competitiveInsight && (
-                <div style={{padding:"8px 12px",background:"#071826",borderRadius:8,border:"1px solid #0369a1",fontSize:11,color:"#7dd3fc"}}>
-                  🎯 <strong>Competitive:</strong> {insights.competitiveInsight}
-                </div>
-              )}
-            </div>
-
-            {/* Recommended action */}
-            {insights.recommendedAction && (
-              <div style={{padding:"14px 18px",background:"#021f14",borderRadius:12,border:"1px solid #15803d"}}>
-                <div style={{fontSize:10,fontWeight:700,color:"#34d399",textTransform:"uppercase",marginBottom:4}}>✅ Recommended Action Now</div>
-                <div style={{fontSize:13,color:"#e2e8f0",lineHeight:1.6}}>{insights.recommendedAction}</div>
-              </div>
-            )}
-
-            {/* Hot topics */}
-            {insights.hotTopics?.length > 0 && (
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🔥 Hot Topics Right Now</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                  {insights.hotTopics.map((t,i)=>(
-                    <span key={i} style={{fontSize:10,padding:"3px 10px",borderRadius:20,
-                      background:`hsl(${200+i*30},70%,20%)`,color:`hsl(${200+i*30},90%,75%)`,
-                      border:`1px solid hsl(${200+i*30},60%,30%)`}}>
-                      #{t.replace(/\s+/g,"_")}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Trends + content angles */}
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {/* Key trends */}
-            {insights.keyTrends?.length > 0 && (
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📈 Key Trends & Opportunities</div>
-                {insights.keyTrends.map((t,i)=>(
-                  <div key={i} style={{padding:"8px 10px",borderRadius:8,marginBottom:6,
-                    background:IMPACT_COL[t.impact]+"11",border:`1px solid ${IMPACT_COL[t.impact]}33`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                      <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{t.trend}</div>
-                      <span style={{fontSize:8,padding:"1px 6px",borderRadius:6,background:IMPACT_COL[t.impact]+"22",color:IMPACT_COL[t.impact],border:`1px solid ${IMPACT_COL[t.impact]}44`}}>
-                        {t.impact}
-                      </span>
-                    </div>
-                    <div style={{fontSize:10,color:"#34d399"}}>💡 {t.opportunity}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Content angles */}
-            {insights.contentAngles?.length > 0 && (
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>✍️ Content Angles to Post</div>
-                {insights.contentAngles.map((a,i)=>(
-                  <div key={i} style={{display:"flex",gap:8,padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
-                    <span style={{color:"#c9a84c",flexShrink:0}}>{i+1}.</span>
-                    <span style={{color:"#94a3b8"}}>{a}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Buying signals */}
-            {insights.buyingSignals?.length > 0 && (
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#fbbf24",marginBottom:8}}>🎯 Buying Signals to Watch</div>
-                {insights.buyingSignals.map((s,i)=>(
-                  <div key={i} style={{fontSize:10,color:"#94a3b8",padding:"3px 0",borderBottom:"1px solid #0a1626"}}>
-                    🔔 {s}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{display:"flex",gap:8}}>
-              <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={saveInsight}>
-                💾 Save Insight
-              </button>
-              <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={scan}>
-                ↺ Refresh
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Saved insights */}
-      {saved.length > 0 && (
-        <div style={{marginTop:16}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:8}}>📚 Saved Intelligence Reports</div>
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {saved.map(s=>(
-              <div key={s.id} style={{padding:"10px 14px",borderRadius:8,background:"#060d1c",border:"1px solid #1a2d45",cursor:"pointer"}}
-                onClick={()=>{setTopic(s.topic);setInsights(s.insights);}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
-                  <span style={{fontWeight:600,color:"#e2e8f0"}}>{s.topic}</span>
-                  <span style={{color:"#334155"}}>{new Date(s.savedAt).toLocaleDateString()}</span>
-                </div>
-                <div style={{fontSize:9,color:"#475569",marginTop:2}}>
-                  {s.insights?.keyTrends?.length} trends · urgency: {s.insights?.urgency}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+function MktIntelScanner(props) { return <CampaignIntelligenceAI {...props}/>;  }
 
 // ─── PROSPECT INTELLIGENCE SCORER ─────────────────────────────────────────
-function ProspectIntelScorer({ clients, crmDeals, crmAccounts }) {
-  const [company,   setCompany]   = useState("");
-  const [industry,  setIndustry]  = useState("");
-  const [notes,     setNotes]     = useState("");
-  const [loading,   setLoading]   = useState(false);
-  const [result,    setResult]    = useState(null);
-  const [scored,    setScored]    = useState(() => { try { return JSON.parse(localStorage.getItem("zt-prospect-scores")||"[]"); } catch { return []; } });
-
-  const score = async () => {
-    if (!company) return alert("Enter company name");
-    setLoading(true); setResult(null);
-    try {
-      const existingClient = (clients||[]).find(c=>c.name?.toLowerCase().includes(company.toLowerCase()));
-      const relDeals = (crmDeals||[]).filter(d=>(d.name||"").toLowerCase().includes(company.toLowerCase()));
-      const resp = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:"You are a B2B sales intelligence expert for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. Score prospects for SAP consulting opportunity. Return JSON only.",
-          messages:[{ role:"user", content:`Score this prospect for Ziksatech SAP consulting services:
-
-Company: ${company}
-Industry: ${industry || "Unknown"}
-Additional context: ${notes || "No additional context"}
-Existing relationship: ${existingClient ? "Existing client — "+existingClient.health+" health" : "No existing relationship"}
-CRM activity: ${relDeals.length > 0 ? relDeals.map(d=>d.name).join(", ") : "None"}
-
-Score this prospect and return JSON:
-{
-  "overallScore": 0-100,
-  "tier": "A (Hot)/B (Warm)/C (Cold)/D (Not a fit)",
-  "fitReason": "2 sentences why they are/aren't a fit",
-  "likelySAPModules": ["BRIM", "S/4HANA", etc.],
-  "estimatedDealSize": "$Xk-$Yk",
-  "estimatedTimelineMonths": 3,
-  "buyingTriggers": ["trigger 1", "trigger 2"],
-  "potentialPainPoints": ["pain 1", "pain 2", "pain 3"],
-  "outreachStrategy": "best approach to engage this prospect",
-  "bestContactTitle": "ideal contact role to target",
-  "messagingAngle": "primary value proposition to lead with",
-  "redFlags": ["flag 1 if any"],
-  "wbeAdvantage": true/false,
-  "wbeAdvantageReason": "why WBE/HUB certification matters to this prospect or not"
-}` }]
-        })
-      });
-      const data = await resp.json();
-      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(text);
-      setResult(parsed);
-      // Auto-save
-      const rec = { id:"ps"+Date.now(), company, industry, result:parsed, scoredAt:new Date().toISOString() };
-      const upd = [rec, ...scored.slice(0,19)];
-      setScored(upd); localStorage.setItem("zt-prospect-scores", JSON.stringify(upd));
-    } catch(e) { setResult({ error:e.message }); }
-    setLoading(false);
-  };
-
-  const TIER_CONFIG = {
-    "A (Hot)":  { color:"#f87171", bg:"#1a0808", label:"🔥 Hot" },
-    "B (Warm)": { color:"#f59e0b", bg:"#1a1005", label:"🌡 Warm" },
-    "C (Cold)": { color:"#38bdf8", bg:"#071826", label:"❄️ Cold" },
-    "D (Not a fit)": { color:"#475569", bg:"#040810", label:"✗ Not a Fit" },
-  };
-
-  return (
-    <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:14,alignItems:"start"}}>
-      {/* Input */}
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
-        <div className="card" style={{padding:"16px 18px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🎯 Prospect Intelligence Scorer</div>
-          <div style={{marginBottom:10}}>
-            <div className="lbl">Company Name *</div>
-            <input className="inp" value={company} onChange={e=>setCompany(e.target.value)} placeholder="e.g. Oncor Electric, CVS Health..."/>
-          </div>
-          <div style={{marginBottom:10}}>
-            <div className="lbl">Industry</div>
-            <select className="inp" value={industry} onChange={e=>setIndustry(e.target.value)}>
-              <option value="">— select —</option>
-              {["Utilities","Telecom","Healthcare","Manufacturing","Financial Services","Retail","Technology","Energy","Government","Transportation"].map(i=><option key={i}>{i}</option>)}
-            </select>
-          </div>
-          <div style={{marginBottom:14}}>
-            <div className="lbl">Context / Notes</div>
-            <textarea className="inp" rows={3} value={notes} onChange={e=>setNotes(e.target.value)}
-              placeholder="Any signals: job postings, tech stack, news, CRM notes..."/>
-          </div>
-          <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px"}} onClick={score} disabled={loading}>
-            {loading?"⏳ Scoring...":"🎯 Score Prospect"}
-          </button>
-        </div>
-
-        {/* Recent scores */}
-        {scored.length > 0 && (
-          <div className="card" style={{padding:"14px 16px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>📋 Recent Scores</div>
-            {scored.slice(0,6).map(s=>{
-              const tier = s.result?.tier || "C (Cold)";
-              const tc = TIER_CONFIG[tier] || TIER_CONFIG["C (Cold)"];
-              return (
-                <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #0a1626",cursor:"pointer"}}
-                  onClick={()=>{setCompany(s.company);setIndustry(s.industry||"");setResult(s.result);}}>
-                  <div>
-                    <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{s.company}</div>
-                    <div style={{fontSize:9,color:"#334155"}}>{new Date(s.scoredAt).toLocaleDateString()}</div>
-                  </div>
-                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                    <span style={{fontSize:13,fontWeight:900,color:tc.color}}>{s.result?.overallScore}</span>
-                    <span style={{fontSize:9,color:tc.color}}>{tc.label}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Result */}
-      <div>
-        {loading && (
-          <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
-            <div style={{fontSize:28,marginBottom:8}}>🔍</div>
-            <div style={{fontSize:12,color:"#38bdf8"}}>Analyzing prospect intelligence...</div>
-          </div>
-        )}
-        {!result && !loading && (
-          <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
-            <div style={{fontSize:36,marginBottom:8}}>🎯</div>
-            <div style={{fontSize:12,color:"#334155"}}>Enter a company name and score their SAP consulting potential</div>
-          </div>
-        )}
-        {result && !result.error && !loading && (
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {/* Score header */}
-            <div style={{padding:"20px 24px",borderRadius:12,
-              background:TIER_CONFIG[result.tier]?.bg||"#040810",
-              border:`2px solid ${(TIER_CONFIG[result.tier]?.color||"#94a3b8")}44`}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                <div>
-                  <div style={{fontSize:16,fontWeight:700,color:"#e2e8f0"}}>{company}</div>
-                  <div style={{fontSize:11,color:"#475569"}}>{industry||"Industry not specified"}</div>
-                </div>
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:40,fontWeight:900,color:TIER_CONFIG[result.tier]?.color||"#94a3b8",fontFamily:"monospace"}}>{result.overallScore}</div>
-                  <div style={{fontSize:11,fontWeight:700,color:TIER_CONFIG[result.tier]?.color||"#94a3b8"}}>{TIER_CONFIG[result.tier]?.label||result.tier}</div>
-                </div>
-              </div>
-              <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>{result.fitReason}</div>
-              {result.wbeAdvantage && (
-                <div style={{marginTop:8,padding:"5px 10px",background:"#0c2340",borderRadius:6,fontSize:10,color:"#7dd3fc",border:"1px solid #0369a1"}}>
-                  🏅 WBE/HUB advantage: {result.wbeAdvantageReason}
-                </div>
-              )}
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {/* Deal info */}
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>💼 Deal Intelligence</div>
-                {[
-                  ["Estimated Size", result.estimatedDealSize],
-                  ["Timeline", result.estimatedTimelineMonths+" months"],
-                  ["Best Contact", result.bestContactTitle],
-                  ["SAP Modules", (result.likelySAPModules||[]).join(", ")],
-                ].map(([l,v])=>v?(
-                  <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
-                    <span style={{color:"#475569"}}>{l}</span>
-                    <span style={{color:"#e2e8f0",fontWeight:600}}>{v}</span>
-                  </div>
-                ):null)}
-              </div>
-
-              {/* Outreach strategy */}
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>📢 Outreach Strategy</div>
-                <div style={{fontSize:11,color:"#94a3b8",marginBottom:8,lineHeight:1.6}}>{result.outreachStrategy}</div>
-                <div style={{fontSize:10,fontWeight:700,color:"#c9a84c",marginBottom:4}}>Lead with:</div>
-                <div style={{fontSize:10,color:"#94a3b8",lineHeight:1.5}}>{result.messagingAngle}</div>
-              </div>
-
-              {/* Pain points */}
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#fbbf24",marginBottom:8}}>⚠️ Likely Pain Points</div>
-                {(result.potentialPainPoints||[]).map((p,i)=>(
-                  <div key={i} style={{fontSize:10,color:"#94a3b8",padding:"3px 0",borderBottom:"1px solid #0a1626"}}>• {p}</div>
-                ))}
-              </div>
-
-              {/* Buying triggers */}
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:8}}>🔔 Buying Triggers to Watch</div>
-                {(result.buyingTriggers||[]).map((t,i)=>(
-                  <div key={i} style={{fontSize:10,color:"#94a3b8",padding:"3px 0",borderBottom:"1px solid #0a1626"}}>• {t}</div>
-                ))}
-                {(result.redFlags||[]).length > 0 && (
-                  <div style={{marginTop:8,padding:"6px 8px",background:"#1a0808",borderRadius:6,border:"1px solid #7f1d1d"}}>
-                    <div style={{fontSize:9,color:"#f87171",fontWeight:700}}>Red Flags</div>
-                    {result.redFlags.map((f,i)=><div key={i} style={{fontSize:9,color:"#f87171"}}>• {f}</div>)}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+function ProspectIntelScorer(props) { return <CampaignIntelligenceAI {...props}/>;  }
 
 // ─── CONTENT PERFORMANCE OPTIMIZER ────────────────────────────────────────
-function ContentOptimizer() {
-  const [content,    setContent]    = useState("");
-  const [channel,    setChannel]    = useState("linkedin");
-  const [loading,    setLoading]    = useState(false);
-  const [analysis,   setAnalysis]   = useState(null);
-  const [variants,   setVariants]   = useState([]);
-  const [varLoading, setVarLoad]    = useState(false);
-
-  const analyze = async () => {
-    if (!content.trim()) return alert("Paste content to analyze");
-    setLoading(true); setAnalysis(null);
-    try {
-      const resp = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:"You are a B2B content performance expert specializing in SAP consulting marketing. Score content and give actionable feedback. Return JSON only.",
-          messages:[{ role:"user", content:`Analyze this ${channel} content for Ziksatech (SAP consulting firm):
-
-CONTENT:
-${content}
-
-Return JSON:
-{
-  "overallScore": 0-100,
-  "engagementPrediction": "low/medium/high/viral",
-  "strengths": ["strength 1", "strength 2"],
-  "weaknesses": ["weakness 1", "weakness 2"],
-  "specificImprovements": [{"issue":"...", "fix":"exact rewrite suggestion"}],
-  "hookScore": 0-100,
-  "hookFeedback": "specific feedback on opening line",
-  "ctaScore": 0-100,
-  "ctaFeedback": "specific CTA feedback",
-  "readabilityScore": 0-100,
-  "optimalPostingTime": "e.g. Tuesday 8-10am CST",
-  "estimatedReach": "organic reach estimate as multiplier e.g. 3-5x followers",
-  "hashtagRecommendations": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"],
-  "improvedVersion": "rewritten version of the content with all fixes applied"
-}` }]
-        })
-      });
-      const data = await resp.json();
-      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      setAnalysis(JSON.parse(text));
-    } catch(e) { setAnalysis({ error:e.message }); }
-    setLoading(false);
-  };
-
-  const generateVariants = async () => {
-    if (!content.trim()) return;
-    setVarLoad(true); setVariants([]);
-    try {
-      const resp = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:"You are an A/B testing expert for B2B content. Generate distinct variants. Return JSON only.",
-          messages:[{ role:"user", content:`Generate 3 A/B test variants of this ${channel} content for Ziksatech (SAP consulting):
-
-ORIGINAL:
-${content.slice(0,800)}
-
-Return JSON array of 3 variants, each with different approach:
-[
-  { "variant":"A", "approach":"hook-driven (strong emotional opener)", "content":"full rewritten content" },
-  { "variant":"B", "approach":"data-led (statistics and proof)", "content":"full rewritten content" },
-  { "variant":"C", "approach":"story-based (narrative format)", "content":"full rewritten content" }
-]` }]
-        })
-      });
-      const data = await resp.json();
-      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      setVariants(JSON.parse(text));
-    } catch(e) { setVariants([]); }
-    setVarLoad(false);
-  };
-
-  const SCORE_COLOR = s => s >= 80?"#34d399":s >= 60?"#f59e0b":s >= 40?"#f87171":"#475569";
-  const [copied, setCopied] = useState("");
-  const copy = (text, key) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(key); setTimeout(()=>setCopied(""),2500); };
-
-  return (
-    <div>
-      <div style={{fontSize:11,color:"#475569",marginBottom:14,padding:"8px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
-        📈 Paste any draft content — AI scores it, identifies improvements, and generates A/B test variants before you publish
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-        {/* Input */}
-        <div>
-          <div className="card" style={{padding:"16px 20px",marginBottom:12}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📝 Content to Analyze</div>
-              <div style={{display:"flex",gap:5}}>
-                {["linkedin","email","twitter","blog"].map(ch=>(
-                  <button key={ch} onClick={()=>setChannel(ch)}
-                    style={{padding:"3px 9px",borderRadius:6,fontSize:10,border:`1px solid ${channel===ch?"#0369a1":"#1a2d45"}`,
-                      background:channel===ch?"#0c2340":"transparent",color:channel===ch?"#38bdf8":"#475569",cursor:"pointer",fontWeight:600}}>
-                    {ch}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <textarea className="inp" rows={10} value={content} onChange={e=>setContent(e.target.value)}
-              placeholder="Paste your draft content here..."/>
-            <div style={{display:"flex",gap:8,marginTop:10}}>
-              <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:12}} onClick={analyze} disabled={loading}>
-                {loading?"⏳ Analyzing...":"📊 Analyze Content"}
-              </button>
-              <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:12}} onClick={generateVariants} disabled={varLoading||!content.trim()}>
-                {varLoading?"⏳ Generating...":"🔄 Generate A/B Variants"}
-              </button>
-            </div>
-          </div>
-
-          {/* Variants */}
-          {variants.length > 0 && (
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {variants.map(v=>(
-                <div key={v.variant} className="card" style={{padding:"12px 14px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <div>
-                      <span style={{fontSize:11,fontWeight:700,color:"#c9a84c",marginRight:6}}>Variant {v.variant}</span>
-                      <span style={{fontSize:9,color:"#475569"}}>{v.approach}</span>
-                    </div>
-                    <button className="btn bg" style={{fontSize:9}} onClick={()=>copy(v.content,"var"+v.variant)}>
-                      {copied==="var"+v.variant?"✅":"📋 Copy"}
-                    </button>
-                  </div>
-                  <pre style={{fontSize:10,color:"#94a3b8",whiteSpace:"pre-wrap",margin:0,maxHeight:100,overflow:"hidden"}}>{v.content?.slice(0,250)}...</pre>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Analysis */}
-        <div>
-          {!analysis && !loading && (
-            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
-              <div style={{fontSize:36,marginBottom:8}}>📊</div>
-              <div style={{fontSize:12,color:"#334155"}}>Paste your content and click Analyze for AI scoring and improvements</div>
-            </div>
-          )}
-          {loading && (
-            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
-              <div style={{fontSize:28,marginBottom:8}}>⚡</div>
-              <div style={{fontSize:12,color:"#38bdf8"}}>Scoring your content...</div>
-            </div>
-          )}
-          {analysis && !analysis.error && !loading && (
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {/* Score overview */}
-              <div className="card" style={{padding:"16px 18px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>Content Score</div>
-                  <span style={{fontSize:9,padding:"2px 10px",borderRadius:8,
-                    background:analysis.engagementPrediction==="viral"?"#c9a84c22":analysis.engagementPrediction==="high"?"#34d39922":"#0a1626",
-                    color:analysis.engagementPrediction==="viral"?"#c9a84c":analysis.engagementPrediction==="high"?"#34d399":analysis.engagementPrediction==="medium"?"#f59e0b":"#f87171",
-                    border:`1px solid ${analysis.engagementPrediction==="viral"?"#c9a84c44":"#1a2d45"}`,fontWeight:700}}>
-                    {analysis.engagementPrediction} engagement predicted
-                  </span>
-                </div>
-                {/* Score gauges */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  {[
-                    ["Overall",      analysis.overallScore],
-                    ["Hook",         analysis.hookScore],
-                    ["CTA",          analysis.ctaScore],
-                    ["Readability",  analysis.readabilityScore],
-                  ].map(([label,score])=>(
-                    <div key={label}>
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:3}}>
-                        <span style={{color:"#475569"}}>{label}</span>
-                        <span style={{fontWeight:700,color:SCORE_COLOR(score)}}>{score}</span>
-                      </div>
-                      <div style={{height:6,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
-                        <div style={{height:"100%",borderRadius:3,background:SCORE_COLOR(score),width:score+"%",transition:"width 0.5s"}}/>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{marginTop:10,fontSize:10,color:"#475569"}}>
-                  📅 Best time: <span style={{color:"#38bdf8"}}>{analysis.optimalPostingTime}</span> · 
-                  📈 Est reach: <span style={{color:"#34d399",marginLeft:4}}>{analysis.estimatedReach}</span>
-                </div>
-              </div>
-
-              {/* Strengths & weaknesses */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div className="card" style={{padding:"12px 14px"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#34d399",marginBottom:6}}>✅ Strengths</div>
-                  {(analysis.strengths||[]).map((s,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {s}</div>)}
-                </div>
-                <div className="card" style={{padding:"12px 14px"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#f87171",marginBottom:6}}>⚠️ Fix These</div>
-                  {(analysis.weaknesses||[]).map((w,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {w}</div>)}
-                </div>
-              </div>
-
-              {/* Specific improvements */}
-              {(analysis.specificImprovements||[]).length > 0 && (
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#fbbf24",marginBottom:8}}>🔧 Specific Fixes</div>
-                  {analysis.specificImprovements.map((imp,i)=>(
-                    <div key={i} style={{padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{fontSize:10,color:"#f87171",marginBottom:2}}>Issue: {imp.issue}</div>
-                      <div style={{fontSize:10,color:"#34d399"}}>Fix: {imp.fix}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Improved version */}
-              {analysis.improvedVersion && (
-                <div className="card" style={{padding:"14px 16px",background:"#021f14",border:"1px solid #15803d"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#34d399"}}>✨ AI-Improved Version</div>
-                    <button className="btn bg" style={{fontSize:10}} onClick={()=>copy(analysis.improvedVersion,"improved")}>
-                      {copied==="improved"?"✅ Copied!":"📋 Use This"}
-                    </button>
-                  </div>
-                  <pre style={{fontSize:10,color:"#94a3b8",whiteSpace:"pre-wrap",margin:0,lineHeight:1.6}}>{analysis.improvedVersion}</pre>
-                </div>
-              )}
-
-              {/* Hashtags */}
-              {(analysis.hashtagRecommendations||[]).length > 0 && (
-                <div className="card" style={{padding:"12px 14px"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Recommended Hashtags</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                    {analysis.hashtagRecommendations.map((h,i)=>(
-                      <span key={i} style={{fontSize:10,padding:"2px 8px",borderRadius:20,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45",cursor:"pointer"}}
-                        onClick={()=>copy(h,"h"+i)}>{h}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+function ContentOptimizer(props) { return <CampaignIntelligenceAI {...props}/>;  }
 
 // ─── CAMPAIGN PLANNER AI ───────────────────────────────────────────────────
-function CampaignPlannerAI({ clients, crmDeals }) {
-  const [form, setForm] = useState({
-    goal:"generate-leads", audience:"SAP decision-makers at utilities", duration:"6-weeks",
-    budget:"low", channels:"linkedin,email", theme:"", focusService:"SAP BRIM"
-  });
-  const [loading,   setLoading]  = useState(false);
-  const [campaign,  setCampaign] = useState(null);
-  const [saved,     setSaved]    = useState(() => { try { return JSON.parse(localStorage.getItem("zt-campaigns")||"[]"); } catch { return []; } });
-
-  const ff = (k,v) => setForm(p=>({...p,[k]:v}));
-
-  const generate = async () => {
-    setLoading(true); setCampaign(null);
-    try {
-      const resp = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:"You are a B2B marketing campaign strategist for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. Build complete multi-touch campaigns. Return JSON only.",
-          messages:[{ role:"user", content:`Build a complete ${form.duration} marketing campaign for Ziksatech:
-
-Goal: ${form.goal}
-Target Audience: ${form.audience}
-Focus Service: ${form.focusService || "SAP consulting"}
-Channels: ${form.channels}
-Budget Level: ${form.budget}
-Campaign Theme: ${form.theme || "SAP expertise and WBE/HUB certification advantage"}
-
-Return JSON:
-{
-  "campaignName": "catchy campaign name",
-  "tagline": "campaign tagline",
-  "objective": "specific measurable objective",
-  "targetPersonas": ["persona 1 description", "persona 2"],
-  "coreMessage": "the single most important message",
-  "contentCalendar": [
-    {
-      "week": 1,
-      "theme": "week theme",
-      "content": [
-        {"day": "Monday", "channel": "LinkedIn", "type": "post", "topic": "...", "purpose": "awareness/engagement/conversion"}
-      ]
-    }
-  ],
-  "emailSequence": [
-    {"email": 1, "day": 1, "subject": "...", "purpose": "...", "keyMessage": "..."}
-  ],
-  "successMetrics": ["metric 1", "metric 2"],
-  "estimatedLeads": "X-Y leads",
-  "keyDifferentiators": ["WBE/HUB advantage", "other differentiator"]
-}` }]
-        })
-      });
-      const data = await resp.json();
-      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(text);
-      setCampaign(parsed);
-      // Auto-save
-      const rec = { id:"cp"+Date.now(), form, campaign:parsed, createdAt:new Date().toISOString() };
-      const upd = [rec, ...saved.slice(0,4)];
-      setSaved(upd); localStorage.setItem("zt-campaigns", JSON.stringify(upd));
-    } catch(e) { setCampaign({ error:e.message }); }
-    setLoading(false);
-  };
-
-  const WEEK_COLORS = ["#0369a1","#7c3aed","#0891b2","#059669","#d97706","#dc2626"];
-
-  return (
-    <div>
-      <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:14,alignItems:"start"}}>
-        {/* Config */}
-        <div className="card" style={{padding:"16px 18px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🗓 Campaign Builder</div>
-          {[
-            ["Campaign Goal","goal","select",["generate-leads","nurture-prospects","brand-awareness","event-promotion","retain-clients","win-back"]],
-            ["Target Audience","audience","text"],
-            ["Focus Service","focusService","text"],
-            ["Duration","duration","select",["2-weeks","4-weeks","6-weeks","8-weeks","quarterly"]],
-            ["Budget Level","budget","select",["low (sweat equity only)","medium ($500-2k/mo)","high ($5k+/mo)"]],
-            ["Campaign Theme","theme","text"],
-          ].map(([label,key,type,opts])=>(
-            <div key={key} style={{marginBottom:10}}>
-              <div className="lbl">{label}</div>
-              {type==="select"
-                ? <select className="inp" value={form[key]||""} onChange={e=>ff(key,e.target.value)}>
-                    {opts.map(o=><option key={o}>{o}</option>)}
-                  </select>
-                : <input className="inp" value={form[key]||""} onChange={e=>ff(key,e.target.value)}
-                    placeholder={key==="audience"?"e.g. VP of IT at utilities companies":key==="theme"?"e.g. SAP modernization + WBE advantage":""}/>
-              }
-            </div>
-          ))}
-          <div style={{marginBottom:14}}>
-            <div className="lbl">Channels</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-              {["linkedin","email","twitter","website","events"].map(ch=>{
-                const active = form.channels.includes(ch);
-                return (
-                  <div key={ch} onClick={()=>ff("channels",active?form.channels.replace(ch,"").replace(",,",",").replace(/^,|,$/,""):form.channels+","+ch)}
-                    style={{padding:"3px 10px",borderRadius:20,cursor:"pointer",fontSize:10,fontWeight:600,
-                      background:active?"#0c2340":"transparent",border:`1px solid ${active?"#0369a1":"#1a2d45"}`,
-                      color:active?"#38bdf8":"#475569"}}>
-                    {ch}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px"}} onClick={generate} disabled={loading}>
-            {loading?"⏳ Building Campaign...":"🚀 Generate Campaign Plan"}
-          </button>
-
-          {/* Saved campaigns */}
-          {saved.length > 0 && (
-            <div style={{marginTop:12,paddingTop:10,borderTop:"1px solid #0a1626"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Saved Campaigns</div>
-              {saved.map(s=>(
-                <div key={s.id} style={{padding:"5px 0",borderBottom:"1px solid #0a1626",cursor:"pointer",fontSize:10,color:"#94a3b8"}}
-                  onClick={()=>{setForm(s.form);setCampaign(s.campaign);}}>
-                  {s.campaign?.campaignName||"Campaign"} — {s.createdAt?.slice(0,10)}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Campaign plan */}
-        <div>
-          {loading && (
-            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
-              <div style={{fontSize:28,marginBottom:8}}>🗓</div>
-              <div style={{fontSize:12,color:"#38bdf8"}}>Building your {form.duration} campaign...</div>
-            </div>
-          )}
-          {!campaign && !loading && (
-            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
-              <div style={{fontSize:36,marginBottom:8}}>🗓</div>
-              <div style={{fontSize:12,color:"#334155"}}>Configure and generate a complete multi-touch campaign</div>
-            </div>
-          )}
-          {campaign && !campaign.error && !loading && (
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {/* Campaign header */}
-              <div style={{padding:"18px 22px",borderRadius:12,background:"linear-gradient(135deg,#0c2340,#071826)",border:"1px solid #0369a1"}}>
-                <div style={{fontSize:16,fontWeight:800,color:"#e2e8f0",marginBottom:2}}>{campaign.campaignName}</div>
-                <div style={{fontSize:12,color:"#c9a84c",fontStyle:"italic",marginBottom:8}}>{campaign.tagline}</div>
-                <div style={{fontSize:11,color:"#94a3b8",marginBottom:10}}>{campaign.coreMessage}</div>
-                <div style={{display:"flex",gap:14,fontSize:11}}>
-                  <span style={{color:"#34d399"}}>🎯 {campaign.estimatedLeads} est. leads</span>
-                  <span style={{color:"#38bdf8"}}>📊 {campaign.objective?.slice(0,50)}</span>
-                </div>
-              </div>
-
-              {/* Content calendar */}
-              {(campaign.contentCalendar||[]).map((week,wi)=>(
-                <div key={wi} className="card" style={{padding:"14px 16px",borderLeft:`3px solid ${WEEK_COLORS[wi]||"#0369a1"}`}}>
-                  <div style={{fontSize:11,fontWeight:700,color:WEEK_COLORS[wi]||"#38bdf8",marginBottom:8}}>Week {week.week}: {week.theme}</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                    {(week.content||[]).map((item,ci)=>(
-                      <div key={ci} style={{display:"grid",gridTemplateColumns:"70px 80px 80px 1fr 80px",gap:6,alignItems:"center",padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:10}}>
-                        <span style={{color:"#475569"}}>{item.day}</span>
-                        <span style={{padding:"1px 6px",borderRadius:6,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45",textAlign:"center"}}>{item.channel}</span>
-                        <span style={{color:"#94a3b8"}}>{item.type}</span>
-                        <span style={{color:"#e2e8f0"}}>{item.topic}</span>
-                        <span style={{color:item.purpose==="conversion"?"#34d399":item.purpose==="engagement"?"#f59e0b":"#38bdf8",fontSize:9}}>{item.purpose}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {/* Email sequence */}
-              {(campaign.emailSequence||[]).length > 0 && (
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📧 Email Sequence</div>
-                  {campaign.emailSequence.map((email,i)=>(
-                    <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"6px 0",borderBottom:"1px solid #0a1626",fontSize:10}}>
-                      <div style={{width:20,height:20,borderRadius:"50%",background:"#0c1e3d",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:"#7dd3fc",flexShrink:0,fontSize:9}}>
-                        {email.email}
-                      </div>
-                      <div style={{flex:1}}>
-                        <div style={{fontWeight:600,color:"#e2e8f0"}}>{email.subject}</div>
-                        <div style={{color:"#475569"}}>{email.purpose} · Day {email.day}</div>
-                        <div style={{color:"#94a3b8",fontStyle:"italic"}}>{email.keyMessage?.slice(0,80)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Metrics */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div className="card" style={{padding:"12px 14px"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#34d399",marginBottom:6}}>📊 Success Metrics</div>
-                  {(campaign.successMetrics||[]).map((m,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {m}</div>)}
-                </div>
-                <div className="card" style={{padding:"12px 14px"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#c9a84c",marginBottom:6}}>🏅 Key Differentiators</div>
-                  {(campaign.keyDifferentiators||[]).map((d,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {d}</div>)}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+function CampaignPlannerAI(props) { return <CampaignIntelligenceAI {...props}/>;  }
 
 // ─── COMPETITIVE INTELLIGENCE ──────────────────────────────────────────────
-function CompetitiveIntelligence() {
-  const [loading,   setLoading]  = useState(false);
-  const [intel,     setIntel]    = useState(null);
-  const [focus,     setFocus]    = useState("SAP BRIM consulting");
-
-  const analyze = async () => {
-    setLoading(true); setIntel(null);
-    try {
-      const resp = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
-          system:"You are a competitive intelligence analyst specializing in SAP consulting firms. Provide actionable competitive insights. Return JSON only.",
-          messages:[{ role:"user", content:`Analyze the competitive landscape for Ziksatech LLC in "${focus}".
-
-Ziksatech is: WBE/HUB/WOSB certified SAP consulting firm, Plano TX, specializes in SAP BRIM/S4HANA/IS-U, 10-person team.
-
-Return JSON:
-{
-  "marketSummary": "2-3 sentence competitive landscape summary",
-  "competitorProfiles": [
-    {
-      "type": "Large SI / Boutique / Offshore",
-      "name": "representative competitor type name (not specific firms)",
-      "strengths": ["strength"],
-      "weaknesses": ["weakness"],
-      "ziksatechAdvantage": "how Ziksatech wins against this type"
-    }
-  ],
-  "ziksatechDifferentiators": ["differentiator 1", "differentiator 2"],
-  "marketGaps": ["gap Ziksatech can fill"],
-  "wbeHubPositioning": "how to maximize WBE/HUB advantage competitively",
-  "messagingToWin": ["message 1 that beats competition", "message 2"],
-  "pricingPosition": "how to position pricing vs competition",
-  "idealProspectTypes": ["type of prospect where Ziksatech wins most"]
-}` }]
-        })
-      });
-      const data = await resp.json();
-      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      setIntel(JSON.parse(text));
-    } catch(e) { setIntel({ error:e.message }); }
-    setLoading(false);
-  };
-
-  return (
-    <div>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <select className="inp" style={{flex:1}} value={focus} onChange={e=>setFocus(e.target.value)}>
-          {["SAP BRIM consulting","SAP S/4HANA implementation","SAP IS-U utilities","SAP BTP integration","IT staffing SAP","WBE certified SAP consulting"].map(f=><option key={f}>{f}</option>)}
-        </select>
-        <button className="btn bp" style={{fontSize:12,flexShrink:0}} onClick={analyze} disabled={loading}>
-          {loading?"⏳ Analyzing...":"🔍 Analyze Competition"}
-        </button>
-      </div>
-
-      {loading && (
-        <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
-          <div style={{fontSize:12,color:"#38bdf8"}}>Analyzing competitive landscape...</div>
-        </div>
-      )}
-      {!intel && !loading && (
-        <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
-          <div style={{fontSize:36,marginBottom:8}}>🏆</div>
-          <div style={{fontSize:12,color:"#334155"}}>Select a focus area and analyze your competitive position</div>
-        </div>
-      )}
-      {intel && !intel.error && !loading && (
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div style={{padding:"14px 18px",background:"#071826",borderRadius:12,border:"1px solid #0369a1",fontSize:12,color:"#94a3b8",lineHeight:1.7}}>
-            {intel.marketSummary}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            {/* Differentiators */}
-            <div className="card" style={{padding:"14px 16px",border:"1px solid #c9a84c33"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#c9a84c",marginBottom:8}}>⭐ Ziksatech Differentiators</div>
-              {(intel.ziksatechDifferentiators||[]).map((d,i)=>(
-                <div key={i} style={{display:"flex",gap:6,padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
-                  <span style={{color:"#34d399"}}>✓</span><span style={{color:"#94a3b8"}}>{d}</span>
-                </div>
-              ))}
-              <div style={{marginTop:10,padding:"8px 10px",background:"#c9a84c11",borderRadius:6,border:"1px solid #c9a84c33"}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#c9a84c",marginBottom:2}}>WBE/HUB Strategy</div>
-                <div style={{fontSize:10,color:"#94a3b8"}}>{intel.wbeHubPositioning}</div>
-              </div>
-            </div>
-            {/* Market gaps */}
-            <div className="card" style={{padding:"14px 16px"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>🎯 Market Gaps to Own</div>
-              {(intel.marketGaps||[]).map((g,i)=>(
-                <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>💡 {g}</div>
-              ))}
-              <div style={{marginTop:8}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#38bdf8",marginBottom:3}}>Ideal Prospects Where Ziksatech Wins</div>
-                {(intel.idealProspectTypes||[]).map((t,i)=>(
-                  <div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {t}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-          {/* Competitor profiles */}
-          <div className="card" style={{padding:"16px 20px"}}>
-            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🏢 Competitor Type Analysis</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-              {(intel.competitorProfiles||[]).map((comp,i)=>(
-                <div key={i} style={{padding:"12px 14px",borderRadius:10,background:"#040810",border:"1px solid #1a2d45"}}>
-                  <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{comp.type}</div>
-                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>{comp.name}</div>
-                  <div style={{fontSize:9,fontWeight:700,color:"#f87171",marginBottom:3}}>Their strengths</div>
-                  {(comp.strengths||[]).slice(0,2).map((s,j)=><div key={j} style={{fontSize:9,color:"#94a3b8",padding:"1px 0"}}>• {s}</div>)}
-                  <div style={{marginTop:6,padding:"5px 8px",background:"#021f14",borderRadius:6,border:"1px solid #15803d"}}>
-                    <div style={{fontSize:9,fontWeight:700,color:"#34d399",marginBottom:2}}>Ziksatech wins with:</div>
-                    <div style={{fontSize:9,color:"#94a3b8"}}>{comp.ziksatechAdvantage}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* Winning messages */}
-          <div className="card" style={{padding:"14px 16px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>📢 Messaging to Beat the Competition</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              {(intel.messagingToWin||[]).map((m,i)=>(
-                <div key={i} style={{padding:"8px 12px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1",fontSize:11,color:"#7dd3fc"}}>
-                  {i+1}. {m}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+function CompetitiveIntelligence(props) { return <CampaignIntelligenceAI {...props}/>;  }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MARKETING INTELLIGENCE AI ENGINE
@@ -32694,918 +31683,607 @@ Return JSON:
 }
 
 // ── Intelligence Tab Component ──────────────────────────────────────────────
-function MarketingIntelligence({ clients, crmDeals, roster, proposals, addAudit }) {
-  const [intSub, setIntSub] = useState("pulse");
-  const [pulseLoading, setPulseLoad] = useState(false);
-  const [pulseData, setPulseData] = useState(null);
-  const [stratLoading, setStratLoad] = useState(false);
-  const [strategy, setStrategy] = useState(null);
-  const [abmTarget, setAbmTarget] = useState("");
-  const [abmIndustry, setAbmIndustry] = useState("");
-  const [abmLoading, setAbmLoad] = useState(false);
-  const [abmResult, setAbmResult] = useState(null);
-  const [compUrl, setCompUrl] = useState("");
-  const [compLoading, setCompLoad] = useState(false);
-  const [compResult, setCompResult] = useState(null);
-  const [keyword, setKeyword] = useState("");
-  const [seoLoading, setSeoLoad] = useState(false);
-  const [seoResult, setSeoResult] = useState(null);
-  const [demandLoading, setDemandLoad] = useState(false);
-  const [demandResult, setDemandResult] = useState(null);
+function MarketingIntelligence(props) { return <CampaignIntelligenceAI {...props}/>;  }
 
-  const safeClients = clients  || [];
-  const safeDeals   = crmDeals || [];
-  const safeRoster  = roster   || [];
-  const safeProps   = proposals|| [];
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMPAIGN INTELLIGENCE AI
+// Multi-channel planner · Audience scorer · Content optimizer · Competitive intel
+// ═══════════════════════════════════════════════════════════════════════════
 
-  const uid = () => "intel-" + Date.now();
+// ── Sub-components wired into the main module ──────────────────────────────
 
-  // ── AI helpers ────────────────────────────────────────────────────────────
-  const aiJSON = async (prompt, system) => {
-    const resp = await fetch("/api/claude", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:1000,
-        system: system || "You are a marketing intelligence analyst. Return JSON only, no markdown.",
-        messages:[{role:"user",content:prompt}]
-      })
-    });
-    const data = await resp.json();
-    const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-    return JSON.parse(text);
+function CampaignIntelligenceAI({ clients, crmDeals, roster, proposals, savedContent, calendar, addAudit }) {
+  const [view, setView]         = useState("planner");   // planner | audience | optimizer | competitive | predict | analyze
+  const [loading, setLoading]   = useState("");
+  const [result,  setResult]    = useState({});
+  const [copied,  setCopied]    = useState("");
+
+  // ── Campaign Planner form ──────────────────────────────────────────────
+  const [planForm, setPlanForm] = useState({
+    goal:"generate-leads", audience:"enterprise-prospects", budget:"medium",
+    duration:"4-weeks", channels:"linkedin,email,website", theme:"",
+    targetIndustry:"", keyMessage:""
+  });
+  // ── Audience Scorer form ───────────────────────────────────────────────
+  const [audForm, setAudForm]   = useState({ companyName:"", industry:"", size:"", signals:"", context:"" });
+  // ── Content Optimizer form ─────────────────────────────────────────────
+  const [optForm, setOptForm]   = useState({ contentType:"email-subject", content:"", context:"", goal:"" });
+  // ── Competitive Intel form ─────────────────────────────────────────────
+  const [compForm, setCompForm] = useState({ competitor:"", serviceArea:"SAP BRIM", context:"" });
+  // ── Predict form ──────────────────────────────────────────────────────
+  const [predForm, setPredForm] = useState({ campaignType:"linkedin-posts", targetCount:"", budget:"", duration:"", audience:"", industry:"" });
+  // ── Analyze form ──────────────────────────────────────────────────────
+  const [analyzeText, setAnalyzeText] = useState("");
+
+  const safeClients  = clients   || [];
+  const safeDeals    = crmDeals  || [];
+  const safeSaved    = savedContent || [];
+  const safeCal      = calendar  || [];
+  const safeProps    = proposals || [];
+
+  const fmt  = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${v}`;
+  const copy = (text, key) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(key); setTimeout(()=>setCopied(""), 2500); };
+
+  // ── AI call helper ─────────────────────────────────────────────────────
+  const ai = async (prompt, key, systemExtra) => {
+    setLoading(key); setResult(p => ({ ...p, [key]: null }));
+    try {
+      const resp = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          system:`You are a B2B marketing intelligence expert for Ziksatech LLC, a WBE/HUB/WOSB certified SAP consulting firm in Plano, TX specializing in SAP BRIM, S/4HANA, IS-U implementations. You have deep knowledge of enterprise SAP sales cycles, procurement dynamics, and how to position a certified minority firm.${systemExtra?"\n"+systemExtra:""}`,
+          messages:[{ role:"user", content:prompt }]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      // Try parse JSON first, fall back to text
+      let parsed;
+      try { parsed = JSON.parse(text); } catch { parsed = text; }
+      setResult(p => ({ ...p, [key]: parsed }));
+      addAudit?.("Marketing", "Campaign Intelligence", key, "AI analysis complete");
+    } catch(e) { setResult(p => ({ ...p, [key]: "Error: "+e.message })); }
+    setLoading("");
   };
 
-  // ── Market Pulse ──────────────────────────────────────────────────────────
-  const fetchMarketPulse = async () => {
-    setPulseLoad(true); setPulseData(null);
-    try {
-      const res = await aiJSON(`You are an expert SAP consulting market analyst. Today is ${new Date().toISOString().slice(0,10)}.
-
-Generate a comprehensive market intelligence briefing for Ziksatech LLC, a SAP consulting firm specializing in SAP BRIM, S/4HANA, IS-U based in Plano TX. They are WBE/HUB/WOSB certified.
-
-Return JSON:
-{
-  "headline": "1 top market insight for SAP consulting firms this week",
-  "marketSentiment": "bullish|neutral|bearish",
-  "sentimentReason": "1 sentence why",
-  "hotTopics": [
-    {"topic":"topic name","relevance":"high|medium","opportunity":"1-sentence marketing angle for Ziksatech","trend":"up|stable|down"}
-  ],
-  "buyerSignals": [
-    {"signal":"description of buying signal or industry event","urgency":"high|medium|low","action":"what Ziksatech should do"}
-  ],
-  "contentOpportunities": [
-    {"title":"post/article idea","type":"linkedin|email|blog","priority":"high|medium","why":"1 sentence rationale"}
-  ],
-  "keywordsTrending": ["keyword1","keyword2","keyword3","keyword4","keyword5"],
-  "competitiveAlert": "1 key competitive insight or threat to be aware of",
-  "weeklyAction": "the single most important marketing action Ziksatech should take this week"
-}
-
-Focus on: SAP BRIM, S/4HANA transformations, utility billing, revenue management, SAP IS-U, cloud migrations, managed services. Consider Q1 2026 market context. Be specific and actionable.`,
-      "You are an expert SAP consulting market intelligence analyst. Return JSON only, no markdown. Be specific, data-driven, and actionable.");
-      setPulseData(res);
-    } catch(e) { setPulseData({error:e.message}); }
-    setPulseLoad(false);
-  };
-
-  // ── AI Strategy Generator ─────────────────────────────────────────────────
-  const generateStrategy = async () => {
-    setStratLoad(true); setStrategy(null);
-    const clientIndustries = [...new Set(safeClients.map(c=>c.industry).filter(Boolean))].slice(0,5);
-    const openDeals = safeDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage));
-    const wonDeals  = safeDeals.filter(d=>d.stage==="closed_won");
-    try {
-      const res = await aiJSON(`Create a 90-day marketing strategy for Ziksatech LLC.
-
-COMPANY DATA:
-- Team: ${safeRoster.length} SAP consultants (BRIM, S/4HANA, IS-U, Functional Architects)
-- Active clients: ${safeClients.length} (industries: ${clientIndustries.join(", ")||"diverse"})
-- Open pipeline: ${openDeals.length} deals
+  // ── Build context snapshot ─────────────────────────────────────────────
+  const contextSnapshot = () => {
+    const wonDeals = safeDeals.filter(d=>d.stage==="closed_won");
+    const openPipe = safeDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage));
+    const industries = [...new Set(safeClients.map(c=>c.industry).filter(Boolean))].slice(0,6);
+    return `
+Current Ziksatech context:
+- Active clients: ${safeClients.length} (industries: ${industries.join(", ")})
+- Pipeline: ${openPipe.length} open deals ($${openPipe.reduce((s,d)=>s+(d.value||0),0).toLocaleString()} total)
 - Won deals: ${wonDeals.length}
-- Certifications: WBE, HUB, WOSB (Plano TX)
-- Specialties: SAP BRIM, S/4HANA, IS-U, CPI Integration, Cloud migration
-
-Return JSON:
-{
-  "strategyTitle": "90-day campaign theme",
-  "primaryGoal": "1 specific measurable goal",
-  "targetAudiences": [{"segment":"name","size":"large/medium/small","approach":"1-sentence"}],
-  "contentPillars": [
-    {"pillar":"name","description":"what content to create","frequency":"posts per week","channels":["linkedin","email"]}
-  ],
-  "weeklySchedule": [
-    {"week":"Week 1-2","focus":"theme","actions":["action1","action2"]},
-    {"week":"Week 3-4","focus":"theme","actions":["action1","action2"]},
-    {"week":"Week 5-8","focus":"theme","actions":["action1","action2"]},
-    {"week":"Week 9-13","focus":"theme","actions":["action1","action2"]}
-  ],
-  "quickWins": ["thing to do this week","thing to do next week"],
-  "expectedOutcomes": ["outcome 1","outcome 2","outcome 3"],
-  "kpis": [{"metric":"name","target":"number","timeframe":"weeks"}],
-  "budget": "estimated monthly marketing budget range (low/medium/high effort)"
-}`,
-      "You are a B2B marketing strategist for SAP consulting firms. Return JSON only.");
-      setStrategy(res);
-    } catch(e) { setStrategy({error:e.message}); }
-    setStratLoad(false);
+- Team: ${(roster||[]).length} SAP consultants
+- Content library: ${safeSaved.length} saved pieces
+- Calendar items: ${safeCal.length}`;
   };
 
-  // ── ABM Engine ────────────────────────────────────────────────────────────
-  const runABM = async () => {
-    if (!abmTarget) return alert("Enter a target company name");
-    setAbmLoad(true); setAbmResult(null);
-    try {
-      const res = await aiJSON(`You are an Account-Based Marketing (ABM) expert for a SAP consulting firm.
-
-Research and create an ABM profile for: ${abmTarget}
-Industry: ${abmIndustry || "enterprise"}
-
-Generate a comprehensive ABM attack plan for Ziksatech LLC to win this account:
-
-Return JSON:
-{
-  "company": "${abmTarget}",
-  "fitScore": 0-100,
-  "fitReason": "why they are/aren't a good fit for SAP consulting",
-  "estimatedDealSize": "$X-Y range",
-  "buyingJourneyStage": "unaware|problem-aware|solution-aware|considering|ready-to-buy",
-  "painPoints": ["specific pain point 1","pain point 2","pain point 3"],
-  "sapRelevance": ["which SAP solutions apply and why"],
-  "keyStakeholders": [
-    {"title":"CIO/CFO/etc","concern":"what they care about","message":"1-sentence message for them"}
-  ],
-  "personalizationHooks": ["specific talking point based on their industry","another hook"],
-  "recommendedChannels": ["linkedin","email","referral","etc"],
-  "outreachSequence": [
-    {"step":1,"channel":"linkedin","action":"connection request with note","timing":"Day 1","template":"brief template"},
-    {"step":2,"channel":"email","action":"value-add email","timing":"Day 5","template":"brief template"},
-    {"step":3,"channel":"linkedin","action":"engage with their content","timing":"Day 8","template":"brief template"},
-    {"step":4,"channel":"email","action":"case study share","timing":"Day 12","template":"brief template"}
-  ],
-  "contentToShare": ["what case study/content would resonate most"],
-  "wbeCertAdvantage": "how WBE/HUB/WOSB certification helps with this specific company",
-  "timeToClose": "estimated weeks/months",
-  "nextBestAction": "single best thing to do right now"
-}`,
-      "You are a world-class ABM strategist. Return JSON only, no markdown.");
-      setAbmResult(res);
-    } catch(e) { setAbmResult({error:e.message}); }
-    setAbmLoad(false);
-  };
-
-  // ── Competitor Intelligence ───────────────────────────────────────────────
-  const analyzeCompetitor = async () => {
-    if (!compUrl) return alert("Enter competitor name or domain");
-    setCompLoad(true); setCompResult(null);
-    try {
-      const res = await aiJSON(`Analyze this SAP consulting competitor for Ziksatech LLC: ${compUrl}
-
-Return competitive intelligence JSON:
-{
-  "competitor": "${compUrl}",
-  "threatLevel": "high|medium|low",
-  "positioning": "how they position themselves",
-  "strengths": ["their marketing strength 1","strength 2","strength 3"],
-  "weaknesses": ["their marketing gap 1","gap 2"],
-  "messagingThemes": ["what they talk about most","theme 2","theme 3"],
-  "targetAudience": "who they seem to target",
-  "differentiators": ["what makes them different"],
-  "ziksatechAdvantages": ["how Ziksatech is different/better","advantage 2","advantage 3"],
-  "countermessaging": [
-    {"theirClaim":"what they say","ourCounter":"how Ziksatech should respond"}
-  ],
-  "contentGaps": ["topic they don't cover that Ziksatech should own"],
-  "battleCard": "1 paragraph sales battlecard for when you're competing against them",
-  "recommendations": ["what Ziksatech should do to win against them"]
-}`,
-      "You are a competitive intelligence analyst specializing in SAP consulting industry. Return JSON only.");
-      setCompResult(res);
-    } catch(e) { setCompResult({error:e.message}); }
-    setCompLoad(false);
-  };
-
-  // ── SEO & Keyword Intelligence ────────────────────────────────────────────
-  const analyzeSEO = async () => {
-    if (!keyword) return alert("Enter a keyword or topic");
-    setSeoLoad(true); setSeoResult(null);
-    try {
-      const res = await aiJSON(`SEO and content intelligence for the keyword/topic: "${keyword}"
-Context: Ziksatech LLC is a SAP consulting firm (BRIM, S/4HANA, IS-U) in Plano TX, WBE/HUB/WOSB certified.
-
-Return JSON:
-{
-  "primaryKeyword": "${keyword}",
-  "searchIntent": "informational|commercial|transactional|navigational",
-  "difficulty": "easy|medium|hard",
-  "buyerJourneyStage": "awareness|consideration|decision",
-  "relatedKeywords": [{"keyword":"...","intent":"...","priority":"high|med|low"}],
-  "contentAngle": "best angle for Ziksatech to own this topic",
-  "contentIdeas": [
-    {"type":"linkedin|blog|email|case-study","title":"specific title","hook":"opening line","why":"why this would rank/resonate"}
-  ],
-  "competitorGaps": "what's missing from current content on this topic that Ziksatech could fill",
-  "linkedinHashtags": ["#relevant","#hashtags","for","linkedin"],
-  "estimatedAudience": "who searches for this and why",
-  "urgencyToCreate": "high|medium|low",
-  "monetizationPath": "how this content leads to a sales conversation"
-}`,
-      "You are an SEO and content marketing strategist. Return JSON only.");
-      setSeoResult(res);
-    } catch(e) { setSeoResult({error:e.message}); }
-    setSeoLoad(false);
-  };
-
-  // ── Demand Signal Monitor ─────────────────────────────────────────────────
-  const findDemandSignals = async () => {
-    setDemandLoad(true); setDemandResult(null);
-    const targetVerticals = [...new Set(safeClients.map(c=>c.industry).filter(Boolean))].slice(0,4).join(", ") || "Utilities, Telecom, Manufacturing, Healthcare";
-    try {
-      const res = await aiJSON(`You are a demand generation specialist. Identify buying signals and market opportunities for Ziksatech LLC.
-
-Target verticals based on current client base: ${targetVerticals}
-Ziksatech specialties: SAP BRIM, S/4HANA, IS-U, CPI Integration
-
-Generate demand intelligence for Q1 2026:
-
-Return JSON:
-{
-  "marketTemperature": "hot|warm|cool",
-  "topSignals": [
-    {
-      "signal": "specific market event or trend indicating buying intent",
-      "industry": "affected industry",
-      "urgency": "high|medium|low",
-      "ziksatechAngle": "how to approach this",
-      "estimatedTimeline": "when they'll be ready to buy",
-      "targetTitle": "job title to contact",
-      "firstMove": "specific first marketing action"
-    }
-  ],
-  "rfpOpportunities": [
-    {"type":"government|enterprise|utility","description":"type of RFP opportunity","approach":"how to position","certAdvantage":"how WBE/HUB/WOSB helps"}
-  ],
-  "highValueProspects": [
-    {"companyType":"description of ideal prospect right now","reason":"why they're likely buying","vertical":"industry","size":"company size"}
-  ],
-  "marketingTriggers": [
-    {"trigger":"event that creates urgency","message":"marketing message to use","channel":"where to share"}
-  ],
-  "immediateActions": ["do this today","do this this week","do this this month"]
-}`,
-      "You are a B2B demand generation expert for SAP consulting. Return JSON only.");
-      setDemandResult(res);
-    } catch(e) { setDemandResult({error:e.message}); }
-    setDemandLoad(false);
-  };
-
-  const intTabBtn = (id, label) => (
-    <button onClick={()=>setIntSub(id)}
-      style={{padding:"6px 14px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
-        background:intSub===id?"#c9a84c":"transparent",color:intSub===id?"#0d1b2a":"#475569"}}>
+  const tabBtn = (id, label, icon) => (
+    <button onClick={()=>setView(id)}
+      style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, padding:"10px 16px",
+        borderRadius:10, border:`1px solid ${view===id?"#c9a84c":"#1a2d45"}`,
+        background:view===id?"linear-gradient(135deg,#1a1005,#2a1a00)":"#060d1c",
+        color:view===id?"#c9a84c":"#475569", cursor:"pointer", fontSize:10, fontWeight:700, minWidth:80 }}>
+      <span style={{fontSize:20}}>{icon}</span>
       {label}
     </button>
   );
 
-  const THREAT_COLOR = {high:"#f87171",medium:"#f59e0b",low:"#34d399"};
-  const URGENCY_COLOR = {high:"#f87171",medium:"#f59e0b",low:"#38bdf8"};
-  const SENT_COLOR = {bullish:"#34d399",neutral:"#f59e0b",bearish:"#f87171"};
+  const ResultCard = ({ keyName, title }) => {
+    const r = result[keyName];
+    const isLoading = loading === keyName;
+    if (!r && !isLoading) return null;
+    const text = typeof r === "string" ? r : JSON.stringify(r, null, 2);
+    return (
+      <div className="card" style={{ padding:"18px 20px", marginTop:14, border:"1px solid #c9a84c33" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:"#c9a84c" }}>{title}</div>
+          <div style={{ display:"flex", gap:6 }}>
+            {r && <button className="btn bg" style={{fontSize:10}} onClick={()=>copy(text,"r-"+keyName)}>{copied==="r-"+keyName?"✅":"📋"}</button>}
+          </div>
+        </div>
+        {isLoading ? (
+          <div style={{ textAlign:"center", padding:"24px", color:"#38bdf8", fontSize:12 }}>🧠 AI is thinking...</div>
+        ) : typeof r === "object" && r !== null ? (
+          <StructuredResult data={r} />
+        ) : (
+          <pre style={{ fontSize:11, color:"#94a3b8", whiteSpace:"pre-wrap", lineHeight:1.7, margin:0 }}>{text}</pre>
+        )}
+      </div>
+    );
+  };
+
+  const StructuredResult = ({ data }) => {
+    if (typeof data === "string") return <pre style={{fontSize:11,color:"#94a3b8",whiteSpace:"pre-wrap",lineHeight:1.7,margin:0}}>{data}</pre>;
+    return (
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        {Object.entries(data).map(([key, val]) => {
+          const label = key.replace(/([A-Z])/g,' $1').replace(/_/g,' ').trim();
+          return (
+            <div key={key} style={{ padding:"8px 12px", background:"#040810", borderRadius:8, border:"1px solid #0a1826" }}>
+              <div style={{ fontSize:9, color:"#3d5a7a", fontWeight:700, textTransform:"uppercase", marginBottom:4 }}>{label}</div>
+              {Array.isArray(val) ? (
+                val.map((v,i) => (
+                  <div key={i} style={{ fontSize:11, color:"#94a3b8", padding:"2px 0" }}>
+                    {typeof v==="object" ? Object.entries(v).map(([k2,v2])=>`${k2}: ${v2}`).join(" · ") : `• ${v}`}
+                  </div>
+                ))
+              ) : typeof val==="object" && val!==null ? (
+                <div style={{fontSize:11,color:"#94a3b8"}}>{JSON.stringify(val)}</div>
+              ) : (
+                <div style={{ fontSize:12, color:"#e2e8f0", fontWeight:val&&String(val).length<60?600:400 }}>{String(val)}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div>
-      {/* Intelligence sub-tabs — golden bar */}
-      <div style={{display:"flex",gap:2,marginBottom:18,background:"#0d1b2a",borderRadius:10,padding:3,border:"1px solid #c9a84c44",width:"fit-content"}}>
-        {intTabBtn("pulse",    "📡 Market Pulse")}
-        {intTabBtn("strategy", "🗺 90-Day Strategy")}
-        {intTabBtn("abm",      "🎯 ABM Engine")}
-        {intTabBtn("compete",  "🔍 Competitor Intel")}
-        {intTabBtn("seo",      "🔑 SEO Intelligence")}
-        {intTabBtn("demand",   "⚡ Demand Signals")}
-        {intTabBtn("grade",    "⭐ Content Grader")}
+      {/* View nav */}
+      <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap" }}>
+        {tabBtn("planner",    "Campaign\nPlanner",   "🗓")}
+        {tabBtn("audience",   "Audience\nScorer",    "🎯")}
+        {tabBtn("optimizer",  "Content\nOptimizer",  "📈")}
+        {tabBtn("competitive","Competitive\nIntel",  "🏆")}
+        {tabBtn("predict",    "Outcome\nPredictor",  "🔮")}
+        {tabBtn("analyze",    "Campaign\nAnalyzer",  "🔬")}
       </div>
 
-      {/* ── MARKET PULSE ───────────────────────────────────────────────── */}
-      {intSub==="pulse" && (
-        <div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div>
-              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>📡 SAP Consulting Market Intelligence</div>
-              <div style={{fontSize:11,color:"#475569"}}>AI-generated market briefing — trending topics, buyer signals, content opportunities</div>
-            </div>
-            <button className="btn bp" style={{background:"linear-gradient(135deg,#c9a84c,#a07830)",color:"#0d1b2a",border:"none",fontWeight:700}}
-              onClick={fetchMarketPulse} disabled={pulseLoading}>
-              {pulseLoading?"⏳ Scanning market...":"📡 Get Market Pulse"}
-            </button>
-          </div>
-
-          {!pulseData && !pulseLoading && (
-            <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #c9a84c44",borderRadius:16}}>
-              <div style={{fontSize:48,marginBottom:12}}>📡</div>
-              <div style={{fontSize:14,color:"#475569",marginBottom:4}}>Market intelligence not yet loaded</div>
-              <div style={{fontSize:11,color:"#334155"}}>Click "Get Market Pulse" to generate a real-time briefing on SAP consulting market trends, buyer signals, and content opportunities</div>
-            </div>
-          )}
-
-          {pulseLoading && (
-            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #c9a84c33",borderRadius:16}}>
-              <div style={{fontSize:32,marginBottom:8}}>🌐</div>
-              <div style={{fontSize:13,color:"#c9a84c"}}>Scanning SAP consulting market intelligence...</div>
-              <div style={{fontSize:10,color:"#334155",marginTop:4}}>Analyzing trends · Identifying signals · Generating opportunities</div>
-            </div>
-          )}
-
-          {pulseData && !pulseData.error && (
-            <div>
-              {/* Headline + sentiment */}
-              <div style={{padding:"16px 20px",borderRadius:12,marginBottom:14,
-                background:SENT_COLOR[pulseData.marketSentiment]+"11",
-                border:`1px solid ${SENT_COLOR[pulseData.marketSentiment]}33`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Market Headline</div>
-                    <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0",lineHeight:1.5}}>{pulseData.headline}</div>
-                    <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>{pulseData.sentimentReason}</div>
-                  </div>
-                  <div style={{textAlign:"center",marginLeft:20,flexShrink:0}}>
-                    <div style={{fontSize:13,fontWeight:700,color:SENT_COLOR[pulseData.marketSentiment],
-                      padding:"4px 12px",borderRadius:20,background:SENT_COLOR[pulseData.marketSentiment]+"22",
-                      border:`1px solid ${SENT_COLOR[pulseData.marketSentiment]}44`}}>
-                      {pulseData.marketSentiment?.toUpperCase()}
-                    </div>
-                    <div style={{fontSize:9,color:"#475569",marginTop:2}}>market sentiment</div>
-                  </div>
-                </div>
-                {pulseData.weeklyAction && (
-                  <div style={{marginTop:10,padding:"8px 12px",background:"#c9a84c22",borderRadius:8,border:"1px solid #c9a84c44"}}>
-                    <span style={{fontSize:10,color:"#c9a84c",fontWeight:700}}>⚡ THIS WEEK: </span>
-                    <span style={{fontSize:11,color:"#e2e8f0"}}>{pulseData.weeklyAction}</span>
-                  </div>
-                )}
-              </div>
-
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
-                {/* Hot Topics */}
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#c9a84c",marginBottom:10}}>🔥 Hot Topics</div>
-                  {(pulseData.hotTopics||[]).map((t,i)=>(
-                    <div key={i} style={{padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
-                        <span style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{t.topic}</span>
-                        <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                          <span style={{fontSize:8,color:t.trend==="up"?"#34d399":t.trend==="down"?"#f87171":"#475569"}}>{t.trend==="up"?"↑":t.trend==="down"?"↓":"→"}</span>
-                          <span style={{fontSize:8,padding:"1px 5px",borderRadius:5,background:t.relevance==="high"?"#34d399":"#f59e0b"+"22",color:t.relevance==="high"?"#34d399":"#f59e0b"}}>{t.relevance}</span>
-                        </div>
-                      </div>
-                      <div style={{fontSize:9,color:"#475569"}}>{t.opportunity}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Buyer Signals */}
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>📈 Buyer Signals</div>
-                  {(pulseData.buyerSignals||[]).map((s,i)=>(
-                    <div key={i} style={{padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2,gap:6}}>
-                        <span style={{fontSize:10,color:"#e2e8f0",flex:1}}>{s.signal}</span>
-                        <span style={{fontSize:8,padding:"1px 5px",borderRadius:5,flexShrink:0,
-                          background:URGENCY_COLOR[s.urgency]+"22",color:URGENCY_COLOR[s.urgency]}}>{s.urgency}</span>
-                      </div>
-                      <div style={{fontSize:9,color:"#475569"}}>→ {s.action}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Content Opportunities */}
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#a78bfa",marginBottom:10}}>💡 Content Ops</div>
-                  {(pulseData.contentOpportunities||[]).map((co,i)=>(
-                    <div key={i} style={{padding:"7px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:6,marginBottom:2}}>
-                        <span style={{fontSize:10,fontWeight:600,color:"#e2e8f0",flex:1}}>{co.title}</span>
-                        <span style={{fontSize:8,padding:"1px 5px",borderRadius:5,flexShrink:0,
-                          background:co.priority==="high"?"#f8717122":"#1a2d45",color:co.priority==="high"?"#f87171":"#475569"}}>{co.priority}</span>
-                      </div>
-                      <div style={{fontSize:8,color:"#334155"}}>{co.type} · {co.why?.slice(0,50)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Trending keywords + Competitive alert */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div className="card" style={{padding:"12px 14px"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🔑 Trending Keywords</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                    {(pulseData.keywordsTrending||[]).map((kw,i)=>(
-                      <span key={i} style={{fontSize:10,padding:"3px 10px",borderRadius:20,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45",fontWeight:500}}>{kw}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="card" style={{padding:"12px 14px",background:"#1a0808",border:"1px solid #7f1d1d"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#f87171",marginBottom:4}}>⚠️ Competitive Alert</div>
-                  <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>{pulseData.competitiveAlert}</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── 90-DAY STRATEGY ────────────────────────────────────────────── */}
-      {intSub==="strategy" && (
-        <div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div>
-              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>🗺 AI-Generated 90-Day Marketing Strategy</div>
-              <div style={{fontSize:11,color:"#475569"}}>Personalized to your current client base, pipeline, and team</div>
-            </div>
-            <button className="btn bp" style={{background:"linear-gradient(135deg,#c9a84c,#a07830)",color:"#0d1b2a",border:"none",fontWeight:700}}
-              onClick={generateStrategy} disabled={stratLoading}>
-              {stratLoading?"⏳ Building strategy...":"🗺 Generate Strategy"}
-            </button>
-          </div>
-
-          {!strategy && !stratLoading && (
-            <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #c9a84c44",borderRadius:16}}>
-              <div style={{fontSize:48,marginBottom:12}}>🗺</div>
-              <div style={{fontSize:13,color:"#475569"}}>AI will build a custom 90-day strategy based on your {safeClients.length} clients, {safeDeals.length} deals, and {safeRoster.length} consultants</div>
-            </div>
-          )}
-          {stratLoading && <div style={{padding:"60px",textAlign:"center",background:"#060d1c",borderRadius:16}}><div style={{fontSize:24,marginBottom:8}}>🗺</div><div style={{fontSize:13,color:"#c9a84c"}}>Building your personalized strategy...</div></div>}
-
-          {strategy && !strategy.error && (
-            <div>
-              <div style={{padding:"14px 20px",background:"#c9a84c11",border:"1px solid #c9a84c44",borderRadius:12,marginBottom:14}}>
-                <div style={{fontSize:16,fontWeight:700,color:"#c9a84c"}}>{strategy.strategyTitle}</div>
-                <div style={{fontSize:12,color:"#94a3b8",marginTop:4}}>{strategy.primaryGoal}</div>
-                {strategy.budget && <div style={{fontSize:10,color:"#475569",marginTop:4}}>Investment level: {strategy.budget}</div>}
-              </div>
-
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                {/* Target Audiences */}
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>👥 Target Audiences</div>
-                  {(strategy.targetAudiences||[]).map((a,i)=>(
-                    <div key={i} style={{padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{display:"flex",justifyContent:"space-between"}}>
-                        <span style={{fontSize:11,fontWeight:600,color:"#38bdf8"}}>{a.segment}</span>
-                        <span style={{fontSize:9,color:"#475569"}}>{a.size}</span>
-                      </div>
-                      <div style={{fontSize:9,color:"#475569"}}>{a.approach}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Content Pillars */}
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>📋 Content Pillars</div>
-                  {(strategy.contentPillars||[]).map((p,i)=>(
-                    <div key={i} style={{padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{display:"flex",justifyContent:"space-between"}}>
-                        <span style={{fontSize:11,fontWeight:600,color:"#a78bfa"}}>{p.pillar}</span>
-                        <span style={{fontSize:9,color:"#475569"}}>{p.frequency}</span>
-                      </div>
-                      <div style={{fontSize:9,color:"#475569"}}>{p.description?.slice(0,60)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Weekly Schedule */}
-              <div className="card" style={{padding:"14px 16px",marginBottom:12}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📅 90-Day Roadmap</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-                  {(strategy.weeklySchedule||[]).map((w,i)=>(
-                    <div key={i} style={{padding:"10px 12px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:4}}>{w.week}</div>
-                      <div style={{fontSize:10,fontWeight:600,color:"#e2e8f0",marginBottom:4}}>{w.focus}</div>
-                      {(w.actions||[]).map((a,j)=><div key={j} style={{fontSize:9,color:"#475569",padding:"1px 0"}}>• {a}</div>)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quick wins + KPIs */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-                <div className="card" style={{padding:"12px 14px",background:"#021f14",border:"1px solid #15803d"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#34d399",marginBottom:6}}>⚡ Quick Wins</div>
-                  {(strategy.quickWins||[]).map((w,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {w}</div>)}
-                </div>
-                <div className="card" style={{padding:"12px 14px"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>📊 KPIs to Track</div>
-                  {(strategy.kpis||[]).map((k,i)=>(
-                    <div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>{k.metric}: <span style={{color:"#38bdf8"}}>{k.target}</span> in {k.timeframe}</div>
-                  ))}
-                </div>
-                <div className="card" style={{padding:"12px 14px",background:"#0c2340",border:"1px solid #0369a1"}}>
-                  <div style={{fontSize:10,fontWeight:700,color:"#7dd3fc",marginBottom:6}}>🎯 Expected Outcomes</div>
-                  {(strategy.expectedOutcomes||[]).map((o,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {o}</div>)}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── ABM ENGINE ─────────────────────────────────────────────────── */}
-      {intSub==="abm" && (
-        <div>
-          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🎯 Account-Based Marketing Engine</div>
-          <div style={{fontSize:11,color:"#475569",marginBottom:16}}>Deep-dive research + personalized outreach strategy for any target account</div>
-          <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:14,alignItems:"start"}}>
+      {/* ── 1. CAMPAIGN PLANNER ──────────────────────────────────────────── */}
+      {view==="planner" && (
+        <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:14,alignItems:"start"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🗓 Multi-Channel Campaign Planner</div>
+              <div style={{fontSize:10,color:"#475569",marginBottom:14}}>AI builds a full campaign strategy with weekly schedule, messaging, KPIs, and tactics for every channel</div>
+              {/* Goal */}
               <div style={{marginBottom:10}}>
-                <div className="lbl">Target Company *</div>
-                <input className="inp" value={abmTarget} onChange={e=>setAbmTarget(e.target.value)}
-                  placeholder="e.g. AT&T, Southwest Airlines, Kaiser Permanente..."/>
+                <div className="lbl">Campaign Goal</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+                  {[["🎯 Generate Leads","generate-leads"],["🏆 Win a Deal","close-deal"],["📢 Build Awareness","brand-awareness"],["🔄 Nurture Existing","nurture"],["💼 Recruit Talent","recruit"],["🤝 Partner Outreach","partnerships"]].map(([label,id])=>(
+                    <div key={id} onClick={()=>setPlanForm(p=>({...p,goal:id}))}
+                      style={{padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:10,fontWeight:600,
+                        background:planForm.goal===id?"#1a1005":"#040810",
+                        border:`1px solid ${planForm.goal===id?"#c9a84c":"#1a2d45"}`,
+                        color:planForm.goal===id?"#c9a84c":"#475569"}}>
+                      {label}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{marginBottom:14}}>
-                <div className="lbl">Industry</div>
-                <select className="inp" value={abmIndustry} onChange={e=>setAbmIndustry(e.target.value)}>
-                  <option value="">— select —</option>
-                  {["Utilities","Telecom","Healthcare","Manufacturing","Financial Services","Retail","Technology","Government","Energy","Transportation"].map(i=><option key={i}>{i}</option>)}
+              {/* Target */}
+              <div style={{marginBottom:10}}>
+                <div className="lbl">Target Audience</div>
+                <select className="inp" value={planForm.audience} onChange={e=>setPlanForm(p=>({...p,audience:e.target.value}))}>
+                  {[["enterprise-prospects","Enterprise Prospects (F500, large utilities)"],["mid-market","Mid-Market Companies"],["government","Government / Public Sector"],["existing-clients","Existing Clients (upsell)"],["sap-users","SAP Users Migrating to S/4"],["utilities","Utilities / Energy Sector"],["healthcare","Healthcare Systems"],["manufacturing","Manufacturing Companies"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
                 </select>
               </div>
-              {/* Quick target from clients */}
-              {safeClients.length > 0 && (
-                <div style={{marginBottom:14}}>
-                  <div className="lbl">Or Research an Existing Client</div>
-                  <select className="inp" onChange={e=>{
-                    const cl = safeClients.find(c=>c.id===e.target.value);
-                    if(cl){setAbmTarget(cl.name);setAbmIndustry(cl.industry||"");}
-                  }}>
-                    <option value="">— select —</option>
-                    {safeClients.map(cl=><option key={cl.id} value={cl.id}>{cl.name}</option>)}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div>
+                  <div className="lbl">Duration</div>
+                  <select className="inp" value={planForm.duration} onChange={e=>setPlanForm(p=>({...p,duration:e.target.value}))}>
+                    {["1-week","2-weeks","4-weeks","6-weeks","3-months","6-months"].map(d=><option key={d}>{d}</option>)}
                   </select>
                 </div>
-              )}
-              {safeDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage)).length > 0 && (
-                <div style={{marginBottom:14}}>
-                  <div className="lbl">Or From Open Pipeline</div>
-                  <select className="inp" onChange={e=>{
-                    const d = safeDeals.find(x=>x.id===e.target.value);
-                    if(d){setAbmTarget(d.name?.split(" ").slice(0,2).join(" ")||d.name);}
-                  }}>
-                    <option value="">— select deal —</option>
-                    {safeDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage)).map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+                <div>
+                  <div className="lbl">Budget Level</div>
+                  <select className="inp" value={planForm.budget} onChange={e=>setPlanForm(p=>({...p,budget:e.target.value}))}>
+                    {[["small","Small (<$2k/mo)"],["medium","Medium ($2k-10k/mo)"],["large","Large ($10k+/mo)"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
                   </select>
-                </div>
-              )}
-              <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px",background:"linear-gradient(135deg,#c9a84c,#a07830)",color:"#0d1b2a",border:"none",fontWeight:700}}
-                onClick={runABM} disabled={abmLoading}>
-                {abmLoading?"⏳ Researching...":"🎯 Generate ABM Profile"}
-              </button>
-            </div>
-
-            <div>
-              {!abmResult && !abmLoading && (
-                <div style={{padding:"50px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #c9a84c44",borderRadius:12}}>
-                  <div style={{fontSize:36,marginBottom:8}}>🎯</div>
-                  <div style={{fontSize:13,color:"#475569"}}>Enter a target company to generate a full ABM attack plan with personalized outreach sequences</div>
-                </div>
-              )}
-              {abmLoading && <div style={{padding:"50px",textAlign:"center",background:"#060d1c",borderRadius:12}}><div style={{fontSize:24,marginBottom:8}}>🔍</div><div style={{fontSize:12,color:"#c9a84c"}}>Researching {abmTarget}...</div></div>}
-              {abmResult && !abmResult.error && (
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  {/* Score + summary */}
-                  <div className="card" style={{padding:"14px 18px",border:`1px solid ${abmResult.fitScore>=70?"#34d399":abmResult.fitScore>=50?"#f59e0b":"#f87171"}44`}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                      <div>
-                        <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>{abmResult.company}</div>
-                        <div style={{fontSize:11,color:"#475569",marginTop:2}}>{abmResult.fitReason}</div>
-                        <div style={{fontSize:10,color:"#c9a84c",marginTop:4}}>Est. deal: {abmResult.estimatedDealSize} · Stage: {abmResult.buyingJourneyStage?.replace(/-/g," ")}</div>
-                      </div>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontSize:36,fontWeight:900,color:abmResult.fitScore>=70?"#34d399":abmResult.fitScore>=50?"#f59e0b":"#f87171"}}>{abmResult.fitScore}%</div>
-                        <div style={{fontSize:9,color:"#475569"}}>fit score</div>
-                      </div>
-                    </div>
-                    <div style={{marginTop:8,padding:"6px 10px",background:"#c9a84c22",borderRadius:6,border:"1px solid #c9a84c44"}}>
-                      <span style={{fontSize:10,fontWeight:700,color:"#c9a84c"}}>🏅 WBE/HUB/WOSB: </span>
-                      <span style={{fontSize:10,color:"#94a3b8"}}>{abmResult.wbeCertAdvantage}</span>
-                    </div>
-                  </div>
-
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                    {/* Pain points */}
-                    <div className="card" style={{padding:"12px 14px"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:"#f87171",marginBottom:6}}>💊 Pain Points</div>
-                      {(abmResult.painPoints||[]).map((p,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {p}</div>)}
-                      <div style={{marginTop:8,fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:4}}>🔧 SAP Solutions That Fit</div>
-                      {(abmResult.sapRelevance||[]).map((s,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {s}</div>)}
-                    </div>
-
-                    {/* Key stakeholders */}
-                    <div className="card" style={{padding:"12px 14px"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:"#a78bfa",marginBottom:6}}>👤 Key Stakeholders</div>
-                      {(abmResult.keyStakeholders||[]).map((s,i)=>(
-                        <div key={i} style={{padding:"4px 0",borderBottom:"1px solid #0a1626"}}>
-                          <div style={{fontSize:10,fontWeight:600,color:"#e2e8f0"}}>{s.title}</div>
-                          <div style={{fontSize:9,color:"#475569"}}>{s.concern}</div>
-                          <div style={{fontSize:9,color:"#7dd3fc",fontStyle:"italic"}}>"{s.message}"</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Outreach sequence */}
-                  <div className="card" style={{padding:"14px 16px"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📬 Personalized Outreach Sequence</div>
-                    {(abmResult.outreachSequence||[]).map((step,i)=>(
-                      <div key={i} style={{display:"flex",gap:12,padding:"8px 0",borderBottom:"1px solid #0a1626",alignItems:"flex-start"}}>
-                        <div style={{width:28,height:28,borderRadius:"50%",background:"#0369a1",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{step.step}</div>
-                        <div style={{flex:1}}>
-                          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3}}>
-                            <span style={{fontSize:10,fontWeight:700,color:"#38bdf8"}}>{step.channel}</span>
-                            <span style={{fontSize:9,color:"#475569"}}>{step.timing}</span>
-                            <span style={{fontSize:9,color:"#94a3b8"}}>{step.action}</span>
-                          </div>
-                          <div style={{fontSize:10,color:"#475569",fontStyle:"italic"}}>"{step.template}"</div>
-                        </div>
-                      </div>
-                    ))}
-                    <div style={{marginTop:8,padding:"6px 10px",background:"#34d39922",borderRadius:6,border:"1px solid #34d39944"}}>
-                      <span style={{fontSize:10,fontWeight:700,color:"#34d399"}}>⚡ Next Best Action: </span>
-                      <span style={{fontSize:10,color:"#e2e8f0"}}>{abmResult.nextBestAction}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── COMPETITOR INTELLIGENCE ─────────────────────────────────────── */}
-      {intSub==="compete" && (
-        <div>
-          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🔍 Competitor Intelligence</div>
-          <div style={{fontSize:11,color:"#475569",marginBottom:16}}>Analyze any SAP consulting competitor — positioning, gaps, battlecard, counter-messaging</div>
-          <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:14,alignItems:"start"}}>
-            <div className="card" style={{padding:"14px 16px"}}>
-              <div className="lbl">Competitor Name / Domain</div>
-              <input className="inp" value={compUrl} onChange={e=>setCompUrl(e.target.value)}
-                placeholder="e.g. Accenture SAP, Deloitte, Infosys..."/>
-              <div style={{marginTop:10,marginBottom:14,fontSize:10,color:"#334155"}}>Common SAP consulting competitors:</div>
-              {["Accenture","Deloitte Digital","Infosys","Wipro","Capgemini","HCL SAP Practice"].map(c=>(
-                <div key={c} style={{padding:"4px 8px",borderRadius:6,cursor:"pointer",fontSize:10,color:"#475569",marginBottom:3,
-                  background:"#040810",border:"1px solid #1a2d45"}}
-                  onClick={()=>setCompUrl(c)}>
-                  {c}
-                </div>
-              ))}
-              <button className="btn bp" style={{width:"100%",marginTop:10,justifyContent:"center",background:"linear-gradient(135deg,#c9a84c,#a07830)",color:"#0d1b2a",border:"none",fontWeight:700}}
-                onClick={analyzeCompetitor} disabled={compLoading}>
-                {compLoading?"⏳ Analyzing...":"🔍 Analyze Competitor"}
-              </button>
-            </div>
-
-            <div>
-              {!compResult && !compLoading && (
-                <div style={{padding:"50px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
-                  <div style={{fontSize:36,marginBottom:8}}>🔍</div>
-                  <div style={{fontSize:13,color:"#475569"}}>Enter a competitor to generate battlecard, counter-messaging, and differentiation strategy</div>
-                </div>
-              )}
-              {compLoading && <div style={{padding:"50px",textAlign:"center",background:"#060d1c",borderRadius:12}}><div style={{fontSize:13,color:"#c9a84c"}}>Analyzing competitor intelligence...</div></div>}
-              {compResult && !compResult.error && (
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  <div className="card" style={{padding:"14px 18px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                      <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{compResult.competitor}</div>
-                      <span style={{fontSize:11,padding:"3px 10px",borderRadius:8,background:THREAT_COLOR[compResult.threatLevel]+"22",color:THREAT_COLOR[compResult.threatLevel],border:`1px solid ${THREAT_COLOR[compResult.threatLevel]}44`,fontWeight:700}}>
-                        {compResult.threatLevel?.toUpperCase()} THREAT
-                      </span>
-                    </div>
-                    <div style={{fontSize:11,color:"#94a3b8"}}>{compResult.positioning}</div>
-                  </div>
-
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                    <div className="card" style={{padding:"12px 14px"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:"#f87171",marginBottom:5}}>💪 Their Strengths</div>
-                      {(compResult.strengths||[]).map((s,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {s}</div>)}
-                      <div style={{fontSize:10,fontWeight:700,color:"#34d399",marginTop:8,marginBottom:4}}>🏆 Our Advantages</div>
-                      {(compResult.ziksatechAdvantages||[]).map((a,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",padding:"2px 0"}}>• {a}</div>)}
-                    </div>
-                    <div className="card" style={{padding:"12px 14px"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:"#f59e0b",marginBottom:5}}>💬 Counter-Messaging</div>
-                      {(compResult.counterMessaging||[]).map((cm,i)=>(
-                        <div key={i} style={{padding:"4px 0",borderBottom:"1px solid #0a1626"}}>
-                          <div style={{fontSize:9,color:"#f87171"}}>They say: "{cm.theirClaim}"</div>
-                          <div style={{fontSize:9,color:"#34d399"}}>We say: {cm.ourCounter}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Battlecard */}
-                  <div className="card" style={{padding:"14px 16px",background:"#0c2340",border:"1px solid #0369a1"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#7dd3fc",marginBottom:6}}>🃏 Sales Battlecard</div>
-                    <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.7}}>{compResult.battleCard}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── SEO INTELLIGENCE ─────────────────────────────────────────────── */}
-      {intSub==="seo" && (
-        <div>
-          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🔑 SEO & Keyword Intelligence</div>
-          <div style={{fontSize:11,color:"#475569",marginBottom:16}}>Analyze any keyword — search intent, content angles, LinkedIn hashtags, monetization path</div>
-          <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:14,alignItems:"start"}}>
-            <div className="card" style={{padding:"14px 16px"}}>
-              <div className="lbl">Keyword or Topic</div>
-              <input className="inp" value={keyword} onChange={e=>setKeyword(e.target.value)}
-                placeholder="e.g. SAP BRIM implementation, S/4HANA migration costs..."/>
-              <div style={{marginTop:10,fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:4}}>SUGGESTED TOPICS</div>
-              {["SAP BRIM implementation","S/4HANA migration","utility billing modernization","SAP cloud migration","WBE certified SAP consulting","SAP BRIM vs OpenBRM","revenue management SAP"].map(k=>(
-                <div key={k} style={{padding:"4px 8px",borderRadius:5,cursor:"pointer",fontSize:10,color:"#475569",marginBottom:3,background:"#040810",border:"1px solid #1a2d45"}}
-                  onClick={()=>setKeyword(k)}>{k}</div>
-              ))}
-              <button className="btn bp" style={{width:"100%",marginTop:10,justifyContent:"center",background:"linear-gradient(135deg,#c9a84c,#a07830)",color:"#0d1b2a",border:"none",fontWeight:700}}
-                onClick={analyzeSEO} disabled={seoLoading}>
-                {seoLoading?"⏳ Analyzing...":"🔑 Analyze Keyword"}
-              </button>
-            </div>
-
-            <div>
-              {!seoResult && !seoLoading && (
-                <div style={{padding:"50px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
-                  <div style={{fontSize:36,marginBottom:8}}>🔑</div>
-                  <div style={{fontSize:13,color:"#475569"}}>Analyze any keyword for content ideas, LinkedIn hashtags, buyer intent, and monetization path</div>
-                </div>
-              )}
-              {seoLoading && <div style={{padding:"50px",textAlign:"center",background:"#060d1c",borderRadius:12}}><div style={{fontSize:13,color:"#c9a84c"}}>Analyzing keyword intelligence...</div></div>}
-              {seoResult && !seoResult.error && (
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  <div className="card" style={{padding:"14px 18px"}}>
-                    <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-                      <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>{seoResult.primaryKeyword}</div>
-                      {[["intent",seoResult.searchIntent,"#38bdf8"],["difficulty",seoResult.difficulty,"#f59e0b"],["stage",seoResult.buyerJourneyStage,"#a78bfa"],["urgency",seoResult.urgencyToCreate,"#34d399"]].map(([label,val,color])=>(
-                        <span key={label} style={{fontSize:9,padding:"2px 8px",borderRadius:8,background:color+"22",color,border:`1px solid ${color}44`}}>{label}: {val}</span>
-                      ))}
-                    </div>
-                    <div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>{seoResult.contentAngle}</div>
-                    <div style={{fontSize:10,color:"#475569",marginTop:4}}>Audience: {seoResult.estimatedAudience}</div>
-                    <div style={{marginTop:6,padding:"5px 10px",background:"#c9a84c11",borderRadius:6,border:"1px solid #c9a84c33"}}>
-                      <span style={{fontSize:10,color:"#c9a84c",fontWeight:700}}>💰 Monetization: </span>
-                      <span style={{fontSize:10,color:"#94a3b8"}}>{seoResult.monetizationPath}</span>
-                    </div>
-                  </div>
-
-                  <div className="card" style={{padding:"14px 16px"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>💡 Content Ideas</div>
-                    {(seoResult.contentIdeas||[]).map((ci,i)=>(
-                      <div key={i} style={{padding:"8px 10px",borderRadius:8,background:"#040810",border:"1px solid #1a2d45",marginBottom:6}}>
-                        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3}}>
-                          <span style={{fontSize:9,padding:"1px 6px",borderRadius:5,background:"#0c1e3d",color:"#7dd3fc"}}>{ci.type}</span>
-                          <span style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{ci.title}</span>
-                        </div>
-                        <div style={{fontSize:10,color:"#475569",fontStyle:"italic"}}>"{ci.hook}"</div>
-                        <div style={{fontSize:9,color:"#334155",marginTop:2}}>{ci.why}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                    <div className="card" style={{padding:"12px 14px"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>🔗 LinkedIn Hashtags</div>
-                      <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                        {(seoResult.linkedinHashtags||[]).map((h,i)=>(
-                          <span key={i} style={{fontSize:10,padding:"2px 8px",borderRadius:12,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45"}}>{h}</span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="card" style={{padding:"12px 14px"}}>
-                      <div style={{fontSize:10,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>🔍 Related Keywords</div>
-                      {(seoResult.relatedKeywords||[]).slice(0,4).map((rk,i)=>(
-                        <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"2px 0",cursor:"pointer"}} onClick={()=>setKeyword(rk.keyword)}>
-                          <span style={{fontSize:10,color:"#94a3b8"}}>{rk.keyword}</span>
-                          <span style={{fontSize:9,color:"#475569"}}>{rk.priority}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── DEMAND SIGNALS ───────────────────────────────────────────────── */}
-      {intSub==="demand" && (
-        <div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-            <div>
-              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>⚡ Demand Signal Monitor</div>
-              <div style={{fontSize:11,color:"#475569"}}>Who's likely buying SAP services right now · RFP opportunities · High-value prospect signals</div>
-            </div>
-            <button className="btn bp" style={{background:"linear-gradient(135deg,#c9a84c,#a07830)",color:"#0d1b2a",border:"none",fontWeight:700}}
-              onClick={findDemandSignals} disabled={demandLoading}>
-              {demandLoading?"⏳ Scanning signals...":"⚡ Find Demand Signals"}
-            </button>
-          </div>
-
-          {!demandResult && !demandLoading && (
-            <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #c9a84c44",borderRadius:16}}>
-              <div style={{fontSize:48,marginBottom:12}}>⚡</div>
-              <div style={{fontSize:13,color:"#475569"}}>Click "Find Demand Signals" to identify companies and sectors actively looking for SAP consulting help right now</div>
-            </div>
-          )}
-          {demandLoading && <div style={{padding:"60px",textAlign:"center",background:"#060d1c",borderRadius:16}}><div style={{fontSize:13,color:"#c9a84c"}}>Scanning market for demand signals...</div></div>}
-
-          {demandResult && !demandResult.error && (
-            <div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
-                {/* Top demand signals */}
-                <div className="card" style={{padding:"14px 16px",gridColumn:"1/-1"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📈 Active Demand Signals</div>
-                    <span style={{fontSize:10,padding:"2px 10px",borderRadius:8,
-                      background:demandResult.marketTemperature==="hot"?"#f8717122":demandResult.marketTemperature==="warm"?"#f59e0b22":"#38bdf822",
-                      color:demandResult.marketTemperature==="hot"?"#f87171":demandResult.marketTemperature==="warm"?"#f59e0b":"#38bdf8",
-                      border:`1px solid ${demandResult.marketTemperature==="hot"?"#7f1d1d":demandResult.marketTemperature==="warm"?"#92400e":"#1a2d45"}`,fontWeight:700}}>
-                      {demandResult.marketTemperature?.toUpperCase()} MARKET
-                    </span>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
-                    {(demandResult.topSignals||[]).map((sig,i)=>(
-                      <div key={i} style={{padding:"10px 12px",borderRadius:8,background:"#040810",border:`1px solid ${URGENCY_COLOR[sig.urgency]||"#1a2d45"}33`}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                          <span style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{sig.signal}</span>
-                          <span style={{fontSize:8,padding:"1px 5px",borderRadius:5,background:URGENCY_COLOR[sig.urgency]+"22",color:URGENCY_COLOR[sig.urgency]}}>{sig.urgency}</span>
-                        </div>
-                        <div style={{fontSize:9,color:"#475569",marginBottom:3}}>Industry: {sig.industry} · Timeline: {sig.estimatedTimeline}</div>
-                        <div style={{fontSize:9,color:"#38bdf8"}}>Contact: {sig.targetTitle}</div>
-                        <div style={{fontSize:9,color:"#34d399",marginTop:3}}>→ {sig.firstMove}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* RFP Opportunities */}
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#c9a84c",marginBottom:8}}>📋 RFP Opportunities</div>
-                  {(demandResult.rfpOpportunities||[]).map((rfp,i)=>(
-                    <div key={i} style={{padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{fontSize:10,fontWeight:600,color:"#e2e8f0"}}>{rfp.type}: {rfp.description?.slice(0,50)}</div>
-                      <div style={{fontSize:9,color:"#c9a84c"}}>WBE/HUB advantage: {rfp.certAdvantage?.slice(0,50)}</div>
-                      <div style={{fontSize:9,color:"#475569"}}>{rfp.approach?.slice(0,50)}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* High value prospects */}
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#a78bfa",marginBottom:8}}>🎯 Ideal Prospects Right Now</div>
-                  {(demandResult.highValueProspects||[]).map((p,i)=>(
-                    <div key={i} style={{padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{fontSize:10,fontWeight:600,color:"#e2e8f0"}}>{p.companyType}</div>
-                      <div style={{fontSize:9,color:"#475569"}}>{p.vertical} · {p.size}</div>
-                      <div style={{fontSize:9,color:"#a78bfa"}}>{p.reason?.slice(0,55)}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Marketing triggers */}
-                <div className="card" style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>⚡ Marketing Triggers</div>
-                  {(demandResult.marketingTriggers||[]).map((t,i)=>(
-                    <div key={i} style={{padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
-                      <div style={{fontSize:10,fontWeight:600,color:"#e2e8f0"}}>{t.trigger}</div>
-                      <div style={{fontSize:9,color:"#38bdf8"}}>Message: {t.message?.slice(0,50)}</div>
-                      <div style={{fontSize:9,color:"#475569"}}>Channel: {t.channel}</div>
-                    </div>
-                  ))}
                 </div>
               </div>
+              <div style={{marginBottom:10}}>
+                <div className="lbl">Channels (comma-separated)</div>
+                <input className="inp" value={planForm.channels} onChange={e=>setPlanForm(p=>({...p,channels:e.target.value}))}
+                  placeholder="linkedin, email, website, events, cold-outreach..."/>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div className="lbl">Campaign Theme / Key Message (optional)</div>
+                <textarea className="inp" rows={2} value={planForm.theme} onChange={e=>setPlanForm(p=>({...p,theme:e.target.value}))}
+                  placeholder="e.g. 'SAP BRIM implementations under 9 months', 'WBE advantage in procurement'..."/>
+              </div>
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px",background:"linear-gradient(135deg,#a07830,#c9a84c)",color:"#0d1b2a",fontWeight:800,border:"none"}}
+                onClick={()=>ai(`Build a comprehensive multi-channel marketing campaign plan for Ziksatech LLC:
 
-              {/* Immediate actions */}
-              {demandResult.immediateActions?.length > 0 && (
-                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                  {[["🔴 Do Today","#f87171","#1a0808","#7f1d1d"],["🟡 Do This Week","#f59e0b","#1a1005","#92400e"],["🟢 Do This Month","#34d399","#021f14","#15803d"]].map(([label,color,bg,border],i)=>(
-                    <div key={i} style={{padding:"12px 14px",borderRadius:8,background:bg,border:`1px solid ${border}`}}>
-                      <div style={{fontSize:10,fontWeight:700,color,marginBottom:4}}>{label}</div>
-                      <div style={{fontSize:11,color:"#94a3b8"}}>{demandResult.immediateActions?.[i]||"—"}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+Campaign Goal: ${planForm.goal}
+Target Audience: ${planForm.audience}  
+Duration: ${planForm.duration}
+Budget Level: ${planForm.budget}
+Channels: ${planForm.channels}
+Theme/Message: ${planForm.theme || "Emphasize SAP expertise + WBE/HUB/WOSB certification advantage"}
+
+${contextSnapshot()}
+
+Return JSON with this structure:
+{
+  "campaignName": "catchy name",
+  "executiveSummary": "2-sentence strategy summary",
+  "weeklyPlan": [{"week":"Week 1", "focus":"...", "activities":["...", "..."], "goal":"..."}],
+  "messagingFramework": {"primaryMessage":"...", "valueProps":["...", "..."], "callToAction":"..."},
+  "channelStrategy": [{"channel":"...", "frequency":"...", "contentType":"...", "expectedReach":"..."}],
+  "kpis": [{"metric":"...", "target":"...", "measurement":"..."}],
+  "budget": {"breakdown":[{"item":"...", "amount":"..."}], "totalEstimate":"..."},
+  "quickWins": ["immediate action 1", "immediate action 2", "immediate action 3"],
+  "risks": ["potential risk 1"],
+  "certificationAngle": "How to leverage WBE/HUB/WOSB in this specific campaign"
+}`, "planner")} disabled={loading==="planner"}>
+                {loading==="planner"?"🧠 Planning Campaign...":"✨ Generate Campaign Plan"}
+              </button>
             </div>
-          )}
+            {/* Context card */}
+            <div className="card" style={{padding:"12px 14px"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Live Context Loaded</div>
+              <div style={{fontSize:10,color:"#475569",lineHeight:1.7}}>
+                <div>👥 {safeClients.length} active clients</div>
+                <div>💼 {safeDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage)).length} open pipeline deals</div>
+                <div>📝 {safeSaved.length} saved content pieces</div>
+                <div>🏆 {safeDeals.filter(d=>d.stage==="closed_won").length} won deals to reference</div>
+              </div>
+            </div>
+          </div>
+          {/* Result */}
+          <div>
+            {!result.planner && loading!=="planner" ? (
+              <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:40,marginBottom:12}}>🗓</div>
+                <div style={{fontSize:13,color:"#334155"}}>Configure your campaign on the left and AI will build a complete multi-channel plan with weekly schedule, messaging framework, channel strategy, KPIs, and budget breakdown</div>
+              </div>
+            ) : <ResultCard keyName="planner" title="🗓 Your AI-Generated Campaign Plan"/>}
+          </div>
         </div>
       )}
 
-      {/* ── CONTENT GRADER ────────────────────────────────────────────────── */}
-      {intSub==="grade" && <ContentGrader/>}
+      {/* ── 2. AUDIENCE SCORER ──────────────────────────────────────────── */}
+      {view==="audience" && (
+        <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:14,alignItems:"start"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🎯 Audience Scoring</div>
+              <div style={{fontSize:10,color:"#475569",marginBottom:14}}>Score how likely a prospect is to need Ziksatech's SAP services and prioritize outreach</div>
+              {[["Company Name *","companyName","text","e.g. Oncor Electric"],["Industry","industry","text","Utilities, Healthcare, Mfg..."],["Company Size","size","text","5,000 employees / $2B revenue"],["Buying Signals Observed","signals","textarea","e.g. posted SAP job openings, announced digital transformation..."],["Additional Context","context","textarea","e.g. SAP user since 2010, looking to migrate from ECC..."]].map(([label,key,type,ph])=>(
+                <div key={key} style={{marginBottom:10}}>
+                  <div className="lbl">{label}</div>
+                  {type==="textarea"
+                    ? <textarea className="inp" rows={2} value={audForm[key]||""} onChange={e=>setAudForm(p=>({...p,[key]:e.target.value}))} placeholder={ph}/>
+                    : <input className="inp" value={audForm[key]||""} onChange={e=>setAudForm(p=>({...p,[key]:e.target.value}))} placeholder={ph}/>
+                  }
+                </div>
+              ))}
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px",background:"linear-gradient(135deg,#a07830,#c9a84c)",color:"#0d1b2a",fontWeight:800,border:"none"}}
+                onClick={()=>ai(`Score this prospect for Ziksatech LLC SAP consulting services:
+
+Company: ${audForm.companyName}
+Industry: ${audForm.industry}
+Size: ${audForm.size}
+Buying signals: ${audForm.signals || "Unknown"}
+Context: ${audForm.context || "None"}
+
+${contextSnapshot()}
+
+Return JSON: {
+  "overallScore": 0-100,
+  "grade": "A/B/C/D",
+  "likelihood": "Hot/Warm/Cool/Cold",
+  "urgencyScore": 0-100,
+  "budgetFitScore": 0-100,
+  "sapAffinityScore": 0-100,
+  "certificationAdvantageScore": 0-100,
+  "reasoning": "2-3 sentences why this score",
+  "topSignals": ["signal 1", "signal 2"],
+  "recommendedApproach": "How to approach this specific prospect",
+  "bestOutreachChannel": "linkedin/email/cold-call/event",
+  "openingHook": "One compelling opening line for outreach",
+  "potentialServiceFit": ["SAP BRIM", "S/4HANA Migration", etc],
+  "estimatedDealSize": "$X range",
+  "timeToClose": "X months estimate",
+  "objections": ["likely objection 1"],
+  "certificationAngle": "How WBE/HUB/WOSB helps with this specific prospect"
+}`, "audience")} disabled={loading==="audience"}>
+                {loading==="audience"?"🧠 Scoring...":"🎯 Score This Prospect"}
+              </button>
+            </div>
+            {/* Industry quick-fills */}
+            <div className="card" style={{padding:"12px 14px"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Quick Score Existing Clients</div>
+              {safeClients.slice(0,4).map(cl=>(
+                <div key={cl.id} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #0a1626",cursor:"pointer",fontSize:10}}
+                  onClick={()=>setAudForm(p=>({...p,companyName:cl.name,industry:cl.industry||""}))}>
+                  <span style={{color:"#94a3b8"}}>{cl.name}</span>
+                  <span style={{color:"#c9a84c"}}>{cl.industry||"—"} →</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            {!result.audience && loading!=="audience" ? (
+              <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:40,marginBottom:12}}>🎯</div>
+                <div style={{fontSize:13,color:"#334155"}}>Enter prospect details and AI will score their likelihood of needing Ziksatech services, plus recommend a tailored outreach approach</div>
+              </div>
+            ) : <ResultCard keyName="audience" title="🎯 Prospect Scoring Report"/>}
+          </div>
+        </div>
+      )}
+
+      {/* ── 3. CONTENT OPTIMIZER ─────────────────────────────────────────── */}
+      {view==="optimizer" && (
+        <div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:14,alignItems:"start"}}>
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>📈 Content Optimizer</div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:14}}>Improve existing content or generate A/B test variants for better performance</div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Content Type</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+                {[["Email Subject","email-subject"],["LinkedIn Post","linkedin-post"],["Cold Outreach","cold-email"],["CTA Button","cta"],["Headline","headline"],["Social Blurb","social-blurb"]].map(([label,id])=>(
+                  <div key={id} onClick={()=>setOptForm(p=>({...p,contentType:id}))}
+                    style={{padding:"5px 8px",borderRadius:6,cursor:"pointer",fontSize:10,fontWeight:600,textAlign:"center",
+                      background:optForm.contentType===id?"#1a1005":"#040810",
+                      border:`1px solid ${optForm.contentType===id?"#c9a84c":"#1a2d45"}`,
+                      color:optForm.contentType===id?"#c9a84c":"#475569"}}>
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Your Current Content</div>
+              <textarea className="inp" rows={4} value={optForm.content} onChange={e=>setOptForm(p=>({...p,content:e.target.value}))}
+                placeholder="Paste your existing content or subject line here..."/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Target Audience / Context</div>
+              <input className="inp" value={optForm.context} onChange={e=>setOptForm(p=>({...p,context:e.target.value}))}
+                placeholder="e.g. SAP decision-maker, enterprise utility CIO..."/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div className="lbl">Optimization Goal</div>
+              <select className="inp" value={optForm.goal} onChange={e=>setOptForm(p=>({...p,goal:e.target.value}))}>
+                {[["","Higher open/click rates"],["urgency","Create urgency"],["personalization","More personalized"],["clarity","Clearer value prop"],["shorter","More concise"],["hook","Stronger hook"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px",background:"linear-gradient(135deg,#a07830,#c9a84c)",color:"#0d1b2a",fontWeight:800,border:"none"}}
+              onClick={()=>ai(`Optimize this ${optForm.contentType.replace("-"," ")} for Ziksatech LLC:
+
+ORIGINAL: ${optForm.content || "(not provided — generate from scratch)"}
+Target: ${optForm.context || "SAP decision-makers at enterprise companies"}
+Goal: ${optForm.goal || "higher open/click rates"}
+
+Return JSON: {
+  "analysis": "What's strong and what needs improvement in the original",
+  "score": 0-100,
+  "variants": [
+    {"label":"Variant A — Direct", "content":"...", "why":"..."},
+    {"label":"Variant B — Curiosity", "content":"...", "why":"..."},
+    {"label":"Variant C — WBE/WOSB angle", "content":"...", "why":"..."},
+    {"label":"Variant D — ROI focused", "content":"...", "why":"..."}
+  ],
+  "topPick": "Variant X — explain why this is the strongest",
+  "bestTime": "When to send/post for maximum impact",
+  "avoidWords": ["words/phrases to avoid"],
+  "powerWords": ["high-performing words to use"]
+}`, "optimizer")} disabled={loading==="optimizer"}>
+              {loading==="optimizer"?"🧠 Optimizing...":"📈 Optimize & Generate Variants"}
+            </button>
+          </div>
+          <div>
+            {!result.optimizer && loading!=="optimizer" ? (
+              <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:40,marginBottom:12}}>📈</div>
+                <div style={{fontSize:13,color:"#334155"}}>Paste any content and get 4 A/B test variants, performance analysis, timing recommendations, and power words</div>
+              </div>
+            ) : <ResultCard keyName="optimizer" title="📈 Optimization Report + A/B Variants"/>}
+          </div>
+        </div>
+      )}
+
+      {/* ── 4. COMPETITIVE INTELLIGENCE ──────────────────────────────────── */}
+      {view==="competitive" && (
+        <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:14,alignItems:"start"}}>
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🏆 Competitive Intelligence</div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:14}}>Understand competitors and build positioning that makes Ziksatech the obvious choice</div>
+            {[["Competitor Name *","competitor","text","e.g. Deloitte, Accenture, small SAP boutique..."],["Service Area","serviceArea","text","SAP BRIM, S/4HANA Migration..."],["Deal Context","context","textarea","e.g. They came up in a specific deal, client mentioned them..."]].map(([label,key,type,ph])=>(
+              <div key={key} style={{marginBottom:10}}>
+                <div className="lbl">{label}</div>
+                {type==="textarea"
+                  ? <textarea className="inp" rows={2} value={compForm[key]||""} onChange={e=>setCompForm(p=>({...p,[key]:e.target.value}))} placeholder={ph}/>
+                  : <input className="inp" value={compForm[key]||""} onChange={e=>setCompForm(p=>({...p,[key]:e.target.value}))} placeholder={ph}/>
+                }
+              </div>
+            ))}
+            {/* Common competitors quick-fill */}
+            <div style={{marginBottom:14}}>
+              <div className="lbl">Common SAP Competitors</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {["Deloitte","Accenture","IBM","Infosys","Wipro","HCL","Cognizant","NTT DATA","Capgemini","Small Boutique"].map(name=>(
+                  <button key={name} className="btn bg" style={{fontSize:9,padding:"2px 7px",color:"#c9a84c"}}
+                    onClick={()=>setCompForm(p=>({...p,competitor:name}))}>
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px",background:"linear-gradient(135deg,#a07830,#c9a84c)",color:"#0d1b2a",fontWeight:800,border:"none"}}
+              onClick={()=>ai(`Provide competitive intelligence for Ziksatech LLC vs ${compForm.competitor} in ${compForm.serviceArea}:
+${compForm.context ? "Context: "+compForm.context : ""}
+
+${contextSnapshot()}
+
+Return JSON: {
+  "competitorProfile": "2-sentence overview of the competitor",
+  "theirStrengths": ["strength 1", "strength 2", "strength 3"],
+  "theirWeaknesses": ["weakness 1", "weakness 2"],
+  "ziksatechAdvantages": ["specific advantage 1", "specific advantage 2", "specific advantage 3", "specific advantage 4"],
+  "battleCard": {
+    "whenTheyBringUp": "common objection",
+    "ourResponse": "how to counter"
+  },
+  "winningMoves": ["specific tactic to beat them 1", "tactic 2", "tactic 3"],
+  "whereToBeat": "Which deals/scenarios Ziksatech wins vs this competitor",
+  "whereToAvoid": "Which deals/scenarios to avoid competing head-to-head",
+  "pricingAngle": "How to position our pricing vs theirs",
+  "certificationPlay": "How WBE/HUB/WOSB creates an unfair advantage here",
+  "messagingDifferentiators": ["key message 1", "key message 2"],
+  "referencePoints": ["proof point or fact that wins this battle"]
+}`, "competitive")} disabled={loading==="competitive"}>
+              {loading==="competitive"?"🧠 Analyzing...":"🏆 Generate Battle Card"}
+            </button>
+          </div>
+          <div>
+            {!result.competitive && loading!=="competitive" ? (
+              <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:40,marginBottom:12}}>🏆</div>
+                <div style={{fontSize:13,color:"#334155"}}>Enter a competitor and get a full battle card with their weaknesses, Ziksatech's differentiators, winning tactics, and how to leverage WBE certification</div>
+              </div>
+            ) : <ResultCard keyName="competitive" title="🏆 Competitive Battle Card"/>}
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. OUTCOME PREDICTOR ─────────────────────────────────────────── */}
+      {view==="predict" && (
+        <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:14,alignItems:"start"}}>
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🔮 Campaign Outcome Predictor</div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:14}}>Predict realistic results before launching — set expectations and optimize for ROI</div>
+            {[["Campaign Type","campaignType","select"],["Target Reach / Impressions","targetCount","text","e.g. 5,000 LinkedIn views, 200 email sends"],["Monthly Budget","budget","text","e.g. $500, $2,000, $5,000"],["Duration","duration","text","e.g. 4 weeks"],["Target Audience","audience","text","SAP decision-makers at utilities"],["Industry Focus","industry","text","Utilities, Healthcare, Manufacturing..."]].map(([label,key,type,ph])=>(
+              <div key={key} style={{marginBottom:8}}>
+                <div className="lbl">{label}</div>
+                {type==="select"
+                  ? <select className="inp" value={predForm[key]||""} onChange={e=>setPredForm(p=>({...p,[key]:e.target.value}))}>
+                      {["linkedin-posts","email-campaign","cold-outreach","event-webinar","content-marketing","paid-ads","mixed-multichannel"].map(o=><option key={o}>{o}</option>)}
+                    </select>
+                  : <input className="inp" value={predForm[key]||""} onChange={e=>setPredForm(p=>({...p,[key]:e.target.value}))} placeholder={ph}/>
+                }
+              </div>
+            ))}
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px",background:"linear-gradient(135deg,#a07830,#c9a84c)",color:"#0d1b2a",fontWeight:800,border:"none",marginTop:6}}
+              onClick={()=>ai(`Predict realistic outcomes for this Ziksatech marketing campaign:
+
+Campaign Type: ${predForm.campaignType}
+Target Reach: ${predForm.targetCount || "unspecified"}
+Budget: ${predForm.budget || "unspecified"}
+Duration: ${predForm.duration || "4 weeks"}
+Audience: ${predForm.audience || "SAP decision-makers"}
+Industry: ${predForm.industry || "enterprise"}
+
+${contextSnapshot()}
+Note: SAP consulting is a high-value B2B service, average deal size $100k-$500k, long sales cycles (3-12 months).
+
+Return JSON: {
+  "summary": "One-sentence prediction summary",
+  "projections": {
+    "impressions": "range estimate",
+    "engagementRate": "% range",
+    "leads": "X-Y leads expected",
+    "qualifiedLeads": "X-Y qualified",
+    "meetingsBooked": "X-Y meetings",
+    "pipelineGenerated": "$X-Y in pipeline",
+    "closedWon": "X-Y deals at $X-Y value (6-12 months)"
+  },
+  "assumptions": ["assumption 1", "assumption 2"],
+  "confidenceLevel": "Low/Medium/High",
+  "roi": "estimated ROI range",
+  "breakEven": "at X leads, campaign pays for itself",
+  "risks": ["risk 1", "risk 2"],
+  "optimizationTips": ["to improve results: tip 1", "tip 2"],
+  "benchmarks": "how this compares to B2B SAP consulting industry benchmarks",
+  "certificationBoost": "expected improvement from WBE/HUB/WOSB positioning"
+}`, "predict")} disabled={loading==="predict"}>
+              {loading==="predict"?"🧠 Predicting...":"🔮 Predict Campaign Outcomes"}
+            </button>
+          </div>
+          <div>
+            {!result.predict && loading!=="predict" ? (
+              <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:40,marginBottom:12}}>🔮</div>
+                <div style={{fontSize:13,color:"#334155"}}>Enter campaign parameters and get realistic performance projections, ROI estimates, and benchmarks vs. the B2B SAP consulting industry</div>
+              </div>
+            ) : <ResultCard keyName="predict" title="🔮 Campaign Outcome Prediction"/>}
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. CAMPAIGN ANALYZER ─────────────────────────────────────────── */}
+      {view==="analyze" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🔬 Campaign Analyzer</div>
+              <div style={{fontSize:10,color:"#475569",marginBottom:12}}>Paste campaign results, email metrics, LinkedIn stats, or any marketing data — AI will diagnose performance and prescribe improvements</div>
+              <textarea className="inp" rows={10} value={analyzeText} onChange={e=>setAnalyzeText(e.target.value)}
+                style={{resize:"vertical"}}
+                placeholder={`Paste your campaign results or data here. Examples:
+
+Email campaign: 500 sent, 21% open rate, 3.2% click-through, 2 replies, 0 meetings booked
+LinkedIn post: 1,200 impressions, 45 likes, 8 comments, 3 shares, 2 connection requests
+Cold outreach: 50 emails sent, 4 opens, 1 reply (negative)
+
+Or paste raw LinkedIn analytics, email stats, or describe what happened...`}/>
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12,padding:"9px",marginTop:10,background:"linear-gradient(135deg,#a07830,#c9a84c)",color:"#0d1b2a",fontWeight:800,border:"none"}}
+                onClick={()=>ai(`Analyze these marketing campaign results for Ziksatech LLC and provide actionable intelligence:
+
+${analyzeText || "No data provided — provide general SAP consulting marketing analysis for a WBE-certified firm"}
+
+${contextSnapshot()}
+
+Return JSON: {
+  "overallGrade": "A/B/C/D/F",
+  "performanceSummary": "2-3 sentence assessment",
+  "whatWorked": ["what's performing well 1", "what's performing well 2"],
+  "whatFailed": ["what underperformed 1", "what underperformed 2"],
+  "benchmarkComparison": {
+    "openRate": "yours vs B2B average (20-25%)",
+    "clickRate": "yours vs B2B average (2-5%)",
+    "engagementRate": "yours vs LinkedIn B2B (0.5-1%)"
+  },
+  "rootCauses": ["root cause of underperformance 1"],
+  "immediateActions": ["do this week 1", "do this week 2", "do this week 3"],
+  "strategicRecommendations": ["1-month fix 1", "1-month fix 2"],
+  "quickWin": "The single most impactful change to make right now",
+  "hypotheses": ["A/B test idea 1", "A/B test idea 2"],
+  "projectedImprovement": "Expected improvement if recommendations implemented"
+}`, "analyze")} disabled={loading==="analyze"}>
+                {loading==="analyze"?"🧠 Analyzing...":"🔬 Analyze Campaign Performance"}
+              </button>
+            </div>
+            {/* Auto-analyze library */}
+            {safeSaved.length > 0 && (
+              <div className="card" style={{padding:"14px 16px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>Auto-Analyze Your Content Library</div>
+                <div style={{fontSize:10,color:"#475569",marginBottom:10}}>Click to analyze patterns across your {safeSaved.length} saved content pieces</div>
+                <button className="btn bg" style={{fontSize:11,width:"100%",justifyContent:"center"}}
+                  onClick={()=>{
+                    const summary = safeSaved.slice(0,10).map(s=>`${s.type}: "${s.content?.slice(0,80)}"`).join("\n");
+                    setAnalyzeText(`Content library analysis (${safeSaved.length} pieces):\n\n${summary}`);
+                  }}>
+                  📚 Load Content Library
+                </button>
+              </div>
+            )}
+          </div>
+          <div>
+            {!result.analyze && loading!=="analyze" ? (
+              <div style={{padding:"50px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:40,marginBottom:12}}>🔬</div>
+                <div style={{fontSize:13,color:"#334155"}}>Paste any campaign data, metrics, or results — AI diagnoses what worked, what failed, and gives you a precise action plan</div>
+              </div>
+            ) : <ResultCard keyName="analyze" title="🔬 Campaign Performance Diagnosis"/>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
 
 function MarketingHub({ clients, roster, crmDeals, proposals, authProfile, addAudit }) {
   const [sub, setSub] = useState("overview");
@@ -33879,18 +32557,12 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
           {tabBtn("win",        "🏆 Win Story")}
           {tabBtn("calendar",   "📅 Calendar", draftCnt)}
           {tabBtn("library",    "💾 Library", savedContent.length||0)}
-        <button onClick={()=>setSub("intelligence")}
-          style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,
-            background:sub==="intelligence"?"linear-gradient(135deg,#c9a84c,#a07830)":"transparent",
-            color:sub==="intelligence"?"#0d1b2a":"#c9a84c"}}>
-          🧠 Intelligence
-        </button>
-          <div style={{width:"100%",height:4}}/>
-          {tabBtn("intel",      "🧠 Market Intel")}
-          {tabBtn("prospect",   "🎯 Prospect Scorer")}
-          {tabBtn("optimizer",  "📈 Content Optimizer")}
-          {tabBtn("campaign",   "🗓 Campaign Planner")}
-          {tabBtn("competitor", "🏆 Competitive Intel")}
+          <button onClick={()=>setSub("intelligence")}
+            style={{padding:"7px 14px",borderRadius:8,border:`1px solid ${sub==="intelligence"?"#c9a84c":"#c9a84c44"}`,cursor:"pointer",fontSize:12,fontWeight:700,
+              background:sub==="intelligence"?"linear-gradient(135deg,#c9a84c,#a07830)":"#1a1005",
+              color:sub==="intelligence"?"#0d1b2a":"#c9a84c"}}>
+            🧠 Campaign AI
+          </button>
         </div>
         <div style={{display:"flex",gap:8}}>
           <button className="btn bg" style={{fontSize:11}} onClick={()=>{setCalModal(true);setCalForm({date:new Date().toISOString().slice(0,10),status:"draft"});}}>+ Add to Calendar</button>
@@ -34277,11 +32949,13 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
 
       {/* ── INTELLIGENCE TAB ─────────────────────────────────────────────────── */}
       {sub==="intelligence" && (
-        <MarketingIntelligence
+        <CampaignIntelligenceAI
           clients={safeClients}
           crmDeals={safeDeals}
           roster={safeRoster}
           proposals={safeProps}
+          savedContent={savedContent}
+          calendar={calendar}
           addAudit={addAudit}
         />
       )}
