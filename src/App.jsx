@@ -31792,14 +31792,17 @@ Write all ${touchCount} emails now. Keep each body to 80-120 words max.` }]
       if (blocks.length === 0) throw new Error("No email blocks found in response");
 
       const emails = blocks.map((block, i) => {
+        const lines = block.split("\n");
         const get = (key) => {
-          const m = block.match(new RegExp(key + ":\s*(.+?)(?=\n[A-Z]+:|$)", "s"));
-          return m ? m[1].trim() : "";
+          const line = lines.find(l => l.startsWith(key + ":"));
+          return line ? line.slice(key.length + 1).trim() : "";
         };
-        const bodyMatch = block.match(/BODY:
-([\s\S]*?)(?=
-CTA:|$)/);
-        const body = bodyMatch ? bodyMatch[1].trim() : "";
+        const bodyStart = lines.findIndex(l => l.trim().startsWith("BODY:"));
+        const ctaStart  = lines.findIndex(l => l.trim().startsWith("CTA:"));
+        const bodyLines = bodyStart >= 0
+          ? lines.slice(bodyStart + 1, ctaStart > bodyStart ? ctaStart : lines.length)
+          : [];
+        const body = bodyLines.join("\n").trim();
         return {
           touch:       parseInt(get("TOUCH")) || i+1,
           dayOffset:   parseInt(get("DAY"))   || i*7,
