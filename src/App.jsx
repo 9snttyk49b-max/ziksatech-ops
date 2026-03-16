@@ -18172,6 +18172,20 @@ function NotificationsHub({
     });
     bodyText += `[Open Ziksatech Ops Center](${window.location.origin})`;
 
+    // Power Automate Workflows webhook — send plain JSON with text field
+    const isPowerAutomate = (settings.teamsWebhook||"").includes("powerplatform.com") ||
+                            (settings.teamsWebhook||"").includes("logic.azure.com");
+    if (isPowerAutomate) {
+      return {
+        type: "message",
+        text: bodyText,
+        title,
+        criticalCount: critical.length,
+        warningCount: warning.length,
+        appUrl: window.location.origin,
+      };
+    }
+
     return {
       "@type": "MessageCard",
       "@context": "http://schema.org/extensions",
