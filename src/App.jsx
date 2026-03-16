@@ -31692,6 +31692,945 @@ function MarketingIntelligence(props) { return <CampaignIntelligenceAI {...props
 
 // ── Sub-components wired into the main module ──────────────────────────────
 
+// ═══════════════════════════════════════════════════════════════════════════
+// LEAD NURTURE SEQUENCE BUILDER
+// Multi-touch drip sequences for B2B SAP consulting leads
+// ═══════════════════════════════════════════════════════════════════════════
+function LeadNurtureBuilder({ clients, crmDeals, proposals, savedContent, addAudit }) {
+  const [seq,       setSeq]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-nurture-seq")||"[]"); } catch { return []; } });
+  const [view,      setView]    = useState("sequences"); // sequences | builder | preview
+  const [selSeq,    setSelSeq]  = useState(null);
+  const [form,      setForm]    = useState({ name:"", personaType:"", industry:"", pain:"", tone:"professional", touchCount:"5" });
+  const [loading,   setLoading] = useState(false);
+  const [result,    setResult]  = useState(null);
+  const [copied,    setCopied]  = useState("");
+  const [selEmail,  setSelEmail] = useState(0);
+  const [editingEmail, setEditingEmail] = useState(null);
+
+  const persist = d => { setSeq(d); localStorage.setItem("zt-nurture-seq", JSON.stringify(d)); };
+  const uid = () => "ns-" + Date.now() + Math.random().toString(36).slice(2,5);
+  const copy = (text, key) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(key); setTimeout(()=>setCopied(""),2500); };
+
+  const PERSONAS = [
+    { id:"cio-utility",    label:"CIO / Utility Company",      pain:"aging SAP IS-U, meter-to-cash inefficiency" },
+    { id:"cfo-enterprise", label:"CFO / Enterprise",           pain:"manual revenue recognition, billing errors" },
+    { id:"vp-it",          label:"VP IT / Tech Leader",        pain:"ECC end-of-life, S/4HANA migration pressure" },
+    { id:"pm-sap",         label:"SAP Program Manager",        pain:"need certified BRIM expertise fast" },
+    { id:"coo-services",   label:"COO / Professional Services", pain:"resource gaps on SAP project" },
+    { id:"procurement",    label:"Procurement / Supply Chain",  pain:"WBE/WOSB/HUB vendor diversity mandate" },
+    { id:"custom",         label:"Custom Persona",             pain:"" },
+  ];
+
+  const SEQUENCE_TEMPLATES = [
+    { id:"cold-prospect",    label:"Cold Prospect → Demo",       touches:7, desc:"Turn a cold enterprise contact into a discovery call" },
+    { id:"event-follow",     label:"Event Follow-Up",            touches:5, desc:"Post-conference or webinar warm follow-up sequence" },
+    { id:"proposal-nurture", label:"Proposal Sent → Close",      touches:6, desc:"Nurture a prospect after sending a proposal" },
+    { id:"not-ready",        label:"Not Ready Now → 90-Day",     touches:6, desc:"Keep warm when they say 'check back in 3 months'" },
+    { id:"champion-build",   label:"Champion Builder",           touches:5, desc:"Turn an internal SAP contact into a Ziksatech advocate" },
+    { id:"win-back",         label:"Churned Lead Win-Back",      touches:4, desc:"Re-engage a lead that went cold 6+ months ago" },
+  ];
+
+  const genSequence = async () => {
+    if (!form.personaType || !form.name) return alert("Enter sequence name and select a persona");
+    setLoading(true); setResult(null);
+    const persona = PERSONAS.find(p=>p.id===form.personaType);
+    const wonDeals = (crmDeals||[]).filter(d=>d.stage==="closed_won");
+    try {
+      const resp = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          system:"You are a B2B email marketing specialist for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. You write high-performing nurture sequences for enterprise SAP buyers. Each email must feel personal, be under 200 words, and drive toward a discovery call. Return JSON only.",
+          messages:[{ role:"user", content:`Create a ${form.touchCount}-email B2B nurture sequence for Ziksatech LLC.
+
+Sequence: ${form.name}
+Persona: ${persona?.label}
+Pain Point: ${form.pain || persona?.pain}
+Industry: ${form.industry || "enterprise"}
+Tone: ${form.tone}
+Sequence Goal: ${form.sequenceType ? SEQUENCE_TEMPLATES.find(t=>t.id===form.sequenceType)?.desc : "Convert lead to discovery call"}
+
+Context:
+- Ziksatech specializes in SAP BRIM, S/4HANA, IS-U implementations
+- WBE/HUB/WOSB certified — procurement diversity advantage
+- Plano TX, proven delivery team
+- Won ${wonDeals.length} engagements
+
+Return JSON: {
+  "sequenceName": "${form.name}",
+  "persona": "${persona?.label}",
+  "goal": "one sentence",
+  "bestSendDays": "e.g. Tuesday-Thursday",
+  "emails": [
+    {
+      "touch": 1,
+      "dayOffset": 0,
+      "subjectLine": "...",
+      "previewText": "...",
+      "body": "full email body (150-220 words, conversational, no generic AI phrases)",
+      "ctaText": "Call-to-action button text",
+      "sendTiming": "Day 1 — first impression",
+      "psychologyNote": "why this works at this stage"
+    }
+  ],
+  "tips": ["sequence-level tip 1", "tip 2"]
+}` }]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(text);
+      setResult(parsed);
+      setSelEmail(0);
+      setView("preview");
+    } catch(e) { alert("Error: "+e.message); }
+    setLoading(false);
+  };
+
+  const saveSequence = () => {
+    if (!result) return;
+    const rec = { id:uid(), ...result, createdAt:new Date().toISOString(), status:"active", opens:0, clicks:0, replies:0 };
+    persist([rec, ...seq]);
+    addAudit?.("Marketing","Nurture Sequence Saved", result.sequenceName, result.emails?.length+" emails");
+    setView("sequences"); setResult(null);
+    alert(`✅ "${rec.sequenceName}" saved with ${rec.emails?.length} emails!`);
+  };
+
+  const TONE_COL = { professional:"#38bdf8", friendly:"#34d399", direct:"#f59e0b", consultative:"#a78bfa" };
+
+  const tabBtn = (id, label) => (
+    <button onClick={()=>setView(id)}
+      style={{padding:"6px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:view===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:view===id?"#fff":"#475569"}}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="Lead Nurture Sequences" sub="Multi-touch drip campaigns · B2B SAP buyer journeys · 4-7 email sequences that convert cold leads into discovery calls"/>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Saved Sequences",     v:seq.length,                                  c:"#38bdf8" },
+          { l:"Total Emails",        v:seq.reduce((s,x)=>s+(x.emails?.length||0),0), c:"#a78bfa" },
+          { l:"Active Sequences",    v:seq.filter(s=>s.status==="active").length,    c:"#34d399" },
+          { l:"Paused",              v:seq.filter(s=>s.status==="paused").length,    c:"#f59e0b" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+          {tabBtn("sequences","📋 My Sequences")}
+          {tabBtn("builder",  "✨ AI Builder")}
+          {view==="preview" && tabBtn("preview", "📧 Preview")}
+        </div>
+        <button className="btn bp" style={{fontSize:12}} onClick={()=>{setForm({name:"",personaType:"",industry:"",pain:"",tone:"professional",touchCount:"5"});setResult(null);setView("builder");}}>
+          + New Sequence
+        </button>
+      </div>
+
+      {/* ── SEQUENCES LIST ────────────────────────────────────────────────── */}
+      {view==="sequences" && (
+        <div>
+          {seq.length===0 ? (
+            <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:40,marginBottom:12}}>📧</div>
+              <div style={{fontSize:14,color:"#334155",marginBottom:16}}>No nurture sequences yet</div>
+              <div style={{fontSize:11,color:"#475569",marginBottom:20,maxWidth:480,margin:"0 auto 20px"}}>
+                B2B SAP deals take 3–12 months. A nurture sequence keeps you top-of-mind through the entire buying journey — turning "not now" into "let's talk."
+              </div>
+              <button className="btn bp" onClick={()=>setView("builder")}>Build Your First Sequence</button>
+            </div>
+          ) : seq.map(s=>(
+            <div key={s.id} className="card" style={{padding:"16px 20px",marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{s.sequenceName}</div>
+                  <div style={{fontSize:10,color:"#475569"}}>{s.persona} · {s.emails?.length} emails · Created {s.createdAt?.slice(0,10)}</div>
+                  <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>{s.goal}</div>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{fontSize:9,padding:"2px 8px",borderRadius:8,
+                    background:s.status==="active"?"#021f14":"#1a1005",
+                    color:s.status==="active"?"#34d399":"#f59e0b",
+                    border:`1px solid ${s.status==="active"?"#15803d":"#92400e"}`}}>
+                    {s.status}
+                  </span>
+                  <button className="btn bg" style={{fontSize:10}} onClick={()=>{setResult(s);setSelEmail(0);setView("preview");}}>View</button>
+                  <button className="btn bg" style={{fontSize:10}} onClick={()=>persist(seq.map(x=>x.id===s.id?{...x,status:x.status==="active"?"paused":"active"}:x))}>
+                    {s.status==="active"?"Pause":"Resume"}
+                  </button>
+                  <button className="btn bg" style={{fontSize:10,color:"#f87171"}} onClick={()=>persist(seq.filter(x=>x.id!==s.id))}>✕</button>
+                </div>
+              </div>
+              {/* Email chips */}
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                {(s.emails||[]).map((em,i)=>(
+                  <div key={i} style={{padding:"4px 10px",borderRadius:20,background:"#060d1c",border:"1px solid #1a2d45",cursor:"pointer",fontSize:9,color:"#475569"}}
+                    onClick={()=>{setResult(s);setSelEmail(i);setView("preview");}}>
+                    <span style={{color:"#38bdf8",fontWeight:700}}>T{em.touch}</span> · Day {em.dayOffset} · {em.subjectLine?.slice(0,30)}...
+                  </div>
+                ))}
+              </div>
+              {s.tips?.length>0 && (
+                <div style={{marginTop:8,fontSize:10,color:"#475569",padding:"4px 10px",background:"#040810",borderRadius:6,border:"1px solid #0a1826"}}>
+                  💡 {s.tips[0]}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── BUILDER ───────────────────────────────────────────────────────── */}
+      {view==="builder" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 380px",gap:14,alignItems:"start"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {/* Sequence Name + Type */}
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>📋 Sequence Setup</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                <div>
+                  <div className="lbl">Sequence Name *</div>
+                  <input className="inp" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}
+                    placeholder="e.g. Utility CIO 7-touch"/>
+                </div>
+                <div>
+                  <div className="lbl">Industry Focus</div>
+                  <input className="inp" value={form.industry} onChange={e=>setForm(p=>({...p,industry:e.target.value}))}
+                    placeholder="Utilities, Healthcare, Mfg..."/>
+                </div>
+              </div>
+              {/* Template picker */}
+              <div style={{marginBottom:12}}>
+                <div className="lbl">Sequence Template</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  {SEQUENCE_TEMPLATES.map(t=>(
+                    <div key={t.id} onClick={()=>setForm(p=>({...p,sequenceType:t.id,touchCount:String(t.touches)}))}
+                      style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",border:`1px solid ${form.sequenceType===t.id?"#0369a1":"#1a2d45"}`,
+                        background:form.sequenceType===t.id?"#0c2340":"#040810"}}>
+                      <div style={{fontSize:11,fontWeight:600,color:form.sequenceType===t.id?"#38bdf8":"#94a3b8"}}>{t.label}</div>
+                      <div style={{fontSize:9,color:"#334155"}}>{t.touches} emails · {t.desc.slice(0,40)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Touch count */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div>
+                  <div className="lbl">Number of Emails</div>
+                  <div style={{display:"flex",gap:4}}>
+                    {[4,5,6,7,8].map(n=>(
+                      <button key={n} onClick={()=>setForm(p=>({...p,touchCount:String(n)}))}
+                        style={{flex:1,padding:"6px 0",borderRadius:6,border:`1px solid ${form.touchCount===String(n)?"#0369a1":"#1a2d45"}`,
+                          background:form.touchCount===String(n)?"#0c2340":"#040810",
+                          color:form.touchCount===String(n)?"#38bdf8":"#475569",fontSize:12,cursor:"pointer",fontWeight:700}}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="lbl">Tone</div>
+                  <div style={{display:"flex",gap:4}}>
+                    {["professional","friendly","direct","consultative"].map(t=>(
+                      <button key={t} onClick={()=>setForm(p=>({...p,tone:t}))}
+                        style={{flex:1,padding:"5px 0",borderRadius:5,border:`1px solid ${form.tone===t?(TONE_COL[t]||"#0369a1"):"#1a2d45"}`,
+                          background:form.tone===t?(TONE_COL[t]+"22"):"transparent",
+                          color:form.tone===t?(TONE_COL[t]||"#38bdf8"):"#475569",
+                          fontSize:8,cursor:"pointer",fontWeight:700,textTransform:"capitalize"}}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Persona */}
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>👤 Target Persona *</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+                {PERSONAS.map(p=>(
+                  <div key={p.id} onClick={()=>setForm(f=>({...f,personaType:p.id,pain:f.pain||p.pain}))}
+                    style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",border:`1px solid ${form.personaType===p.id?"#0369a1":"#1a2d45"}`,
+                      background:form.personaType===p.id?"#0c2340":"#040810"}}>
+                    <div style={{fontSize:11,fontWeight:600,color:form.personaType===p.id?"#38bdf8":"#94a3b8"}}>{p.label}</div>
+                    {p.pain && <div style={{fontSize:8,color:"#334155"}}>{p.pain.slice(0,40)}</div>}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div className="lbl">Their Specific Pain Point</div>
+                <textarea className="inp" rows={2} value={form.pain} onChange={e=>setForm(p=>({...p,pain:e.target.value}))}
+                  placeholder="What keeps them up at night? What's their specific SAP challenge?"/>
+              </div>
+            </div>
+
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:13,padding:"11px"}}
+              onClick={genSequence} disabled={loading}>
+              {loading ? "🧠 Writing Sequence..." : `✨ Generate ${form.touchCount||5}-Email Sequence`}
+            </button>
+          </div>
+
+          {/* Right: best practices */}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📖 B2B Nurture Best Practices</div>
+              {[
+                ["Day 0", "First email — immediate value, no pitch. Establish credibility."],
+                ["Day 3-5", "Case study or insight. Show you understand their world."],
+                ["Day 10-14", "Problem-agitating email. Make the cost of inaction real."],
+                ["Day 21-28", "Social proof + invitation. Reference a similar client win."],
+                ["Day 35-45", "Soft CTA. 'Would a 20-min call make sense?' not 'Book now.'"],
+                ["Day 60+", "Break-up email. Creates urgency through loss aversion."],
+              ].map(([day, tip])=>(
+                <div key={day} style={{display:"flex",gap:10,padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                  <span style={{fontSize:9,fontWeight:700,color:"#38bdf8",minWidth:50,flexShrink:0}}>{day}</span>
+                  <span style={{fontSize:10,color:"#475569"}}>{tip}</span>
+                </div>
+              ))}
+            </div>
+            <div className="card" style={{padding:"12px 14px",border:"1px solid #c9a84c33"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#c9a84c",marginBottom:6}}>🎯 WBE/WOSB Edge</div>
+              <div style={{fontSize:10,color:"#475569",lineHeight:1.6}}>
+                Always weave in the certification angle for procurement-touched personas. Many large enterprises have diversity spend mandates — your certification turns this into a competitive advantage, not just a badge.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EMAIL PREVIEW ─────────────────────────────────────────────────── */}
+      {view==="preview" && result && (
+        <div style={{display:"grid",gridTemplateColumns:"260px 1fr",gap:14,alignItems:"start"}}>
+          {/* Email list */}
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            <div className="card" style={{padding:"14px 16px",marginBottom:4}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{result.sequenceName}</div>
+              <div style={{fontSize:9,color:"#475569"}}>{result.persona}</div>
+              <div style={{fontSize:9,color:"#94a3b8",marginTop:4,lineHeight:1.5}}>{result.goal}</div>
+              {result.bestSendDays && <div style={{fontSize:9,color:"#38bdf8",marginTop:4}}>📅 Best days: {result.bestSendDays}</div>}
+            </div>
+            {(result.emails||[]).map((em,i)=>(
+              <div key={i} onClick={()=>{setSelEmail(i);setEditingEmail(null);}}
+                style={{padding:"8px 10px",borderRadius:8,cursor:"pointer",
+                  background:selEmail===i?"#0c2340":"#060d1c",
+                  border:`1px solid ${selEmail===i?"#0369a1":"#1a2d45"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:10,fontWeight:700,color:"#38bdf8"}}>Touch {em.touch}</span>
+                  <span style={{fontSize:9,color:"#334155"}}>Day {em.dayOffset}</span>
+                </div>
+                <div style={{fontSize:10,color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{em.subjectLine}</div>
+              </div>
+            ))}
+            <div style={{display:"flex",gap:6,marginTop:6}}>
+              <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:10}} onClick={()=>setView("builder")}>← Edit</button>
+              <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:10}} onClick={saveSequence}>💾 Save</button>
+            </div>
+          </div>
+
+          {/* Email detail */}
+          {result.emails?.[selEmail] && (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <div className="card" style={{padding:"16px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div>
+                    <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,textTransform:"uppercase"}}>Touch {result.emails[selEmail].touch} · {result.emails[selEmail].sendTiming}</div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginTop:2}}>Subject: {result.emails[selEmail].subjectLine}</div>
+                    <div style={{fontSize:10,color:"#475569"}}>Preview: {result.emails[selEmail].previewText}</div>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button className="btn bg" style={{fontSize:10}} onClick={()=>copy(result.emails[selEmail].body,"email"+selEmail)}>
+                      {copied==="email"+selEmail?"✅":"📋 Copy"}
+                    </button>
+                    <button className="btn bg" style={{fontSize:10}} onClick={()=>setEditingEmail(selEmail===editingEmail?null:selEmail)}>✏️ Edit</button>
+                  </div>
+                </div>
+                {editingEmail===selEmail ? (
+                  <textarea className="inp" rows={12} style={{resize:"vertical"}}
+                    value={result.emails[selEmail].body}
+                    onChange={e=>{
+                      const updated = {...result, emails:result.emails.map((em,i)=>i===selEmail?{...em,body:e.target.value}:em)};
+                      setResult(updated);
+                    }}/>
+                ) : (
+                  <div style={{background:"#fff",borderRadius:10,padding:"24px 28px",boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
+                    <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:16,paddingBottom:12,borderBottom:"1px solid #e5e7eb"}}>
+                      <div style={{width:36,height:36,borderRadius:"50%",background:"#0D1B2A",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:"#C9A84C",fontWeight:900}}>Z</div>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700,color:"#1a1a1a"}}>Manju Murthy</div>
+                        <div style={{fontSize:11,color:"#6b7280"}}>mmurthy@ziksatech.com</div>
+                      </div>
+                    </div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Subject: {result.emails[selEmail].subjectLine}</div>
+                    <pre style={{fontSize:12,color:"#374151",whiteSpace:"pre-wrap",fontFamily:"-apple-system,sans-serif",lineHeight:1.75,margin:"0 0 16px"}}>{result.emails[selEmail].body}</pre>
+                    {result.emails[selEmail].ctaText && (
+                      <div style={{display:"inline-block",background:"#0D1B2A",color:"#C9A84C",padding:"8px 20px",borderRadius:6,fontSize:12,fontWeight:700}}>
+                        {result.emails[selEmail].ctaText}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {result.emails[selEmail].psychologyNote && (
+                  <div style={{marginTop:10,padding:"8px 12px",background:"#0c1e3d",borderRadius:8,border:"1px solid #0369a1"}}>
+                    <span style={{fontSize:9,color:"#7dd3fc",fontWeight:700}}>🧠 WHY IT WORKS: </span>
+                    <span style={{fontSize:10,color:"#475569"}}>{result.emails[selEmail].psychologyNote}</span>
+                  </div>
+                )}
+              </div>
+              {/* Navigation */}
+              <div style={{display:"flex",gap:8}}>
+                {selEmail > 0 && <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>setSelEmail(selEmail-1)}>← Prev Email</button>}
+                {selEmail < (result.emails?.length||0)-1 && <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>setSelEmail(selEmail+1)}>Next Email →</button>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMPAIGN TRACKING & UTM DASHBOARD
+// UTM builder · Link tracker · Attribution · Marketing ROI scorecard
+// ═══════════════════════════════════════════════════════════════════════════
+function CampaignTrackingDashboard({ crmDeals, proposals, savedContent, calendar, addAudit }) {
+  const [view, setView]         = useState("dashboard");
+  const [links, setLinks]       = useState(() => { try { return JSON.parse(localStorage.getItem("zt-utm-links")||"[]"); } catch { return []; } });
+  const [campaigns, setCampaigns] = useState(() => { try { return JSON.parse(localStorage.getItem("zt-campaigns")||"[]"); } catch { return []; } });
+  const [utmForm, setUtmForm]   = useState({ baseUrl:"https://ziksatech.com", source:"linkedin", medium:"social", campaign:"", content:"", term:"", name:"" });
+  const [camForm, setCamForm]   = useState({ name:"", type:"linkedin-posts", startDate:"", endDate:"", budget:"", goal:"", targetLeads:"" });
+  const [copied, setCopied]     = useState("");
+  const [editCam, setEditCam]   = useState(null);
+  const [linkModal, setLinkModal] = useState(false);
+  const [camModal, setCamModal] = useState(false);
+
+  const persist = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+  const uid = () => "utm-" + Date.now() + Math.random().toString(36).slice(2,5);
+  const copy = (text, key) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(key); setTimeout(()=>setCopied(""),2500); };
+
+  const TODAY = new Date().toISOString().slice(0,10);
+
+  // Build UTM URL
+  const buildUTM = () => {
+    const params = new URLSearchParams();
+    if (utmForm.source)   params.set("utm_source",   utmForm.source);
+    if (utmForm.medium)   params.set("utm_medium",   utmForm.medium);
+    if (utmForm.campaign) params.set("utm_campaign",  utmForm.campaign);
+    if (utmForm.content)  params.set("utm_content",   utmForm.content);
+    if (utmForm.term)     params.set("utm_term",      utmForm.term);
+    const base = utmForm.baseUrl.trim().replace(/\/$/, "");
+    return base + "?" + params.toString();
+  };
+
+  const saveLink = () => {
+    const url = buildUTM();
+    if (!utmForm.campaign) return alert("Campaign name is required");
+    const rec = {
+      id: uid(), url, name: utmForm.name || utmForm.campaign,
+      source: utmForm.source, medium: utmForm.medium, campaign: utmForm.campaign,
+      content: utmForm.content, term: utmForm.term, baseUrl: utmForm.baseUrl,
+      createdAt: TODAY, clicks: 0, conversions: 0
+    };
+    const updated = [rec, ...links];
+    setLinks(updated); persist("zt-utm-links", updated);
+    addAudit?.("Marketing", "UTM Link Created", utmForm.campaign, utmForm.source);
+    setLinkModal(false);
+    setUtmForm(p=>({...p, name:"", campaign:"", content:"", term:""}));
+  };
+
+  const saveCampaign = () => {
+    if (!camForm.name) return alert("Campaign name required");
+    const rec = { id: editCam || uid(), ...camForm, createdAt: TODAY, status:"active",
+      actualLeads:0, actualDeals:0, actualRevenue:0 };
+    const updated = editCam ? campaigns.map(c=>c.id===editCam?rec:c) : [rec, ...campaigns];
+    setCampaigns(updated); persist("zt-campaigns", updated);
+    setCamModal(false); setEditCam(null); setCamForm({name:"",type:"linkedin-posts",startDate:"",endDate:"",budget:"",goal:"",targetLeads:""});
+  };
+
+  const UTM_SOURCES = ["linkedin","google","email","twitter","referral","direct","event","cold-email","partner","organic"];
+  const UTM_MEDIUMS = ["social","email","cpc","organic","referral","newsletter","webinar","direct","content"];
+  const CAMPAIGN_TYPES = ["linkedin-posts","email-campaign","cold-outreach","webinar","event","content-marketing","paid-ads","partner","referral"];
+
+  const totalLinks    = links.length;
+  const totalCampaigns = campaigns.length;
+  const activeCams    = campaigns.filter(c=>c.status==="active").length;
+  const totalBudget   = campaigns.reduce((s,c)=>s+(+c.budget||0),0);
+  const estimatedPipeline = campaigns.reduce((s,c)=>s+(+c.actualRevenue||0),0);
+
+  // Attribution table — correlate UTM campaigns with CRM deals
+  const wonDeals = (crmDeals||[]).filter(d=>d.stage==="closed_won");
+  const openDeals = (crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage));
+
+  const tabBtn = (id, label) => (
+    <button onClick={()=>setView(id)}
+      style={{padding:"6px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:view===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:view===id?"#fff":"#475569"}}>
+      {label}
+    </button>
+  );
+
+  const STATUS_COL = { active:"#34d399", paused:"#f59e0b", completed:"#38bdf8", cancelled:"#f87171" };
+
+  return (
+    <div>
+      <PH title="Campaign Tracking & UTM" sub="UTM link builder · Campaign ROI tracker · Attribution dashboard · Marketing scorecard"/>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          { l:"Tracked Campaigns",  v:totalCampaigns,                    c:"#38bdf8" },
+          { l:"Active",             v:activeCams,                        c:"#34d399" },
+          { l:"UTM Links",          v:totalLinks,                        c:"#a78bfa" },
+          { l:"Total Budget",       v:totalBudget>0?`$${(totalBudget/1000).toFixed(1)}k`:"—", c:"#f59e0b" },
+          { l:"Influenced Revenue", v:estimatedPipeline>0?`$${(estimatedPipeline/1000).toFixed(0)}k`:"—", c:"#34d399" },
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:20,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+          {tabBtn("dashboard", "📊 Scorecard")}
+          {tabBtn("campaigns", "🗓 Campaigns")}
+          {tabBtn("utmbuilder","🔗 UTM Builder")}
+          {tabBtn("links",     "📋 All Links")}
+          {tabBtn("attribution","🎯 Attribution")}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn bg" style={{fontSize:11}} onClick={()=>setLinkModal(true)}>+ UTM Link</button>
+          <button className="btn bp" style={{fontSize:12}} onClick={()=>{setEditCam(null);setCamForm({name:"",type:"linkedin-posts",startDate:TODAY,endDate:"",budget:"",goal:"",targetLeads:""});setCamModal(true);}}>
+            + Campaign
+          </button>
+        </div>
+      </div>
+
+      {/* ── SCORECARD ────────────────────────────────────────────────────── */}
+      {view==="dashboard" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {/* Campaign performance */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📊 Campaign Performance</div>
+            {campaigns.length===0 ? (
+              <div style={{textAlign:"center",padding:"30px",color:"#334155",fontSize:11}}>
+                No campaigns tracked yet. Add your first campaign to start measuring ROI.
+              </div>
+            ) : campaigns.slice(0,6).map(cam=>{
+              const budgetNum   = +cam.budget||0;
+              const revenueNum  = +cam.actualRevenue||0;
+              const roi         = budgetNum > 0 ? ((revenueNum - budgetNum)/budgetNum*100).toFixed(0) : null;
+              const leadPct     = cam.targetLeads>0 ? Math.round((cam.actualLeads||0)/cam.targetLeads*100) : null;
+              return (
+                <div key={cam.id} style={{padding:"10px 12px",borderRadius:8,marginBottom:6,background:"#040810",border:"1px solid #0a1826"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{cam.name}</div>
+                      <div style={{fontSize:9,color:"#475569"}}>{cam.type} · {cam.startDate||"—"}</div>
+                    </div>
+                    <span style={{fontSize:9,padding:"2px 7px",borderRadius:8,
+                      background:(STATUS_COL[cam.status]||"#94a3b8")+"22",
+                      color:STATUS_COL[cam.status]||"#94a3b8",
+                      border:`1px solid ${(STATUS_COL[cam.status]||"#94a3b8")}44`}}>
+                      {cam.status}
+                    </span>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
+                    {[["Budget",budgetNum>0?`$${budgetNum.toLocaleString()}`:"—","#f59e0b"],
+                      ["Leads",`${cam.actualLeads||0}${cam.targetLeads?"/"+cam.targetLeads:""}`,"#38bdf8"],
+                      ["Revenue",revenueNum>0?`$${(revenueNum/1000).toFixed(0)}k`:"—","#34d399"],
+                      ["ROI",roi?roi+"%":"—",+roi>100?"#34d399":+roi>0?"#f59e0b":"#f87171"],
+                    ].map(([label,val,col])=>(
+                      <div key={label} style={{textAlign:"center"}}>
+                        <div style={{fontSize:11,fontWeight:700,color:col,fontFamily:"monospace"}}>{val}</div>
+                        <div style={{fontSize:8,color:"#334155"}}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {leadPct!==null && (
+                    <div style={{marginTop:6}}>
+                      <div style={{height:4,background:"#0a1626",borderRadius:2,overflow:"hidden"}}>
+                        <div style={{height:"100%",borderRadius:2,background:leadPct>=100?"#34d399":leadPct>=50?"#f59e0b":"#38bdf8",width:Math.min(leadPct,100)+"%",transition:"width 0.5s"}}/>
+                      </div>
+                      <div style={{fontSize:8,color:"#334155",marginTop:1}}>{leadPct}% to lead target</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Marketing scorecard */}
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📈 Marketing Scorecard</div>
+              {[
+                { metric:"Content Published",  val: (savedContent||[]).length,       target:10, unit:"pieces", c:"#38bdf8" },
+                { metric:"Content Scheduled",  val: (calendar||[]).filter(c=>c.status==="scheduled").length, target:5, unit:"items", c:"#a78bfa" },
+                { metric:"Campaigns Active",   val: activeCams,                      target:3,  unit:"running", c:"#34d399" },
+                { metric:"UTM Links Created",  val: totalLinks,                      target:20, unit:"links", c:"#f59e0b" },
+                { metric:"Won Deals Tracked",  val: wonDeals.length,                 target:5,  unit:"won", c:"#34d399" },
+                { metric:"Open Pipeline",      val: openDeals.length,                target:10, unit:"deals", c:"#38bdf8" },
+              ].map(row=>{
+                const pct = row.target>0 ? Math.min(Math.round(row.val/row.target*100),100) : 0;
+                return (
+                  <div key={row.metric} style={{marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                      <span style={{fontSize:11,color:"#94a3b8"}}>{row.metric}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:row.c}}>{row.val} <span style={{color:"#334155",fontWeight:400}}>/ {row.target} {row.unit}</span></span>
+                    </div>
+                    <div style={{height:6,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",borderRadius:3,background:row.c,width:pct+"%",transition:"width 0.5s"}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Quick add campaign metric */}
+            {campaigns.length > 0 && (
+              <div className="card" style={{padding:"14px 16px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>📝 Update Campaign Metrics</div>
+                {campaigns.filter(c=>c.status==="active").slice(0,3).map(cam=>(
+                  <div key={cam.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                    <span style={{fontSize:10,color:"#94a3b8"}}>{cam.name.slice(0,25)}</span>
+                    <div style={{display:"flex",gap:4}}>
+                      {[["Leads",cam.actualLeads||0,"actualLeads"],["Rev",cam.actualRevenue||0,"actualRevenue"]].map(([lbl,val,key])=>(
+                        <div key={key} style={{display:"flex",alignItems:"center",gap:2}}>
+                          <span style={{fontSize:8,color:"#334155"}}>{lbl}:</span>
+                          <input type="number" value={val}
+                            onChange={e=>{
+                              const upd = campaigns.map(c2=>c2.id===cam.id?{...c2,[key]:+e.target.value}:c2);
+                              setCampaigns(upd); persist("zt-campaigns",upd);
+                            }}
+                            style={{width:50,background:"#040810",border:"1px solid #1a2d45",color:"#e2e8f0",borderRadius:4,padding:"1px 4px",fontSize:10}}/>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── CAMPAIGNS ────────────────────────────────────────────────────── */}
+      {view==="campaigns" && (
+        <div>
+          {campaigns.length===0 ? (
+            <div style={{padding:"60px 40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:40,marginBottom:12}}>🗓</div>
+              <div style={{fontSize:14,color:"#334155",marginBottom:16}}>No campaigns tracked yet</div>
+              <button className="btn bp" onClick={()=>{setEditCam(null);setCamModal(true);}}>+ Add First Campaign</button>
+            </div>
+          ) : campaigns.map(cam=>{
+            const roi = +cam.budget>0 ? ((+cam.actualRevenue||0)-(+cam.budget||0))/(+cam.budget)*100 : null;
+            return (
+              <div key={cam.id} className="card" style={{padding:"16px 20px",marginBottom:8}}>
+                <div style={{display:"grid",gridTemplateColumns:"2fr 80px 80px 90px 90px 90px 80px 120px",gap:8,alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{cam.name}</div>
+                    <div style={{fontSize:9,color:"#475569"}}>{cam.type} · {cam.startDate||"—"} → {cam.endDate||"ongoing"}</div>
+                    {cam.goal && <div style={{fontSize:9,color:"#334155",marginTop:1}}>{cam.goal.slice(0,50)}</div>}
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <span style={{fontSize:9,padding:"2px 7px",borderRadius:8,background:(STATUS_COL[cam.status]||"#94a3b8")+"22",color:STATUS_COL[cam.status]||"#94a3b8",border:`1px solid ${(STATUS_COL[cam.status]||"#94a3b8")}44`}}>{cam.status}</span>
+                  </div>
+                  <div style={{textAlign:"right",fontSize:11,color:"#f59e0b",fontFamily:"monospace"}}>{+cam.budget>0?`$${(+cam.budget).toLocaleString()}`:"—"}</div>
+                  <div style={{textAlign:"center",fontSize:11,color:"#38bdf8"}}>{cam.actualLeads||0}{cam.targetLeads?"/"+cam.targetLeads:""} leads</div>
+                  <div style={{textAlign:"right",fontSize:11,color:"#34d399",fontFamily:"monospace"}}>{+cam.actualRevenue>0?`$${(+cam.actualRevenue/1000).toFixed(0)}k`:"—"}</div>
+                  <div style={{textAlign:"center",fontSize:12,fontWeight:700,color:roi>100?"#34d399":roi>0?"#f59e0b":"#f87171"}}>{roi!==null?Math.round(roi)+"%":"—"}</div>
+                  <div style={{textAlign:"center",fontSize:9,color:"#475569"}}>{links.filter(l=>l.campaign===cam.name.toLowerCase().replace(/\s+/g,"-")).length} UTM links</div>
+                  <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                    <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>{setCamForm({...cam});setEditCam(cam.id);setCamModal(true);}}>Edit</button>
+                    <button className="btn bg" style={{fontSize:9,padding:"2px 6px"}} onClick={()=>{const upd=campaigns.map(c=>c.id===cam.id?{...c,status:c.status==="active"?"paused":"active"}:c);setCampaigns(upd);persist("zt-campaigns",upd);}}>
+                      {cam.status==="active"?"⏸":"▶"}
+                    </button>
+                    <button className="btn bg" style={{fontSize:9,padding:"2px 6px",color:"#f87171"}} onClick={()=>{const upd=campaigns.filter(c=>c.id!==cam.id);setCampaigns(upd);persist("zt-campaigns",upd);}}>✕</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── UTM BUILDER ──────────────────────────────────────────────────── */}
+      {view==="utmbuilder" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🔗 UTM Link Builder</div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:14}}>Build trackable links for every piece of content. Know exactly which campaigns drive pipeline.</div>
+            <div style={{marginBottom:10}}>
+              <div className="lbl">Base URL</div>
+              <input className="inp" value={utmForm.baseUrl} onChange={e=>setUtmForm(p=>({...p,baseUrl:e.target.value}))}
+                placeholder="https://ziksatech.com/services/sap-brim"/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+              <div>
+                <div className="lbl">Source *</div>
+                <select className="inp" value={utmForm.source} onChange={e=>setUtmForm(p=>({...p,source:e.target.value}))}>
+                  {UTM_SOURCES.map(s=><option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Medium *</div>
+                <select className="inp" value={utmForm.medium} onChange={e=>setUtmForm(p=>({...p,medium:e.target.value}))}>
+                  {UTM_MEDIUMS.map(m=><option key={m}>{m}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{marginBottom:8}}>
+              <div className="lbl">Campaign Name *</div>
+              <input className="inp" value={utmForm.campaign} onChange={e=>setUtmForm(p=>({...p,campaign:e.target.value}))}
+                placeholder="e.g. q1-brim-linkedin, sap-summit-2026"/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              <div>
+                <div className="lbl">Content (A/B variant)</div>
+                <input className="inp" value={utmForm.content} onChange={e=>setUtmForm(p=>({...p,content:e.target.value}))}
+                  placeholder="post-variant-a"/>
+              </div>
+              <div>
+                <div className="lbl">Link Label</div>
+                <input className="inp" value={utmForm.name} onChange={e=>setUtmForm(p=>({...p,name:e.target.value}))}
+                  placeholder="Friendly name"/>
+              </div>
+            </div>
+            {/* Live preview */}
+            <div style={{marginBottom:12,padding:"10px 12px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Generated URL</div>
+              <div style={{fontSize:10,color:"#38bdf8",wordBreak:"break-all",fontFamily:"monospace"}}>{buildUTM()}</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>copy(buildUTM(),"utm-preview")}>
+                {copied==="utm-preview"?"✅ Copied!":"📋 Copy URL"}
+              </button>
+              <button className="btn bp" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={saveLink}>💾 Save Link</button>
+            </div>
+          </div>
+          {/* UTM guide */}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📖 UTM Parameters Guide</div>
+              {[
+                ["utm_source","Where traffic comes from","linkedin, google, email-newsletter"],
+                ["utm_medium","The marketing channel","social, email, cpc, organic"],
+                ["utm_campaign","Specific campaign name","q1-brim-outreach, sap-summit-2026"],
+                ["utm_content","Which ad/post variant","post-a, banner-cto, blue-cta"],
+                ["utm_term","Paid keywords (PPC)","sap-brim-consultant, s4hana-migration"],
+              ].map(([param,desc,ex])=>(
+                <div key={param} style={{padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
+                  <div style={{display:"flex",gap:8,alignItems:"baseline"}}>
+                    <code style={{fontSize:9,color:"#c9a84c",fontFamily:"monospace",flexShrink:0}}>{param}</code>
+                    <span style={{fontSize:10,color:"#94a3b8"}}>{desc}</span>
+                  </div>
+                  <div style={{fontSize:9,color:"#334155",marginTop:1,paddingLeft:2}}>e.g. {ex}</div>
+                </div>
+              ))}
+            </div>
+            <div className="card" style={{padding:"12px 14px",border:"1px solid #c9a84c33"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#c9a84c",marginBottom:6}}>🎯 Ziksatech UTM Naming Convention</div>
+              <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                {[
+                  "LinkedIn posts: source=linkedin, medium=social",
+                  "Email campaigns: source=ziksatech-email, medium=email",
+                  "Cold outreach: source=cold-email, medium=email",
+                  "Events: source=sap-techEd, medium=event",
+                  "Partner refs: source=[partner-name], medium=referral",
+                  "Campaigns: use hyphenated slugs (q1-brim-2026)",
+                ].map((tip,i)=><div key={i} style={{fontSize:9,color:"#475569"}}>• {tip}</div>)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ALL LINKS ────────────────────────────────────────────────────── */}
+      {view==="links" && (
+        <div>
+          {links.length===0 ? (
+            <div style={{padding:"40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:14,color:"#334155"}}>No UTM links created yet — use the builder to create tracked links</div>
+            </div>
+          ) : (
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 90px 90px 80px 80px 100px 80px",gap:6,padding:"6px 10px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+                <div>Link / Campaign</div><div>Source</div><div>Medium</div><div style={{textAlign:"center"}}>Clicks</div><div style={{textAlign:"center"}}>Converts</div><div>Created</div><div></div>
+              </div>
+              {links.map(link=>(
+                <div key={link.id} style={{display:"grid",gridTemplateColumns:"2fr 90px 90px 80px 80px 100px 80px",gap:6,padding:"8px 10px",borderRadius:6,marginBottom:4,background:"#060d1c",border:"1px solid #0a1826",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{link.name||link.campaign}</div>
+                    <div style={{fontSize:9,color:"#334155",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{link.url.slice(0,50)}...</div>
+                  </div>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>{link.source}</div>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>{link.medium}</div>
+                  <div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#38bdf8"}}>
+                    <input type="number" value={link.clicks||0}
+                      onChange={e=>{const upd=links.map(l=>l.id===link.id?{...l,clicks:+e.target.value}:l);setLinks(upd);persist("zt-utm-links",upd);}}
+                      style={{width:50,background:"#040810",border:"1px solid #1a2d45",color:"#38bdf8",borderRadius:4,padding:"1px 4px",fontSize:11,textAlign:"center"}}/>
+                  </div>
+                  <div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#34d399"}}>
+                    <input type="number" value={link.conversions||0}
+                      onChange={e=>{const upd=links.map(l=>l.id===link.id?{...l,conversions:+e.target.value}:l);setLinks(upd);persist("zt-utm-links",upd);}}
+                      style={{width:50,background:"#040810",border:"1px solid #1a2d45",color:"#34d399",borderRadius:4,padding:"1px 4px",fontSize:11,textAlign:"center"}}/>
+                  </div>
+                  <div style={{fontSize:10,color:"#475569"}}>{link.createdAt}</div>
+                  <div style={{display:"flex",gap:4}}>
+                    <button className="btn bg" style={{fontSize:9,padding:"1px 5px"}} onClick={()=>copy(link.url,"link"+link.id)}>
+                      {copied==="link"+link.id?"✅":"📋"}
+                    </button>
+                    <button className="btn bg" style={{fontSize:9,padding:"1px 5px",color:"#f87171"}} onClick={()=>{const upd=links.filter(l=>l.id!==link.id);setLinks(upd);persist("zt-utm-links",upd);}}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ATTRIBUTION ──────────────────────────────────────────────────── */}
+      {view==="attribution" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🎯 Pipeline Attribution</div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:14}}>
+              Correlate your marketing campaigns with CRM pipeline. Update the "attributed campaign" field when logging deals to track which marketing activities drive revenue.
+            </div>
+            {/* Won deals */}
+            <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:8}}>✅ Won Deals ({wonDeals.length})</div>
+            {wonDeals.length===0
+              ? <div style={{fontSize:10,color:"#334155",marginBottom:12}}>No won deals yet</div>
+              : wonDeals.slice(0,5).map(d=>(
+                <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:10}}>
+                  <span style={{color:"#e2e8f0"}}>{d.name?.slice(0,30)}</span>
+                  <span style={{color:"#c9a84c",fontFamily:"monospace"}}>${(d.value||0).toLocaleString()}</span>
+                </div>
+              ))}
+            {/* Open pipeline */}
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",margin:"12px 0 8px"}}>🔵 Open Pipeline ({openDeals.length})</div>
+            {openDeals.slice(0,5).map(d=>(
+              <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:10}}>
+                <span style={{color:"#e2e8f0"}}>{d.name?.slice(0,30)}</span>
+                <span style={{color:"#38bdf8",fontFamily:"monospace"}}>${(d.value||0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Channel breakdown */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📡 Channel Breakdown</div>
+            {(() => {
+              const sourceMap = {};
+              links.forEach(l=>{
+                const k = l.source||"unknown";
+                if (!sourceMap[k]) sourceMap[k]={clicks:0,conversions:0,links:0};
+                sourceMap[k].clicks += l.clicks||0;
+                sourceMap[k].conversions += l.conversions||0;
+                sourceMap[k].links++;
+              });
+              const entries = Object.entries(sourceMap).sort((a,b)=>b[1].clicks-a[1].clicks);
+              const totalClicks = entries.reduce((s,[,v])=>s+v.clicks,0);
+              if (entries.length===0) return <div style={{fontSize:10,color:"#334155",textAlign:"center",padding:"20px"}}>No UTM data yet. Create tracked links and log clicks to see channel performance.</div>;
+              return entries.map(([source,data])=>{
+                const pct = totalClicks>0?Math.round(data.clicks/totalClicks*100):0;
+                const cvr = data.clicks>0?Math.round(data.conversions/data.clicks*100):0;
+                return (
+                  <div key={source} style={{marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                      <span style={{fontSize:11,color:"#94a3b8",textTransform:"capitalize"}}>{source}</span>
+                      <div style={{fontSize:10,color:"#475569"}}>{data.clicks} clicks · <span style={{color:"#34d399"}}>{cvr}% CVR</span></div>
+                    </div>
+                    <div style={{height:8,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",borderRadius:3,background:"#0369a1",width:pct+"%",transition:"width 0.5s"}}/>
+                    </div>
+                    <div style={{fontSize:8,color:"#334155",marginTop:1}}>{data.links} links · {pct}% of traffic</div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ── CAMPAIGN MODAL ────────────────────────────────────────────────── */}
+      {camModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&(setCamModal(false),setEditCam(null))}>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title={editCam?"Edit Campaign":"New Campaign"} onClose={()=>{setCamModal(false);setEditCam(null);}}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{gridColumn:"span 2"}}>
+                <div className="lbl">Campaign Name *</div>
+                <input className="inp" value={camForm.name||""} onChange={e=>setCamForm(p=>({...p,name:e.target.value}))}/>
+              </div>
+              <div>
+                <div className="lbl">Type</div>
+                <select className="inp" value={camForm.type||"linkedin-posts"} onChange={e=>setCamForm(p=>({...p,type:e.target.value}))}>
+                  {CAMPAIGN_TYPES.map(t=><option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Status</div>
+                <select className="inp" value={camForm.status||"active"} onChange={e=>setCamForm(p=>({...p,status:e.target.value}))}>
+                  {["active","paused","completed","cancelled"].map(s=><option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="lbl">Start Date</div>
+                <input type="date" className="inp" value={camForm.startDate||""} onChange={e=>setCamForm(p=>({...p,startDate:e.target.value}))}/>
+              </div>
+              <div>
+                <div className="lbl">End Date</div>
+                <input type="date" className="inp" value={camForm.endDate||""} onChange={e=>setCamForm(p=>({...p,endDate:e.target.value}))}/>
+              </div>
+              <div>
+                <div className="lbl">Budget ($)</div>
+                <input type="number" className="inp" value={camForm.budget||""} onChange={e=>setCamForm(p=>({...p,budget:e.target.value}))}/>
+              </div>
+              <div>
+                <div className="lbl">Lead Target</div>
+                <input type="number" className="inp" value={camForm.targetLeads||""} onChange={e=>setCamForm(p=>({...p,targetLeads:e.target.value}))}/>
+              </div>
+              {editCam && <>
+                <div>
+                  <div className="lbl">Actual Leads</div>
+                  <input type="number" className="inp" value={camForm.actualLeads||""} onChange={e=>setCamForm(p=>({...p,actualLeads:e.target.value}))}/>
+                </div>
+                <div>
+                  <div className="lbl">Revenue Influenced ($)</div>
+                  <input type="number" className="inp" value={camForm.actualRevenue||""} onChange={e=>setCamForm(p=>({...p,actualRevenue:e.target.value}))}/>
+                </div>
+              </>}
+              <div style={{gridColumn:"span 2"}}>
+                <div className="lbl">Goal / Notes</div>
+                <textarea className="inp" rows={2} value={camForm.goal||""} onChange={e=>setCamForm(p=>({...p,goal:e.target.value}))} placeholder="What this campaign is trying to achieve..."/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>{setCamModal(false);setEditCam(null);}}>Cancel</button>
+              <button className="btn bp" onClick={saveCampaign}>💾 Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CampaignIntelligenceAI({ clients, crmDeals, roster, proposals, savedContent, calendar, addAudit }) {
   const [view, setView]         = useState("planner");   // planner | audience | optimizer | competitive | predict | analyze
   const [loading, setLoading]   = useState("");
@@ -32557,6 +33496,8 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
           {tabBtn("win",        "🏆 Win Story")}
           {tabBtn("calendar",   "📅 Calendar", draftCnt)}
           {tabBtn("library",    "💾 Library", savedContent.length||0)}
+          {tabBtn("nurture",    "📧 Nurture")}
+          {tabBtn("tracking",   "📊 Tracking")}
           <button onClick={()=>setSub("intelligence")}
             style={{padding:"7px 14px",borderRadius:8,border:`1px solid ${sub==="intelligence"?"#c9a84c":"#c9a84c44"}`,cursor:"pointer",fontSize:12,fontWeight:700,
               background:sub==="intelligence"?"linear-gradient(135deg,#c9a84c,#a07830)":"#1a1005",
@@ -32581,6 +33522,8 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
                 { icon:"📧", label:"Email Campaign",   sub:"Newsletter or outreach email",         action:()=>setSub("email"),     color:"#7c3aed" },
                 { icon:"🏆", label:"Win Announcement", sub:"Celebrate a new client or milestone",  action:()=>setSub("win"),       color:"#c9a84c" },
                 { icon:"📅", label:"Content Calendar", sub:"Plan & schedule your marketing",       action:()=>setSub("calendar"),  color:"#0891b2" },
+                { icon:"📧", label:"Nurture Sequences", sub:"Multi-touch drip campaigns",          action:()=>setSub("nurture"),   color:"#7c3aed" },
+                { icon:"📊", label:"Campaign Tracking",  sub:"UTM links & ROI dashboard",           action:()=>setSub("tracking"),  color:"#059669" },
               ].map(item=>(
                 <div key={item.label} onClick={item.action}
                   style={{padding:"14px 16px",borderRadius:10,cursor:"pointer",background:"#040810",border:`1px solid ${item.color}33`,
@@ -32948,6 +33891,20 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
       {sub==="competitor" && <CompetitiveIntelligence />}
 
       {/* ── INTELLIGENCE TAB ─────────────────────────────────────────────────── */}
+      {sub==="nurture" && (
+        <LeadNurtureBuilder
+          clients={safeClients} crmDeals={safeDeals}
+          proposals={safeProps} savedContent={savedContent}
+          addAudit={addAudit}
+        />
+      )}
+      {sub==="tracking" && (
+        <CampaignTrackingDashboard
+          crmDeals={safeDeals} proposals={safeProps}
+          savedContent={savedContent} calendar={calendar}
+          addAudit={addAudit}
+        />
+      )}
       {sub==="intelligence" && (
         <CampaignIntelligenceAI
           clients={safeClients}
