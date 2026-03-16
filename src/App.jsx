@@ -10700,6 +10700,21 @@ function OnboardingModule({ roster, onboardings, setOnboardings, addAudit }) {
   );
 }
 
+// ─── CHANGE ORDER CONSTANTS ───────────────────────────────────────────────────
+const CO_STATUS_COLOR = {
+  draft:"#475569", pending:"#f59e0b", approved:"#34d399",
+  rejected:"#f87171", voided:"#1e3a5f",
+};
+const CO_STATUS_BG = {
+  draft:"#0a1626", pending:"#1a1005", approved:"#021f14",
+  rejected:"#1a0808", voided:"#070b14",
+};
+const CO_STATUS_LABEL = {
+  draft:"Draft", pending:"Pending Client", approved:"Approved", rejected:"Rejected", voided:"Voided",
+};
+const CO_TYPE_COLOR  = { addition:"#34d399", reduction:"#f87171", timeline:"#f59e0b", scope_change:"#a78bfa" };
+const CO_TYPE_LABEL  = { addition:"Budget Addition", reduction:"Budget Reduction", timeline:"Timeline Change", scope_change:"Scope Change" };
+
 function ChangeOrderModule({ changeOrders, setChangeOrders, projects, contracts, sows, roster, crmAccounts, finInvoices, setFinInvoices }) {
   const [sub, setSub] = useState("dashboard");
   const tabs = [
