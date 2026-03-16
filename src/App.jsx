@@ -2049,6 +2049,7 @@ export default function ZiksatechOps() {
     { id:"bankanalyzer",label:"Bank & Card Analysis",   icon:ICONS.dash,     group:"Finance"     },
     { id:"contracts",    label:"Contracts & SOW",      icon:ICONS.clients,  group:"Clients"     },
     { id:"emailtpl",     label:"Email Templates",      icon:ICONS.dash,     group:"Clients"     },
+    { id:"doctemplates", label:"Doc Templates",         icon:ICONS.dash,     group:"Team"        },
     { id:"esign",        label:"E-Signature",          icon:ICONS.pl,       group:"Clients"     },
     { id:"roster",       label:"Team Roster",          icon:ICONS.roster,   group:"Team"        },
     { id:"timesheet",    label:"Timesheet",            icon:ICONS.ts,       group:"Team"        },
