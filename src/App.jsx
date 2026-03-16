@@ -24227,7 +24227,7 @@ function ESignature({ esignRequests, setEsignRequests, contracts, sows, roster }
 // =============================================================================
 // CLIENT PORTAL
 // =============================================================================
-function ClientPortal({ clients, finInvoices, finPayments, projects, sows, changeOrders, tsSubmissions, roster }) {
+function ClientPortal({ clients, finInvoices, finPayments, projects, sows, changeOrders, tsSubmissions, roster, addAudit }) {
 
   const [selClientId, setSelClientId] = useState(clients[0]?.id||"");
   const [portalTab,   setPortalTab]   = useState("overview");
@@ -24258,12 +24258,25 @@ function ClientPortal({ clients, finInvoices, finPayments, projects, sows, chang
   };
 
   const portalTabs = [
-    { id:"overview",  label:"Overview"   },
-    { id:"invoices",  label:"Invoices"   },
-    { id:"projects",  label:"Projects"   },
-    { id:"sows",      label:"SOW / Scope"},
-    { id:"team",      label:"Your Team"  },
+    { id:"overview",   label:"Overview"      },
+    { id:"invoices",   label:"Invoices"      },
+    { id:"timesheets", label:"Timesheets"    },
+    { id:"projects",   label:"Projects"      },
+    { id:"sows",       label:"SOW / Scope"   },
+    { id:"team",       label:"Your Team"     },
+    { id:"pay",        label:"💳 Pay Invoice" },
+    { id:"requests",   label:"📝 Requests"   },
   ];
+  // Change request state
+  const [reqForm, setReqForm] = useState({type:"change_order",desc:"",priority:"medium"});
+  const [reqSent, setReqSent] = useState(false);
+  const submitRequest = () => {
+    if (!reqForm.desc) return;
+    setReqSent(true);
+    addAudit?.("Client Portal","Change Request Submitted",client?.name,reqForm.desc.slice(0,80));
+    setTimeout(()=>setReqSent(false), 3000);
+    setReqForm({type:"change_order",desc:"",priority:"medium"});
+  };
 
   // Portal preview wrapper — renders in a "client-facing" light theme card
   const PortalShell = ({ children }) => previewMode ? (
@@ -24589,6 +24602,147 @@ function ClientPortal({ clients, finInvoices, finPayments, projects, sows, chang
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+
+        {/* ── TIMESHEETS ── */}
+        {portalTab==="timesheets"&&(
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0",marginBottom:14}}>📋 Timesheet Approvals</div>
+            {(tsSubmissions||[]).filter(ts=>ts.status==="pending"||ts.status==="approved").length===0 ? (
+              <div style={{padding:"40px",textAlign:"center",color:"#64748b",fontSize:13}}>
+                <div style={{fontSize:32,marginBottom:10}}>✅</div>
+                <div>No pending timesheets for approval</div>
+              </div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {(tsSubmissions||[]).filter(ts=>ts.status==="pending"||ts.status==="approved").map(ts=>{
+                  const consultant = (roster||[]).find(r=>r.id===ts.consultantId||r.name===ts.consultantName);
+                  const statusColor = ts.status==="approved"?"#34d399":ts.status==="rejected"?"#f87171":"#f59e0b";
+                  return (
+                    <div key={ts.id} style={{padding:"14px 18px",borderRadius:10,
+                      background:previewMode?"#f8fafc":"#060d1c",
+                      border:`1px solid ${previewMode?"#e2e8f0":"#1a2d45"}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0"}}>{ts.consultantName||consultant?.name||"Consultant"}</div>
+                          <div style={{fontSize:11,color:"#64748b"}}>{ts.period||ts.month} · {ts.totalHours||ts.hours||0} hrs · ${((ts.totalHours||ts.hours||0)*(consultant?.billRate||0)).toLocaleString()}</div>
+                        </div>
+                        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                          <span style={{fontSize:11,padding:"2px 10px",borderRadius:8,background:ts.status==="approved"?"#021f14":ts.status==="rejected"?"#1a0808":"#1a1005",color:statusColor,border:`1px solid ${statusColor}44`,fontWeight:600}}>{ts.status||"pending"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PAY INVOICE ── */}
+        {portalTab==="pay"&&(
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0",marginBottom:14}}>💳 ACH Payment Instructions</div>
+            {clientInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided").length > 0 && (
+              <div style={{padding:"12px 16px",background:previewMode?"#fef3c7":"#1a1005",border:"1px solid #92400e",borderRadius:10,marginBottom:16}}>
+                <div style={{fontSize:12,fontWeight:700,color:previewMode?"#78350f":"#fbbf24",marginBottom:6}}>⚠️ Outstanding Invoices</div>
+                {clientInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided").map(inv=>(
+                  <div key={inv.id} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",fontSize:11,borderBottom:"1px solid #0a1626"}}>
+                    <span style={{color:previewMode?"#92400e":"#fbbf24"}}>{inv.id} · {inv.period}</span>
+                    <span style={{fontFamily:"monospace",fontWeight:700,color:previewMode?"#78350f":"#f59e0b"}}>${(inv.amount||0).toLocaleString()} · Due {inv.dueDate}</span>
+                  </div>
+                ))}
+                <div style={{marginTop:8,fontSize:12,fontWeight:700,color:previewMode?"#78350f":"#fbbf24"}}>Total Due: ${clientInvoices.filter(i=>i.status!=="paid"&&i.status!=="voided").reduce((s,i)=>s+(i.amount||0),0).toLocaleString()}</div>
+              </div>
+            )}
+            <div style={{padding:"22px 26px",background:previewMode?"#f0f9ff":"#060d1c",border:`2px solid #0369a1`,borderRadius:12,marginBottom:14}}>
+              <div style={{fontSize:15,fontWeight:800,color:previewMode?"#0c1a2e":"#e2e8f0",marginBottom:4}}>🏦 Bank Transfer (ACH) Details</div>
+              <div style={{fontSize:11,color:"#64748b",marginBottom:18}}>Please use ACH/wire transfer. Include invoice number(s) in memo field.</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                {[
+                  ["Bank Name","Bank of America"],
+                  ["Account Name","Ziksatech, LLC"],
+                  ["Account Type","Checking"],
+                  ["Routing Number","Contact mmurthy@ziksatech.com"],
+                  ["Account Number","Contact mmurthy@ziksatech.com"],
+                  ["Payment Memo",clientInvoices.filter(i=>i.status!=="paid").map(i=>i.id).slice(0,3).join(", ")||"Invoice reference"],
+                ].map(([label,val])=>(
+                  <div key={label}>
+                    <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",fontWeight:700,marginBottom:3}}>{label}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:previewMode?"#0c1a2e":"#e2e8f0",background:previewMode?"#e0f2fe":"#0c2340",padding:"7px 10px",borderRadius:6,fontFamily:"monospace"}}>{val}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:16,padding:"10px 14px",background:previewMode?"#dbeafe":"#0c2340",borderRadius:8,fontSize:11,color:previewMode?"#1e40af":"#7dd3fc"}}>
+                📧 After payment, email remittance to <strong>mmurthy@ziksatech.com</strong> with invoice number(s) in subject. Questions: (972) 555-0100
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── REQUESTS ── */}
+        {portalTab==="requests"&&(
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0",marginBottom:14}}>📝 Submit a Request</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <div style={{padding:"20px 22px",background:previewMode?"#f8fafc":"#060d1c",borderRadius:12,border:`1px solid ${previewMode?"#e2e8f0":"#1a2d45"}`}}>
+                <div style={{fontSize:12,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0",marginBottom:14}}>New Request</div>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:10,color:"#64748b",marginBottom:4,textTransform:"uppercase",fontWeight:600}}>Request Type</div>
+                  <select style={{width:"100%",padding:"8px 10px",borderRadius:6,border:`1px solid ${previewMode?"#cbd5e1":"#1a2d45"}`,background:previewMode?"#fff":"#0a1626",color:previewMode?"#0c1a2e":"#e2e8f0",fontSize:12}}
+                    value={reqForm.type} onChange={e=>setReqForm(p=>({...p,type:e.target.value}))}>
+                    <option value="change_order">Change Order / Scope Change</option>
+                    <option value="add_resource">Add Consultant Resource</option>
+                    <option value="reduce_resource">Reduce Consultant Resource</option>
+                    <option value="extend_contract">Contract Extension</option>
+                    <option value="billing_inquiry">Billing Inquiry</option>
+                    <option value="project_update">Project Status Update Request</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:10,color:"#64748b",marginBottom:4,textTransform:"uppercase",fontWeight:600}}>Priority</div>
+                  <div style={{display:"flex",gap:8}}>
+                    {["low","medium","high"].map(p=>(
+                      <button key={p} onClick={()=>setReqForm(f=>({...f,priority:p}))}
+                        style={{flex:1,padding:"6px 0",borderRadius:6,border:`1px solid ${reqForm.priority===p?(p==="high"?"#f87171":p==="medium"?"#f59e0b":"#34d399"):"#1a2d45"}`,
+                          background:reqForm.priority===p?(p==="high"?"#1a0808":p==="medium"?"#1a1005":"#021f14"):"transparent",
+                          color:reqForm.priority===p?(p==="high"?"#f87171":p==="medium"?"#fbbf24":"#34d399"):"#64748b",
+                          fontSize:11,cursor:"pointer",textTransform:"capitalize",fontWeight:600}}>
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:10,color:"#64748b",marginBottom:4,textTransform:"uppercase",fontWeight:600}}>Description *</div>
+                  <textarea rows={4} style={{width:"100%",padding:"8px 10px",borderRadius:6,border:`1px solid ${previewMode?"#cbd5e1":"#1a2d45"}`,background:previewMode?"#fff":"#0a1626",color:previewMode?"#0c1a2e":"#e2e8f0",fontSize:12,resize:"vertical",boxSizing:"border-box"}}
+                    placeholder="Describe your request..." value={reqForm.desc} onChange={e=>setReqForm(p=>({...p,desc:e.target.value}))}/>
+                </div>
+                {reqSent ? (
+                  <div style={{padding:"10px 14px",background:"#021f14",border:"1px solid #15803d",borderRadius:8,textAlign:"center",fontSize:13,color:"#34d399",fontWeight:700}}>✅ Request submitted! We'll respond within 24 hours.</div>
+                ) : (
+                  <button onClick={submitRequest} style={{width:"100%",padding:"10px",borderRadius:8,border:"none",background:"#0369a1",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>📤 Submit Request</button>
+                )}
+              </div>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0",marginBottom:14}}>📞 Quick Contacts</div>
+                {[
+                  {name:"Manju Murthy",role:"Managing Partner",email:"mmurthy@ziksatech.com",phone:"(972) 555-0100"},
+                  {name:"Billing Team",role:"Invoices & Payments",email:"billing@ziksatech.com",phone:""},
+                  {name:"HR & Compliance",role:"Documents & Compliance",email:"hr@ziksatech.com",phone:""},
+                ].map(contact=>(
+                  <div key={contact.name} style={{padding:"12px 14px",borderRadius:10,marginBottom:8,background:previewMode?"#f8fafc":"#060d1c",border:`1px solid ${previewMode?"#e2e8f0":"#1a2d45"}`}}>
+                    <div style={{fontSize:12,fontWeight:700,color:previewMode?"#0c1a2e":"#e2e8f0"}}>{contact.name}</div>
+                    <div style={{fontSize:10,color:"#64748b",marginBottom:4}}>{contact.role}</div>
+                    <a href={`mailto:${contact.email}`} style={{fontSize:11,color:previewMode?"#0369a1":"#38bdf8",display:"block"}}>{contact.email}</a>
+                    {contact.phone&&<div style={{fontSize:11,color:"#64748b"}}>{contact.phone}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
