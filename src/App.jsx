@@ -34,6 +34,7 @@ const RBAC = {
   portal:       ["super_admin"],  // AI Hub — super_admin ONLY (has AI Agent)
   home:         ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   clients:      ["super_admin","admin","accounts"],
+  healthscore:  ["super_admin","admin","accounts"],
   crm:          ["super_admin","admin"],
   proposals:    ["super_admin","admin"],
   rfpgen:       ["super_admin","admin"],
@@ -210,11 +211,33 @@ const supaAuth = (() => {
       return r.json();
     },
     async getProfile(userId, token) {
-      const r = await fetch(`${base}/rest/v1/user_profiles?id=eq.${userId}&select=*`, {
-        headers:{ ...h, "Authorization":`Bearer ${token}`, "Prefer":"return=representation" }
-      });
-      const rows = await r.json();
-      return Array.isArray(rows) ? rows[0] : null;
+      try {
+        const r = await fetch(`${base}/rest/v1/user_profiles?id=eq.${userId}&select=*`, {
+          headers:{ ...h, "Authorization":`Bearer ${token}`, "Prefer":"return=representation" }
+        });
+        if (r.ok) {
+          const rows = await r.json();
+          if (Array.isArray(rows) && rows[0]) return rows[0];
+        }
+      } catch(e) {}
+      // Fallback: build profile from auth.users metadata (works even if user_profiles table broken)
+      try {
+        const ur = await fetch(`${base}/auth/v1/user`, {
+          headers:{ ...h, "Authorization":`Bearer ${token}` }
+        });
+        const user = await ur.json();
+        if (user?.id) {
+          const meta = user.user_metadata || {};
+          return {
+            id: user.id,
+            email: user.email,
+            full_name: meta.full_name || user.email?.split("@")[0] || "User",
+            role: meta.role || "employee",
+            status: "active",
+          };
+        }
+      } catch(e) {}
+      return null;
     },
     async getAllProfiles(token) {
       const r = await fetch(`${base}/rest/v1/user_profiles?select=*&order=created_at.desc`, {
@@ -610,6 +633,7 @@ const ALL_MODULES = [
   { id:"roster",     label:"Team Roster",           group:"Delivery"   },
   { id:"timesheet",  label:"Timesheet",             group:"Delivery"   },
   { id:"clients",    label:"Client Portfolio",      group:"Delivery"   },
+  { id:"healthscore", label:"Client Health",         group:"Clients"    },
   { id:"ebitda",     label:"EBITDA Optimizer",      group:"Delivery"   },
   { id:"pl",         label:"P&L / Income",          group:"Finance"    },
   { id:"finance",    label:"Finance Module",        group:"Finance"    },
@@ -2035,6 +2059,7 @@ export default function ZiksatechOps() {
     { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Overview"    },
     { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Overview"    },
     { id:"clients",      label:"Client Portfolio",     icon:ICONS.clients,  group:"Clients"     },
+    { id:"healthscore",  label:"Client Health ♥",       icon:ICONS.ebitda,   group:"Clients"     },
     { id:"crm",          label:"Sales CRM",            icon:ICONS.clients,  group:"Clients"     },
     { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Clients"     },
     { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
@@ -2560,7 +2585,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="esign"         && <ESignature {...shared}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
         {tab==="timesheet"  && <TimesheetApproval {...shared} authProfile={authProfile} addAudit={shared.addAudit}/>}
-        {tab==="clients"    && <ClientPortfolio {...shared}/>}
+        {tab==="clients"    && <ClientPortfolio {...shared}/>
+        {tab==="healthscore" && <ClientHealthScorecard clients={shared.clients} setClients={shared.setClients} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} roster={shared.roster} contracts={shared.contracts} addAudit={shared.addAudit}/>}}
         {tab==="pipeline"   && <Pipeline   {...shared}/>}
         {tab==="ebitda"     && <EbitdaOpt  ebitdaLevers={shared.ebitdaLevers} setEbitdaLevers={shared.setEbitdaLevers} finInvoices={shared.finInvoices} finPayments={shared.finPayments} finExpenses={shared.finExpenses} roster={shared.roster} apInvoices={shared.apInvoices} adpRuns={shared.adpRuns}/>}
         {tab==="pl"         && <PandL      {...shared}/>}
@@ -3497,6 +3523,633 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 }
 
 // ─── CLIENT PORTFOLIO ─────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLIENT HEALTH SCORECARD — Auto-scoring + NPS + Renewal Tracker
+// ═══════════════════════════════════════════════════════════════════════════
+function ClientHealthScorecard({ clients, setClients, finInvoices, finPayments, crmDeals, roster, contracts, addAudit }) {
+  const [selId,      setSel]       = useState(null);
+  const [npsModal,   setNpsModal]  = useState(null);
+  const [npsForm,    setNpsForm]   = useState({ score:"", feedback:"", respondent:"" });
+  const [view,       setView]      = useState("grid"); // grid | list
+  const [filterH,    setFilterH]   = useState("all");
+  const [achModal,   setAchModal]  = useState(null); // invoice to send ACH for
+
+  const safeInv  = finInvoices  || [];
+  const safePay  = finPayments  || [];
+  const safeDeals = crmDeals    || [];
+  const safeRoster = roster     || [];
+
+  // ── Score Engine ──────────────────────────────────────────────────────────
+  const scoreClient = (cl) => {
+    const clInv  = safeInv.filter(i => i.clientId === cl.id);
+    const paid   = clInv.filter(i => i.status === "paid");
+    const overdue = clInv.filter(i => i.status === "overdue");
+    const totalInv = clInv.length || 1;
+
+    // 1. Payment Health (0-30 pts): % invoices paid on time, no overdue
+    const payScore = Math.round(((paid.length / totalInv) * 30) - (overdue.length * 10));
+    const payPts   = Math.max(0, Math.min(30, payScore));
+
+    // 2. Engagement Activity (0-25 pts): recent invoices, active deal stages
+    const lastInv  = clInv.sort((a,b) => b.issueDate?.localeCompare(a.issueDate))[0];
+    const daysSince = lastInv ? Math.floor((Date.now() - new Date(lastInv.issueDate)) / 86400000) : 999;
+    const engPts   = daysSince < 30 ? 25 : daysSince < 60 ? 18 : daysSince < 90 ? 10 : 3;
+
+    // 3. Revenue Stability (0-25 pts): consistent monthly revenue
+    const monthlyRevs = clInv.map(i => i.amount || 0);
+    const avgRev   = monthlyRevs.reduce((s,v)=>s+v,0) / (monthlyRevs.length||1);
+    const variance = monthlyRevs.reduce((s,v)=>s+Math.abs(v-avgRev),0) / (monthlyRevs.length||1);
+    const stability = avgRev > 0 ? Math.max(0, 1 - (variance / avgRev)) : 0;
+    const revPts   = Math.round(stability * 25);
+
+    // 4. Renewal Risk (0-20 pts): days until contract renewal
+    const renewalDays = cl.renewalDate
+      ? Math.floor((new Date(cl.renewalDate) - new Date()) / 86400000) : 180;
+    const renewPts = renewalDays > 180 ? 20 : renewalDays > 90 ? 15 : renewalDays > 30 ? 8 : 2;
+
+    // NPS bonus (+/- 5 pts)
+    const npsHistory = cl.npsHistory || [];
+    const lastNPS   = npsHistory.slice(-1)[0]?.score;
+    const npsPts    = lastNPS ? (lastNPS >= 9 ? 5 : lastNPS >= 7 ? 2 : -5) : 0;
+
+    const total = payPts + engPts + revPts + renewPts + npsPts;
+    const score = Math.max(0, Math.min(100, total));
+    const health = score >= 75 ? "Green" : score >= 50 ? "Amber" : "Red";
+    const trend  = (cl._lastScore || score) < score ? "up" : (cl._lastScore || score) > score ? "down" : "stable";
+
+    return { score, health, payPts, engPts, revPts, renewPts, npsPts, trend,
+             overdue: overdue.length, daysLastBill: daysSince, renewalDays };
+  };
+
+  const scored = (clients||[]).map(cl => ({ ...cl, ...scoreClient(cl) }));
+  const filtered = filterH === "all" ? scored : scored.filter(c => c.health === filterH);
+  const selected = scored.find(c => c.id === selId);
+
+  // Aggregate stats
+  const atRisk    = scored.filter(c => c.health === "Red").length;
+  const warning   = scored.filter(c => c.health === "Amber").length;
+  const healthy   = scored.filter(c => c.health === "Green").length;
+  const avgScore  = Math.round(scored.reduce((s,c)=>s+c.score,0) / (scored.length||1));
+  const renewSoon = scored.filter(c => c.renewalDays !== undefined && c.renewalDays <= 90 && c.renewalDays >= 0);
+
+  const HC = { Green:{bg:"#021f14",br:"#15803d",tx:"#34d399",dot:"#22c55e",label:"Healthy"},
+               Amber:{bg:"#1a1005",br:"#92400e",tx:"#fbbf24",dot:"#f59e0b",label:"At Risk"},
+               Red:  {bg:"#1a0808",br:"#7f1d1d",tx:"#f87171",dot:"#ef4444",label:"Critical"} };
+
+  const saveNPS = () => {
+    if (!npsModal || !npsForm.score) return;
+    const score = +npsForm.score;
+    if (score < 0 || score > 10) return alert("NPS score must be 0-10");
+    const entry = { date: TODAY_STR, score, feedback: npsForm.feedback, respondent: npsForm.respondent };
+    const updated = (clients||[]).map(c => c.id === npsModal
+      ? { ...c, npsHistory: [...(c.npsHistory||[]), entry] } : c);
+    setClients(updated);
+    addAudit?.("Client Health","NPS Recorded", npsModal, `Score: ${score}/10`);
+    setNpsModal(null);
+    setNpsForm({ score:"", feedback:"", respondent:"" });
+  };
+
+  const fmt = v => v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1000?`$${(v/1000).toFixed(0)}k`:`$${v}`;
+
+  return (
+    <div>
+      <PH title="Client Health Scorecard" sub="Auto-scored · NPS tracking · Renewal alerts · ACH payment requests"/>
+
+      {/* Top stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Avg Health Score", v:avgScore+"%", c:avgScore>=75?"#34d399":avgScore>=50?"#f59e0b":"#f87171"},
+          {l:"Healthy Clients",  v:healthy,      c:"#34d399"},
+          {l:"At Risk",          v:warning,      c:"#f59e0b"},
+          {l:"Critical",         v:atRisk,       c:"#f87171"},
+          {l:"Renewals ≤90d",    v:renewSoon.length, c:renewSoon.length>0?"#f59e0b":"#34d399"},
+        ].map(s=>(
+          <div key={s.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase"}}>{s.l}</div>
+            <div style={{fontSize:24,fontWeight:900,color:s.c}}>{s.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Renewal alerts banner */}
+      {renewSoon.length > 0 && (
+        <div style={{padding:"10px 16px",background:"#1a1005",border:"1px solid #78350f",borderRadius:10,marginBottom:14,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:13,fontWeight:700,color:"#fbbf24"}}>⏰ Renewal Alerts</span>
+          {renewSoon.map(c=>(
+            <span key={c.id} style={{fontSize:11,background:"#92400e22",color:"#fbbf24",padding:"3px 10px",borderRadius:10,border:"1px solid #92400e"}}>
+              {c.name} — {c.renewalDays}d left
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Filter + view toggle */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div style={{display:"flex",gap:6}}>
+          {["all","Green","Amber","Red"].map(f=>{
+            const cfg = f==="all" ? {tx:"#94a3b8",bg:"#0a1626",br:"#1a2d45"} : {tx:HC[f].tx,bg:HC[f].bg,br:HC[f].br};
+            const count = f==="all"?scored.length:scored.filter(c=>c.health===f).length;
+            return (
+              <button key={f} onClick={()=>setFilterH(f)}
+                style={{padding:"5px 14px",borderRadius:20,border:`1px solid ${filterH===f?cfg.br:"#1a2d45"}`,
+                  background:filterH===f?cfg.bg:"transparent",color:filterH===f?cfg.tx:"#475569",
+                  fontSize:11,cursor:"pointer",fontWeight:600}}>
+                {f==="all"?"All":HC[f].label} ({count})
+              </button>
+            );
+          })}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <button className="btn bg" style={{fontSize:11,padding:"5px 12px"}} onClick={()=>setView(view==="grid"?"list":"grid")}>
+            {view==="grid"?"≡ List":"⊞ Grid"}
+          </button>
+        </div>
+      </div>
+
+      {/* Client grid / list */}
+      <div style={view==="grid"
+        ? {display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12,marginBottom:16}
+        : {display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+        {filtered.map(cl => {
+          const h = HC[cl.health] || HC.Green;
+          const nps = (cl.npsHistory||[]).slice(-1)[0]?.score;
+          const isSelected = selId === cl.id;
+
+          if (view === "list") return (
+            <div key={cl.id} onClick={()=>setSel(isSelected?null:cl.id)}
+              style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px 140px",
+                alignItems:"center",padding:"10px 16px",borderRadius:10,cursor:"pointer",
+                background:isSelected?"#0c2340":"#060d1c",border:`1px solid ${isSelected?"#0369a1":h.br}`}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{cl.name}</div>
+                <div style={{fontSize:10,color:"#3d5a7a"}}>{cl.vertical} · {cl.engType}</div>
+              </div>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:900,color:h.tx}}>{cl.score}</div>
+                <div style={{fontSize:8,color:"#3d5a7a"}}>SCORE</div>
+              </div>
+              <div style={{textAlign:"center",fontSize:12,color:"#38bdf8"}}>{fmt(cl.annualRev)}</div>
+              <div style={{textAlign:"center"}}>
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:h.bg,color:h.tx,border:`1px solid ${h.br}`}}>{h.label}</span>
+              </div>
+              <div style={{textAlign:"center",fontSize:11,color:cl.renewalDays<=30?"#f87171":cl.renewalDays<=90?"#f59e0b":"#64748b"}}>
+                {cl.renewalDate ? cl.renewalDays+"d" : "—"}
+              </div>
+              <div style={{textAlign:"center",fontSize:12,color:nps?nps>=9?"#34d399":nps>=7?"#f59e0b":"#f87171":"#334155"}}>
+                {nps !== undefined ? `${nps}/10` : "—"}
+              </div>
+              <div style={{display:"flex",gap:6,justifyContent:"flex-end"}}>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 8px"}} onClick={e=>{e.stopPropagation();setNpsModal(cl.id);setNpsForm({score:"",feedback:"",respondent:""});}}>+ NPS</button>
+                <button className="btn bg" style={{fontSize:9,padding:"2px 8px",color:"#38bdf8"}} onClick={e=>{e.stopPropagation();setAchModal(cl);}}>💳 ACH</button>
+              </div>
+            </div>
+          );
+
+          return (
+            <div key={cl.id} onClick={()=>setSel(isSelected?null:cl.id)}
+              style={{padding:"16px",borderRadius:12,cursor:"pointer",transition:"all 0.15s",
+                background:isSelected?"#0c2340":"#060d1c",border:`1px solid ${isSelected?"#0369a1":h.br}`}}>
+              {/* Header */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:800,color:"#e2e8f0"}}>{cl.name}</div>
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>{cl.vertical} · {cl.engType}</div>
+                </div>
+                {/* Score ring */}
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:26,fontWeight:900,color:h.tx,lineHeight:1}}>{cl.score}</div>
+                  <div style={{fontSize:8,color:"#334155",textTransform:"uppercase"}}>health</div>
+                </div>
+              </div>
+
+              {/* Score bar */}
+              <div style={{height:5,background:"#0a1626",borderRadius:3,marginBottom:10}}>
+                <div style={{height:5,borderRadius:3,background:h.dot,width:cl.score+"%",transition:"width 0.6s"}}/>
+              </div>
+
+              {/* Badges */}
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+                <span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:h.bg,color:h.tx,border:`1px solid ${h.br}`,fontWeight:700}}>{h.label}</span>
+                <span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"#0a1626",color:"#38bdf8",border:"1px solid #1a2d45"}}>{fmt(cl.annualRev)}/yr</span>
+                {cl.overdue > 0 && <span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"#1a0808",color:"#f87171",border:"1px solid #7f1d1d"}}>{cl.overdue} overdue</span>}
+                {cl.renewalDate && <span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:cl.renewalDays<=30?"#1a0808":cl.renewalDays<=90?"#1a1005":"#0a1626",color:cl.renewalDays<=30?"#f87171":cl.renewalDays<=90?"#fbbf24":"#64748b",border:"1px solid #1a2d45"}}>↻ {cl.renewalDays}d</span>}
+                {nps !== undefined && <span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"#0c2340",color:"#7dd3fc",border:"1px solid #1a2d45"}}>NPS {nps}/10</span>}
+              </div>
+
+              {/* Score breakdown */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:10}}>
+                {[
+                  {l:"Payment",cl.payPts,max:30},
+                  {l:"Engagement",cl.engPts,max:25},
+                  {l:"Revenue Stability",cl.revPts,max:25},
+                  {l:"Renewal Risk",cl.renewPts,max:20},
+                ].map((item,i)=>{
+                  const pts = [cl.payPts,cl.engPts,cl.revPts,cl.renewPts][i];
+                  const mx  = [30,25,25,20][i];
+                  const lbl = ["Payment","Engagement","Rev Stability","Renewal"][i];
+                  const pct = Math.round(pts/mx*100);
+                  return (
+                    <div key={lbl}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                        <span style={{fontSize:9,color:"#475569"}}>{lbl}</span>
+                        <span style={{fontSize:9,color:"#64748b"}}>{pts}/{mx}</span>
+                      </div>
+                      <div style={{height:3,background:"#0a1626",borderRadius:2}}>
+                        <div style={{height:3,borderRadius:2,background:pct>=80?"#34d399":pct>=50?"#f59e0b":"#f87171",width:pct+"%"}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Actions */}
+              <div style={{display:"flex",gap:6}}>
+                <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:10}} onClick={e=>{e.stopPropagation();setNpsModal(cl.id);setNpsForm({score:"",feedback:"",respondent:""});}}>📊 Log NPS</button>
+                <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:10,color:"#38bdf8"}} onClick={e=>{e.stopPropagation();setAchModal(cl);}}>💳 Send ACH</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Selected client detail */}
+      {selected && (
+        <div className="card" style={{padding:"20px 24px",marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontSize:16,fontWeight:800,color:"#e2e8f0"}}>{selected.name} — Detailed Health Analysis</div>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>setSel(null)}>✕</button>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+            {/* Invoice history */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,textTransform:"uppercase"}}>Invoice History</div>
+              {safeInv.filter(i=>i.clientId===selected.id).slice(0,6).map(inv=>(
+                <div key={inv.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                  <span style={{color:"#94a3b8"}}>{inv.period}</span>
+                  <span style={{color:"#38bdf8",fontFamily:"monospace"}}>${(inv.amount||0).toLocaleString()}</span>
+                  <span style={{fontSize:10,color:inv.status==="paid"?"#34d399":inv.status==="overdue"?"#f87171":"#f59e0b"}}>{inv.status}</span>
+                </div>
+              ))}
+              {safeInv.filter(i=>i.clientId===selected.id).length===0 && <div style={{fontSize:11,color:"#334155"}}>No invoices yet</div>}
+            </div>
+
+            {/* NPS History */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,textTransform:"uppercase"}}>NPS History</div>
+              {(selected.npsHistory||[]).length===0
+                ? <div style={{fontSize:11,color:"#334155",padding:"20px 0",textAlign:"center"}}>No NPS surveys yet<br/><button className="btn bp" style={{fontSize:10,marginTop:8}} onClick={()=>setNpsModal(selected.id)}>+ Add First NPS</button></div>
+                : (selected.npsHistory||[]).slice(-5).reverse().map((n,i)=>(
+                  <div key={i} style={{padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
+                    <div style={{display:"flex",justifyContent:"space-between"}}>
+                      <span style={{fontSize:10,color:"#475569"}}>{n.date}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:n.score>=9?"#34d399":n.score>=7?"#f59e0b":"#f87171"}}>{n.score}/10</span>
+                    </div>
+                    {n.feedback && <div style={{fontSize:10,color:"#334155",marginTop:2,fontStyle:"italic"}}>"{n.feedback}"</div>}
+                    {n.respondent && <div style={{fontSize:9,color:"#1e3a5f"}}>— {n.respondent}</div>}
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* Key metrics */}
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,textTransform:"uppercase"}}>Key Metrics</div>
+              {[
+                {l:"Annual Revenue",    v:fmt(selected.annualRev)},
+                {l:"Gross Margin",      v:Math.round((selected.grossMargin||0)*100)+"%"},
+                {l:"Active Consultants",v:selected.consultants||0},
+                {l:"Renewal Date",      v:selected.renewalDate||"—"},
+                {l:"Days Since Invoice",v:selected.daysLastBill<999?selected.daysLastBill+"d":"Never"},
+                {l:"Overdue Invoices",  v:selected.overdue},
+                {l:"Health Trend",      v:selected.trend==="up"?"↑ Improving":selected.trend==="down"?"↓ Declining":"→ Stable"},
+              ].map(m=>(
+                <div key={m.l} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                  <span style={{color:"#475569"}}>{m.l}</span>
+                  <span style={{color:"#e2e8f0",fontFamily:"monospace"}}>{m.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NPS Modal */}
+      {npsModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setNpsModal(null)}>
+          <div className="modal" style={{maxWidth:440}}>
+            <MH title={`Log NPS — ${(clients||[]).find(c=>c.id===npsModal)?.name}`} onClose={()=>setNpsModal(null)}/>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div>
+                <div className="lbl">NPS Score (0-10) *</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {[0,1,2,3,4,5,6,7,8,9,10].map(n=>(
+                    <button key={n} onClick={()=>setNpsForm(p=>({...p,score:n.toString()}))}
+                      style={{width:36,height:36,borderRadius:8,border:`2px solid ${+npsForm.score===n?(n>=9?"#34d399":n>=7?"#f59e0b":"#f87171"):"#1a2d45"}`,
+                        background:+npsForm.score===n?(n>=9?"#021f14":n>=7?"#1a1005":"#1a0808"):"#060d1c",
+                        color:+npsForm.score===n?(n>=9?"#34d399":n>=7?"#fbbf24":"#f87171"):"#475569",
+                        cursor:"pointer",fontWeight:700,fontSize:13}}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                {npsForm.score !== "" && (
+                  <div style={{fontSize:11,marginTop:6,color:+npsForm.score>=9?"#34d399":+npsForm.score>=7?"#f59e0b":"#f87171",fontWeight:600}}>
+                    {+npsForm.score>=9?"🎉 Promoter — Likely to refer":+npsForm.score>=7?"😐 Passive — Satisfied but not vocal":"😟 Detractor — At risk of churn"}
+                  </div>
+                )}
+              </div>
+              <div><div className="lbl">Respondent Name / Title</div>
+                <input className="inp" value={npsForm.respondent} onChange={e=>setNpsForm(p=>({...p,respondent:e.target.value}))} placeholder="e.g. James Wright, VP SAP Delivery"/></div>
+              <div><div className="lbl">Feedback / Verbatim</div>
+                <textarea className="inp" rows={3} value={npsForm.feedback} onChange={e=>setNpsForm(p=>({...p,feedback:e.target.value}))} placeholder="What did they say?"/></div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setNpsModal(null)}>Cancel</button>
+              <button className="btn bp" onClick={saveNPS} disabled={!npsForm.score}>💾 Save NPS</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACH Payment Request Modal */}
+      {achModal && <ACHPaymentModal client={achModal} invoices={safeInv.filter(i=>i.clientId===achModal.id)} onClose={()=>setAchModal(null)} addAudit={addAudit}/>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ACH PAYMENT MODAL — Generates professional ACH payment instruction page
+// ═══════════════════════════════════════════════════════════════════════════
+function ACHPaymentModal({ client, invoices, onClose, addAudit }) {
+  const [selInvs, setSelInvs] = useState(
+    invoices.filter(i=>["sent","overdue","draft"].includes(i.status)).map(i=>i.id)
+  );
+  const [bankDetails, setBankDetails] = useState({
+    bankName:    "Bank of America",
+    accountName: "Ziksatech, LLC",
+    routingNum:  "",
+    accountNum:  "",
+    accountType: "Checking",
+    swiftCode:   "",
+    memo:        "",
+  });
+  const [copied, setCopied]   = useState(false);
+  const [step,   setStep]     = useState(1); // 1=select invoices, 2=bank details, 3=preview
+
+  const toggleInv = (id) => setSelInvs(p => p.includes(id) ? p.filter(x=>x!==id) : [...p,id]);
+  const selectedInvs = invoices.filter(i => selInvs.includes(i.id));
+  const totalAmt = selectedInvs.reduce((s,i)=>s+(i.amount||0),0);
+  const fmt = v => v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1000?`$${(v/1000).toFixed(0)}k`:`$${v}`;
+
+  const generateACHText = () => {
+    const invList = selectedInvs.map(i=>
+      `  Invoice ${i.id}  |  ${i.period||i.projectName}  |  $${(i.amount||0).toLocaleString()}  |  Due: ${i.dueDate||"—"}`
+    ).join('\n');
+
+    return `ZIKSATECH, LLC — ACH PAYMENT INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WBE · HUB · WOSB Certified SAP Consulting
+5400 Legacy Drive, Suite 100, Plano, TX 75024
+hr@ziksatech.com | www.ziksatech.com
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TO: ${client.name}
+DATE: ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}
+SUBJECT: ACH Payment Request
+
+Dear ${client.name} Finance Team,
+
+Please process the following ACH payment at your earliest convenience.
+
+INVOICES INCLUDED:
+${invList}
+
+TOTAL AMOUNT DUE: $${totalAmt.toLocaleString()}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BANK TRANSFER DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Bank Name:       ${bankDetails.bankName}
+Account Name:    ${bankDetails.accountName}
+Routing Number:  ${bankDetails.routingNum || "** Please add routing # **"}
+Account Number:  ${bankDetails.accountNum || "** Please add account # **"}
+Account Type:    ${bankDetails.accountType}${bankDetails.swiftCode ? "\nSWIFT/BIC:       "+bankDetails.swiftCode : ""}
+Payment Memo:    ${bankDetails.memo || "Ziksatech Invoice - "+selectedInvs.map(i=>i.id).join(", ")}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Payment terms: Net ${selectedInvs[0]?.paymentTerms?.replace("Net ","") || "30"} days
+• Please include invoice number(s) in payment memo
+• Send remittance advice to: mmurthy@ziksatech.com
+• Questions: (972) 555-0100 or mmurthy@ziksatech.com
+
+Thank you for your continued partnership.
+
+Manju Murthy
+Managing Partner, Ziksatech, LLC`;
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generateACHText());
+    setCopied(true);
+    setTimeout(()=>setCopied(false),2000);
+    addAudit?.("Finance","ACH Request Sent",client.name,`$${totalAmt.toLocaleString()} - ${selectedInvs.length} invoices`);
+  };
+
+  const downloadPDF = async () => {
+    if (!window.jspdf) {
+      await new Promise(resolve=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';s.onload=resolve;document.head.appendChild(s);});
+    }
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+    const pw=doc.internal.pageSize.getWidth();
+    const mg=20;
+    let y=18;
+
+    // Header
+    doc.setFillColor(13,27,42);doc.rect(0,0,pw,26,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(201,168,76);
+    doc.text('ZIKSATECH, LLC',mg,11);
+    doc.setFontSize(7);doc.setTextColor(100,130,160);
+    doc.text('WBE · HUB · WOSB Certified SAP Consulting',mg,17);
+    doc.text('5400 Legacy Drive, Suite 100, Plano TX 75024  |  mmurthy@ziksatech.com',mg,22);
+    y=34;
+
+    doc.setDrawColor(201,168,76);doc.setLineWidth(0.4);doc.line(mg,y,pw-mg,y);y+=8;
+
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);
+    doc.text('ACH PAYMENT REQUEST',mg,y);y+=8;
+
+    doc.setFont('helvetica','normal');doc.setFontSize(10);
+    doc.text(`To: ${client.name}`,mg,y);y+=5;
+    doc.text(`Date: ${new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}`,mg,y);y+=10;
+
+    // Invoices table
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,120,160);
+    doc.text('INVOICES',mg,y);y+=5;
+    doc.setLineWidth(0.2);doc.setDrawColor(220,220,220);doc.line(mg,y,pw-mg,y);y+=4;
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);
+    selectedInvs.forEach(inv=>{
+      doc.text(inv.id,mg,y);doc.text(inv.period||inv.projectName||'',mg+30,y);
+      doc.text(`$${(inv.amount||0).toLocaleString()}`,pw-mg-5,y,{align:'right'});
+      y+=5;
+    });
+    doc.setFont('helvetica','bold');
+    doc.text(`TOTAL: $${totalAmt.toLocaleString()}`,pw-mg-5,y+2,{align:'right'});y+=10;
+
+    // Bank details
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,120,160);
+    doc.text('BANK TRANSFER DETAILS',mg,y);y+=5;
+    doc.line(mg,y,pw-mg,y);y+=4;
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);
+    [
+      ['Bank Name', bankDetails.bankName],
+      ['Account Name', bankDetails.accountName],
+      ['Routing Number', bankDetails.routingNum||'[Contact Ziksatech]'],
+      ['Account Number', bankDetails.accountNum||'[Contact Ziksatech]'],
+      ['Account Type', bankDetails.accountType],
+      ['Payment Memo', bankDetails.memo||'Ziksatech Invoice - '+selectedInvs.map(i=>i.id).join(', ')],
+    ].forEach(([label,val])=>{
+      doc.setFont('helvetica','bold');doc.text(label+':',mg,y);
+      doc.setFont('helvetica','normal');doc.text(val,mg+45,y);y+=5;
+    });
+    y+=5;
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+    doc.text('Please include invoice number(s) in payment memo.',mg,y);y+=4;
+    doc.text('Send remittance to: mmurthy@ziksatech.com',mg,y);
+
+    // Footer
+    doc.setFontSize(7);doc.setTextColor(150,150,150);
+    doc.line(mg,280,pw-mg,280);
+    doc.text('Ziksatech, LLC  ·  www.ziksatech.com  ·  Confidential',mg,284);
+
+    doc.save(`ACH_Payment_Request_${client.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+    addAudit?.("Finance","ACH PDF Downloaded",client.name,`$${totalAmt.toLocaleString()}`);
+  };
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:600,maxHeight:"90vh",overflowY:"auto"}}>
+        <MH title={`ACH Payment Request — ${client.name}`} onClose={onClose}/>
+
+        {/* Step indicator */}
+        <div style={{display:"flex",gap:0,marginBottom:20}}>
+          {["Select Invoices","Bank Details","Preview & Send"].map((s,i)=>(
+            <div key={i} onClick={()=>i<step&&setStep(i+1)} style={{flex:1,padding:"6px 0",textAlign:"center",fontSize:11,
+              background:step===i+1?"#0369a1":step>i+1?"#021f14":"#060d1c",
+              color:step===i+1?"#fff":step>i+1?"#34d399":"#334155",
+              borderBottom:`2px solid ${step===i+1?"#0284c7":step>i+1?"#34d399":"#1a2d45"}`,
+              cursor:i<step?"pointer":"default",fontWeight:step===i+1?700:400}}>
+              {step>i+1?"✓ ":""}{s}
+            </div>
+          ))}
+        </div>
+
+        {/* Step 1: Select invoices */}
+        {step===1 && (
+          <div>
+            <div style={{fontSize:12,color:"#475569",marginBottom:12}}>Select invoices to include in this ACH request:</div>
+            {invoices.length===0
+              ? <div style={{textAlign:"center",padding:"30px",color:"#334155"}}>No invoices found for {client.name}</div>
+              : invoices.map(inv=>{
+                const checked = selInvs.includes(inv.id);
+                return (
+                  <div key={inv.id} onClick={()=>toggleInv(inv.id)}
+                    style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:8,cursor:"pointer",marginBottom:6,
+                      background:checked?"#0c2340":"#060d1c",border:`1px solid ${checked?"#0369a1":"#1a2d45"}`}}>
+                    <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${checked?"#38bdf8":"#334155"}`,
+                      background:checked?"#38bdf8":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {checked&&<span style={{color:"#0a1626",fontSize:10,fontWeight:800}}>✓</span>}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{inv.id} — {inv.period||inv.projectName}</div>
+                      <div style={{fontSize:10,color:"#475569"}}>Due: {inv.dueDate||"—"} · {inv.paymentTerms}</div>
+                    </div>
+                    <div style={{fontFamily:"monospace",fontSize:13,fontWeight:700,color:"#38bdf8"}}>${(inv.amount||0).toLocaleString()}</div>
+                    <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,
+                      background:inv.status==="overdue"?"#1a0808":inv.status==="paid"?"#021f14":"#0a1626",
+                      color:inv.status==="overdue"?"#f87171":inv.status==="paid"?"#34d399":"#94a3b8"}}>{inv.status}</span>
+                  </div>
+                );
+              })
+            }
+            {selInvs.length>0 && (
+              <div style={{padding:"12px 16px",background:"#0c2340",borderRadius:8,marginTop:10,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:12,color:"#7dd3fc"}}>{selInvs.length} invoice{selInvs.length>1?"s":""} selected</span>
+                <span style={{fontSize:14,fontWeight:800,color:"#38bdf8",fontFamily:"monospace"}}>${totalAmt.toLocaleString()}</span>
+              </div>
+            )}
+            <div style={{display:"flex",justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bp" disabled={selInvs.length===0} onClick={()=>setStep(2)}>Next → Bank Details</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Bank details */}
+        {step===2 && (
+          <div>
+            <div style={{fontSize:11,color:"#3d5a7a",marginBottom:14,padding:"8px 12px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
+              🔒 These details appear on the PDF sent to your client. Keep accurate and up to date.
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[
+                ["Bank Name","bankName","text"],["Account Name","accountName","text"],
+                ["Routing Number","routingNum","text"],["Account Number","accountNum","text"],
+                ["Account Type","accountType","select"],["SWIFT/BIC (optional)","swiftCode","text"],
+              ].map(([label,key,type])=>(
+                <div key={key}>
+                  <div className="lbl">{label}</div>
+                  {type==="select"
+                    ? <select className="inp" value={bankDetails[key]} onChange={e=>setBankDetails(p=>({...p,[key]:e.target.value}))}>
+                        <option>Checking</option><option>Savings</option>
+                      </select>
+                    : <input className="inp" value={bankDetails[key]} onChange={e=>setBankDetails(p=>({...p,[key]:e.target.value}))}
+                        placeholder={label} type={key.includes("Num")?"text":"text"}/>
+                  }
+                </div>
+              ))}
+              <div style={{gridColumn:"1/-1"}}>
+                <div className="lbl">Payment Memo (for client reference)</div>
+                <input className="inp" value={bankDetails.memo} onChange={e=>setBankDetails(p=>({...p,memo:e.target.value}))}
+                  placeholder={`Ziksatech Invoice - ${selectedInvs.map(i=>i.id).join(", ")}`}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>setStep(1)}>← Back</button>
+              <button className="btn bp" onClick={()=>setStep(3)}>Next → Preview</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Preview */}
+        {step===3 && (
+          <div>
+            <div style={{background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",padding:"16px",marginBottom:14,maxHeight:320,overflowY:"auto"}}>
+              <pre style={{fontSize:11,color:"#94a3b8",whiteSpace:"pre-wrap",fontFamily:"'DM Mono',monospace",lineHeight:1.7,margin:0}}>
+                {generateACHText()}
+              </pre>
+            </div>
+            <div style={{padding:"10px 14px",background:"#0c2340",borderRadius:8,marginBottom:14,display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontSize:12,color:"#7dd3fc"}}>Total ACH Amount</span>
+              <span style={{fontSize:16,fontWeight:900,color:"#38bdf8",fontFamily:"monospace"}}>${totalAmt.toLocaleString()}</span>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button className="btn bg" onClick={()=>setStep(2)}>← Back</button>
+              <button className="btn bg" onClick={copyToClipboard} style={{color:"#7dd3fc"}}>
+                {copied?"✓ Copied!":"📋 Copy Text"}
+              </button>
+              <button className="btn bp" onClick={downloadPDF}>⬇ Download PDF</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
   const [modal, setModal] = useState(false);
   const { dragProps: dragP_c } = useDragSort(clients, setClients);
