@@ -83,6 +83,7 @@ const RBAC = {
   resourceplan: ["super_admin","admin","hr_immigration"],
   consultanthub: ["super_admin","admin","hr_immigration","employee","contractor"],
   compliance:   ["super_admin","admin","hr_immigration"],
+  immigration:  ["super_admin","admin","hr_immigration"],
   paffiles:     ["super_admin","admin","hr_immigration","employee","contractor"],
   minicalc:     ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
@@ -653,6 +654,7 @@ const ALL_MODULES = [
   { id:"recruiting", label:"Recruiting",            group:"Hiring"     },
   { id:"pto",        label:"PTO & Leave",           group:"Compliance" },
   { id:"compliance", label:"Compliance",            group:"Compliance" },
+  { id:"immigration",label:"Immigration Calendar",   group:"Compliance" },
 ];
 
 // Role templates — define default permissions
@@ -2114,6 +2116,7 @@ export default function ZiksatechOps() {
     { id:"pipeline",     label:"Hiring Pipeline",      icon:ICONS.pipeline, group:"Hiring"      },
     { id:"offboarding",  label:"Offboarding",           icon:ICONS.roster,   group:"Hiring"      },
     { id:"compliance",   label:"Compliance",           icon:ICONS.dash,     group:"Compliance"  },
+    { id:"immigration",  label:"Immigration Calendar 🛂",icon:ICONS.dash,     group:"Compliance"  },
     { id:"capdeck",      label:"Capability Deck AI",     icon:ICONS.pl,       group:"Clients"     },
     { id:"outreachtrk",  label:"Outreach Tracker",       icon:ICONS.pipeline, group:"Clients"     },
     { id:"soplibrary",   label:"SOP & Exit Readiness",   icon:ICONS.pl,       group:"Delivery"    },
@@ -2623,6 +2626,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="recruiting"  && <RecruitingModule {...shared}/>}
         {tab==="pto"        && <PTOModule {...shared}/>}
         {tab==="consultanthub" && <ConsultantHub roster={shared.roster} authProfile={authProfile}/>}
+        {tab==="immigration" && <ImmigrationCalendar workAuth={shared.workAuth} setWorkAuth={shared.setWorkAuth} roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="compliance"  && <ComplianceModule {...shared}/>}
         {tab==="freshbooks" && <FreshBooks {...shared}/>}
       </main>
@@ -9049,6 +9053,565 @@ function CompDashboard({ workAuth, compDocs, roster }) {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMMIGRATION CALENDAR & H-1B TRACKER
+// Visa status · Filing deadlines · USCIS case tracking · Attorney mgmt
+// ═══════════════════════════════════════════════════════════════════════════
+function ImmigrationCalendar({ workAuth, setWorkAuth, roster, addAudit }) {
+  const [sub,        setSub]        = useState("dashboard"); // dashboard|calendar|cases|attorneys|alerts
+  const [selId,      setSel]        = useState(null);
+  const [modal,      setModal]      = useState(false);
+  const [form,       setForm]       = useState({});
+  const [caseModal,  setCaseModal]  = useState(false);
+  const [caseForm,   setCaseForm]   = useState({});
+
+  const safe = workAuth || [];
+  const safeRoster = roster || [];
+  const TODAY = new Date();
+  const TODAY_STR = TODAY.toISOString().slice(0,10);
+
+  const daysUntil = d => d ? Math.ceil((new Date(d) - TODAY) / 86400000) : null;
+  const fmtDate   = d => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
+
+  // ── Visa type config ──────────────────────────────────────────────────────
+  const VISA_CFG = {
+    "H-1B":  { color:"#f59e0b", bg:"#1a1005", label:"H-1B Specialty",     renewMonths:36, alertDays:180 },
+    "H-4 EAD":{ color:"#fb923c",bg:"#1a0f05", label:"H-4 EAD",            renewMonths:24, alertDays:120 },
+    "L-1":   { color:"#a78bfa", bg:"#1a1040", label:"L-1 Intracompany",   renewMonths:36, alertDays:180 },
+    "OPT":   { color:"#38bdf8", bg:"#040e1a", label:"OPT",                renewMonths:12, alertDays:90  },
+    "STEM OPT":{ color:"#0ea5e9",bg:"#030d18",label:"STEM OPT Extension", renewMonths:24, alertDays:120 },
+    "GC":    { color:"#34d399", bg:"#021f14", label:"Green Card",         renewMonths:120,alertDays:365 },
+    "USC":   { color:"#64748b", bg:"#060d1c", label:"US Citizen",         renewMonths:0,  alertDays:0   },
+    "TN":    { color:"#c084fc", bg:"#1a0a3d", label:"TN (Canada/Mexico)", renewMonths:36, alertDays:120 },
+    "E-3":   { color:"#fbbf24", bg:"#1a1005", label:"E-3 (Australia)",    renewMonths:24, alertDays:120 },
+    "O-1":   { color:"#f472b6", bg:"#1a0514", label:"O-1 Extraordinary",  renewMonths:36, alertDays:180 },
+  };
+
+  // ── Key H-1B annual dates ──────────────────────────────────────────────────
+  const YEAR = TODAY.getFullYear();
+  const H1B_DATES = [
+    { id:"reg_open",   date:`${YEAR}-03-01`, label:"H-1B Registration Opens",  desc:"USCIS opens lottery registration window (~2 weeks)", type:"deadline", color:"#f59e0b" },
+    { id:"reg_close",  date:`${YEAR}-03-18`, label:"H-1B Registration Closes", desc:"Final day to submit lottery registration",            type:"deadline", color:"#f87171" },
+    { id:"lottery",    date:`${YEAR}-03-31`, label:"H-1B Lottery Results",     desc:"USCIS notifies selected registrants",                 type:"milestone",color:"#34d399" },
+    { id:"filing_open",date:`${YEAR}-04-01`, label:"H-1B Filing Window Opens", desc:"Selected petitions can be filed (Oct 1 start date)",  type:"deadline", color:"#38bdf8" },
+    { id:"filing_close",date:`${YEAR}-06-30`,label:"H-1B Filing Deadline",    desc:"Last day to file selected H-1B petitions",            type:"deadline", color:"#f87171" },
+    { id:"oct_start",  date:`${YEAR}-10-01`, label:"H-1B Effective Date",      desc:"New H-1B approvals take effect (FY start)",           type:"milestone",color:"#a78bfa" },
+    { id:"cap_exempt", date:`${YEAR}-01-01`, label:"Cap-Exempt Filing Year",   desc:"Cap-exempt employers can file anytime",               type:"info",     color:"#64748b" },
+  ];
+
+  // ── Enriched records ───────────────────────────────────────────────────────
+  const enriched = safe.map(w => {
+    const days    = daysUntil(w.expiryDate);
+    const cfg     = VISA_CFG[w.type] || VISA_CFG["H-1B"];
+    const urgent  = days !== null && days >= 0 && days <= cfg.alertDays;
+    const expired = days !== null && days < 0;
+    const renewBy = w.expiryDate ? new Date(new Date(w.expiryDate) - cfg.renewMonths * 30 * 86400000).toISOString().slice(0,10) : null;
+    const rosterMember = safeRoster.find(r => r.id === w.memberId || r.name === w.name);
+    return { ...w, days, cfg, urgent, expired, renewBy, rosterMember };
+  });
+
+  const critical  = enriched.filter(w => !w.expired && w.days !== null && w.days <= 30);
+  const expiring  = enriched.filter(w => !w.expired && w.days !== null && w.days > 30 && w.days <= 90);
+  const h1bActive = enriched.filter(w => w.type === "H-1B" && !w.expired);
+  const onOPT     = enriched.filter(w => (w.type === "OPT" || w.type === "STEM OPT") && !w.expired);
+  const expired   = enriched.filter(w => w.expired);
+
+  const save = () => {
+    if (!form.name) return;
+    const isNew = !form.id;
+    const rec   = { ...form, id: form.id || "wa" + Date.now() };
+    setWorkAuth(isNew ? [...safe, rec] : safe.map(w => w.id === rec.id ? rec : w));
+    addAudit?.("Immigration", isNew ? "Work Auth Added" : "Work Auth Updated", "Immigration", rec.name);
+    setModal(false); setForm({});
+  };
+
+  const del = id => {
+    if (!window.confirm("Delete this record?")) return;
+    setWorkAuth(safe.filter(w => w.id !== id));
+    if (selId === id) setSel(null);
+  };
+
+  const VC = (type) => VISA_CFG[type] || { color:"#64748b", bg:"#060d1c", label: type };
+
+  const StatusBadge = ({w}) => {
+    const color = w.expired ? "#f87171" : w.urgent ? "#f59e0b" : w.cfg?.color || "#64748b";
+    const label = w.expired ? "EXPIRED" : w.urgent ? `${w.days}d left` : w.days !== null ? `${w.days}d` : "No Expiry";
+    return <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:color+"22",color,border:`1px solid ${color}44`,fontWeight:700}}>{label}</span>;
+  };
+
+  const tabBtn = (id, label, icon) => (
+    <button onClick={()=>setSub(id)}
+      style={{padding:"7px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569",display:"flex",alignItems:"center",gap:5}}>
+      {icon} {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="Immigration Calendar & H-1B Tracker" sub="Visa status · Filing deadlines · USCIS cases · Attorney management · Expiry alerts"/>
+
+      {/* Alert banners */}
+      {critical.length > 0 && (
+        <div style={{padding:"9px 16px",background:"#1a0808",border:"1px solid #7f1d1d",borderRadius:10,marginBottom:10,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>🚨 Critical Expirations (≤30 days)</span>
+          {critical.map(w=><span key={w.id} onClick={()=>{setSel(w.id);setSub("cases");}} style={{fontSize:11,color:"#f87171",padding:"2px 10px",borderRadius:8,background:"#7f1d1d22",border:"1px solid #7f1d1d",cursor:"pointer"}}>{w.name} — {w.type} ({w.days}d)</span>)}
+        </div>
+      )}
+      {expiring.length > 0 && (
+        <div style={{padding:"9px 16px",background:"#1a1005",border:"1px solid #78350f",borderRadius:10,marginBottom:14,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:12,fontWeight:700,color:"#fbbf24"}}>⚠️ Expiring Soon (31–90 days)</span>
+          {expiring.map(w=><span key={w.id} onClick={()=>{setSel(w.id);setSub("cases");}} style={{fontSize:11,color:"#fbbf24",padding:"2px 10px",borderRadius:8,background:"#78350f22",border:"1px solid #78350f",cursor:"pointer"}}>{w.name} — {w.type} ({w.days}d)</span>)}
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Total Sponsored", v:enriched.filter(w=>!["USC","GC"].includes(w.type)).length, c:"#94a3b8"},
+          {l:"H-1B Active",     v:h1bActive.length,   c:"#f59e0b"},
+          {l:"OPT / STEM OPT", v:onOPT.length,        c:"#38bdf8"},
+          {l:"Critical ≤30d",  v:critical.length,     c:critical.length>0?"#f87171":"#34d399"},
+          {l:"Expiring ≤90d",  v:expiring.length,     c:expiring.length>0?"#fbbf24":"#34d399"},
+          {l:"Expired",        v:expired.length,      c:expired.length>0?"#f87171":"#34d399"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:18,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content",flexWrap:"wrap"}}>
+        {tabBtn("dashboard","Dashboard","📊")}
+        {tabBtn("calendar", "H-1B Calendar","📅")}
+        {tabBtn("cases",    "All Cases","🗂️")}
+        {tabBtn("attorneys","Attorneys","⚖️")}
+        {tabBtn("alerts",   "Alerts & Actions","🔔")}
+      </div>
+
+      {/* ── DASHBOARD ─────────────────────────────────────────────────────── */}
+      {sub === "dashboard" && (
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+            {/* Visa type breakdown */}
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🛂 Visa Type Breakdown</div>
+              {Object.entries(
+                enriched.reduce((acc,w)=>{if(!acc[w.type])acc[w.type]=0;acc[w.type]++;return acc;},{})
+              ).sort((a,b)=>b[1]-a[1]).map(([type,count])=>{
+                const cfg = VISA_CFG[type] || { color:"#64748b", label:type };
+                const pct = Math.round(count/Math.max(enriched.length,1)*100);
+                return (
+                  <div key={type} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                    <div style={{width:80,fontSize:10,color:cfg.color,fontWeight:700,flexShrink:0}}>{type}</div>
+                    <div style={{flex:1,height:14,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",background:cfg.color,borderRadius:3,width:pct+"%",transition:"width 0.5s"}}/>
+                    </div>
+                    <div style={{fontSize:11,color:"#94a3b8",width:24,textAlign:"right",flexShrink:0}}>{count}</div>
+                    <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:cfg.color+"22",color:cfg.color,border:`1px solid ${cfg.color}44`,flexShrink:0}}>{pct}%</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Upcoming renewals timeline */}
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📅 Renewal Timeline (Next 12 Months)</div>
+              {enriched.filter(w => w.days !== null && w.days >= 0 && w.days <= 365 && w.type !== "USC")
+                .sort((a,b) => (a.days||0) - (b.days||0))
+                .slice(0,8)
+                .map(w => {
+                  const pct = Math.round(Math.min(100, (w.days||0)/365*100));
+                  return (
+                    <div key={w.id} style={{marginBottom:8}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                        <span style={{fontSize:11,color:"#94a3b8"}}>{w.name}</span>
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:w.cfg?.color+"22",color:w.cfg?.color,border:`1px solid ${w.cfg?.color||"#64748b"}44`}}>{w.type}</span>
+                          <span style={{fontSize:10,color:w.days<=30?"#f87171":w.days<=90?"#fbbf24":"#94a3b8",fontFamily:"monospace"}}>{w.days}d</span>
+                        </div>
+                      </div>
+                      <div style={{height:5,background:"#0a1626",borderRadius:3}}>
+                        <div style={{height:5,borderRadius:3,background:w.days<=30?"#f87171":w.days<=90?"#f59e0b":"#34d399",width:pct+"%"}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              {enriched.filter(w=>w.days!==null&&w.days>=0&&w.days<=365&&w.type!=="USC").length===0 &&
+                <div style={{textAlign:"center",padding:"20px",color:"#334155",fontSize:12}}>No expirations in next 12 months</div>}
+            </div>
+          </div>
+
+          {/* Quick status grid */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>👥 All Sponsored Employees</div>
+              <button className="btn bp" style={{fontSize:11}} onClick={()=>{setForm({type:"H-1B",status:"active"});setModal(true);}}>+ Add Record</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
+              {enriched.filter(w=>w.type!=="USC").map(w=>{
+                const cfg = VISA_CFG[w.type] || { color:"#64748b", bg:"#060d1c" };
+                return (
+                  <div key={w.id} onClick={()=>{setSel(w.id);setSub("cases");}}
+                    style={{padding:"12px 14px",borderRadius:10,cursor:"pointer",
+                      background:w.expired?"#1a0808":w.urgent?"#1a1005":cfg.bg,
+                      border:`1px solid ${w.expired?"#7f1d1d":w.urgent?"#78350f":cfg.color+"44"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{w.name}</div>
+                        <div style={{fontSize:10,color:"#475569"}}>{w.rosterMember?.role||w.employer||"—"}</div>
+                      </div>
+                      <StatusBadge w={w}/>
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:cfg.color+"22",color:cfg.color,border:`1px solid ${cfg.color}44`,fontWeight:700}}>{w.type}</span>
+                      {w.expiryDate && <span style={{fontSize:9,color:"#475569"}}>Exp: {fmtDate(w.expiryDate)}</span>}
+                      {w.petitionNo  && <span style={{fontSize:9,color:"#334155",fontFamily:"monospace"}}>{w.petitionNo}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              {enriched.filter(w=>w.type!=="USC").length === 0 && (
+                <div style={{gridColumn:"1/-1",textAlign:"center",padding:"30px",color:"#334155",fontSize:12}}>
+                  No sponsored employees yet. Click + Add Record to start.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── H-1B CALENDAR ─────────────────────────────────────────────────── */}
+      {sub === "calendar" && (
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:14}}>
+            {/* Annual filing calendar */}
+            <div className="card" style={{padding:"18px 20px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>📅 H-1B Annual Filing Calendar — FY{YEAR+1}</div>
+              <div style={{fontSize:11,color:"#3d5a7a",marginBottom:16}}>Key USCIS deadlines for H-1B cap-subject petitions</div>
+              <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                {H1B_DATES.map((evt,i)=>{
+                  const d = daysUntil(evt.date);
+                  const isPast = d !== null && d < 0;
+                  const isSoon = d !== null && d >= 0 && d <= 30;
+                  return (
+                    <div key={evt.id} style={{display:"flex",gap:0}}>
+                      {/* Timeline spine */}
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:36,flexShrink:0}}>
+                        <div style={{width:16,height:16,borderRadius:"50%",flexShrink:0,marginTop:12,
+                          background:isPast?"#334155":isSoon?"#f87171":evt.color,
+                          border:`2px solid ${isPast?"#1a2d45":isSoon?"#7f1d1d":evt.color+"88"}`,zIndex:1}}/>
+                        {i < H1B_DATES.length-1 && <div style={{width:2,flex:1,background:isPast?"#0a1626":"#1a2d45",minHeight:20}}/>}
+                      </div>
+                      {/* Event card */}
+                      <div style={{flex:1,padding:"10px 14px",marginLeft:6,marginBottom:8,borderRadius:10,
+                        background:isPast?"#040810":isSoon?"#1a0808":"#060d1c",
+                        border:`1px solid ${isPast?"#0a1826":isSoon?"#7f1d1d":"#1a2d45"}`}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                          <div>
+                            <div style={{fontSize:12,fontWeight:700,color:isPast?"#334155":evt.color}}>{evt.label}</div>
+                            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{evt.desc}</div>
+                          </div>
+                          <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
+                            <div style={{fontSize:11,color:isPast?"#334155":"#94a3b8",fontFamily:"monospace"}}>{fmtDate(evt.date)}</div>
+                            {d !== null && (
+                              <div style={{fontSize:10,color:isPast?"#334155":isSoon?"#f87171":d<=60?"#fbbf24":"#64748b",fontWeight:700}}>
+                                {isPast ? `${Math.abs(d)}d ago` : `in ${d}d`}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* H-1B checklist + resources */}
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div className="card" style={{padding:"16px 18px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>✅ H-1B Petition Checklist</div>
+                {[
+                  ["LCA Filed (DOL)","Before filing H-1B"],
+                  ["I-129 Petition","USCIS form"],
+                  ["Support Letter","From employer"],
+                  ["Degree Evaluation","For speciality occ."],
+                  ["Passport Copy","Valid 6mo+ beyond stay"],
+                  ["Prior Approvals","I-797 copies"],
+                  ["Pay Stubs (3 months)","Current employer"],
+                  ["Premium Processing","I-907 if needed"],
+                ].map(([item,note])=>(
+                  <div key={item} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                    <div style={{width:14,height:14,borderRadius:3,border:"1px solid #1a2d45",flexShrink:0,marginTop:1}}/>
+                    <div>
+                      <div style={{fontSize:11,color:"#94a3b8"}}>{item}</div>
+                      <div style={{fontSize:9,color:"#334155"}}>{note}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="card" style={{padding:"16px 18px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>🔗 USCIS Resources</div>
+                {[
+                  ["USCIS Case Status","https://egov.uscis.gov/casestatus"],
+                  ["H-1B Cap Season","https://www.uscis.gov/h-1b-cap"],
+                  ["Premium Processing","https://www.uscis.gov/forms/i-907"],
+                  ["DOL iCERT (LCA)","https://icert.doleta.gov/"],
+                  ["Form I-129","https://www.uscis.gov/i-129"],
+                ].map(([label,url])=>(
+                  <a key={label} href={url} target="_blank" rel="noreferrer"
+                    style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",textDecoration:"none"}}>
+                    <span style={{fontSize:11,color:"#38bdf8"}}>{label}</span>
+                    <span style={{fontSize:9,color:"#334155"}}>↗</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ALL CASES ──────────────────────────────────────────────────────── */}
+      {sub === "cases" && (
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>🗂️ All Immigration Cases ({enriched.length})</div>
+            <button className="btn bp" style={{fontSize:12}} onClick={()=>{setForm({type:"H-1B",status:"active"});setModal(true);}}>+ Add Case</button>
+          </div>
+
+          {/* Group by status */}
+          {[
+            {label:"🚨 Critical — Action Required (≤30d)", items:critical,  key:"critical"},
+            {label:"⚠️ Expiring Soon (31–90d)",            items:expiring,  key:"expiring"},
+            {label:"✅ Active",                            items:enriched.filter(w=>!w.expired&&!w.urgent&&w.type!=="USC"), key:"active"},
+            {label:"🇺🇸 US Citizens / Permanent",         items:enriched.filter(w=>["USC","GC"].includes(w.type)), key:"usc"},
+            {label:"❌ Expired",                           items:expired,   key:"expired"},
+          ].filter(g=>g.items.length>0).map(group=>(
+            <div key={group.key} style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:700,marginBottom:8,padding:"4px 10px",borderRadius:6,width:"fit-content",
+                color:group.key==="critical"?"#f87171":group.key==="expiring"?"#fbbf24":group.key==="expired"?"#475569":"#34d399",
+                background:group.key==="critical"?"#1a0808":group.key==="expiring"?"#1a1005":"#060d1c",
+                border:`1px solid ${group.key==="critical"?"#7f1d1d":group.key==="expiring"?"#78350f":"#1a2d45"}`}}>
+                {group.label} ({group.items.length})
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {group.items.map(w=>{
+                  const isSelected = selId === w.id;
+                  return (
+                    <div key={w.id}>
+                      <div onClick={()=>setSel(isSelected?null:w.id)}
+                        style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 120px",gap:8,alignItems:"center",
+                          padding:"10px 14px",borderRadius:10,cursor:"pointer",transition:"all 0.15s",
+                          background:isSelected?"#0c2340":"#060d1c",
+                          border:`1px solid ${isSelected?"#0369a1":w.expired?"#7f1d1d":w.urgent?"#78350f":"#1a2d45"}`}}>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{w.name}</div>
+                          <div style={{fontSize:10,color:"#475569"}}>{w.rosterMember?.role||w.employer||"—"}</div>
+                        </div>
+                        <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:VC(w.type).color+"22",color:VC(w.type).color,border:`1px solid ${VC(w.type).color}44`,fontWeight:700,textAlign:"center"}}>{w.type}</span>
+                        <div style={{fontSize:11,color:"#94a3b8",fontFamily:"monospace",fontSize:10}}>{fmtDate(w.expiryDate)}</div>
+                        <StatusBadge w={w}/>
+                        <div style={{fontSize:10,color:"#475569",fontFamily:"monospace"}}>{w.petitionNo||"—"}</div>
+                        <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
+                          <button className="btn bg" style={{fontSize:9,padding:"2px 8px"}} onClick={e=>{e.stopPropagation();setForm({...w});setModal(true);}}>Edit</button>
+                          <button className="btn bg" style={{fontSize:9,padding:"2px 8px",color:"#f87171"}} onClick={e=>{e.stopPropagation();del(w.id);}}>✕</button>
+                        </div>
+                      </div>
+                      {/* Expanded detail */}
+                      {isSelected && (
+                        <div style={{padding:"14px 18px",background:"#040810",borderRadius:"0 0 10px 10px",border:"1px solid #1a2d45",borderTop:"none",marginTop:-4}}>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+                            <div>
+                              <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Case Details</div>
+                              {[["Visa Type",w.type],["Status",w.status||"active"],["Start Date",fmtDate(w.startDate)],
+                                ["Expiry Date",fmtDate(w.expiryDate)],["Petition No",w.petitionNo||"—"],
+                                ["Attorney",w.attorney||"—"],["Employer",w.employer||"Ziksatech, LLC"]].map(([k,v])=>(
+                                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                                  <span style={{color:"#475569"}}>{k}</span><span style={{color:"#94a3b8"}}>{v}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div>
+                              <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Key Dates</div>
+                              {[["Days Remaining",w.days!==null?(w.expired?`Expired ${Math.abs(w.days||0)}d ago`:w.days+"d"):"No Expiry"],
+                                ["Renewal Start",fmtDate(w.renewBy)],
+                                ["I-94 Expiry",fmtDate(w.i94Expiry||"")],
+                                ["Last Updated",fmtDate(w.updatedAt||"")],
+                              ].map(([k,v])=>(
+                                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                                  <span style={{color:"#475569"}}>{k}</span><span style={{color:"#94a3b8"}}>{v}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div>
+                              <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Notes</div>
+                              <div style={{fontSize:11,color:"#475569",lineHeight:1.7}}>{w.notes||"No notes"}</div>
+                              {w.expiryDate && !w.expired && (
+                                <div style={{marginTop:10,padding:"8px 10px",background:w.urgent?"#1a0808":"#0c2340",borderRadius:8,border:`1px solid ${w.urgent?"#7f1d1d":"#0369a1"}`,fontSize:10}}>
+                                  <div style={{color:w.urgent?"#f87171":"#38bdf8",fontWeight:700}}>
+                                    {w.urgent ? `⚠️ Start renewal process NOW — ${w.days} days left` : `📅 Begin renewal by ${fmtDate(w.renewBy)}`}
+                                  </div>
+                                  <div style={{color:"#334155",marginTop:3}}>Recommended: start {(w.cfg?.renewMonths||3)} months before expiry</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── ATTORNEYS ──────────────────────────────────────────────────────── */}
+      {sub === "attorneys" && (
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>⚖️ Immigration Attorneys</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12,marginBottom:20}}>
+            {[
+              {name:"Primary Attorney",firm:"TBD — Add Your Attorney",specialty:"H-1B, L-1, Green Card",email:"",phone:"",cases:h1bActive.length,placeholder:true},
+            ].map((atty,i)=>(
+              <div key={i} style={{padding:"18px 20px",borderRadius:12,background:"#060d1c",border:"1px dashed #1a2d45"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                  <div style={{width:44,height:44,borderRadius:"50%",background:"#0c2340",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>⚖️</div>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{atty.name}</div>
+                    <div style={{fontSize:10,color:"#3d5a7a"}}>{atty.firm}</div>
+                  </div>
+                </div>
+                <div style={{fontSize:10,color:"#475569",marginBottom:8}}>{atty.specialty}</div>
+                <div style={{fontSize:11,color:"#38bdf8"}}>{atty.email||"Email not set"}</div>
+                <div style={{fontSize:11,color:"#475569"}}>{atty.phone||"Phone not set"}</div>
+                <div style={{marginTop:10,fontSize:10,color:"#334155"}}>Active cases: {atty.cases}</div>
+                {atty.placeholder && (
+                  <div style={{marginTop:10,padding:"8px 12px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1",fontSize:11,color:"#7dd3fc"}}>
+                    💡 Add your immigration attorney's contact here via Settings → Company Info
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {/* Attorney by case */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>📋 Cases by Attorney</div>
+            {Object.entries(
+              enriched.filter(w=>w.attorney).reduce((acc,w)=>{if(!acc[w.attorney])acc[w.attorney]=[];acc[w.attorney].push(w);return acc;},{})
+            ).map(([atty,cases])=>(
+              <div key={atty} style={{marginBottom:12,padding:"12px 14px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>{atty} ({cases.length} cases)</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {cases.map(w=><span key={w.id} style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:VC(w.type).color+"22",color:VC(w.type).color,border:`1px solid ${VC(w.type).color}44`}}>{w.name} · {w.type}</span>)}
+                </div>
+              </div>
+            ))}
+            {enriched.filter(w=>w.attorney).length===0 && (
+              <div style={{textAlign:"center",padding:"20px",color:"#334155",fontSize:11}}>Attorney information not yet added to any cases</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ALERTS & ACTIONS ───────────────────────────────────────────────── */}
+      {sub === "alerts" && (
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🔔 Alerts & Required Actions</div>
+          {enriched.filter(w=>w.urgent||w.expired||w.type==="OPT"||w.type==="STEM OPT").length === 0 ? (
+            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",borderRadius:12,border:"1px dashed #1a2d45"}}>
+              <div style={{fontSize:36,marginBottom:12}}>🎉</div>
+              <div style={{fontSize:16,color:"#34d399",fontWeight:700}}>All clear!</div>
+              <div style={{fontSize:12,color:"#334155",marginTop:4}}>No immigration alerts at this time</div>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {enriched.filter(w=>w.urgent||w.expired).sort((a,b)=>(a.days||999)-(b.days||999)).map(w=>{
+                const actions = [];
+                if (w.expired)           actions.push("Contact attorney IMMEDIATELY — status may be out of status");
+                if (w.type==="H-1B" && (w.days||0)<=180) actions.push("File H-1B renewal — premium processing recommended ($2,805)");
+                if (w.type==="OPT" && (w.days||0)<=120)  actions.push("Apply for STEM OPT extension if eligible, or find H-1B sponsor");
+                if (w.type==="GC"  && (w.days||0)<=365)  actions.push("File Form I-90 (green card renewal) — takes 12-18 months");
+                if (w.type==="TN"  && (w.days||0)<=90)   actions.push("File TN renewal at port of entry or consulate");
+                const sev = w.expired ? "#f87171" : (w.days||0)<=30 ? "#f87171" : "#fbbf24";
+                return (
+                  <div key={w.id} style={{padding:"16px 18px",borderRadius:12,background:w.expired?"#1a0808":"#1a1005",border:`1px solid ${w.expired?"#7f1d1d":"#78350f"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700,color:sev}}>{w.expired?"🚨":"⚠️"} {w.name}</div>
+                        <div style={{fontSize:11,color:"#475569"}}>{w.type} · {w.expired?`Expired ${Math.abs(w.days||0)} days ago`:`Expires in ${w.days} days (${fmtDate(w.expiryDate)})`}</div>
+                      </div>
+                      <button className="btn bg" style={{fontSize:10}} onClick={()=>{setForm({...w});setModal(true);}}>Update</button>
+                    </div>
+                    {actions.length > 0 && (
+                      <div>
+                        <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Required Actions:</div>
+                        {actions.map((action,i)=>(
+                          <div key={i} style={{display:"flex",gap:8,padding:"5px 0",borderBottom:"1px solid #2a1005",fontSize:11,color:"#fbbf24"}}>
+                            <span style={{flexShrink:0}}>→</span><span>{action}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      {modal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&(setModal(false)||setForm({}))}>
+          <div className="modal" style={{maxWidth:580}}>
+            <MH title={form.id?"Edit Immigration Record":"Add Immigration Record"} onClose={()=>{setModal(false);setForm({});}}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[
+                {l:"Full Name *",        k:"name",        type:"text"},
+                {l:"Visa Type *",        k:"type",        type:"select", opts:Object.keys(VISA_CFG)},
+                {l:"Status",             k:"status",      type:"select", opts:["active","pending","expired","terminated"]},
+                {l:"Employer",           k:"employer",    type:"text"},
+                {l:"Start Date",         k:"startDate",   type:"date"},
+                {l:"Expiry Date",        k:"expiryDate",  type:"date"},
+                {l:"Petition Number",    k:"petitionNo",  type:"text"},
+                {l:"I-94 Expiry",        k:"i94Expiry",   type:"date"},
+                {l:"Attorney / Firm",    k:"attorney",    type:"text"},
+                {l:"Attorney Email",     k:"attorneyEmail",type:"text"},
+              ].map(({l,k,type,opts})=>(
+                <div key={k}>
+                  <div className="lbl">{l}</div>
+                  {type==="select"
+                    ? <select className="inp" value={form[k]||""} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))}>
+                        <option value="">— select —</option>
+                        {(opts||[]).map(o=><option key={o} value={o}>{o}{VISA_CFG[o]?" — "+VISA_CFG[o].label:""}</option>)}
+                      </select>
+                    : <input type={type} className="inp" value={form[k]||""} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={l.replace(" *","")}/>
+                  }
+                </div>
+              ))}
+              <div style={{gridColumn:"1/-1"}}>
+                <div className="lbl">Notes</div>
+                <textarea className="inp" rows={2} value={form.notes||""} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Case notes, reminders, status updates..."/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+              <button className="btn bg" onClick={()=>{setModal(false);setForm({});}}>Cancel</button>
+              <button className="btn bp" onClick={save} disabled={!form.name}>💾 Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
