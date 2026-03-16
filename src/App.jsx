@@ -18151,19 +18151,36 @@ function NotificationsHub({
       };
     });
 
+    // Build both MessageCard (legacy) and Adaptive Card formats
+    const title = isDigest ? `📋 Daily Digest — ${new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}` : `🚨 ${company} — Alert Summary`;
+    const critical = alertList.filter(a => a.sev === "critical");
+    const warning  = alertList.filter(a => a.sev === "warning");
+    const info     = alertList.filter(a => a.sev === "info");
+
+    // Group alerts by category for display
+    const grouped = alertList.reduce((acc,a)=>{if(!acc[a.cat])acc[a.cat]=[];acc[a.cat].push(a);return acc;},{});
+
+    // Build text summary for Teams
+    let bodyText = `**${title}**\n\n`;
+    bodyText += `🔴 **${critical.length} Critical** · 🟡 **${warning.length} Warnings** · ℹ️ **${info.length} Info**\n\n`;
+    Object.entries(grouped).slice(0,8).forEach(([cat, catAlerts]) => {
+      const cfg = settings.channels[cat] || { emoji:"📌", label:cat };
+      bodyText += `**${cfg.emoji} ${cfg.label}** (${catAlerts.length})\n`;
+      catAlerts.slice(0,4).forEach(a => { bodyText += `• **${a.title}**: ${a.body}\n`; });
+      bodyText += "\n";
+    });
+    bodyText += `[Open Ziksatech Ops Center](${window.location.origin})`;
+
     return {
       "@type": "MessageCard",
       "@context": "http://schema.org/extensions",
-      themeColor: critical.length > 0 ? "FF0000" : "FFA500",
+      themeColor: critical.length > 0 ? "FF0000" : warning.length > 0 ? "FFA500" : "0078D4",
       summary: title,
-      title,
-      sections: [
-        { facts, activityTitle:"Summary" },
-        ...sections.slice(0,8)
-      ],
+      title: `${critical.length > 0 ? "🚨" : "📋"} Ziksatech Ops — ${critical.length} Critical, ${warning.length} Warnings`,
+      text: bodyText,
       potentialAction: [{
         "@type": "OpenUri",
-        name: "Open Ziksatech Ops Center",
+        name: "🔗 Open Ops Center",
         targets: [{ os:"default", uri:`${window.location.origin}` }]
       }]
     };
@@ -18209,17 +18226,30 @@ function NotificationsHub({
     const payload = platform === "teams" ? buildTeamsPayload(alertList, isDigest) : buildSlackPayload(alertList, isDigest);
 
     try {
-      // Use a CORS proxy approach — send via our /api/claude as relay, or direct
-      // For Teams/Slack incoming webhooks, we need to handle CORS
-      // Most Slack webhooks work with no-cors, Teams needs same
-      const resp = await fetch(webhook, {
-        method: "POST",
-        mode: "no-cors", // Required for cross-origin webhook delivery
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      // no-cors returns opaque response — treat as success if no throw
-      return { ok: true };
+      // Teams webhooks: use no-cors (Teams doesn't support CORS from browser)
+      // Slack webhooks: use regular fetch (Slack supports CORS)
+      // Both treat a successful send as "ok: true" since opaque responses can't be read
+      const isSlack = webhook.includes("hooks.slack.com");
+      if (isSlack) {
+        // Slack supports CORS — we can get a real response
+        const resp = await fetch(webhook, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const text = await resp.text();
+        return resp.ok || text === "ok" ? { ok: true } : { ok: false, error: `Slack error: ${text}` };
+      } else {
+        // Teams (office.com / webhook.office.com) — no-cors required
+        await fetch(webhook, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        // Opaque response — if no exception thrown, assume success
+        return { ok: true };
+      }
     } catch(e) {
       return { ok: false, error: e.message };
     }
