@@ -1,3 +1,4 @@
+// Ziksatech OPS Center v3.7.8 — Ghost data cleared, clean seeds
 window.__ZT_MASK__ = true; // PII masked by default
 // Global PII masking helper — reads window.__ZT_MASK__ flag
 const mask = (val, type="text") => {
@@ -1190,7 +1191,7 @@ const TASKS_SEED = [
   { id:"task6", projectId:"proj3", title:"Monthly status report — Naxon",      assignee:"r7", dueDate:"2026-03-31", status:"in-progress", priority:"low",    notes:"Send to Naxon PM. Include utilization numbers." },
   { id:"task7", projectId:"proj3", title:"BRIM config review — module 4",      assignee:"r8", dueDate:"2026-04-10", status:"todo",        priority:"medium", notes:"BRIM module 4 config review with Naxon team." },
   { id:"task8", projectId:"proj5", title:"NTTA API integration testing",        assignee:"r7", dueDate:"2026-04-05", status:"todo",        priority:"medium", notes:"Test SAP ↔ NTTA toll system integration." },
-  { id:"task9", projectId:"proj1", title:"Resource onboarding — Ananya",       assignee:"r4", dueDate:"2026-04-02", status:"todo",        priority:"high",   notes:"Complete AT&T badge + NDA for Ananya." },
+  { id:"task9", projectId:"proj1", title:"New consultant onboarding checklist",  assignee:"",   dueDate:"2026-04-02", status:"todo",        priority:"high",   notes:"Complete system access, badge, and NDA." },
 ];
 
 const RISKS_SEED = [];
@@ -9401,7 +9402,7 @@ function OrgMembers({ orgMembers, setOrgMembers, roster }) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Full Name"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="e.g. Nuthan Joshi"/></FF>
               <FF label="Title"><input className="inp" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="SAP Consultant"/></FF>
-              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="suresh@ziksatech.com"/></FF>
+              <FF label="Email"><input className="inp" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="email@ziksatech.com"/></FF>
               <FF label="Phone"><input className="inp" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="+1 (214) 555-0100"/></FF>
               <FF label="Role Template"><select className="inp" value={form.role} onChange={e=>setForm({...form,role:e.target.value,customPerms:{}})}>
                 {Object.entries(ROLE_TEMPLATES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
