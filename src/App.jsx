@@ -1846,6 +1846,20 @@ export default function ZiksatechOps() {
   const [cmdQuery,   setCmdQuery]       = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // ⌘K / Ctrl+K global hotkey to open search
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+        // Focus the search input
+        setTimeout(() => document.getElementById("global-search-input")?.focus(), 50);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | saved | error
   const [backupModal, setBackupModal] = useState(false);
   // Prevent auto-save from overwriting Supabase data on initial load
@@ -2429,7 +2443,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
               className="inp"
               style={{fontSize:12,padding:"6px 10px 6px 28px",width:"100%"}}
               placeholder="Search… (⌘K for commands)"
-              value={globalSearch}
+              id="global-search-input" value={globalSearch}
               onChange={e=>{setGlobalSearch(e.target.value);if(e.target.value.length>0)setSearchOpen(true);else setSearchOpen(false);}}
               onFocus={()=>{if(globalSearch.length>0)setSearchOpen(true);}}
               onBlur={()=>setTimeout(()=>setSearchOpen(false),200)}
@@ -2442,7 +2456,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
               style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#3d5a7a",cursor:"pointer",fontSize:14,lineHeight:1}}>×</button>}
           </div>
       <CommandPalette cmdOpen={cmdOpen} setCmdOpen={setCmdOpen} cmdQuery={cmdQuery} setCmdQuery={setCmdQuery} setTab={setTab}/>
-          {searchOpen&&globalSearch.length>1&&<GlobalSearchResults q={globalSearch} roster={shared.roster} finInvoices={shared.finInvoices} apInvoices={shared.apInvoices} projects={shared.projects} crmDeals={shared.crmDeals} clients={shared.clients} tsSubmissions={shared.tsSubmissions} workAuth={shared.workAuth} setTab={setTab} onClose={()=>setSearchOpen(false)}/>}
+          {searchOpen&&globalSearch.length>1&&<GlobalSearchResults q={globalSearch} roster={shared.roster} finInvoices={shared.finInvoices} candidates={shared.candidates} apInvoices={shared.apInvoices} projects={shared.projects} crmDeals={shared.crmDeals} clients={shared.clients} tsSubmissions={shared.tsSubmissions} workAuth={shared.workAuth} setTab={setTab} onClose={()=>setSearchOpen(false)}/>}
         </div>
 
         {/* PII Mask/Unmask Toggle */}
@@ -19984,58 +19998,169 @@ function CommandPalette({ cmdOpen, setCmdOpen, cmdQuery, setCmdQuery, setTab }) 
   );
 }
 
-function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crmDeals, clients, tsSubmissions, workAuth, setTab, onClose }) {
+function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crmDeals, clients, tsSubmissions, workAuth, candidates, setTab, onClose }) {
+  const [activeIdx, setActiveIdx] = React.useState(0);
   const qq = q.trim().toLowerCase();
   const hit = (...vals) => vals.some(v => v && String(v).toLowerCase().includes(qq));
 
-  const results = [
-    // Roster
-    ...(roster||[]).filter(r => hit(r.name, r.role, r.client, r.skills, r.type, r.id))
-      .map(r => ({ icon:"👤", label:r.name, sub:`${r.role} · ${r.client}`, tab:"roster", id:r.id })),
-    // Finance invoices
-    ...(finInvoices||[]).filter(i => hit(i.id, i.number, i.clientId, i.status, i.period, i.notes))
-      .map(i => ({ icon:"🧾", label:`Invoice ${i.number||i.id}`, sub:`${i.status} · ${i.lines?.reduce((s,l)=>s+l.amount,0)?.toLocaleString?.() || ""}`, tab:"finance", id:i.id })),
-    // AP invoices
-    ...(apInvoices||[]).filter(i => hit(i.number, i.vendor, i.description, i.status, i.category))
-      .map(i => ({ icon:"📤", label:`${i.vendor} – ${i.number}`, sub:`${i.status} · $${i.amount?.toLocaleString?.()}`, tab:"vendors", id:i.id })),
-    // Projects
-    ...(projects||[]).filter(p => hit(p.name, p.clientId, p.status, p.pm, p.description, p.id))
-      .map(p => ({ icon:"📋", label:p.name, sub:`${p.status} · ${p.clientId}`, tab:"projects", id:p.id })),
-    // CRM Deals
-    ...(crmDeals||[]).filter(d => hit(d.name, d.stage, d.owner, d.notes, d.nextStep, d.type))
-      .map(d => ({ icon:"💼", label:d.name, sub:`${d.stage} · $${d.value?.toLocaleString?.()}`, tab:"crm", id:d.id })),
+  // ── 1. MODULE / FEATURE NAVIGATION ───────────────────────────────────────
+  const ALL_MODULES = [
+    // Overview
+    { tab:"dashboard",    label:"Executive Dashboard",          icon:"📊", group:"Overview",    keywords:"kpi revenue ebitda dashboard overview" },
+    { tab:"reports",      label:"Report Builder",               icon:"📈", group:"Overview",    keywords:"reports analytics charts export" },
+    { tab:"ideapad",      label:"IdeaPad",                      icon:"💡", group:"Overview",    keywords:"ideas suggestions revenue share" },
+    { tab:"minicalc",     label:"Mini Calculator",              icon:"🧮", group:"Overview",    keywords:"calculator billing margin math" },
     // Clients
-    ...(clients||[]).filter(cl => hit(cl.name, cl.contact, cl.email, cl.type, cl.health, cl.id))
-      .map(cl => ({ icon:"🏢", label:cl.name, sub:`$${cl.annualRev?.toLocaleString?.()}/yr · ${cl.health}`, tab:"clients", id:cl.id })),
-    // Work Auth
-    ...(workAuth||[]).filter(w => hit(w.name, w.visaType, w.status, w.employer, w.id))
-      .map(w => ({ icon:"📄", label:`${w.name} – ${w.visaType}`, sub:`Expires ${w.expiryDate}`, tab:"compliance", id:w.id })),
-    // Candidates
-    ...(tsSubmissions||[]).filter(s => hit(s.consultantId, s.status, s.notes, s.weekStart))
-      .map(s => ({ icon:"⏱", label:`Timesheet ${s.weekStart}`, sub:`${s.consultantId} · ${s.status}`, tab:"timesheet", id:s.id })),
-  ].slice(0, 12);
+    { tab:"clients",      label:"Client Portfolio",             icon:"🏢", group:"Clients",     keywords:"clients portfolio accounts revenue health" },
+    { tab:"healthscore",  label:"Client Health Scorecard",      icon:"❤️", group:"Clients",     keywords:"client health scorecard nps satisfaction" },
+    { tab:"portal",       label:"Client Portal",                icon:"🌐", group:"Clients",     keywords:"portal timesheets invoices client view" },
+    { tab:"ratequote",    label:"Rate Card & Quick Quote",       icon:"💰", group:"Clients",     keywords:"rate card quote billing hourly w2 c2c rates markup margin" },
+    { tab:"availmatrix",  label:"Availability Matrix",          icon:"👥", group:"Clients",     keywords:"availability consultants bench skills who available matrix staffing" },
+    { tab:"industrypitch",label:"Industry Pitch Templates",     icon:"🏭", group:"Clients",     keywords:"pitch industry templates automotive utilities healthcare defense tolling linkedin email" },
+    { tab:"marketing",    label:"Marketing Hub",                icon:"📣", group:"Clients",     keywords:"marketing linkedin posts email campaign nurture UTM tracking" },
+    { tab:"crm",          label:"Sales CRM",                    icon:"🎯", group:"Clients",     keywords:"crm deals pipeline sales leads accounts" },
+    { tab:"proposals",    label:"Proposals & Quotes",           icon:"📝", group:"Clients",     keywords:"proposals quotes RFP SOW" },
+    { tab:"proposalv2",   label:"AI Proposal Writer",           icon:"✍️", group:"Clients",     keywords:"proposal writer AI generate document" },
+    { tab:"rfpgen",       label:"RFP Generator",                icon:"📥", group:"Clients",     keywords:"rfp generator response bid" },
+    { tab:"sowgen",       label:"SOW Generator",                icon:"📃", group:"Clients",     keywords:"sow statement of work generator contract" },
+    { tab:"prospectintel",label:"Prospect Intel",               icon:"🔍", group:"Clients",     keywords:"prospect research intelligence company analysis" },
+    { tab:"revforecast",  label:"Revenue Forecast",             icon:"📈", group:"Clients",     keywords:"revenue forecast projection pipeline commission" },
+    { tab:"contracts",    label:"Contracts & SOW",              icon:"📜", group:"Clients",     keywords:"contracts sow agreements legal" },
+    { tab:"renewals",     label:"Contract Renewals",            icon:"🔄", group:"Clients",     keywords:"renewals renewal tracker expiring contracts" },
+    // Finance
+    { tab:"finance",      label:"Finance Module",               icon:"💸", group:"Finance",     keywords:"finance invoices payments billing accounts receivable" },
+    { tab:"pl",           label:"P&L / Income Statement",       icon:"📊", group:"Finance",     keywords:"profit loss income statement monthly" },
+    { tab:"cashflow",     label:"Cash Flow",                    icon:"🏦", group:"Finance",     keywords:"cash flow forecast 13 week" },
+    { tab:"vendors",      label:"Vendors & AP",                 icon:"📤", group:"Finance",     keywords:"vendors accounts payable ap bills" },
+    { tab:"adp",          label:"ADP Payroll",                  icon:"💳", group:"Finance",     keywords:"adp payroll payrun salary" },
+    { tab:"adpstubs",     label:"ADP Pay Stubs",                icon:"🧾", group:"Finance",     keywords:"pay stubs salary deductions paystub" },
+    { tab:"reconcile",    label:"Reconciliation Report",        icon:"⚖️", group:"Finance",     keywords:"reconciliation report match bank" },
+    { tab:"budget",       label:"Budget vs Actual",             icon:"🎯", group:"Finance",     keywords:"budget actual variance tracking" },
+    { tab:"ebitda",       label:"EBITDA Optimizer",             icon:"📉", group:"Finance",     keywords:"ebitda optimizer levers exit value" },
+    { tab:"profitability",label:"Profitability Analytics",      icon:"💹", group:"Finance",     keywords:"profitability margin client consultant ROI breakeven" },
+    { tab:"freshbooks",   label:"FreshBooks",                   icon:"📗", group:"Finance",     keywords:"freshbooks invoices billing integration" },
+    // Team
+    { tab:"roster",       label:"Consultant Roster",            icon:"👤", group:"Team",        keywords:"roster consultants team employees staff" },
+    { tab:"timesheet",    label:"Timesheet Approvals",          icon:"⏱", group:"Team",        keywords:"timesheet hours approval billing" },
+    { tab:"perfreviews",  label:"Performance Reviews",          icon:"⭐", group:"Team",        keywords:"performance review 360 goals compensation" },
+    { tab:"pto",          label:"PTO / Time Off",               icon:"🏖", group:"Team",        keywords:"pto time off vacation leave requests" },
+    { tab:"bench",        label:"Bench Management",             icon:"🪑", group:"Team",        keywords:"bench available consultants utilization" },
+    { tab:"capacity",     label:"Capacity Planner",             icon:"📅", group:"Team",        keywords:"capacity planning resource allocation" },
+    { tab:"resourceplan", label:"Resource Planner AI",          icon:"🤖", group:"Team",        keywords:"resource planning AI staffing allocation" },
+    // Hiring
+    { tab:"recruiting",   label:"Recruiting Module",            icon:"🎯", group:"Hiring",      keywords:"recruiting hiring pipeline candidates" },
+    { tab:"lirecruiter",  label:"LinkedIn Recruiter",           icon:"🔗", group:"Hiring",      keywords:"linkedin recruiter sourcing import" },
+    // Compliance
+    { tab:"compliance",   label:"Compliance",                   icon:"✅", group:"Compliance",  keywords:"compliance documents expiring alerts" },
+    { tab:"paffiles",     label:"PAF Files",                    icon:"📁", group:"Compliance",  keywords:"paf personnel action forms documents" },
+    { tab:"immigration",  label:"Immigration Calendar",         icon:"🛂", group:"Compliance",  keywords:"immigration h1b visa work authorization expiry" },
+    // Operations
+    { tab:"projects",     label:"Project Tracker",              icon:"📋", group:"Operations",  keywords:"projects tracker milestones delivery" },
+    { tab:"onboarding",   label:"Onboarding",                   icon:"🎉", group:"Operations",  keywords:"onboarding new hire setup documents" },
+    { tab:"doctemplates", label:"Doc Templates",                icon:"📄", group:"Operations",  keywords:"documents templates letters generate pdf" },
+    { tab:"settings",     label:"Settings",                     icon:"⚙️", group:"Operations",  keywords:"settings configuration preferences account" },
+  ];
 
-  if (!results.length) return (
-    <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:999,background:"#0b1422",border:"1px solid #1a2d45",borderRadius:"0 0 10px 10px",padding:"18px",textAlign:"center",color:"#1e3a5f",fontSize:12}}>
-      No results for "{q}"
+  const moduleResults = ALL_MODULES
+    .filter(m => hit(m.label, m.keywords, m.group, m.tab))
+    .slice(0, 5)
+    .map(m => ({ ...m, type:"module" }));
+
+  // ── 2. DATA RECORD RESULTS ──────────────────────────────────────────────
+  const dataResults = [
+    ...(roster||[]).filter(r => hit(r.name,r.role,r.client,r.skills,r.id))
+      .map(r => ({ icon:"👤", label:r.name, sub:`${r.role} · ${r.client||"—"}`, tab:"roster", type:"data", group:"Consultant" })),
+    ...(crmDeals||[]).filter(d => hit(d.name,d.stage,d.owner,d.notes,d.nextStep))
+      .map(d => ({ icon:"💼", label:d.name, sub:`${d.stage} · $${(d.value||0).toLocaleString()}`, tab:"crm", type:"data", group:"CRM Deal" })),
+    ...(clients||[]).filter(cl => hit(cl.name,cl.contact,cl.email,cl.vertical,cl.health))
+      .map(cl => ({ icon:"🏢", label:cl.name, sub:`${cl.vertical||""} · $${(cl.annualRev||0).toLocaleString()}/yr`, tab:"clients", type:"data", group:"Client" })),
+    ...(finInvoices||[]).filter(i => hit(i.id,i.number,i.clientId,i.status,i.notes))
+      .map(i => ({ icon:"🧾", label:`Invoice ${i.number||i.id}`, sub:`${i.status} · $${(i.lines||[]).reduce((s,l)=>s+l.amount,0).toLocaleString()}`, tab:"finance", type:"data", group:"Invoice" })),
+    ...(candidates||[]).filter(cn => hit(cn.name,cn.role,cn.skills,cn.stage,cn.visaType))
+      .map(cn => ({ icon:"🎯", label:cn.name, sub:`${cn.role||""} · ${cn.stage||""}`, tab:"recruiting", type:"data", group:"Candidate" })),
+    ...(workAuth||[]).filter(w => hit(w.name,w.visaType,w.status))
+      .map(w => ({ icon:"📄", label:`${w.name} – ${w.visaType}`, sub:`Expires ${w.expiryDate}`, tab:"compliance", type:"data", group:"Work Auth" })),
+    ...(projects||[]).filter(p => hit(p.name,p.clientId,p.status,p.pm))
+      .map(p => ({ icon:"📋", label:p.name, sub:`${p.status||""} · ${p.clientId||""}`, tab:"projects", type:"data", group:"Project" })),
+  ].slice(0, 8);
+
+  const allResults = [...moduleResults, ...dataResults];
+
+  React.useEffect(() => { setActiveIdx(0); }, [q]);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx(i => Math.min(i+1, allResults.length-1)); }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setActiveIdx(i => Math.max(i-1, 0)); }
+      if (e.key === "Enter" && allResults[activeIdx]) { setTab(allResults[activeIdx].tab); onClose(); }
+      if (e.key === "Escape") { onClose(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [allResults, activeIdx]);
+
+  if (!allResults.length) return (
+    <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:9999,background:"#0b1422",border:"1px solid #1a2d45",borderRadius:"0 0 12px 12px",padding:"20px",textAlign:"center",boxShadow:"0 12px 40px #00000088"}}>
+      <div style={{fontSize:24,marginBottom:8}}>🔍</div>
+      <div style={{fontSize:12,color:"#334155"}}>No results for "<span style={{color:"#38bdf8"}}>{q}</span>"</div>
+      <div style={{fontSize:10,color:"#1e3a5f",marginTop:4}}>Try: "rate card", "availability", "toyota", "invoice", "pitch"</div>
     </div>
   );
 
   return (
-    <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:999,background:"#0b1422",border:"1px solid #1a2d45",borderRadius:"0 0 10px 10px",overflow:"hidden",boxShadow:"0 8px 24px #00000066"}}>
-      {results.map((r,i) => (
-        <div key={i} onMouseDown={()=>{ setTab(r.tab); onClose(); }}
-          style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",cursor:"pointer",borderBottom:"1px solid #111d2d",transition:"background 0.1s"}}
-          onMouseEnter={e=>e.currentTarget.style.background="#0f1e35"}
-          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          <span style={{fontSize:16,width:22,textAlign:"center"}}>{r.icon}</span>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.label}</div>
-            <div style={{fontSize:10,color:"#3d5a7a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.sub}</div>
+    <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:9999,background:"#0b1422",border:"1px solid #1a2d45",borderRadius:"0 0 12px 12px",overflow:"hidden",boxShadow:"0 12px 40px #00000088"}}>
+      {/* Modules section */}
+      {moduleResults.length > 0 && (
+        <div>
+          <div style={{padding:"5px 14px 3px",fontSize:9,fontWeight:700,color:"#1e3a5f",textTransform:"uppercase",letterSpacing:"0.08em",borderBottom:"1px solid #0a1626",background:"#060d1c"}}>
+            ⚡ Navigate to Module
           </div>
-          <span style={{fontSize:10,color:"#1e3a5f",flexShrink:0}}>{r.tab}</span>
+          {moduleResults.map((r, i) => (
+            <div key={r.tab} onMouseDown={()=>{ setTab(r.tab); onClose(); }}
+              onMouseEnter={()=>setActiveIdx(i)}
+              style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",
+                background:activeIdx===i?"#0c2340":"transparent",
+                borderBottom:"1px solid #0a1626",transition:"background 0.1s"}}>
+              <span style={{fontSize:16,flexShrink:0}}>{r.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,fontWeight:600,color:activeIdx===i?"#38bdf8":"#e2e8f0"}}>{r.label}</div>
+                <div style={{fontSize:9,color:"#334155"}}>{r.group}</div>
+              </div>
+              <span style={{fontSize:9,color:"#1e3a5f",flexShrink:0}}>↵ navigate</span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
+      {/* Data section */}
+      {dataResults.length > 0 && (
+        <div>
+          <div style={{padding:"5px 14px 3px",fontSize:9,fontWeight:700,color:"#1e3a5f",textTransform:"uppercase",letterSpacing:"0.08em",borderBottom:"1px solid #0a1626",background:"#060d1c"}}>
+            📂 Records
+          </div>
+          {dataResults.map((r, i) => {
+            const gi = moduleResults.length + i;
+            return (
+              <div key={i} onMouseDown={()=>{ setTab(r.tab); onClose(); }}
+                onMouseEnter={()=>setActiveIdx(gi)}
+                style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",
+                  background:activeIdx===gi?"#0c2340":"transparent",
+                  borderBottom:"1px solid #0a1626",transition:"background 0.1s"}}>
+                <span style={{fontSize:15,flexShrink:0}}>{r.icon}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,color:activeIdx===gi?"#38bdf8":"#e2e8f0"}}>{r.label}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>{r.sub}</div>
+                </div>
+                <span style={{fontSize:9,color:"#1e3a5f",flexShrink:0}}>{r.group}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {/* Footer */}
+      <div style={{padding:"5px 14px",background:"#060d1c",borderTop:"1px solid #0a1626",display:"flex",gap:12,fontSize:9,color:"#1e3a5f"}}>
+        <span>↑↓ navigate</span><span>↵ open</span><span>esc close</span>
+        <span style={{marginLeft:"auto"}}>{allResults.length} result{allResults.length!==1?"s":""}</span>
+      </div>
     </div>
   );
 }
