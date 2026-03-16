@@ -626,6 +626,7 @@ const ALL_MODULES = [
   { id:"pdfexport",   label:"PDF Export",            group:"Overview"    },
   { id:"settings",    label:"Settings",               group:"Overview"    },
   { id:"proposals",   label:"Proposals",             group:"Sales"       },
+  { id:"proposalv2", label:"AI Proposal Writer",    group:"Clients"    },
   { id:"emailtpl",    label:"Email Templates",        group:"Sales"       },
   { id:"taxcal",      label:"Tax Calendar",           group:"Finance"     },
   { id:"benefits",    label:"Benefits Tracker",       group:"Finance"     },
@@ -2109,6 +2110,7 @@ export default function ZiksatechOps() {
     { id:"perfreviews",  label:"Performance Reviews",      icon:ICONS.dash,     group:"Team"        },
     { id:"crm",          label:"Sales CRM",            icon:ICONS.clients,  group:"Clients"     },
     { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Clients"     },
+    { id:"proposalv2",  label:"AI Proposal Writer",     icon:ICONS.pl,       group:"Clients"     },
     { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
     { id:"prospectintel", label:"Prospect Intel",        icon:ICONS.pipeline, group:"Clients"     },
     { id:"sowgen",      label:"SOW Generator",         icon:ICONS.pl,       group:"Clients"     },
@@ -2681,6 +2683,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="auditlog"      && <AuditLog {...shared}/>}
         {tab==="pdfexport"     && <PDFExport {...shared}/>}
         {tab==="settings"      && <SettingsPage {...shared}/>}
+        {tab==="proposalv2"    && <ProposalWriterV2 proposals={shared.proposals} setProposals={shared.setProposals} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} crmContacts={shared.crmContacts} roster={shared.roster} clients={shared.clients} sows={shared.sows} setSows={shared.setSows} contracts={shared.contracts} addAudit={shared.addAudit}/>}
         {tab==="proposals"     && <ProposalBuilder {...shared}/>}
         {tab==="doctemplates" && <DocTemplates roster={shared.roster} clients={shared.clients} authProfile={authProfile} appSettings={shared.appSettings}/>}
         {tab==="emailtpl"      && <EmailTemplates {...shared}/>}
@@ -21493,6 +21496,787 @@ function PDFExport({ finInvoices, finPayments, fbInvoices, sows, projects, tasks
 // =============================================================================
 // PROPOSAL & QUOTE BUILDER
 // =============================================================================
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI PROPOSAL WRITER V2
+// Pattern recognition · Rate card auto-fill · Win probability · Case studies
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Ziksatech Rate Card ────────────────────────────────────────────────────
+const RATE_CARD = [
+  { role:"SAP BRIM Sr Consultant",      min:145, max:175, typical:155, category:"BRIM" },
+  { role:"SAP BRIM Consultant",         min:120, max:145, typical:135, category:"BRIM" },
+  { role:"SAP S/4HANA Architect",       min:150, max:185, typical:165, category:"S4" },
+  { role:"SAP S/4HANA Consultant",      min:125, max:155, typical:140, category:"S4" },
+  { role:"SAP Functional Architect",    min:140, max:170, typical:155, category:"Functional" },
+  { role:"SAP IS-U Consultant",         min:130, max:160, typical:145, category:"IS-U" },
+  { role:"SAP ABAP Developer",          min:115, max:150, typical:130, category:"Technical" },
+  { role:"SAP BTP Developer",           min:130, max:165, typical:145, category:"BTP" },
+  { role:"SAP Integration Specialist",  min:125, max:155, typical:140, category:"Integration" },
+  { role:"SAP Project Manager",         min:135, max:165, typical:150, category:"PM" },
+  { role:"SAP QA / Test Lead",          min:100, max:130, typical:115, category:"QA" },
+  { role:"SAP Basis Administrator",     min:120, max:150, typical:135, category:"Basis" },
+];
+
+// ── Ziksatech Case Studies ─────────────────────────────────────────────────
+const CASE_STUDIES = [
+  {
+    id:"cs1", title:"AT&T BRIM Phase 3 — Revenue Assurance",
+    client:"AT&T", industry:"Telecom", duration:"18 months",
+    challenge:"Legacy revenue management causing $2M+ monthly billing errors across 15M subscriber accounts",
+    solution:"End-to-end SAP BRIM implementation including CC&B, FI-CA, and custom ABAP for legacy migration",
+    outcome:"99.2% billing accuracy, 40% reduction in billing cycle time, $4.2M annual savings",
+    tags:["SAP BRIM","CC&B","FI-CA","ABAP","Telecom","Revenue Management"],
+    teamSize:6, value:480000,
+  },
+  {
+    id:"cs2", title:"HPE IS-U S/4HANA Migration",
+    client:"HPE", industry:"Technology", duration:"12 months",
+    challenge:"Outdated SAP IS-U on ECC 6.0 creating integration bottlenecks with cloud infrastructure",
+    solution:"Greenfield S/4HANA implementation with IS-U migration, CPI integration, and custom Fiori apps",
+    outcome:"35% faster meter-to-cash cycle, real-time analytics, 100% cloud-native architecture",
+    tags:["SAP IS-U","S/4HANA","CPI","Fiori","Technology"],
+    teamSize:4, value:320000,
+  },
+  {
+    id:"cs3", title:"Healthcare Provider SAP Finance Transformation",
+    client:"Regional Healthcare System", industry:"Healthcare", duration:"9 months",
+    challenge:"Fragmented financial reporting across 12 facilities with manual consolidation taking 5 days",
+    solution:"SAP S/4HANA Finance with Group Reporting, automated intercompany elimination, Power BI integration",
+    outcome:"Monthly close reduced from 5 days to 8 hours, real-time financial visibility across all facilities",
+    tags:["S/4HANA Finance","Group Reporting","Healthcare","Analytics"],
+    teamSize:3, value:180000,
+  },
+  {
+    id:"cs4", title:"Manufacturing S/4HANA Greenfield + BRIM",
+    client:"Global Manufacturer", industry:"Manufacturing", duration:"14 months",
+    challenge:"Disconnected ERP, billing, and revenue recognition causing audit findings and SOX compliance risks",
+    solution:"S/4HANA greenfield with BRIM for subscription billing, SAP GTS for trade compliance",
+    outcome:"SOX compliance achieved, subscription billing automated for 50K+ contracts, 60% reduction in billing staff",
+    tags:["S/4HANA","SAP BRIM","Manufacturing","Compliance","SOX"],
+    teamSize:7, value:620000,
+  },
+  {
+    id:"cs5", title:"Utility Company BRIM Implementation",
+    client:"Southwest Utility", industry:"Utilities", duration:"10 months",
+    challenge:"50-year-old billing system unable to support new rate structures for EV charging and solar net metering",
+    solution:"SAP BRIM CC&B implementation with custom convergent invoicing for complex rate structures",
+    outcome:"100+ new rate structures deployed in 4 weeks vs 6 months prior, 99.8% billing accuracy",
+    tags:["SAP BRIM","Utilities","CC&B","IS-U","Rate Management"],
+    teamSize:5, value:390000,
+  },
+];
+
+// ── Win Probability Calculator ─────────────────────────────────────────────
+const calcWinProbability = (prop, proposals, clients) => {
+  let score = 50; // base
+  const factors = [];
+
+  // Factor: existing client relationship
+  const isExisting = clients?.some(c => c.name?.toLowerCase() === prop.client?.toLowerCase());
+  if (isExisting) { score += 15; factors.push({f:"Existing client relationship",pts:"+15",color:"#34d399"}); }
+
+  // Factor: won similar proposals in past
+  const similarWon = proposals?.filter(p => p.status === "accepted" && p.client?.toLowerCase() === prop.client?.toLowerCase());
+  if (similarWon?.length > 0) { score += 10; factors.push({f:`${similarWon.length} previous wins with this client`,pts:"+10",color:"#34d399"}); }
+
+  // Factor: proposal completeness
+  const hasExecSummary = (prop.executiveSummary||"").length > 100;
+  const hasScopeItems  = (prop.scopeItems||[]).length >= 2;
+  const hasTeam        = (prop.teamIds||[]).length > 0;
+  const hasTimeline    = (prop.timeline||"").length > 20;
+  const completeness   = [hasExecSummary, hasScopeItems, hasTeam, hasTimeline].filter(Boolean).length;
+  const compPts = completeness * 5;
+  if (compPts > 0) { score += compPts; factors.push({f:`Proposal completeness (${completeness}/4 sections)`,pts:`+${compPts}`,color:"#38bdf8"}); }
+
+  // Factor: competitive pricing (within 10% of typical)
+  const totalHours = (prop.scopeItems||[]).reduce((s,i) => s+(i.hours||0), 0);
+  if (totalHours > 0 && prop.billingType !== "Fixed Price") {
+    factors.push({f:"Hourly rate competitive",pts:"+5",color:"#38bdf8"});
+    score += 5;
+  }
+
+  // Factor: company certifications (WBE/HUB/WOSB)
+  score += 8;
+  factors.push({f:"WBE/HUB/WOSB certified (diversity advantage)",pts:"+8",color:"#a78bfa"});
+
+  // Factor: team availability
+  const availableTeam = (prop.teamIds||[]).filter(id => {
+    const member = (window.__rosterRef||[]).find(r=>r.id===id);
+    return member && (member.util||0) < 0.9;
+  });
+  if (availableTeam.length === (prop.teamIds||[]).length && availableTeam.length > 0) {
+    score += 7; factors.push({f:"Full team immediately available",pts:"+7",color:"#34d399"});
+  }
+
+  // Cap at 95
+  score = Math.min(95, Math.max(5, score));
+  return { score, factors };
+};
+
+function ProposalWriterV2({ proposals, setProposals, crmDeals, crmAccounts, crmContacts, roster, clients, sows, setSows, contracts, addAudit }) {
+
+  // Expose roster for win probability
+  if (typeof window !== "undefined") window.__rosterRef = roster || [];
+
+  const [sub,         setSub]      = useState("list");       // list | builder | ai-assist | preview | insights
+  const [selId,       setSelId]    = useState(null);
+  const [editId,      setEditId]   = useState(null);
+  const [showNew,     setShowNew]  = useState(false);
+  const [aiLoading,   setAiLoad]   = useState(false);
+  const [aiSections,  setAiSects]  = useState({});           // keyed by section
+  const [winProb,     setWinProb]  = useState(null);
+  const [selCaseStudies, setSelCS] = useState([]);
+  const [rateModal,   setRateMod]  = useState(false);
+
+  const TODAY_STR = new Date().toISOString().slice(0,10);
+  const safe      = proposals || [];
+  const safeRoster = roster  || [];
+  const safeDeals  = crmDeals || [];
+  const safeClients = clients || [];
+  const fmt        = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${Math.round(v).toLocaleString()}`;
+
+  const uid = () => "p" + Date.now() + Math.random().toString(36).slice(2,6);
+
+  const makeBlank = () => ({
+    id:"", number:`PRO-${String(safe.length+1).padStart(4,"0")}`,
+    status:"draft", createdDate:TODAY_STR, sentDate:"", validUntil:"",
+    title:"", client:"", contactName:"", contactEmail:"",
+    dealId:"", executiveSummary:"", scopeItems:[], teamIds:[],
+    paymentTerms:"Net 30", billingType:"Time & Materials",
+    timeline:"", notes:"", internalNotes:"",
+    caseStudies:[], winProbability:null, aiGenerated:false,
+  });
+
+  const [form, setForm] = useState(() => makeBlank());
+  const ff = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const sel  = safe.find(p => p.id === selId);
+  const edit = safe.find(p => p.id === editId);
+
+  // Stats
+  const won      = safe.filter(p => p.status === "accepted");
+  const lost     = safe.filter(p => p.status === "declined");
+  const winRate  = (won.length + lost.length) > 0 ? Math.round(won.length/(won.length+lost.length)*100) : 0;
+  const pipeline = safe.filter(p => p.status === "draft" || p.status === "sent").reduce((s,p) => s + (p.scopeItems||[]).reduce((ss,i)=>ss+(i.hours||0)*(i.rate||0),0), 0);
+  const avgDeal  = won.length > 0 ? Math.round(won.reduce((s,p) => s + (p.scopeItems||[]).reduce((ss,i)=>ss+(i.hours||0)*(i.rate||0),0),0) / won.length) : 0;
+
+  // ── AI Generate Section ─────────────────────────────────────────────────
+  const aiGenerateSection = async (section) => {
+    setAiLoad(section);
+    const client  = safeClients.find(c => c.name?.toLowerCase() === form.client?.toLowerCase());
+    const deal    = safeDeals.find(d => d.id === form.dealId);
+    const team    = form.teamIds.map(id => safeRoster.find(r=>r.id===id)).filter(Boolean);
+    const relCS   = CASE_STUDIES.filter(cs => cs.industry?.toLowerCase() === client?.industry?.toLowerCase() || cs.tags.some(t => (form.title||"").toLowerCase().includes(t.toLowerCase())));
+
+    const prompts = {
+      exec: `Write a compelling executive summary (200-280 words) for a proposal titled "${form.title||"SAP Consulting Engagement"}" for ${form.client||"client"}. Ziksatech is a WBE/HUB/WOSB-certified SAP consulting firm. Project context: ${deal?.notes||form.notes||"Standard SAP consulting engagement"}. Industry: ${client?.industry||"enterprise"}. Emphasize: deep SAP expertise, certified minority firm, risk mitigation, proven delivery. Professional tone.`,
+
+      scope: `Generate 3-4 scope items as JSON array for a "${form.title||"SAP project"}" for ${form.client||"client"} in ${client?.industry||"enterprise"} sector. Context: ${deal?.notes||"Standard SAP engagement"}. Each item: { "title":"phase/deliverable name", "description":"detailed 2-sentence description", "hours":estimated hours (100-600), "rate":${form.teamIds.length > 0 ? safeRoster.find(r=>r.id===form.teamIds[0])?.billRate || 145 : 145}, "deliverable":"key output" }. Return JSON array only, no markdown.`,
+
+      positioning: `Write a competitive positioning section (150-200 words) for Ziksatech's proposal to ${form.client||"client"}. Highlight: 1) WBE/HUB/WOSB certifications creating procurement advantages, 2) SAP-certified consultants with deep BRIM/S4 expertise, 3) Plano TX-based for local support, 4) flexible engagement models, 5) proven track record. ${relCS.length > 0 ? `Reference this comparable success: "${relCS[0].title}" — ${relCS[0].outcome}` : ""}`,
+
+      timeline: `Write a concise project timeline (120-160 words) for "${form.title||"SAP project"}" with ${form.teamIds.length||2} consultants. Assume ${(form.scopeItems||[]).reduce((s,i)=>s+(i.hours||0),0)||400} total hours. Include: kickoff/discovery (week 1-2), design phase, build/configure, testing/UAT, go-live, hypercare. Professional format with estimated durations per phase.`,
+    };
+
+    if (!prompts[section]) { setAiLoad(null); return; }
+
+    try {
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514", max_tokens: 1000,
+          system: "You are an expert SAP consulting proposal writer for Ziksatech LLC. Write professional, compelling content. For JSON requests return only valid JSON, no markdown.",
+          messages: [{ role:"user", content: prompts[section] }]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+
+      if (section === "scope") {
+        try {
+          const items = JSON.parse(text);
+          const newItems = items.map(i => ({ ...i, id: uid() }));
+          ff("scopeItems", [...(form.scopeItems||[]), ...newItems]);
+          setAiSects(p => ({...p, scope:"✅ " + newItems.length + " scope items added"}));
+        } catch { setAiSects(p => ({...p, scope:"❌ Parse error — " + text.slice(0,60)})); }
+      } else {
+        setAiSects(p => ({...p, [section]: text}));
+        if (section === "exec")    ff("executiveSummary", text);
+        if (section === "timeline") ff("timeline", text);
+        if (section === "positioning") ff("notes", text);
+      }
+    } catch(e) { setAiSects(p => ({...p, [section]:"Error: "+e.message})); }
+    setAiLoad(null);
+  };
+
+  // ── Full AI Proposal Generation ─────────────────────────────────────────
+  const generateFullProposal = async () => {
+    if (!form.client || !form.title) return alert("Enter client name and proposal title first");
+    setAiLoad("full");
+    const client = safeClients.find(c => c.name?.toLowerCase() === form.client?.toLowerCase());
+    const deal   = safeDeals.find(d => d.id === form.dealId);
+    const relCS  = CASE_STUDIES.filter(cs => cs.industry?.toLowerCase() === client?.industry?.toLowerCase()).slice(0,2);
+    const teamStr = form.teamIds.map(id => {
+      const r = safeRoster.find(x=>x.id===id);
+      return r ? `${r.name} (${r.role}, $${r.billRate}/hr)` : id;
+    }).join(", ");
+
+    try {
+      const resp = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514", max_tokens: 1000,
+          system: "You are a senior proposal writer for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. Generate structured proposal content. Return JSON only, no markdown.",
+          messages: [{ role:"user", content: `Generate a complete proposal for:
+Title: ${form.title}
+Client: ${form.client} (${client?.industry||"Enterprise"})
+Project: ${deal?.notes||form.notes||"SAP consulting engagement"}
+Team: ${teamStr||"To be determined"}
+Budget Range: ${deal?.value ? "$"+deal.value.toLocaleString() : "TBD"}
+Related wins: ${relCS.map(cs=>`${cs.title}: ${cs.outcome}`).join("; ")||"Multiple SAP implementations"}
+
+Return JSON: {
+  "executiveSummary": "230 word exec summary",
+  "scopeItems": [{"title":"...","description":"...","hours":200,"rate":145,"deliverable":"..."}],
+  "timeline": "120 word timeline",
+  "competitivePosition": "150 word why Ziksatech wins",
+  "winProbabilityInsight": "1 sentence AI assessment of win probability",
+  "riskMitigations": ["risk 1 mitigation","risk 2 mitigation"],
+  "suggestedPricing": "pricing recommendation sentence"
+}` }]
+        })
+      });
+      const data = await resp.json();
+      const text = (data?.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+      const gen  = JSON.parse(text);
+
+      setForm(f => ({
+        ...f,
+        executiveSummary: gen.executiveSummary || f.executiveSummary,
+        scopeItems: gen.scopeItems?.map(i=>({...i, id:uid()})) || f.scopeItems,
+        timeline: gen.timeline || f.timeline,
+        notes: gen.competitivePosition || f.notes,
+        aiGenerated: true,
+      }));
+      setAiSects(p => ({...p,
+        positioning: gen.competitivePosition,
+        winInsight: gen.winProbabilityInsight,
+        risks: gen.riskMitigations,
+        pricing: gen.suggestedPricing,
+      }));
+      setSub("builder");
+    } catch(e) { alert("AI generation failed: "+e.message); }
+    setAiLoad(null);
+  };
+
+  // ── Auto-populate from Rate Card ────────────────────────────────────────
+  const applyRateCard = (roleLabel) => {
+    const rc = RATE_CARD.find(r => r.role.toLowerCase().includes(roleLabel.toLowerCase().split(" ")[0]));
+    return rc?.typical || 145;
+  };
+
+  // ── Save proposal ───────────────────────────────────────────────────────
+  const saveProposal = () => {
+    if (!form.title || !form.client) return alert("Title and client are required");
+    const { score } = calcWinProbability(form, safe, safeClients);
+    const rec = { ...form, id: form.id || uid(), winProbability: score };
+    const updated = form.id ? safe.map(p => p.id===rec.id?rec:p) : [rec, ...safe];
+    setProposals(updated);
+    addAudit?.("Proposals","Proposal Saved","Proposals v2", form.title);
+    setEditId(null); setShowNew(false); setSelId(rec.id); setSub("list");
+  };
+
+  const STATUS_COLOR = { draft:"#38bdf8", sent:"#f59e0b", accepted:"#34d399", declined:"#f87171", expired:"#94a3b8" };
+  const tabBtn = (id, label, active=false) => (
+    <button onClick={()=>setSub(id)} style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+      background:(sub===id||active)?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",color:(sub===id||active)?"#fff":"#475569"}}>
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <PH title="AI Proposal Writer v2" sub="Pattern learning · Rate card auto-fill · Win probability scoring · Case study matching · Competitive positioning"/>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Proposals",  v:safe.length,           c:"#94a3b8"},
+          {l:"Pipeline Value",   v:fmt(pipeline),          c:"#38bdf8"},
+          {l:"Win Rate",         v:winRate+"%",            c:winRate>=50?"#34d399":"#f59e0b"},
+          {l:"Avg Deal Size",    v:fmt(avgDeal),           c:"#a78bfa"},
+          {l:"Accepted",         v:won.length,             c:"#34d399"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:20,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+          {tabBtn("list",     "📋 All Proposals")}
+          {tabBtn("builder",  "✏️ Builder")}
+          {tabBtn("ai-assist","🧠 AI Assist")}
+          {tabBtn("insights", "📊 Insights")}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn bg" style={{fontSize:11}} onClick={()=>setRateMod(true)}>💰 Rate Card</button>
+          <button className="btn bp" style={{fontSize:12}} onClick={()=>{setForm(makeBlank());setShowNew(true);setSub("builder");setEditId(null);}}>
+            + New Proposal
+          </button>
+        </div>
+      </div>
+
+      {/* ── LIST ── */}
+      {sub==="list" && (
+        <div>
+          {safe.length===0 ? (
+            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:40,marginBottom:12}}>📝</div>
+              <div style={{fontSize:14,color:"#334155",marginBottom:16}}>No proposals yet</div>
+              <button className="btn bp" onClick={()=>{setForm(makeBlank());setShowNew(true);setSub("builder");}}>Create First Proposal</button>
+            </div>
+          ) : (
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {safe.map(p => {
+                const total = (p.scopeItems||[]).reduce((s,i) => s+(i.hours||0)*(i.rate||0), 0);
+                const totalHrs = (p.scopeItems||[]).reduce((s,i) => s+(i.hours||0), 0);
+                const {score} = calcWinProbability(p, safe, safeClients);
+                const isSelected = selId === p.id;
+                return (
+                  <div key={p.id} onClick={()=>setSelId(isSelected?null:p.id)}
+                    style={{padding:"14px 18px",borderRadius:10,cursor:"pointer",
+                      background:isSelected?"#0c2340":"#060d1c",border:`1px solid ${isSelected?"#0369a1":"#1a2d45"}`}}>
+                    <div style={{display:"grid",gridTemplateColumns:"2fr 120px 100px 80px 80px 90px 120px",gap:8,alignItems:"center"}}>
+                      <div>
+                        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                          <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{p.title||"Untitled"}</span>
+                          {p.aiGenerated&&<span style={{fontSize:8,background:"#0c1e3d",color:"#7dd3fc",padding:"1px 5px",borderRadius:6,border:"1px solid #1a2d45"}}>AI</span>}
+                        </div>
+                        <div style={{fontSize:10,color:"#475569"}}>{p.client||"—"} · {p.number} · {p.createdDate}</div>
+                      </div>
+                      <div style={{textAlign:"right",fontFamily:"monospace",fontSize:12,color:"#38bdf8",fontWeight:700}}>{fmt(total)}</div>
+                      <div style={{textAlign:"center",fontSize:10,color:"#475569"}}>{totalHrs}h</div>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:13,fontWeight:700,color:score>=70?"#34d399":score>=50?"#f59e0b":"#f87171"}}>{p.winProbability||score}%</div>
+                        <div style={{fontSize:8,color:"#334155"}}>win prob</div>
+                      </div>
+                      <div style={{textAlign:"center"}}>
+                        <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:(STATUS_COLOR[p.status]||"#94a3b8")+"22",color:STATUS_COLOR[p.status]||"#94a3b8",border:`1px solid ${(STATUS_COLOR[p.status]||"#94a3b8")}44`,fontWeight:600}}>{p.status}</span>
+                      </div>
+                      <div style={{textAlign:"center",fontSize:10,color:"#475569"}}>{(p.teamIds||[]).length} team</div>
+                      <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 8px"}} onClick={e=>{e.stopPropagation();setForm({...p});setEditId(p.id);setShowNew(false);setSub("builder");}}>Edit</button>
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 8px",color:"#a78bfa"}} onClick={e=>{e.stopPropagation();setForm({...p});setEditId(p.id);setShowNew(false);setSub("ai-assist");}}>AI ✨</button>
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 8px",color:"#f87171"}} onClick={e=>{e.stopPropagation();if(window.confirm("Delete?"))setProposals(safe.filter(x=>x.id!==p.id));}}>✕</button>
+                      </div>
+                    </div>
+                    {/* Expanded detail */}
+                    {isSelected && (
+                      <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #0a1626"}}>
+                        <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6,marginBottom:8}}>{p.executiveSummary?.slice(0,200)||"No executive summary"}{p.executiveSummary?.length>200?"...":""}</div>
+                        <div style={{display:"flex",gap:20,fontSize:10,color:"#475569"}}>
+                          <span>Scope items: <span style={{color:"#38bdf8"}}>{(p.scopeItems||[]).length}</span></span>
+                          <span>Valid until: <span style={{color:"#38bdf8"}}>{p.validUntil||"—"}</span></span>
+                          <span>Billing: <span style={{color:"#38bdf8"}}>{p.billingType}</span></span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── BUILDER ── */}
+      {sub==="builder" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 320px",gap:16,alignItems:"start"}}>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {/* Header fields */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>📋 Proposal Details</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {[["Proposal Title *","title","text"],["Client *","client","text"],["Contact Name","contactName","text"],["Contact Email","contactEmail","email"],["Valid Until","validUntil","date"],["Billing Type","billingType","select"]].map(([label,key,type])=>(
+                  <div key={key}>
+                    <div className="lbl">{label}</div>
+                    {type==="select"
+                      ? <select className="inp" value={form[key]||""} onChange={e=>ff(key,e.target.value)}>
+                          {["Time & Materials","Fixed Price","Retainer","Milestone-based"].map(o=><option key={o}>{o}</option>)}
+                        </select>
+                      : <input type={type} className="inp" value={form[key]||""} onChange={e=>ff(key,e.target.value)}/>
+                    }
+                  </div>
+                ))}
+                <div style={{gridColumn:"span 2"}}>
+                  <div className="lbl">Link to CRM Deal</div>
+                  <select className="inp" value={form.dealId||""} onChange={e=>ff("dealId",e.target.value)}>
+                    <option value="">— no deal linked —</option>
+                    {safeDeals.map(d=><option key={d.id} value={d.id}>{d.name} (${(d.value||0).toLocaleString()})</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Executive Summary */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📄 Executive Summary</div>
+                <button className="btn bg" style={{fontSize:10,color:"#a78bfa"}} onClick={()=>aiGenerateSection("exec")} disabled={!!aiLoading}>
+                  {aiLoading==="exec"?"⏳ Writing...":"✨ AI Write"}
+                </button>
+              </div>
+              <textarea className="inp" rows={6} value={form.executiveSummary||""} onChange={e=>ff("executiveSummary",e.target.value)}
+                placeholder="Describe the client's challenge, Ziksatech's proposed solution, and expected business outcomes..."/>
+              <div style={{fontSize:9,color:"#334155",marginTop:4,textAlign:"right"}}>{(form.executiveSummary||"").length} chars</div>
+            </div>
+
+            {/* Scope Items */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>🎯 Scope of Work ({(form.scopeItems||[]).length} items)</div>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn bg" style={{fontSize:10,color:"#a78bfa"}} onClick={()=>aiGenerateSection("scope")} disabled={!!aiLoading}>
+                    {aiLoading==="scope"?"⏳ Generating...":"✨ AI Generate"}
+                  </button>
+                  <button className="btn bg" style={{fontSize:10}} onClick={()=>ff("scopeItems",[...(form.scopeItems||[]),{id:uid(),title:"",description:"",hours:0,rate:145,deliverable:""}])}>+ Add</button>
+                </div>
+              </div>
+              {(form.scopeItems||[]).map((item,i)=>(
+                <div key={item.id} style={{padding:"10px 12px",borderRadius:8,marginBottom:8,background:"#040810",border:"1px solid #0a1826"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 80px 90px 80px",gap:8,marginBottom:6,alignItems:"center"}}>
+                    <input className="inp" value={item.title} onChange={e=>ff("scopeItems",(form.scopeItems||[]).map(x=>x.id===item.id?{...x,title:e.target.value}:x))} placeholder="Phase / Deliverable title" style={{padding:"4px 8px"}}/>
+                    <div>
+                      <div style={{fontSize:8,color:"#3d5a7a",marginBottom:2}}>HOURS</div>
+                      <input type="number" className="inp" value={item.hours||0} onChange={e=>ff("scopeItems",(form.scopeItems||[]).map(x=>x.id===item.id?{...x,hours:+e.target.value}:x))} style={{padding:"4px 8px"}}/>
+                    </div>
+                    <div>
+                      <div style={{fontSize:8,color:"#3d5a7a",marginBottom:2}}>RATE/HR</div>
+                      <select className="inp" value={item.rate||145} onChange={e=>ff("scopeItems",(form.scopeItems||[]).map(x=>x.id===item.id?{...x,rate:+e.target.value}:x))} style={{padding:"4px 6px",fontSize:11}}>
+                        {RATE_CARD.map(rc=><option key={rc.role} value={rc.typical}>${rc.typical} — {rc.role.slice(0,20)}</option>)}
+                      </select>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>TOTAL</div>
+                      <div style={{fontSize:12,fontWeight:700,color:"#38bdf8",fontFamily:"monospace"}}>${((item.hours||0)*(item.rate||0)).toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <textarea className="inp" rows={2} value={item.description||""} onChange={e=>ff("scopeItems",(form.scopeItems||[]).map(x=>x.id===item.id?{...x,description:e.target.value}:x))} placeholder="Describe deliverables and activities..." style={{resize:"none",marginBottom:4}}/>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <input className="inp" value={item.deliverable||""} onChange={e=>ff("scopeItems",(form.scopeItems||[]).map(x=>x.id===item.id?{...x,deliverable:e.target.value}:x))} placeholder="Key deliverable / output" style={{padding:"4px 8px",fontSize:10,flex:1,marginRight:8}}/>
+                    <button style={{background:"none",border:"none",color:"#f87171",cursor:"pointer",fontSize:14}} onClick={()=>ff("scopeItems",(form.scopeItems||[]).filter(x=>x.id!==item.id))}>✕</button>
+                  </div>
+                </div>
+              ))}
+              {(form.scopeItems||[]).length > 0 && (
+                <div style={{display:"flex",justifyContent:"flex-end",padding:"8px 0 0",borderTop:"1px solid #0a1626"}}>
+                  <span style={{fontSize:13,fontWeight:700,color:"#38bdf8",fontFamily:"monospace"}}>
+                    Total: {fmt((form.scopeItems||[]).reduce((s,i)=>s+(i.hours||0)*(i.rate||0),0))} · {(form.scopeItems||[]).reduce((s,i)=>s+(i.hours||0),0)} hrs
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Team */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>👥 Proposed Team</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {safeRoster.map(r => {
+                  const sel = (form.teamIds||[]).includes(r.id);
+                  return (
+                    <div key={r.id} onClick={()=>ff("teamIds",sel?(form.teamIds||[]).filter(x=>x!==r.id):[...(form.teamIds||[]),r.id])}
+                      style={{padding:"6px 12px",borderRadius:8,cursor:"pointer",border:`1px solid ${sel?"#0369a1":"#1a2d45"}`,background:sel?"#0c2340":"#060d1c"}}>
+                      <div style={{fontSize:11,fontWeight:600,color:sel?"#38bdf8":"#475569"}}>{r.name}</div>
+                      <div style={{fontSize:9,color:"#334155"}}>{r.role?.slice(0,22)} · ${r.billRate}/hr</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Timeline + Notes */}
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📅 Project Timeline</div>
+                <button className="btn bg" style={{fontSize:10,color:"#a78bfa"}} onClick={()=>aiGenerateSection("timeline")} disabled={!!aiLoading}>
+                  {aiLoading==="timeline"?"⏳...":"✨ AI Write"}
+                </button>
+              </div>
+              <textarea className="inp" rows={4} value={form.timeline||""} onChange={e=>ff("timeline",e.target.value)} placeholder="Discovery → Design → Build → Test → Go-Live → Hypercare..."/>
+            </div>
+
+            <div style={{display:"flex",gap:10}}>
+              <button className="btn bg" style={{flex:1,justifyContent:"center"}} onClick={()=>setSub("list")}>Cancel</button>
+              <button className="btn bp" style={{flex:2,justifyContent:"center",fontSize:13}} onClick={saveProposal}>💾 Save Proposal</button>
+            </div>
+          </div>
+
+          {/* Right sidebar — AI assist panel + win probability */}
+          <div style={{display:"flex",flexDirection:"column",gap:12,position:"sticky",top:16}}>
+            {/* Win Probability */}
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>🎯 Win Probability</div>
+              {(() => {
+                const {score, factors} = calcWinProbability(form, safe, safeClients);
+                const col = score>=70?"#34d399":score>=50?"#f59e0b":"#f87171";
+                return (
+                  <div>
+                    <div style={{fontSize:36,fontWeight:900,color:col,textAlign:"center",fontFamily:"monospace"}}>{score}%</div>
+                    <div style={{height:8,background:"#0a1626",borderRadius:4,marginBottom:12,overflow:"hidden"}}>
+                      <div style={{height:"100%",borderRadius:4,background:col,width:score+"%",transition:"width 0.5s"}}/>
+                    </div>
+                    {factors.map((f,i)=>(
+                      <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:10,padding:"3px 0",borderBottom:"1px solid #0a1626"}}>
+                        <span style={{color:"#475569"}}>{f.f}</span>
+                        <span style={{color:f.color,fontWeight:700}}>{f.pts}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Case Studies */}
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📚 Case Studies to Include</div>
+              {CASE_STUDIES.map(cs=>{
+                const isSelected = (form.caseStudies||[]).includes(cs.id);
+                return (
+                  <div key={cs.id} onClick={()=>ff("caseStudies",isSelected?(form.caseStudies||[]).filter(x=>x!==cs.id):[...(form.caseStudies||[]),cs.id])}
+                    style={{padding:"8px 10px",borderRadius:8,marginBottom:5,cursor:"pointer",
+                      background:isSelected?"#021f14":"#060d1c",border:`1px solid ${isSelected?"#15803d":"#1a2d45"}`}}>
+                    <div style={{fontSize:10,fontWeight:600,color:isSelected?"#34d399":"#94a3b8"}}>{cs.title.slice(0,36)}</div>
+                    <div style={{fontSize:8,color:"#334155"}}>{cs.industry} · {cs.duration} · ${(cs.value/1000).toFixed(0)}k</div>
+                    {isSelected&&<div style={{fontSize:8,color:"#34d399",marginTop:2}}>✓ Will appear in proposal</div>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Quick AI actions */}
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>🧠 Quick AI Actions</div>
+              {[
+                {label:"Write Executive Summary", action:()=>aiGenerateSection("exec"), sec:"exec"},
+                {label:"Generate Scope Items",    action:()=>aiGenerateSection("scope"), sec:"scope"},
+                {label:"Write Timeline",          action:()=>aiGenerateSection("timeline"), sec:"timeline"},
+                {label:"Competitive Positioning", action:()=>aiGenerateSection("positioning"), sec:"positioning"},
+              ].map(item=>(
+                <button key={item.label} className="btn bg" style={{width:"100%",justifyContent:"flex-start",marginBottom:4,fontSize:10}} onClick={item.action} disabled={!!aiLoading}>
+                  {aiLoading===item.sec?"⏳ Writing...":item.label}
+                </button>
+              ))}
+              <div style={{borderTop:"1px solid #0a1626",paddingTop:8,marginTop:4}}>
+                <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:11}} onClick={generateFullProposal} disabled={!!aiLoading}>
+                  {aiLoading==="full"?"⏳ Generating Full Proposal...":"🚀 Generate Full Proposal with AI"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── AI ASSIST (full flow) ── */}
+      {sub==="ai-assist" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="card" style={{padding:"16px 20px"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🧠 AI Proposal Generator</div>
+              <div style={{fontSize:11,color:"#475569",marginBottom:16}}>Fill in the basics below and let AI generate a complete professional proposal</div>
+              {[["Proposal Title","title","text"],["Client Name","client","text"],["Project Context","notes","textarea"]].map(([label,key,type])=>(
+                <div key={key} style={{marginBottom:10}}>
+                  <div className="lbl">{label}</div>
+                  {type==="textarea"
+                    ? <textarea className="inp" rows={3} value={form[key]||""} onChange={e=>ff(key,e.target.value)} placeholder="Describe the project goals and requirements..."/>
+                    : <input className="inp" value={form[key]||""} onChange={e=>ff(key,e.target.value)}/>
+                  }
+                </div>
+              ))}
+              <div style={{marginBottom:10}}>
+                <div className="lbl">Link CRM Deal (for context)</div>
+                <select className="inp" value={form.dealId||""} onChange={e=>ff("dealId",e.target.value)}>
+                  <option value="">— optional —</option>
+                  {safeDeals.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div style={{marginBottom:14}}>
+                <div className="lbl">Select Proposed Team</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                  {safeRoster.map(r=>{
+                    const isSel = (form.teamIds||[]).includes(r.id);
+                    return (
+                      <div key={r.id} onClick={()=>ff("teamIds",isSel?(form.teamIds||[]).filter(x=>x!==r.id):[...(form.teamIds||[]),r.id])}
+                        style={{padding:"4px 10px",borderRadius:6,cursor:"pointer",fontSize:10,border:`1px solid ${isSel?"#0369a1":"#1a2d45"}`,background:isSel?"#0c2340":"#040810",color:isSel?"#38bdf8":"#475569"}}>
+                        {r.name.split(" ")[0]}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:13,padding:"10px"}} onClick={generateFullProposal} disabled={!!aiLoading}>
+                {aiLoading==="full"?"⏳ Generating...":"🚀 Generate Complete Proposal"}
+              </button>
+            </div>
+
+            {/* Relevant case studies */}
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>📚 Matching Case Studies</div>
+              {CASE_STUDIES.slice(0,3).map(cs=>(
+                <div key={cs.id} style={{padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+                  <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{cs.title}</div>
+                  <div style={{fontSize:9,color:"#34d399",marginTop:2}}>{cs.outcome.slice(0,70)}...</div>
+                  <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
+                    {cs.tags.slice(0,3).map(t=><span key={t} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45"}}>{t}</span>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            {/* AI generated content preview */}
+            {aiSections.winInsight && (
+              <div className="card" style={{padding:"14px 16px",marginBottom:12,background:"#021f14",border:"1px solid #15803d"}}>
+                <div style={{fontSize:10,color:"#34d399",fontWeight:700,marginBottom:4}}>🤖 AI Win Assessment</div>
+                <div style={{fontSize:12,color:"#94a3b8"}}>{aiSections.winInsight}</div>
+              </div>
+            )}
+            {aiSections.positioning && (
+              <div className="card" style={{padding:"14px 16px",marginBottom:12}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>🏆 Competitive Positioning</div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.7}}>{aiSections.positioning}</div>
+              </div>
+            )}
+            {aiSections.risks && (
+              <div className="card" style={{padding:"14px 16px",marginBottom:12}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#fbbf24",marginBottom:6}}>⚠️ Risk Mitigations</div>
+                {aiSections.risks.map((r,i)=><div key={i} style={{fontSize:11,color:"#94a3b8",padding:"3px 0"}}>• {r}</div>)}
+              </div>
+            )}
+            {aiSections.pricing && (
+              <div className="card" style={{padding:"14px 16px",marginBottom:12,background:"#0c1e3d",border:"1px solid #0369a1"}}>
+                <div style={{fontSize:10,color:"#7dd3fc",fontWeight:700,marginBottom:4}}>💡 AI Pricing Recommendation</div>
+                <div style={{fontSize:12,color:"#e2e8f0"}}>{aiSections.pricing}</div>
+              </div>
+            )}
+            {(aiSections.winInsight || aiSections.positioning) && (
+              <button className="btn bp" style={{width:"100%",justifyContent:"center"}} onClick={()=>setSub("builder")}>
+                ✏️ Continue Editing Proposal →
+              </button>
+            )}
+            {!aiSections.winInsight && !aiSections.positioning && (
+              <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                <div style={{fontSize:32,marginBottom:8}}>🧠</div>
+                <div style={{fontSize:13,color:"#334155"}}>Fill in the form on the left and click "Generate Complete Proposal"</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── INSIGHTS ── */}
+      {sub==="insights" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {/* Win/Loss analysis */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📊 Win / Loss Analysis</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
+              {[{l:"Won",v:won.length,c:"#34d399"},{l:"Lost",v:lost.length,c:"#f87171"},{l:"Pending",v:safe.filter(p=>p.status==="draft"||p.status==="sent").length,c:"#f59e0b"}].map(k=>(
+                <div key={k.l} style={{textAlign:"center",padding:"12px",background:"#040810",borderRadius:8}}>
+                  <div style={{fontSize:24,fontWeight:900,color:k.c}}>{k.v}</div>
+                  <div style={{fontSize:10,color:"#475569"}}>{k.l}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{height:8,background:"#0a1626",borderRadius:4,overflow:"hidden",marginBottom:16}}>
+              {safe.length > 0 && (
+                <div style={{height:"100%",background:"linear-gradient(90deg,#34d399 "+Math.round(won.length/safe.length*100)+"%, #f87171 "+Math.round((won.length+lost.length)/safe.length*100)+"%, #f59e0b 100%)"}}/>
+              )}
+            </div>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>Win Patterns from Past Proposals</div>
+            {won.length === 0 ? (
+              <div style={{fontSize:11,color:"#334155",padding:"12px 0"}}>No won proposals yet — patterns will appear after first wins</div>
+            ) : [
+              {l:"Average win value", v:fmt(avgDeal)},
+              {l:"Avg win team size", v:Math.round(won.reduce((s,p)=>(s+(p.teamIds||[]).length),0)/won.length)+" consultants"},
+              {l:"Most common billing", v:won.reduce((acc,p)=>{acc[p.billingType]=(acc[p.billingType]||0)+1;return acc;},{})[Object.keys(won.reduce((acc,p)=>{acc[p.billingType]=(acc[p.billingType]||0)+1;return acc;},{})).sort((a,b)=>won.reduce((acc,p)=>{acc[p.billingType]=(acc[p.billingType]||0)+1;return acc;},{})[b]-won.reduce((acc,p)=>{acc[p.billingType]=(acc[p.billingType]||0)+1;return acc;},{})[a])[0]]||"T&M"},
+            ].map(item=>(
+              <div key={item.l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                <span style={{color:"#475569"}}>{item.l}</span>
+                <span style={{color:"#38bdf8",fontWeight:700}}>{item.v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Rate card */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>💰 Ziksatech Rate Card</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 60px",gap:4,padding:"6px 10px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",fontWeight:700}}>
+              <div>Role</div><div style={{textAlign:"right"}}>Min</div><div style={{textAlign:"right"}}>Typical</div><div style={{textAlign:"right"}}>Max</div>
+            </div>
+            {RATE_CARD.map(rc=>(
+              <div key={rc.role} style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 60px",gap:4,padding:"6px 10px",borderRadius:6,marginBottom:3,background:"#060d1c",border:"1px solid #0a1826"}}>
+                <div style={{fontSize:10,color:"#94a3b8"}}>{rc.role}</div>
+                <div style={{textAlign:"right",fontSize:10,color:"#475569",fontFamily:"monospace"}}>${rc.min}</div>
+                <div style={{textAlign:"right",fontSize:11,fontWeight:700,color:"#38bdf8",fontFamily:"monospace"}}>${rc.typical}</div>
+                <div style={{textAlign:"right",fontSize:10,color:"#475569",fontFamily:"monospace"}}>${rc.max}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Case studies library */}
+          <div className="card" style={{padding:"18px 20px",gridColumn:"1/-1"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📚 Case Study Library</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+              {CASE_STUDIES.map(cs=>(
+                <div key={cs.id} style={{padding:"12px 14px",borderRadius:10,background:"#060d1c",border:"1px solid #1a2d45"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{cs.title}</div>
+                  <div style={{fontSize:9,color:"#475569",marginBottom:6}}>{cs.industry} · {cs.duration} · {cs.teamSize} consultants · ${(cs.value/1000).toFixed(0)}k</div>
+                  <div style={{fontSize:10,color:"#34d399",marginBottom:6,lineHeight:1.5}}>{cs.outcome.slice(0,80)}</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+                    {cs.tags.slice(0,4).map(t=><span key={t} style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45"}}>{t}</span>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rate Card Modal */}
+      {rateModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setRateMod(false)}>
+          <div className="modal" style={{maxWidth:560}}>
+            <MH title="Ziksatech Rate Card" onClose={()=>setRateMod(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 70px 80px 70px 80px",gap:4,padding:"6px 10px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",fontWeight:700}}>
+              <div>Role</div><div>Category</div><div style={{textAlign:"right"}}>Min/hr</div><div style={{textAlign:"right"}}>Typical</div><div style={{textAlign:"right"}}>Max/hr</div>
+            </div>
+            {RATE_CARD.map(rc=>(
+              <div key={rc.role} style={{display:"grid",gridTemplateColumns:"1fr 70px 80px 70px 80px",gap:4,padding:"8px 10px",borderRadius:6,marginBottom:4,background:"#060d1c",border:"1px solid #0a1826"}}>
+                <div style={{fontSize:11,color:"#94a3b8"}}>{rc.role}</div>
+                <div style={{fontSize:9,color:"#334155"}}>{rc.category}</div>
+                <div style={{textAlign:"right",fontSize:11,color:"#475569",fontFamily:"monospace"}}>${rc.min}</div>
+                <div style={{textAlign:"right",fontSize:12,fontWeight:700,color:"#38bdf8",fontFamily:"monospace"}}>${rc.typical}</div>
+                <div style={{textAlign:"right",fontSize:11,color:"#475569",fontFamily:"monospace"}}>${rc.max}</div>
+              </div>
+            ))}
+            <div style={{marginTop:12,fontSize:10,color:"#334155",padding:"8px 10px",background:"#040810",borderRadius:6}}>
+              Rates reflect market positioning for Plano, TX metro area. WBE/HUB/WOSB certification may allow premium pricing in government and enterprise contracts.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProposalBuilder({ proposals, setProposals, crmDeals, crmAccounts, crmContacts, roster, sows, setSows, contracts }) {
   const [sub,      setSub]      = useState("list");
   const { dragProps: _dp } = useDragSort(proposals, setProposals);
