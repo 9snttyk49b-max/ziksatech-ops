@@ -33489,7 +33489,7 @@ Make it specific, compelling, and client-focused. Avoid generic statements.`, nu
 
       {/* Tabs */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-        <div style={{display:"flex",flexWrap:"wrap",gap:3,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"100%"}}
+        <div style={{display:"flex",flexWrap:"wrap",gap:3,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"100%"}}>
           {tabBtn("overview",   "📊 Overview")}
           {tabBtn("linkedin",   "🔗 LinkedIn")}
           {tabBtn("email",      "📧 Email")}
