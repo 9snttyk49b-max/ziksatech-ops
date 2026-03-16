@@ -1136,7 +1136,9 @@ const PTO_TYPE_BG = {
 const PTO_STATUS_COLOR = { pending:"#f59e0b", approved:"#34d399", denied:"#f87171", cancelled:"#475569" };
 const PTO_STATUS_BG    = { pending:"#1a1005", approved:"#021f14", denied:"#1a0808", cancelled:"#0a1020" };
 
+const PTO_REQUESTS_SEED = [];
 const PTO_BALANCES_SEED = [];
+const CHANGE_ORDERS_SEED = [];
 
 // ─── TIMESHEET APPROVAL SEED DATA ────────────────────────────────────────────
 const TS_SUBMISSIONS_SEED = [];
