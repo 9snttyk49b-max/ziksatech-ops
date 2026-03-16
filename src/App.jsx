@@ -63,6 +63,7 @@ const RBAC = {
   profitability:["super_admin","admin","accounts"],
   changeorders: ["super_admin","admin"],
   capacity:     ["super_admin","admin","hr_immigration"],
+  bench:        ["super_admin","admin","accounts"],
   ebitda:       ["super_admin","admin","accounts"],
   finance:      ["super_admin","admin","accounts"],
   pl:           ["super_admin","admin","accounts"],
@@ -2094,6 +2095,7 @@ export default function ZiksatechOps() {
     { id:"profitability",label:"Project P&L",          icon:ICONS.pl,       group:"Delivery"    },
     { id:"changeorders", label:"Change Orders",        icon:ICONS.edit,     group:"Delivery"    },
     { id:"capacity",     label:"Capacity Planner",     icon:ICONS.dash,     group:"Delivery"    },
+    { id:"bench",       label:"Bench Management",       icon:ICONS.ebitda,   group:"Delivery"    },
     { id:"ebitda",       label:"EBITDA Optimizer",     icon:ICONS.ebitda,   group:"Delivery"    },
     { id:"finance",      label:"Finance",              icon:ICONS.pl,       group:"Finance"     },
     { id:"pl",           label:"P&L / Income",         icon:ICONS.pl,       group:"Finance"     },
@@ -2586,6 +2588,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="benefits"      && <BenefitsTracker {...shared}/>}
         {tab==="reports"       && <ReportBuilder {...shared}/>}
         {tab==="portal"        && <ClientPortal {...shared}/>}
+        {tab==="bench"         && <BenchManagement roster={shared.roster} clients={shared.clients} projects={shared.projects} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} contracts={shared.contracts} tsHours={shared.tsHours} addAudit={shared.addAudit} setTab={setTab}/>}
         {tab==="capacity"      && <CapacityPlanner {...shared}/>}
         {tab==="budget"        && <BudgetActual {...shared}/>}
         {tab==="onboarding"    && <OnboardingModule {...shared}/>}
@@ -24006,6 +24009,552 @@ const ONBOARDING_SEED = [
 // =============================================================================
 // RESOURCE CAPACITY PLANNER  (#3)
 // =============================================================================
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BENCH MANAGEMENT & UTILIZATION OPTIMIZER
+// Real-time bench report · Revenue at risk · Auto-match to CRM deals
+// ═══════════════════════════════════════════════════════════════════════════
+function BenchManagement({ roster, clients, projects, crmDeals, crmAccounts, contracts, tsHours, addAudit, setTab }) {
+  const [sub,        setSub]      = useState("bench");    // bench | utilization | matches
+  const [alertDays,  setAlertDays] = useState(14);
+  const [selId,      setSel]       = useState(null);
+
+  const safeRoster   = roster    || [];
+  const safeClients  = clients   || [];
+  const safeDeals    = crmDeals  || [];
+  const safeProjects = projects  || [];
+  const safeCons     = contracts || [];
+  const safeTSH      = tsHours   || [];
+
+  const TODAY    = new Date();
+  const WORK_WK  = 40; // billable hours per week
+  const WORK_YR  = 2000;
+  const fmt      = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${Math.round(v).toLocaleString()}`;
+  const daysUntil = d => d ? Math.ceil((new Date(d) - TODAY) / 86400000) : null;
+  const pct       = (a,b) => b>0 ? Math.round(a/b*100) : 0;
+
+  // ── Compute utilization for each consultant ───────────────────────────────
+  const consultants = safeRoster.map(r => {
+    const util        = r.util || 0;
+    const billRate    = r.billRate || 0;
+    const salary      = r.baseSalary || 0;
+    const insurance   = r.insurance || 0;
+    const overhead    = salary * 0.20; // benefits, taxes, overhead
+    const dailyCost   = (salary + insurance + overhead) / 250;
+    const weekCost    = dailyCost * 5;
+
+    // Find contract end for this consultant
+    const activeContracts = safeCons.filter(c =>
+      (c.counterparty || "").toLowerCase().includes((r.client||"").toLowerCase()) ||
+      (c.name || "").toLowerCase().includes(r.name.split(" ")[0].toLowerCase())
+    );
+    const soonestEnd  = activeContracts.reduce((min, c) => {
+      const d = daysUntil(c.endDate);
+      return (d !== null && (min === null || d < min)) ? d : min;
+    }, null);
+
+    // Is on bench?
+    const onBench    = util < 0.2;
+    const partialUtil = util < 0.8 && util >= 0.2;
+
+    // Weekly bench cost = unutilized portion × daily cost × 5 days
+    const benchUtil   = Math.max(0, 1 - util);
+    const weekBenchCost = weekCost * benchUtil;
+    const annualBenchCost = weekBenchCost * 50;
+
+    // Weekly revenue loss from bench
+    const weekRevLoss = billRate * WORK_WK * benchUtil;
+    const annualRevLoss = weekRevLoss * 50;
+
+    // Skills array
+    const skillsArr = (r.skills || "").split(",").map(s => s.trim()).filter(Boolean);
+
+    // Match score against open deals
+    const matchedDeals = safeDeals
+      .filter(d => d.stage !== "closed_lost" && d.stage !== "closed_won")
+      .map(d => {
+        const dText = `${d.name} ${d.notes || ""} ${(crmAccounts||[]).find(a=>a.id===d.accountId)?.industry||""}`.toLowerCase();
+        const matches = skillsArr.filter(sk => dText.includes(sk.toLowerCase().split(" ")[0]));
+        return { ...d, matchScore: matches.length, matchedSkills: matches };
+      })
+      .filter(d => d.matchScore > 0)
+      .sort((a,b) => b.matchScore - a.matchScore);
+
+    return {
+      ...r, util, billRate, salary, dailyCost, weekCost,
+      soonestEnd, onBench, partialUtil,
+      weekBenchCost, annualBenchCost, weekRevLoss, annualRevLoss,
+      skillsArr, matchedDeals,
+      benchUtil, utilPct: Math.round(util * 100),
+    };
+  });
+
+  // Sorted bench list
+  const onBench    = consultants.filter(c => c.onBench).sort((a,b) => b.weekRevLoss - a.weekRevLoss);
+  const partial    = consultants.filter(c => c.partialUtil).sort((a,b) => b.weekRevLoss - a.weekRevLoss);
+  const billable   = consultants.filter(c => c.util >= 0.8);
+  const goingBench = consultants.filter(c => c.soonestEnd !== null && c.soonestEnd >= 0 && c.soonestEnd <= 90)
+                                 .sort((a,b) => (a.soonestEnd||999) - (b.soonestEnd||999));
+
+  // Aggregate metrics
+  const totalWeeklyBenchCost = consultants.reduce((s,c) => s + c.weekBenchCost, 0);
+  const totalAnnualBenchCost = consultants.reduce((s,c) => s + c.annualBenchCost, 0);
+  const totalWeekRevLoss     = consultants.reduce((s,c) => s + c.weekRevLoss, 0);
+  const avgUtil              = consultants.reduce((s,c) => s + c.util, 0) / Math.max(consultants.length, 1);
+  const totalBillableRev     = consultants.reduce((s,c) => s + c.billRate * c.util * WORK_YR, 0);
+
+  const selected = consultants.find(c => c.id === selId);
+
+  const tabBtn = (id, label) => (
+    <button onClick={()=>setSub(id)}
+      style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+        background:sub===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+        color:sub===id?"#fff":"#475569"}}>
+      {label}
+    </button>
+  );
+
+  const UtilBar = ({util, size=12}) => {
+    const col = util>=0.8?"#34d399":util>=0.5?"#f59e0b":util>=0.2?"#fb923c":"#f87171";
+    return (
+      <div style={{height:size,background:"#0a1626",borderRadius:size/2,overflow:"hidden",flex:1}}>
+        <div style={{height:"100%",borderRadius:size/2,background:col,width:Math.round(util*100)+"%",transition:"width 0.5s"}}/>
+      </div>
+    );
+  };
+
+  const ConsultantCard = ({c, showMatch=false}) => {
+    const isSelected = selId === c.id;
+    const statusColor = c.onBench ? "#f87171" : c.partialUtil ? "#f59e0b" : "#34d399";
+    const statusLabel = c.onBench ? "On Bench" : c.partialUtil ? "Partial" : "Billable";
+    return (
+      <div onClick={()=>setSel(isSelected ? null : c.id)}
+        style={{padding:"14px 16px",borderRadius:12,cursor:"pointer",
+          background:isSelected?"#0c2340":"#060d1c",
+          border:`1px solid ${isSelected?"#0369a1":c.onBench?"#7f1d1d":c.partialUtil?"#78350f":"#1a2d45"}`,
+          transition:"all 0.15s"}}>
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{c.name}</div>
+            <div style={{fontSize:10,color:"#475569"}}>{c.role} · {c.type}</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <span style={{fontSize:11,fontWeight:700,color:statusColor}}>{statusLabel}</span>
+            <div style={{fontSize:10,color:"#334155"}}>{c.utilPct}% util</div>
+          </div>
+        </div>
+        {/* Util bar */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <UtilBar util={c.util}/>
+          <span style={{fontSize:10,color:"#475569",width:30,flexShrink:0}}>{c.utilPct}%</span>
+        </div>
+        {/* Costs */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+          <div style={{padding:"5px 8px",background:"#040810",borderRadius:6}}>
+            <div style={{fontSize:8,color:"#3d5a7a",textTransform:"uppercase"}}>Weekly Bench Cost</div>
+            <div style={{fontSize:13,fontWeight:700,color:c.weekBenchCost>0?"#f87171":"#34d399",fontFamily:"monospace"}}>
+              {c.weekBenchCost > 0 ? fmt(c.weekBenchCost) : "$0"}
+            </div>
+          </div>
+          <div style={{padding:"5px 8px",background:"#040810",borderRadius:6}}>
+            <div style={{fontSize:8,color:"#3d5a7a",textTransform:"uppercase"}}>Weekly Rev Loss</div>
+            <div style={{fontSize:13,fontWeight:700,color:c.weekRevLoss>0?"#fbbf24":"#34d399",fontFamily:"monospace"}}>
+              {c.weekRevLoss > 0 ? fmt(c.weekRevLoss) : "$0"}
+            </div>
+          </div>
+        </div>
+        {/* Contract end warning */}
+        {c.soonestEnd !== null && c.soonestEnd >= 0 && c.soonestEnd <= 90 && (
+          <div style={{padding:"4px 8px",background:"#1a1005",borderRadius:6,marginBottom:8,fontSize:10,
+            color:c.soonestEnd<=30?"#f87171":"#fbbf24"}}>
+            ⏰ Contract ends in {c.soonestEnd} days
+          </div>
+        )}
+        {/* Skills */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+          {c.skillsArr.slice(0,4).map(sk=>(
+            <span key={sk} style={{fontSize:9,padding:"1px 6px",borderRadius:8,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45"}}>{sk}</span>
+          ))}
+          {c.skillsArr.length > 4 && <span style={{fontSize:9,color:"#334155"}}>+{c.skillsArr.length-4}</span>}
+        </div>
+        {/* Match deals if on bench */}
+        {showMatch && c.matchedDeals.length > 0 && (
+          <div style={{marginTop:8,padding:"6px 8px",background:"#021f14",borderRadius:6,border:"1px solid #15803d"}}>
+            <div style={{fontSize:9,color:"#34d399",marginBottom:3}}>🎯 {c.matchedDeals.length} potential match{c.matchedDeals.length>1?"es":""}</div>
+            {c.matchedDeals.slice(0,2).map(d=>(
+              <div key={d.id} style={{fontSize:9,color:"#475569"}}>{d.name.slice(0,40)}</div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <PH title="Bench Management & Utilization Optimizer" sub="Real-time bench report · Cost of bench · Auto-match to open deals · Utilization trends"/>
+
+      {/* Alerts */}
+      {(onBench.length > 0 || goingBench.length > 0) && (
+        <div style={{marginBottom:14}}>
+          {onBench.length > 0 && (
+            <div style={{padding:"9px 16px",background:"#1a0808",border:"1px solid #7f1d1d",borderRadius:8,marginBottom:6,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>🔴 On Bench</span>
+              {onBench.map(c=>(
+                <span key={c.id} style={{fontSize:11,color:"#f87171",background:"#7f1d1d22",padding:"2px 10px",borderRadius:8,border:"1px solid #7f1d1d",cursor:"pointer"}}
+                  onClick={()=>setSel(c.id)}>
+                  {c.name} ({c.utilPct}%)
+                </span>
+              ))}
+            </div>
+          )}
+          {goingBench.length > 0 && (
+            <div style={{padding:"9px 16px",background:"#1a1005",border:"1px solid #78350f",borderRadius:8,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#fbbf24"}}>⏰ Going Bench Soon</span>
+              {goingBench.map(c=>(
+                <span key={c.id} style={{fontSize:11,color:"#fbbf24",background:"#78350f22",padding:"2px 10px",borderRadius:8,border:"1px solid #78350f",cursor:"pointer"}}
+                  onClick={()=>setSel(c.id)}>
+                  {c.name} ({c.soonestEnd}d)
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* KPI row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Team Utilization",  v:Math.round(avgUtil*100)+"%", c:avgUtil>=0.8?"#34d399":avgUtil>=0.6?"#f59e0b":"#f87171"},
+          {l:"On Bench",          v:onBench.length,              c:onBench.length>0?"#f87171":"#34d399"},
+          {l:"Partial (<80%)",    v:partial.length,              c:partial.length>0?"#f59e0b":"#34d399"},
+          {l:"Weekly Bench Cost", v:fmt(totalWeeklyBenchCost),   c:totalWeeklyBenchCost>0?"#f87171":"#34d399"},
+          {l:"Annual Rev at Risk",v:fmt(consultants.reduce((s,c)=>s+c.annualRevLoss,0)), c:"#fbbf24"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:900,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:18,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {tabBtn("bench",       "🔴 Bench Report")}
+        {tabBtn("utilization", "📊 Utilization")}
+        {tabBtn("matches",     "🎯 Deal Matches")}
+      </div>
+
+      {/* ── BENCH REPORT ─────────────────────────────────────────────────── */}
+      {sub === "bench" && (
+        <div>
+          {/* Alert settings */}
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,padding:"8px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",width:"fit-content"}}>
+            <span style={{fontSize:11,color:"#475569"}}>Alert when bench exceeds</span>
+            <input type="number" min="1" max="90" value={alertDays} onChange={e=>setAlertDays(+e.target.value)}
+              style={{width:48,background:"#0a1626",border:"1px solid #1a2d45",borderRadius:4,color:"#f59e0b",
+                textAlign:"center",padding:"2px 4px",fontSize:11}}/>
+            <span style={{fontSize:11,color:"#475569"}}>days</span>
+          </div>
+
+          {onBench.length === 0 && partial.length === 0 ? (
+            <div style={{padding:"60px",textAlign:"center",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:40,marginBottom:12}}>🎉</div>
+              <div style={{fontSize:16,fontWeight:700,color:"#34d399",marginBottom:4}}>Full utilization!</div>
+              <div style={{fontSize:12,color:"#475569"}}>All consultants are at 80%+ utilization</div>
+            </div>
+          ) : (
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+              {[...onBench, ...partial].map(c => <ConsultantCard key={c.id} c={c} showMatch={true}/>)}
+            </div>
+          )}
+
+          {/* Cost table */}
+          {consultants.some(c => c.weekBenchCost > 0) && (
+            <div className="card" style={{padding:"18px 20px",marginTop:16}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>💸 Weekly Bench Cost Breakdown</div>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 80px 100px 100px 100px 100px",gap:8,
+                padding:"6px 12px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+                <div>Consultant</div><div style={{textAlign:"right"}}>Util</div>
+                <div style={{textAlign:"right"}}>Bill Rate</div><div style={{textAlign:"right"}}>Weekly Cost</div>
+                <div style={{textAlign:"right"}}>Bench Cost</div><div style={{textAlign:"right"}}>Rev Loss/Wk</div>
+              </div>
+              {consultants.filter(c=>c.benchUtil>0).sort((a,b)=>b.weekRevLoss-a.weekRevLoss).map(c=>(
+                <div key={c.id} style={{display:"grid",gridTemplateColumns:"2fr 80px 100px 100px 100px 100px",gap:8,
+                  padding:"8px 12px",borderRadius:6,marginBottom:3,background:"#060d1c",border:"1px solid #0a1826",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{c.name}</div>
+                    <div style={{fontSize:9,color:"#475569"}}>{c.role}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}><UtilBar util={c.util} size={8}/></div>
+                  <div style={{textAlign:"right",fontSize:11,color:"#94a3b8",fontFamily:"monospace"}}>${c.billRate}/hr</div>
+                  <div style={{textAlign:"right",fontSize:11,color:"#38bdf8",fontFamily:"monospace"}}>{fmt(c.weekCost)}</div>
+                  <div style={{textAlign:"right",fontSize:11,color:c.weekBenchCost>500?"#f87171":"#f59e0b",fontFamily:"monospace"}}>{fmt(c.weekBenchCost)}</div>
+                  <div style={{textAlign:"right",fontSize:11,color:"#fbbf24",fontFamily:"monospace"}}>{fmt(c.weekRevLoss)}</div>
+                </div>
+              ))}
+              {/* Totals */}
+              <div style={{display:"grid",gridTemplateColumns:"2fr 80px 100px 100px 100px 100px",gap:8,
+                padding:"8px 12px",borderRadius:6,background:"#0c2340",border:"1px solid #0369a1",marginTop:4,alignItems:"center"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>TOTAL</div>
+                <div/>
+                <div/>
+                <div style={{textAlign:"right",fontSize:11,color:"#38bdf8",fontFamily:"monospace",fontWeight:700}}>{fmt(consultants.reduce((s,c)=>s+c.weekCost,0))}</div>
+                <div style={{textAlign:"right",fontSize:11,color:"#f87171",fontFamily:"monospace",fontWeight:700}}>{fmt(totalWeeklyBenchCost)}</div>
+                <div style={{textAlign:"right",fontSize:11,color:"#fbbf24",fontFamily:"monospace",fontWeight:700}}>{fmt(totalWeekRevLoss)}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Going on bench soon */}
+          {goingBench.length > 0 && (
+            <div className="card" style={{padding:"18px 20px",marginTop:16}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>⏰ Going on Bench Soon (≤90 days)</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>
+                {goingBench.map(c=>(
+                  <div key={c.id} style={{padding:"12px 14px",background:"#060d1c",borderRadius:10,
+                    border:`1px solid ${c.soonestEnd<=30?"#7f1d1d":c.soonestEnd<=60?"#78350f":"#1a2d45"}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{c.name}</div>
+                        <div style={{fontSize:10,color:"#475569"}}>{c.client || "—"}</div>
+                      </div>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:22,fontWeight:900,color:c.soonestEnd<=30?"#f87171":c.soonestEnd<=60?"#fbbf24":"#34d399"}}>{c.soonestEnd}</div>
+                        <div style={{fontSize:8,color:"#334155"}}>days left</div>
+                      </div>
+                    </div>
+                    <div style={{fontSize:10,color:"#475569"}}>Weekly capacity at risk: <span style={{color:"#fbbf24",fontFamily:"monospace"}}>{fmt(c.billRate * WORK_WK)}</span></div>
+                    {c.matchedDeals.length > 0 && (
+                      <div style={{marginTop:6,fontSize:9,color:"#34d399"}}>🎯 {c.matchedDeals.length} deal match{c.matchedDeals.length>1?"es":""} available</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── UTILIZATION TAB ──────────────────────────────────────────────── */}
+      {sub === "utilization" && (
+        <div>
+          {/* Summary chart */}
+          <div className="card" style={{padding:"20px 24px",marginBottom:16}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:16}}>📊 Team Utilization — All Consultants</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {consultants.sort((a,b)=>b.util-a.util).map(c=>{
+                const col = c.util>=0.8?"#34d399":c.util>=0.5?"#f59e0b":c.util>=0.2?"#fb923c":"#f87171";
+                const annualRevenue = c.billRate * c.util * WORK_YR;
+                return (
+                  <div key={c.id} style={{display:"grid",gridTemplateColumns:"160px 1fr 55px 90px 100px 100px",gap:10,alignItems:"center"}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{c.name}</div>
+                      <div style={{fontSize:9,color:"#475569"}}>{c.client||"—"}</div>
+                    </div>
+                    <div style={{height:14,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",borderRadius:3,background:col,width:c.utilPct+"%",transition:"width 0.5s"}}/>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:col}}>{c.utilPct}%</div>
+                    <div style={{textAlign:"right",fontSize:11,color:"#38bdf8",fontFamily:"monospace"}}>${c.billRate}/hr</div>
+                    <div style={{textAlign:"right",fontSize:11,color:"#94a3b8",fontFamily:"monospace"}}>{fmt(annualRevenue)}/yr</div>
+                    <div style={{textAlign:"right",fontSize:11,
+                      color:c.annualBenchCost>0?"#f87171":"#34d399",fontFamily:"monospace"}}>
+                      {c.annualBenchCost>0?"-"+fmt(c.annualBenchCost)+" bench":"fully billed"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Team totals */}
+            <div style={{display:"grid",gridTemplateColumns:"160px 1fr 55px 90px 100px 100px",gap:10,alignItems:"center",
+              marginTop:10,paddingTop:10,borderTop:"1px solid #0a1626"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>TEAM TOTAL</div>
+              <div style={{height:14,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                <div style={{height:"100%",borderRadius:3,background:"#0369a1",width:Math.round(avgUtil*100)+"%"}}/>
+              </div>
+              <div style={{fontSize:12,fontWeight:700,color:"#38bdf8"}}>{Math.round(avgUtil*100)}%</div>
+              <div/>
+              <div style={{textAlign:"right",fontSize:11,color:"#38bdf8",fontFamily:"monospace",fontWeight:700}}>{fmt(totalBillableRev)}/yr</div>
+              <div style={{textAlign:"right",fontSize:11,color:"#f87171",fontFamily:"monospace",fontWeight:700}}>-{fmt(totalAnnualBenchCost)}</div>
+            </div>
+          </div>
+
+          {/* Utilization tiers */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+            {[
+              {label:"🟢 Fully Billable (≥80%)",  items:billable, color:"#34d399"},
+              {label:"🟡 Partially Utilized (20-79%)", items:partial, color:"#f59e0b"},
+              {label:"🔴 On Bench (<20%)",         items:onBench, color:"#f87171"},
+            ].map(tier=>(
+              <div key={tier.label} className="card" style={{padding:"16px 18px"}}>
+                <div style={{fontSize:11,fontWeight:700,color:tier.color,marginBottom:10}}>{tier.label} ({tier.items.length})</div>
+                {tier.items.length===0
+                  ? <div style={{fontSize:11,color:"#334155",textAlign:"center",padding:"16px 0"}}>None</div>
+                  : tier.items.map(c=>(
+                    <div key={c.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                      <span style={{color:"#94a3b8"}}>{c.name}</span>
+                      <span style={{color:tier.color,fontFamily:"monospace",fontWeight:700}}>{c.utilPct}%</span>
+                    </div>
+                  ))
+                }
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── DEAL MATCHES TAB ─────────────────────────────────────────────── */}
+      {sub === "matches" && (
+        <div>
+          <div style={{fontSize:12,color:"#475569",marginBottom:16,padding:"8px 14px",background:"#0c2340",borderRadius:8,border:"1px solid #0369a1"}}>
+            🎯 Auto-matching bench/partial consultants to open CRM deals based on skill keywords
+          </div>
+
+          {safeDeals.filter(d=>d.stage!=="closed_lost"&&d.stage!=="closed_won").length === 0 ? (
+            <div style={{padding:"40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+              <div style={{fontSize:14,color:"#334155"}}>No open pipeline deals. Add deals in Sales CRM to see matches.</div>
+            </div>
+          ) : (
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              {/* Left: available consultants */}
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>👤 Available Consultants</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {consultants.filter(c=>c.matchedDeals.length>0||c.util<0.8).map(c=>(
+                    <div key={c.id} onClick={()=>setSel(selId===c.id?null:c.id)}
+                      style={{padding:"12px 14px",borderRadius:10,cursor:"pointer",
+                        background:selId===c.id?"#0c2340":"#060d1c",
+                        border:`1px solid ${selId===c.id?"#0369a1":c.onBench?"#7f1d1d":c.partialUtil?"#78350f":"#1a2d45"}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                        <div>
+                          <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{c.name}</span>
+                          <span style={{fontSize:10,color:"#475569",marginLeft:8}}>{c.utilPct}% utilized</span>
+                        </div>
+                        {c.matchedDeals.length>0 && (
+                          <span style={{fontSize:10,background:"#021f14",color:"#34d399",padding:"2px 8px",borderRadius:8,border:"1px solid #15803d"}}>
+                            {c.matchedDeals.length} match{c.matchedDeals.length>1?"es":""}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+                        {c.skillsArr.slice(0,5).map(sk=>(
+                          <span key={sk} style={{fontSize:8,padding:"1px 5px",borderRadius:6,background:"#0c1e3d",color:"#7dd3fc",border:"1px solid #1a2d45"}}>{sk}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right: matched deals */}
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>
+                  {selected ? `🎯 Deals matching ${selected.name}` : "🎯 Select a consultant to see deals"}
+                </div>
+                {!selected ? (
+                  <div style={{padding:"40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                    <div style={{fontSize:28,marginBottom:8}}>👈</div>
+                    <div style={{fontSize:12,color:"#334155"}}>Click a consultant on the left</div>
+                  </div>
+                ) : selected.matchedDeals.length===0 ? (
+                  <div style={{padding:"40px",textAlign:"center",background:"#060d1c",border:"1px dashed #1a2d45",borderRadius:12}}>
+                    <div style={{fontSize:14,color:"#334155"}}>No skill matches found in open pipeline</div>
+                    <div style={{fontSize:11,color:"#1e3a5f",marginTop:6}}>Skills: {selected.skillsArr.join(", ")}</div>
+                  </div>
+                ) : (
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {selected.matchedDeals.map(d=>{
+                      const acct = (crmAccounts||[]).find(a=>a.id===d.accountId);
+                      const matchPct = Math.min(100, Math.round(d.matchScore/selected.skillsArr.length*100));
+                      return (
+                        <div key={d.id} style={{padding:"12px 14px",borderRadius:10,background:"#060d1c",border:"1px solid #15803d"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                            <div style={{flex:1,marginRight:8}}>
+                              <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{d.name}</div>
+                              <div style={{fontSize:10,color:"#475569"}}>{acct?.name||"—"} · Close: {d.closeDate||"TBD"}</div>
+                            </div>
+                            <div style={{textAlign:"center",flexShrink:0}}>
+                              <div style={{fontSize:18,fontWeight:900,color:"#34d399"}}>{matchPct}%</div>
+                              <div style={{fontSize:8,color:"#334155"}}>match</div>
+                            </div>
+                          </div>
+                          <div style={{marginBottom:6}}>
+                            <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>Matched Skills:</div>
+                            <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+                              {d.matchedSkills.map(sk=>(
+                                <span key={sk} style={{fontSize:9,padding:"1px 6px",borderRadius:6,background:"#021f14",color:"#34d399",border:"1px solid #15803d"}}>{sk}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#475569"}}>
+                            <span>Deal Value: <span style={{color:"#38bdf8",fontFamily:"monospace"}}>${(d.value||0).toLocaleString()}</span></span>
+                            <span>Probability: <span style={{color:"#a78bfa"}}>{d.probability||50}%</span></span>
+                            <button className="btn bg" style={{fontSize:9,padding:"2px 8px",color:"#34d399"}} onClick={()=>setTab("crm")}>
+                              Open in CRM →
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Selected consultant detail */}
+      {selected && sub !== "matches" && (
+        <div className="card" style={{padding:"20px 24px",marginTop:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{selected.name} — Full Detail</div>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>setSel(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+            <div>
+              <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Utilization</div>
+              {[["Current Util",selected.utilPct+"%"],["Bill Rate","$"+selected.billRate+"/hr"],
+                ["Type",selected.type],["Client",selected.client||"—"],
+                ["Annual Revenue",fmt(selected.billRate*selected.util*WORK_YR)],
+              ].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                  <span style={{color:"#475569"}}>{k}</span><span style={{color:"#94a3b8"}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Bench Costs</div>
+              {[["Daily Cost",fmt(selected.dailyCost)],["Weekly Total Cost",fmt(selected.weekCost)],
+                ["Weekly Bench Cost",fmt(selected.weekBenchCost)],["Annual Bench Cost",fmt(selected.annualBenchCost)],
+                ["Weekly Rev Loss",fmt(selected.weekRevLoss)],["Annual Rev Loss",fmt(selected.annualRevLoss)],
+              ].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                  <span style={{color:"#475569"}}>{k}</span><span style={{color:k.includes("Bench")||k.includes("Loss")?"#f87171":"#94a3b8",fontFamily:"monospace"}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"#3d5a7a",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Open Deals Match</div>
+              {selected.matchedDeals.length===0
+                ? <div style={{fontSize:11,color:"#334155",padding:"12px 0"}}>No open deal matches for current skills</div>
+                : selected.matchedDeals.slice(0,5).map(d=>(
+                  <div key={d.id} style={{padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                    <div style={{fontSize:11,color:"#e2e8f0"}}>{d.name.slice(0,35)}</div>
+                    <div style={{fontSize:9,color:"#34d399"}}>{d.matchedSkills.join(", ")} ({d.matchScore} skill{d.matchScore>1?"s":""})</div>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CapacityPlanner({ roster, projects, sows, clients, tsHours }) {
   const WEEKS = 12;
   const TODAY = new Date();
