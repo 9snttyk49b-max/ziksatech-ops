@@ -23136,6 +23136,8 @@ function ExportButtons({ data, type, label="Export" }) {
 // PREVIEW MODAL — Shows structured preview before AI generation
 // ═══════════════════════════════════════════════════════════════════════════
 
+const PI_SAMPLE_COMPANIES = ["Capital One","Oncor Electric","CHRISTUS Health","Verizon","BNSF Railway","Celanese","Calpine Energy","Southwest Airlines","American Airlines","AT&T","Toyota Connected","Flowserve","DXC Technology","NTTA","Atmos Energy"];
+
 function ProspectIntel({ crmLeads, setCrmLeads, addAudit }) {
   const [company,    setCompany]   = useState("");
   const [context,    setContext]   = useState("");
