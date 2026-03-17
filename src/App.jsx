@@ -1656,6 +1656,26 @@ function RegisterScreen({ onGoLogin, onRegistered }) {
     try {
       const res = await supaAuth.signUp(email.trim(), pw, name.trim(), role);
       if (res.error) { setErr(res.error.message || "Registration failed. Try again."); setLoading(false); return; }
+      // ── Notify admin of new access request ──────────────────────────────
+      try {
+        const ADMIN_NOTIFY_URL = "https://ziksatech-ops.vercel.app/api/claude";
+        // Store pending notification in Supabase for admin dashboard
+        const S = "https://yucvxkugtwlsvhqzpoqe.supabase.co";
+        const A = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1Y3Z4a3VndHdsc3ZocXpwb3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MzQ0MzksImV4cCI6MjA4OTAxMDQzOX0.ICKz0Ok4gajEOw9Wv9rP9vLipW8sPMTqHauhUfB39wY";
+        await fetch(`${S}/rest/v1/notifications`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": A, "Prefer": "return=minimal" },
+          body: JSON.stringify({
+            type: "new_user_request",
+            title: "🔔 New Access Request",
+            body: `${name.trim()} (${email.trim()}) requested access as ${role}.`,
+            for_role: "super_admin",
+            meta: JSON.stringify({ name: name.trim(), email: email.trim(), role }),
+            created_at: new Date().toISOString(),
+            read: false
+          })
+        });
+      } catch(_) { /* notification failure is non-blocking */ }
       onRegistered(email);
     } catch(e) { setErr("Connection error. Try again."); setLoading(false); }
   }
@@ -13766,28 +13786,43 @@ const PERM_LABEL   = { full:"Full",    view:"View",    none:"—"       };
 // ═══════════════════════════════════════════════════════════════════════════════
 // USER APPROVALS PANEL — Admin approves / rejects access requests
 // ═══════════════════════════════════════════════════════════════════════════════
-function UserApprovalsPanel() {
+function UserApprovalsPanel({ authSession }) {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
   const [actionMsg, setActionMsg] = useState("");
 
-  // Load all profiles from Supabase using stored session
+  // Get a valid token — prefer live authSession, fall back to stored session
+  const getToken = () => {
+    if (authSession?.access_token) return authSession.access_token;
+    const stored = supaAuth?.loadSession();
+    return stored?.access_token || null;
+  };
+
+  // Load all pending profiles
   useEffect(() => {
     if (!supaAuth) { setError("Auth not configured"); setLoading(false); return; }
-    const sess = supaAuth.loadSession();
-    if (!sess?.access_token) { setError("Not authenticated"); setLoading(false); return; }
-    supaAuth.getAllProfiles(sess.access_token)
+    const token = getToken();
+    if (!token) { setError("Not authenticated — please sign in again"); setLoading(false); return; }
+    supaAuth.getAllProfiles(token)
       .then(data => {
         if (Array.isArray(data)) setProfiles(data);
-        else setError("Could not load profiles: " + JSON.stringify(data).substring(0, 80));
+        else {
+          // Token might be expired — show friendly message
+          const msg = typeof data === "object" ? (data.message || JSON.stringify(data).slice(0,80)) : String(data);
+          if (msg.includes("JWT") || msg.includes("expired")) {
+            setError("Session expired — please sign out and sign back in.");
+          } else {
+            setError("Could not load profiles: " + msg);
+          }
+        }
         setLoading(false);
       })
-      .catch(e => { setError("Error: " + e.message); setLoading(false); });
+      .catch(e => { setError("Connection error: " + e.message); setLoading(false); });
   }, []);
 
   async function handleAction(userId, action) {
-    const sess = supaAuth.loadSession();
+    const sess = { access_token: getToken() };
     if (!sess?.access_token) return;
     const updates = action === "approve"
       ? { status: "approved", approved_at: new Date().toISOString(), approved_by: "manju@ziksatech.com" }
@@ -13897,7 +13932,7 @@ function UserApprovalsPanel() {
   );
 }
 
-function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
+function OrgAccessModule({ orgMembers, setOrgMembers, roster, authSession }) {
   const [sub, setSub] = useState("chart");
   const tabs = [
     { id:"chart",   label:"Org Chart"        },
@@ -13924,7 +13959,7 @@ function OrgAccessModule({ orgMembers, setOrgMembers, roster }) {
       {sub==="members" && <OrgMembers {...props}/>}
       {sub==="access"  && <AccessMatrix {...props}/>}
       {sub==="roles"   && <RoleTemplates/>}
-      {sub==="approvals" && <UserApprovalsPanel />}
+      {sub==="approvals" && <UserApprovalsPanel authSession={authSession} />}
     </div>
   );
 }
