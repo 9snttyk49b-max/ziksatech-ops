@@ -1848,6 +1848,9 @@ export default function BenchOSOps() {
     timezone: "America/Chicago",
   });
   const [colorMode, setColorMode]       = useState('dark'); // 'dark' | 'light'
+  const _aiKey = `zt_ai_${new Date().getFullYear()}_${new Date().getMonth()}`;
+  const [aiCallsUsed, setAiCallsUsed] = useState(() => { try { return parseInt(localStorage.getItem(_aiKey)||'0'); } catch { return 0; } });
+  const trackAI = () => setAiCallsUsed(n => { const next = n + 1; try { localStorage.setItem(_aiKey, String(next)); } catch {} return next; });
   const [cmdOpen,    setCmdOpen]        = useState(false);
   const [cmdQuery,   setCmdQuery]       = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
@@ -37975,7 +37978,7 @@ function ProspectIntel({ crmLeads, setCrmLeads, addAudit }) {
   const analyze = async () => {
     if(!company.trim()) return alert("Enter a company name to analyze");
     setLoading(true); setResult(null); setActiveHist(null);
-    const systemPrompt = `You are a senior SAP consulting BD analyst at BenchOS, a certified WBE/HUB/WOSB SAP consulting firm in Plano TX specializing in SAP BRIM, IS-U, S/4HANA migrations, Databricks, and AI solutions.
+    const systemPrompt = `You are a senior SAP consulting BD analyst at BenchOS, a certified WBE/HUB/WOSB SAP consulting IT staffing firm in Plano TX specializing in SAP (all modules: BRIM, IS-U, S/4HANA, SuccessFactors, MDG, Finance), Data Engineering (Databricks, AWS), and AI solutions. Multi-industry DFW clients: Automotive, Utilities, Technology, Healthcare, Defense, Tolling.
 
 Analyze the prospect company and return ONLY valid JSON (no markdown):
 {
@@ -39880,7 +39883,7 @@ function LinkedInGen({ clients, roster, crmDeals, authProfile }) {
 
   const generate = async () => {
     setLoading(true); setOutput("");
-    const system = `You are a LinkedIn content writer for BenchOS, an SAP consulting firm specializing in SAP BRIM, S/4HANA, and enterprise solutions. 
+    const system = `You are a LinkedIn content writer for BenchOS, an IT staffing and SAP consulting firm. Multi-industry DFW: Automotive, Technology, Utilities, Tolling, Media, Healthcare, Defense. All SAP modules + Data/AI.
 Write engaging, professional LinkedIn posts that get high engagement. 
 Use emojis appropriately. Include line breaks for readability. 
 Write in first person from the company's perspective.
