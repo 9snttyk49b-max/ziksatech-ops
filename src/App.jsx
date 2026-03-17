@@ -1667,11 +1667,11 @@ function RegisterScreen({ onGoLogin, onRegistered }) {
   return (
     <AuthCard>
       <h2 style={{color:"#e2e8f0",fontSize:22,fontWeight:700,margin:"0 0 6px"}}>Request Access</h2>
-      <p style={{color:"#64748b",fontSize:13,margin:"0 0 28px"}}>Submit your details — Manju will approve your account</p>
+      <p style={{color:"#64748b",fontSize:13,margin:"0 0 28px"}}>Already a BenchOS customer? Enter your company email. New to BenchOS? Your admin will approve your account</p>
       <form onSubmit={handleRegister}>
         <div style={{marginBottom:16}}>
           <label style={lbl}>Full Name</label>
-          <input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="Suresh Menon" required autoFocus />
+          <input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="Your Full Name" required autoFocus />
         </div>
         <div style={{marginBottom:16}}>
           <label style={lbl}>Work Email</label>
@@ -1848,6 +1848,16 @@ export default function ZiksatechOps() {
     timezone: "America/Chicago",
   });
   const [colorMode, setColorMode]       = useState('dark'); // 'dark' | 'light'
+  // AI usage rate tracking (SaaS: 200 calls/month on Starter)
+  const _aiKey = `zt_ai_${new Date().getFullYear()}_${new Date().getMonth()}`;
+  const [aiCallsUsed, setAiCallsUsed] = useState(() => {
+    try { return parseInt(localStorage.getItem(_aiKey)||'0'); } catch { return 0; }
+  });
+  const trackAI = () => setAiCallsUsed(n => {
+    const next = n + 1;
+    try { localStorage.setItem(_aiKey, String(next)); } catch {}
+    return next;
+  });
   const [cmdOpen,    setCmdOpen]        = useState(false);
   const [cmdQuery,   setCmdQuery]       = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
@@ -2702,6 +2712,21 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       </nav>
 
       <main className="main-content" style={{flex:1,overflowY:"auto",padding:isMobile?"68px 14px 72px":"28px 32px",minWidth:0}}>
+        {/* Demo mode banner */}
+        {(window.location.hostname.includes("demo") || window.location.hostname.includes("benchos")) && (
+          <div style={{background:"linear-gradient(90deg,#0c2340,#0D1B2A)",border:"1px solid #C9A84C44",
+            borderRadius:10,padding:"8px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:14}}>🎯</span>
+            <div style={{flex:1}}>
+              <span style={{fontSize:12,fontWeight:700,color:"#C9A84C"}}>BenchOS Demo Environment</span>
+              <span style={{fontSize:11,color:"#475569",marginLeft:10}}>Fictional data · Apex IT Staffing · All features unlocked</span>
+            </div>
+            <a href="https://naxon-product.vercel.app/benchos.html" target="_blank" rel="noopener"
+              style={{fontSize:11,color:"#38bdf8",textDecoration:"none",whiteSpace:"nowrap"}}>
+              View Pricing →
+            </a>
+          </div>
+        )}
         {/* Access guard — show access denied if role doesn't have permission */}
         {!canAccess(tab, authProfile?.role) && tab !== "home" && (
           <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"60vh",textAlign:"center"}}>
@@ -37975,7 +38000,7 @@ function ProspectIntel({ crmLeads, setCrmLeads, addAudit }) {
   const analyze = async () => {
     if(!company.trim()) return alert("Enter a company name to analyze");
     setLoading(true); setResult(null); setActiveHist(null);
-    const systemPrompt = `You are a senior SAP consulting BD analyst at Ziksatech, a certified WBE/HUB/WOSB SAP consulting firm in Plano TX specializing in SAP BRIM, IS-U, S/4HANA migrations, Databricks, and AI solutions.
+    const systemPrompt = `You are a senior SAP consulting BD analyst at Ziksatech, a certified WBE/HUB/WOSB SAP consulting IT staffing firm in Plano TX specializing in SAP (all modules: BRIM, IS-U, S/4HANA, SuccessFactors, MDG, Finance), Data Engineering (Databricks, AWS), and AI solutions. Multi-industry DFW clients: Automotive, Utilities, Technology, Healthcare, Defense, Tolling.
 
 Analyze the prospect company and return ONLY valid JSON (no markdown):
 {
@@ -39880,7 +39905,7 @@ function LinkedInGen({ clients, roster, crmDeals, authProfile }) {
 
   const generate = async () => {
     setLoading(true); setOutput("");
-    const system = `You are a LinkedIn content writer for Ziksatech, an SAP consulting firm specializing in SAP BRIM, S/4HANA, and enterprise solutions. 
+    const system = `You are a LinkedIn content writer for Ziksatech, an IT staffing and SAP consulting firm. Multi-industry DFW: Automotive (Toyota), Technology (HPE), Utilities (HOPE-IDI), Tolling (NTTA/PTC), Media, Healthcare, Defense. All SAP modules + Data/AI.
 Write engaging, professional LinkedIn posts that get high engagement. 
 Use emojis appropriately. Include line breaks for readability. 
 Write in first person from the company's perspective.
