@@ -1616,11 +1616,11 @@ function LoginScreen({ onLogin, onGoRegister }) {
   return (
     <AuthCard>
       <h2 style={{color:"#e2e8f0",fontSize:22,fontWeight:700,margin:"0 0 6px"}}>Sign In</h2>
-      <p style={{color:"#64748b",fontSize:13,margin:"0 0 28px"}}>Access your Ziksatech Ops dashboard</p>
+      <p style={{color:"#64748b",fontSize:13,margin:"0 0 28px"}}>Sign in with any email address</p>
       <form onSubmit={handleLogin}>
         <div style={{marginBottom:18}}>
           <label style={lbl}>Email</label>
-          <input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@ziksatech.com" required autoFocus />
+          <input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="your@email.com" required autoFocus />
         </div>
         <div style={{marginBottom:24}}>
           <label style={lbl}>Password</label>
@@ -1667,7 +1667,7 @@ function RegisterScreen({ onGoLogin, onRegistered }) {
   return (
     <AuthCard>
       <h2 style={{color:"#e2e8f0",fontSize:22,fontWeight:700,margin:"0 0 6px"}}>Request Access</h2>
-      <p style={{color:"#64748b",fontSize:13,margin:"0 0 28px"}}>Already a BenchOS customer? Enter your company email. New to BenchOS? Your admin will approve your account</p>
+      <p style={{color:"#64748b",fontSize:13,margin:"0 0 28px"}}>Use any email — Gmail, personal, or company. Manju will approve your account.</p>y email. New to BenchOS? Your admin will approve your account</p>
       <form onSubmit={handleRegister}>
         <div style={{marginBottom:16}}>
           <label style={lbl}>Full Name</label>
