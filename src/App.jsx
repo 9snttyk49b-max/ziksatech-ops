@@ -1986,6 +1986,26 @@ export default function ZiksatechOps() {
     }).catch(() => { supaAuth.clearSession(); setAuthLoading(false); });
   }, []);
 
+  // ── Poll for pending registrations every 60s ─────────────────────────────
+  useEffect(() => {
+    if (!supaAuth || !authProfile || !["super_admin","admin"].includes(authProfile.role)) return;
+    const poll = () => {
+      const token = authSession?.access_token;
+      if (!token) return;
+      fetch("https://yucvxkugtwlsvhqzpoqe.supabase.co/rest/v1/notifications?read=eq.false&for_role=eq.super_admin&select=id", {
+        headers: {
+          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1Y3Z4a3VndHdsc3ZocXpwb3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MzQ0MzksImV4cCI6MjA4OTAxMDQzOX0.ICKz0Ok4gajEOw9Wv9rP9vLipW8sPMTqHauhUfB39wY",
+          "Authorization": `Bearer ${token}`
+        }
+      }).then(r => r.json()).then(rows => {
+        if (Array.isArray(rows)) setPendingRegistrations(rows.length);
+      }).catch(() => {});
+    };
+    poll();
+    const id = setInterval(poll, 60000);
+    return () => clearInterval(id);
+  }, [authProfile, authSession]);
+
   // ── Color mode ──────────────────────────────────────────────
   useEffect(()=>{
     if (colorMode==="light") document.body.classList.add("light-mode");
@@ -2550,6 +2570,12 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
               {!isCollapsed && items.map(n => (
                 <button key={n.id} className={`navi${tab===n.id?" on":""}`} onClick={()=>setTabSafe(n.id, authProfile?.role)}>
                   <I d={n.icon} s={14}/>{n.label}
+                  {n.id==="org" && pendingRegistrations>0 && (
+                    <span style={{marginLeft:"auto",background:"#ef4444",color:"#fff",borderRadius:"100px",
+                      fontSize:9,fontWeight:700,padding:"1px 5px",minWidth:16,textAlign:"center"}}>
+                      {pendingRegistrations}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -13817,6 +13843,17 @@ function UserApprovalsPanel({ authSession }) {
           }
         }
         setLoading(false);
+        // Mark all pending notifications as read
+        if (Array.isArray(data) && data.length > 0) {
+          const token2 = getToken();
+          if (token2) fetch("https://yucvxkugtwlsvhqzpoqe.supabase.co/rest/v1/notifications?read=eq.false&for_role=eq.super_admin", {
+            method: "PATCH",
+            headers: { "Content-Type":"application/json",
+              "apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1Y3Z4a3VndHdsc3ZocXpwb3FlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MzQ0MzksImV4cCI6MjA4OTAxMDQzOX0.ICKz0Ok4gajEOw9Wv9rP9vLipW8sPMTqHauhUfB39wY",
+              "Authorization":`Bearer ${token2}` },
+            body: JSON.stringify({ read: true })
+          }).catch(() => {});
+        }
       })
       .catch(e => { setError("Connection error: " + e.message); setLoading(false); });
   }, []);
