@@ -399,15 +399,15 @@ const store = (() => {
 const BURDEN = { fica: 0.0765, futa: 0.006, futaCap: 7000, suta: 0.027, sutaCap: 9000, wc: 0.005, health: 7200, retire: 0.03, other: 0.015, hoursPerYear: 1920 };
 
 const ROSTER_SEED = [
-  { id:"r1",  name:"Nuthan Joshi",       role:"SAP BRIM Sr Consultant",        type:"FTE", client:"PTC",                billRate:155, util:1.0, baseSalary:120000, skills:"SAP BRIM, ABAP, BTP, S/4HANA",              projects:"PTC BRIM Phase 2, Tolling Billing",         revShare:0, fixedRate:155, thirdPartySplit:0, insurance:7200 },
-  { id:"r2",  name:"Malla Reddy",        role:"SAP Functional Architect",       type:"FTE", client:"HPE",                billRate:135, util:0.8, baseSalary:98000,  skills:"SAP IS-U, S/4HANA FI/CO, CPI, Integration",  projects:"HPE IS-U Migration, S4 Upgrade",            revShare:0, fixedRate:135, thirdPartySplit:0, insurance:7200 },
-  { id:"r3",  name:"Sudheendra Mujamdhar",role:"SAP Master Data Governance Lead",type:"FTE", client:"SCG",               billRate:145, util:1.0, baseSalary:110000, skills:"SAP MDG, Data Governance, S/4HANA, ABAP",    projects:"SCG Data Governance Program",               revShare:0, fixedRate:145, thirdPartySplit:0, insurance:7200 },
-  { id:"r4",  name:"Vivek Khajuria",     role:"SAP SuccessFactors Consultant",  type:"FTE", client:"Toyota",             billRate:130, util:1.0, baseSalary:95000,  skills:"SAP SuccessFactors, HCM, Payroll, EC",       projects:"Toyota HCM Transformation",                 revShare:0, fixedRate:130, thirdPartySplit:0, insurance:7200 },
-  { id:"r5",  name:"Kartheek",           role:"SAP AI / ML Consultant",         type:"FTE", client:"Arhasi",             billRate:140, util:1.0, baseSalary:105000, skills:"SAP BTP, AI/ML, Databricks, Python, AWS",    projects:"Arhasi AI Analytics Platform",              revShare:0, fixedRate:140, thirdPartySplit:0, insurance:7200 },
-  { id:"r6",  name:"Naveen",             role:"SAP Finance Consultant",          type:"FTE", client:"Freeman - Mouritech",billRate:125, util:1.0, baseSalary:90000,  skills:"SAP S/4HANA Finance, FSCM, TR, COPA",        projects:"Freeman Finance Transformation",             revShare:0, fixedRate:125, thirdPartySplit:0, insurance:7200 },
-  { id:"r7",  name:"Rajesh Kumar",       role:"SAP IS-U / Tolling Specialist",  type:"FTE", client:"NTTA",               billRate:185, util:1.0, baseSalary:130000, skills:"SAP IS-U, Device Mgmt, Tolling, ABAP, CCS",  projects:"NTTA Tolling System, Revenue Billing",      revShare:0, fixedRate:185, thirdPartySplit:0, insurance:7200 },
-  { id:"r8",  name:"Priya Rajan",        role:"SAP Data / Databricks Engineer", type:"FTE", client:"Toyota Connected",   billRate:150, util:0.8, baseSalary:112000, skills:"Databricks, AWS, SAP BTP, Data Engineering",  projects:"Toyota Data Pipeline, Connected Services",  revShare:0, fixedRate:150, thirdPartySplit:0, insurance:7200 },
-  { id:"r9",  name:"Arun Patel",         role:"SAP S/4HANA Functional Lead",    type:"FTE", client:"HOPE-IDI",           billRate:145, util:1.0, baseSalary:108000, skills:"SAP S/4HANA MM, SD, PP, Fiori, Integration",  projects:"HOPE-IDI S4 Rollout, BRIM Integration",     revShare:0, fixedRate:145, thirdPartySplit:0, insurance:7200 },
+  { id:"r1",  name:"Nuthan Joshi",       role:"SAP BRIM Sr Consultant",        type:"FTE", client:"PTC",                billRate:155, clientRates:[{clientId:"cl4",rate:155},{clientId:"cl1",rate:165}], util:1.0, baseSalary:120000, skills:"SAP BRIM, ABAP, BTP, S/4HANA",              projects:"PTC BRIM Phase 2, Tolling Billing",         revShare:0, fixedRate:155, thirdPartySplit:0, insurance:7200 },
+  { id:"r2",  name:"Malla Reddy",        role:"SAP Functional Architect",       type:"FTE", client:"HPE",                billRate:135, util:0.8, baseSalary:98000,  skills:"SAP IS-U, S/4HANA FI/CO, CPI, Integration",  projects:"HPE IS-U Migration, S4 Upgrade",            revShare:0, fixedRate:135, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r3",  name:"Sudheendra Mujamdhar",role:"SAP Master Data Governance Lead",type:"FTE", client:"SCG",               billRate:145, util:1.0, baseSalary:110000, skills:"SAP MDG, Data Governance, S/4HANA, ABAP",    projects:"SCG Data Governance Program",               revShare:0, fixedRate:145, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r4",  name:"Vivek Khajuria",     role:"SAP SuccessFactors Consultant",  type:"FTE", client:"Toyota",             billRate:130, util:1.0, baseSalary:95000,  skills:"SAP SuccessFactors, HCM, Payroll, EC",       projects:"Toyota HCM Transformation",                 revShare:0, fixedRate:130, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r5",  name:"Kartheek",           role:"SAP AI / ML Consultant",         type:"FTE", client:"Arhasi",             billRate:140, util:1.0, baseSalary:105000, skills:"SAP BTP, AI/ML, Databricks, Python, AWS",    projects:"Arhasi AI Analytics Platform",              revShare:0, fixedRate:140, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r6",  name:"Naveen",             role:"SAP Finance Consultant",          type:"FTE", client:"Freeman - Mouritech",billRate:125, util:1.0, baseSalary:90000,  skills:"SAP S/4HANA Finance, FSCM, TR, COPA",        projects:"Freeman Finance Transformation",             revShare:0, fixedRate:125, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r7",  name:"Rajesh Kumar",       role:"SAP IS-U / Tolling Specialist",  type:"FTE", client:"NTTA",               billRate:185, util:1.0, baseSalary:130000, skills:"SAP IS-U, Device Mgmt, Tolling, ABAP, CCS",  projects:"NTTA Tolling System, Revenue Billing",      revShare:0, fixedRate:185, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r8",  name:"Priya Rajan",        role:"SAP Data / Databricks Engineer", type:"FTE", client:"Toyota Connected",   billRate:150, util:0.8, baseSalary:112000, skills:"Databricks, AWS, SAP BTP, Data Engineering",  projects:"Toyota Data Pipeline, Connected Services",  revShare:0, fixedRate:150, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r9",  name:"Arun Patel",         role:"SAP S/4HANA Functional Lead",    type:"FTE", client:"HOPE-IDI",           billRate:145, util:1.0, baseSalary:108000, skills:"SAP S/4HANA MM, SD, PP, Fiori, Integration",  projects:"HOPE-IDI S4 Rollout, BRIM Integration",     revShare:0, fixedRate:145, thirdPartySplit:0, insurance:7200 , clientRates:[]},
   { id:"r10", name:"Deepa Krishnan",     role:"SAP Project Manager / Architect",type:"FTE", client:"HOPE-IDI",           billRate:160, util:1.0, baseSalary:125000, skills:"SAP PM, BRIM, S/4HANA, Architecture, PMP",   projects:"HOPE-IDI Phase 3, Oncor RFP",              revShare:0, fixedRate:160, thirdPartySplit:0, insurance:7200 },
 ];
 const PIPELINE_SEED = [
@@ -1578,9 +1578,11 @@ const fmtD = n => window.__ZT_MASK__!==false ? "$ ●●●,●●●" : _fmtDNu
 const pct = n => window.__ZT_MASK__!==false ? "●●.●%" : (n*100).toFixed(1)+"%";
 const fmtDate = d => { if(!d) return "—"; const dt=new Date(d+"T00:00:00"); return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
 
-function calcRoster(r) {
+function calcRoster(r, clientId) {
+  // Use per-client rate if available, else fall back to default billRate
+  const effectiveRate = (clientId && r.clientRates?.find(cr => cr.clientId === clientId)?.rate) || r.billRate;
   const hrs = Math.round(r.util * BURDEN.hoursPerYear);
-  const rev = hrs * r.billRate;
+  const rev = hrs * effectiveRate;
   let bonus = 0;
   if (r.revShare > 0 && r.baseSalary > 0) {
     const consRate = r.billRate * r.revShare;
@@ -3050,7 +3052,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
   useEffect(()=>{localStorage.setItem("zt-widgets",JSON.stringify(activeWidgets));},[activeWidgets]);
   const activePeriod = PERIODS.find(p=>p.id===dashPeriod)||PERIODS[0];
 
-  const rData = roster.map(r => ({ ...r, ...calcRoster(r) }));
+  const rData = roster.map(r => ({ ...r, ...calcRoster(r, r.client) }));
   const totalRev = rData.reduce((s,r) => s+r.rev, 0);
   const totalCost = rData.reduce((s,r) => s+r.totalCost, 0);
   const coKeeps = rData.reduce((s,r) => s+r.coKeeps, 0);
@@ -3499,7 +3501,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
 }
 
 // ─── ROSTER ───────────────────────────────────────────────────────────────────
-function Roster({ roster, setRoster, addAudit }) {
+function Roster({ roster, setRoster, addAudit, clients=[] }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -3518,9 +3520,9 @@ function Roster({ roster, setRoster, addAudit }) {
     return [...roster].sort((a, b) => {
       if (sortBy === "name")    return dir * a.name.localeCompare(b.name);
       if (sortBy === "rate")    return dir * ((a.billRate||0) - (b.billRate||0));
-      if (sortBy === "revenue") { const da=calcRoster(a),db=calcRoster(b); return dir*(da.rev-db.rev); }
-      if (sortBy === "cost")    { const da=calcRoster(a),db=calcRoster(b); return dir*(da.totalCost-db.totalCost); }
-      if (sortBy === "margin")  { const da=calcRoster(a),db=calcRoster(b); return dir*(da.netMargin-db.netMargin); }
+      if (sortBy === "revenue") { const da=calcRoster(a, a.client),db=calcRoster(b, b.client); return dir*(da.rev-db.rev); }
+      if (sortBy === "cost")    { const da=calcRoster(a, a.client),db=calcRoster(b, b.client); return dir*(da.totalCost-db.totalCost); }
+      if (sortBy === "margin")  { const da=calcRoster(a, a.client),db=calcRoster(b, b.client); return dir*(da.netMargin-db.netMargin); }
       return 0;
     });
   })();
@@ -3563,7 +3565,7 @@ function Roster({ roster, setRoster, addAudit }) {
     setSelRows(new Set());
   };
 
-  const emptyForm = { name:"", role:"", type:"FTE", client:"", projects:"", billRate:"", util:"", baseSalary:"", revShare:"", fixedRate:"", thirdPartySplit:"", insurance:"7200", contrib401k:"" };
+  const emptyForm = { name:"", role:"", type:"FTE", client:"", projects:"", billRate:"", util:"", baseSalary:"", revShare:"", fixedRate:"", thirdPartySplit:"", insurance:"7200", contrib401k:"", clientRates:[] };
 
   const open = (r=null) => { setEditing(r?.id||null); setForm(r ? {...r, projects: r.projects||""} : {...emptyForm}); setModal(true); };
   const save = () => {
@@ -3585,7 +3587,7 @@ function Roster({ roster, setRoster, addAudit }) {
   };
   const onInlineKey = e => { if(e.key==="Enter") commitInline(); if(e.key==="Escape") setInlineEdit(null); };
 
-  const totals = roster.reduce((acc, r) => { const d = calcRoster(r); acc.rev+=d.rev; acc.cost+=d.totalCost; acc.keeps+=d.coKeeps; acc.tp+=d.thirdParty; return acc; },{rev:0,cost:0,keeps:0,tp:0});
+  const totals = roster.reduce((acc, r) => { const d = calcRoster(r, r.client); acc.rev+=d.rev; acc.cost+=d.totalCost; acc.keeps+=d.coKeeps; acc.tp+=d.thirdParty; return acc; },{rev:0,cost:0,keeps:0,tp:0});
 
   const InlineCell = ({r, field, value, color, mono, style={}}) => {
     const isEditing = inlineEdit?.id===r.id && inlineEdit?.field===field;
@@ -3648,7 +3650,7 @@ function Roster({ roster, setRoster, addAudit }) {
           {["Name","Projects / Role","Type","Client","Rate","Util","Revenue","Total Cost","Co. Keeps","Margin",""].map(h=><span key={h} className="th">{h}</span>)}
         </div>
         {displayRoster.map(r => {
-          const d = calcRoster(r);
+          const d = calcRoster(r, r.client);
           const projects = (r.projects||"").split(",").map(p=>p.trim()).filter(Boolean);
           const isDragging = dragId === r.id;
           const isOver     = dragOver === r.id;
@@ -3705,7 +3707,14 @@ function Roster({ roster, setRoster, addAudit }) {
               <span style={{fontSize:11,color:"#64748b",paddingLeft:4}}>{r.client}</span>
 
               {/* Inline-editable Bill Rate */}
-              <InlineCell r={r} field="billRate" value={"$"+r.billRate} color="#7dd3fc" mono/>
+              <div>
+                <InlineCell r={r} field="billRate" value={"$"+r.billRate} color="#7dd3fc" mono/>
+                {(r.clientRates||[]).length > 0 && (
+                  <div style={{fontSize:8,color:"#3d5a7a",marginTop:2}}>
+                    {(r.clientRates||[]).length} client rate{(r.clientRates||[]).length>1?"s":""}
+                  </div>
+                )}
+              </div>
 
               {/* Inline-editable Util */}
               <InlineCell r={r} field="util" value={pct(r.util)} color={r.util>=0.8?"#34d399":r.util>=0.4?"#f59e0b":"#f87171"} mono/>
@@ -3782,6 +3791,35 @@ function Roster({ roster, setRoster, addAudit }) {
                   </FF>
                 )}
               </div>
+            </div>
+
+            {/* ── Per-Client Billing Rates ──────────────────────────────── */}
+            <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"14px 16px",marginTop:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>
+                Per-Client Billing Rates
+                <span style={{fontSize:9,color:"#334155",fontWeight:400,marginLeft:8,textTransform:"none"}}>Override the default rate for specific clients</span>
+              </div>
+              {(form.clientRates||[]).map((cr, idx) => (
+                <div key={idx} style={{display:"grid",gridTemplateColumns:"1fr 120px 32px",gap:8,marginBottom:8,alignItems:"center"}}>
+                  <select className="inp" value={cr.clientId}
+                    onChange={e=>{const nr=[...(form.clientRates||[])];nr[idx]={...nr[idx],clientId:e.target.value};setForm({...form,clientRates:nr});}}>
+                    <option value="">Select client…</option>
+                    {(clients).map(cl=><option key={cl.id} value={cl.id}>{cl.name}</option>)}
+                  </select>
+                  <div style={{position:"relative"}}>
+                    <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#64748b",fontSize:13}}>$</span>
+                    <input className="inp" type="number" placeholder="Rate/hr" style={{paddingLeft:22}}
+                      value={cr.rate}
+                      onChange={e=>{const nr=[...(form.clientRates||[])];nr[idx]={...nr[idx],rate:+e.target.value};setForm({...form,clientRates:nr});}}/>
+                  </div>
+                  <button style={{background:"#1a0808",border:"1px solid #7f1d1d",borderRadius:6,color:"#f87171",fontSize:14,cursor:"pointer",height:36,width:32,display:"flex",alignItems:"center",justifyContent:"center"}}
+                    onClick={()=>{const nr=(form.clientRates||[]).filter((_,i)=>i!==idx);setForm({...form,clientRates:nr});}}>×</button>
+                </div>
+              ))}
+              <button className="btn bg" style={{fontSize:11,marginTop:4}}
+                onClick={()=>setForm({...form,clientRates:[...(form.clientRates||[]),{clientId:"",rate:""}]})}>
+                + Add Client Rate
+              </button>
             </div>
 
             {/* Benefits — Employer Tax Breakdown (FTE only, live calculation) */}
@@ -8068,7 +8106,7 @@ function FinOverview({ roster, clients, finInvoices, finPayments, finExpenses })
   });
 
   // Gross margin from roster
-  const rData = roster.map(r => ({ ...r, ...calcRoster(r) }));
+  const rData = roster.map(r => ({...calcRoster(r, r.client) }));
   const annualRev   = rData.reduce((s,r)=>s+r.rev,0);
   const annualCost  = rData.reduce((s,r)=>s+r.totalCost,0);
   const grossMargin = annualRev > 0 ? (annualRev - annualCost) / annualRev : 0;
@@ -32099,7 +32137,7 @@ function CapacityPlanner({ roster, projects, sows, clients, tsHours }) {
   const [hovered, setHovered] = useState(null);
   const [selPerson, setSelPerson] = useState(null);
 
-  const rData = roster.map(r => ({ ...r, ...calcRoster(r) }));
+  const rData = roster.map(r => ({...calcRoster(r, r.client)}));
 
   // Capacity model: each person has utilization → booked hours/week
   // Project assignments derived from roster.client + projects
@@ -32344,7 +32382,7 @@ function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses,
   const [selProj, setSelProj] = useState(null);
   const [year, setYear] = useState("2026");
 
-  const rData = roster.map(r=>({...r,...calcRoster(r)}));
+  const rData = roster.map(r=>({...r,...calcRoster(r, r.client)}));
 
   // ── Company-level budget model ──────────────────────────────────────────────
   const COMPANY_BUDGET = {
