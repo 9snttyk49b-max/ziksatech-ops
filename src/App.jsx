@@ -1225,21 +1225,26 @@ const PROPOSAL_SECTIONS = [
 // =============================================================================
 
 // Health plan options available to Ziksatech FTEs
-const HEALTH_PLANS = [
-  { id:"hmo_silver", name:"BCBS HMO Silver",   tier:"Silver", premium_ee:320,  premium_dep:680,  deductible:1500, oop_max:5000,  hsaEligible:false },
-  { id:"ppo_gold",   name:"BCBS PPO Gold",      tier:"Gold",   premium_ee:480,  premium_dep:920,  deductible:500,  oop_max:3500,  hsaEligible:false },
-  { id:"hdhp",       name:"BCBS HDHP + HSA",    tier:"HDHP",   premium_ee:240,  premium_dep:520,  deductible:3000, oop_max:6000,  hsaEligible:true  },
+const HEALTH_PLANS_DEFAULT = [
+  { id:"hmo_silver", name:"BCBS HMO Silver",   carrier:"Blue Cross Blue Shield of TX", vendor:"Benefytt Technologies", groupNumber:"GRP-10042", adminContact:"bcbs-tx-group@bcbstx.com", tier:"Silver", premium_ee:320,  premium_dep:680,  deductible:1500, oop_max:5000,  hsaEligible:false },
+  { id:"ppo_gold",   name:"BCBS PPO Gold",      carrier:"Blue Cross Blue Shield of TX", vendor:"Benefytt Technologies", groupNumber:"GRP-10043", adminContact:"bcbs-tx-group@bcbstx.com", tier:"Gold",   premium_ee:480,  premium_dep:920,  deductible:500,  oop_max:3500,  hsaEligible:false },
+  { id:"hdhp",       name:"BCBS HDHP + HSA",    carrier:"Blue Cross Blue Shield of TX", vendor:"HSA Bank / Optum",      groupNumber:"GRP-10044", adminContact:"bcbs-tx-hdhp@bcbstx.com",  tier:"HDHP",   premium_ee:240,  premium_dep:520,  deductible:3000, oop_max:6000,  hsaEligible:true  },
 ];
 
-const DENTAL_PLANS = [
-  { id:"dental_basic", name:"Delta Dental Basic",   premium_ee:18,  premium_dep:42  },
-  { id:"dental_plus",  name:"Delta Dental Plus",    premium_ee:32,  premium_dep:68  },
+const DENTAL_PLANS_DEFAULT = [
+  { id:"dental_basic", name:"Delta Dental Basic",   carrier:"Delta Dental of TX", vendor:"Delta Dental", groupNumber:"DD-7741", adminContact:"group@deltadentalins.com", premium_ee:18,  premium_dep:42  },
+  { id:"dental_plus",  name:"Delta Dental Plus",    carrier:"Delta Dental of TX", vendor:"Delta Dental", groupNumber:"DD-7742", adminContact:"group@deltadentalins.com", premium_ee:32,  premium_dep:68  },
 ];
 
-const VISION_PLANS = [
-  { id:"vision_std",   name:"VSP Standard",          premium_ee:8,   premium_dep:18  },
-  { id:"vision_plus",  name:"VSP Plus",              premium_ee:14,  premium_dep:28  },
+const VISION_PLANS_DEFAULT = [
+  { id:"vision_std",   name:"VSP Standard",  carrier:"VSP Vision Care", vendor:"VSP Direct", groupNumber:"VSP-5501", adminContact:"memberservices@vsp.com", premium_ee:8,   premium_dep:18  },
+  { id:"vision_plus",  name:"VSP Plus",      carrier:"VSP Vision Care", vendor:"VSP Direct", groupNumber:"VSP-5502", adminContact:"memberservices@vsp.com", premium_ee:14,  premium_dep:28  },
 ];
+// Plan aliases — app references these, BenefitsTracker can override with state
+let HEALTH_PLANS = HEALTH_PLANS_DEFAULT;
+let DENTAL_PLANS = DENTAL_PLANS_DEFAULT;
+let VISION_PLANS = VISION_PLANS_DEFAULT;
+
 
 // Per-employee benefits enrollment & 401k data
 const BENEFITS_SEED = [
@@ -29268,10 +29273,14 @@ function annual401kMatchCost(b) { return b.k401_enrolled ? b.salary * b.k401_mat
 const TIER_LABELS = { ee_only:"EE Only", ee_spouse:"EE + Spouse", family:"Family" };
 
 function BenefitsTracker({ benefits, setBenefits, roster }) {
-  const [sub,      setSub]      = useState("overview");
-  const [selId,    setSelId]    = useState(null);
-  const [editId,   setEditId]   = useState(null);
-  const [editForm, setEditForm] = useState(null);
+  const [sub,         setSub]       = useState("overview");
+  const [selId,       setSelId]     = useState(null);
+  const [editId,      setEditId]    = useState(null);
+  const [editForm,    setEditForm]  = useState(null);
+  const [healthPlans, setHealthPlans] = useState(HEALTH_PLANS_DEFAULT);
+  const [dentalPlans, setDentalPlans] = useState(DENTAL_PLANS_DEFAULT);
+  const [visionPlans, setVisionPlans] = useState(VISION_PLANS_DEFAULT);
+  const [editPlan,    setEditPlan]  = useState(null);   // { type, idx, form }
 
   // ── Auto-sync: add a default benefits record for any FTE not yet tracked ──
   useEffect(() => {
@@ -29313,6 +29322,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
     { id:"enrollment", label:"Enrollment"   },
     { id:"401k",       label:"401(k)"       },
     { id:"costs",      label:"Cost Analysis"},
+    { id:"planadmin",  label:"⚙ Plans Admin" },
   ];
 
   return (
@@ -29851,6 +29861,102 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── PLANS ADMIN ── */}
+      {sub==="planadmin"&&(
+        <div>
+          {[
+            { label:"Health Plans", plans:healthPlans, setPlans:setHealthPlans, type:"health",
+              fields:[
+                {key:"name",label:"Plan Name",type:"text"},
+                {key:"carrier",label:"Insurance Carrier",type:"text"},
+                {key:"vendor",label:"Vendor / Broker",type:"text"},
+                {key:"groupNumber",label:"Group Number",type:"text"},
+                {key:"adminContact",label:"Admin Contact Email",type:"text"},
+                {key:"premium_ee",label:"EE Premium/mo ($)",type:"number"},
+                {key:"premium_dep",label:"Dependent Add-on/mo ($)",type:"number"},
+                {key:"deductible",label:"Deductible ($)",type:"number"},
+                {key:"oop_max",label:"OOP Max ($)",type:"number"},
+              ]
+            },
+            { label:"Dental Plans", plans:dentalPlans, setPlans:setDentalPlans, type:"dental",
+              fields:[
+                {key:"name",label:"Plan Name",type:"text"},
+                {key:"carrier",label:"Insurance Carrier",type:"text"},
+                {key:"vendor",label:"Vendor / Broker",type:"text"},
+                {key:"groupNumber",label:"Group Number",type:"text"},
+                {key:"adminContact",label:"Admin Contact Email",type:"text"},
+                {key:"premium_ee",label:"EE Premium/mo ($)",type:"number"},
+                {key:"premium_dep",label:"Dependent Add-on/mo ($)",type:"number"},
+              ]
+            },
+            { label:"Vision Plans", plans:visionPlans, setPlans:setVisionPlans, type:"vision",
+              fields:[
+                {key:"name",label:"Plan Name",type:"text"},
+                {key:"carrier",label:"Insurance Carrier",type:"text"},
+                {key:"vendor",label:"Vendor / Broker",type:"text"},
+                {key:"groupNumber",label:"Group Number",type:"text"},
+                {key:"adminContact",label:"Admin Contact Email",type:"text"},
+                {key:"premium_ee",label:"EE Premium/mo ($)",type:"number"},
+                {key:"premium_dep",label:"Dependent Add-on/mo ($)",type:"number"},
+              ]
+            },
+          ].map(({label, plans, setPlans, type, fields})=>(
+            <div key={type} className="card" style={{padding:"18px 20px",marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                <div className="section-hdr" style={{margin:0}}>{label}</div>
+                <button className="btn bp" style={{fontSize:11}} onClick={()=>{
+                  const newPlan={id:type+"_"+uid(),name:"New Plan",carrier:"",vendor:"",groupNumber:"",adminContact:"",premium_ee:0,premium_dep:0,deductible:0,oop_max:0,tier:"Custom",hsaEligible:false};
+                  setPlans(ps=>[...ps,newPlan]);
+                }}><I d={ICONS.plus} s={12}/>Add Plan</button>
+              </div>
+              {plans.map((plan,pi)=>(
+                <div key={plan.id} style={{background:"#070c18",border:"1px solid #1a2d45",borderRadius:8,padding:"14px 16px",marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{plan.name}</div>
+                    <div style={{display:"flex",gap:8}}>
+                      {editPlan?.type===type&&editPlan?.idx===pi ? (
+                        <>
+                          <button className="btn bp" style={{fontSize:10,padding:"3px 10px"}} onClick={()=>{
+                            setPlans(ps=>ps.map((p,i)=>i===pi?editPlan.form:p));
+                            setEditPlan(null);
+                          }}>Save</button>
+                          <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}} onClick={()=>setEditPlan(null)}>Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}} onClick={()=>setEditPlan({type,idx:pi,form:{...plan}})}>Edit</button>
+                          <button className="btn br" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>{if(window.confirm("Remove this plan?"))setPlans(ps=>ps.filter((_,i)=>i!==pi));}}>×</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {editPlan?.type===type&&editPlan?.idx===pi ? (
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                      {fields.map(f=>(
+                        <FF key={f.key} label={f.label}>
+                          <input className="inp" type={f.type} value={editPlan.form[f.key]||""}
+                            onChange={e=>setEditPlan(ep=>({...ep,form:{...ep.form,[f.key]:f.type==="number"?+e.target.value:e.target.value}}))}/>
+                        </FF>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,fontSize:10}}>
+                      {plan.carrier&&<div><span style={{color:"#3d5a7a"}}>Carrier: </span><span style={{color:"#94a3b8"}}>{plan.carrier}</span></div>}
+                      {plan.vendor&&<div><span style={{color:"#3d5a7a"}}>Vendor: </span><span style={{color:"#94a3b8"}}>{plan.vendor}</span></div>}
+                      {plan.groupNumber&&<div><span style={{color:"#3d5a7a"}}>Group #: </span><span style={{color:"#94a3b8",fontFamily:"monospace"}}>{plan.groupNumber}</span></div>}
+                      {plan.adminContact&&<div style={{gridColumn:"span 2"}}><span style={{color:"#3d5a7a"}}>Contact: </span><span style={{color:"#94a3b8"}}>{plan.adminContact}</span></div>}
+                      <div><span style={{color:"#3d5a7a"}}>EE Premium: </span><span style={{color:"#38bdf8",fontFamily:"monospace"}}>${plan.premium_ee}/mo</span></div>
+                      {plan.deductible&&<div><span style={{color:"#3d5a7a"}}>Deductible: </span><span style={{color:"#94a3b8",fontFamily:"monospace"}}>${(plan.deductible||0).toLocaleString()}</span></div>}
+                      {plan.oop_max&&<div><span style={{color:"#3d5a7a"}}>OOP Max: </span><span style={{color:"#94a3b8",fontFamily:"monospace"}}>${(plan.oop_max||0).toLocaleString()}</span></div>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -35696,27 +35802,30 @@ function RateCardQuote({ roster, clients, crmDeals, proposals, setProposals, add
   const fmt  = v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1e3 ? `$${(v/1000).toFixed(0)}k` : `$${Math.round(v)}`;
 
   // ── Standard Rate Book ───────────────────────────────────────────────────
-  const RATE_BOOK = [
-    // SAP Functional / Technical
-    { category:"SAP BRIM / Billing",       level:"Senior (8+ yrs)",   w2:"$145-165", c2c:"$160-185", margin:"22-28%", notes:"High demand, rare skillset" },
-    { category:"SAP BRIM / Billing",       level:"Mid (4-7 yrs)",     w2:"$115-135", c2c:"$130-150", margin:"20-25%", notes:"" },
-    { category:"SAP IS-U / Utilities",     level:"Senior (8+ yrs)",   w2:"$140-160", c2c:"$155-180", margin:"22-28%", notes:"Tolling + utilities specialists" },
-    { category:"SAP S/4HANA FI/CO",        level:"Senior (8+ yrs)",   w2:"$130-150", c2c:"$145-170", margin:"20-25%", notes:"FSCM, AR/AP, Asset Accounting" },
-    { category:"SAP S/4HANA FI/CO",        level:"Mid (4-7 yrs)",     w2:"$105-120", c2c:"$120-140", margin:"18-23%", notes:"" },
-    { category:"SAP SuccessFactors / HCM", level:"Senior (8+ yrs)",   w2:"$120-140", c2c:"$135-155", margin:"20-25%", notes:"EC, Payroll, Time, Recruiting" },
-    { category:"SAP SuccessFactors / HCM", level:"Mid (4-7 yrs)",     w2:"$95-115",  c2c:"$110-130", margin:"18-22%", notes:"" },
-    { category:"SAP MDG / Data Governance",level:"Senior (8+ yrs)",   w2:"$135-155", c2c:"$150-170", margin:"20-26%", notes:"MDG-M, MDG-F, BRIM + MDG combo" },
-    { category:"SAP MM / SD / PP",         level:"Senior (8+ yrs)",   w2:"$120-140", c2c:"$135-155", margin:"20-25%", notes:"Procure-to-Pay, Order-to-Cash" },
-    { category:"SAP MM / SD / PP",         level:"Mid (4-7 yrs)",     w2:"$95-115",  c2c:"$110-130", margin:"18-22%", notes:"" },
-    { category:"SAP BTP / Integration",    level:"Senior (8+ yrs)",   w2:"$140-165", c2c:"$155-180", margin:"22-28%", notes:"BTP, CPI, ABAP, API Management" },
-    { category:"SAP Project Manager",      level:"Senior / PMP",      w2:"$145-170", c2c:"$160-190", margin:"22-28%", notes:"SAP program + project management" },
-    { category:"SAP ABAP / Technical",     level:"Senior (8+ yrs)",   w2:"$125-145", c2c:"$140-165", margin:"20-26%", notes:"ABAP, Fiori, UI5, RFC/BAPI" },
-    // Data & AI
-    { category:"Databricks / Data Eng",    level:"Senior (6+ yrs)",   w2:"$140-165", c2c:"$155-185", margin:"22-28%", notes:"Databricks, PySpark, Delta Lake" },
-    { category:"AWS / Cloud Architect",    level:"Senior (6+ yrs)",   w2:"$145-170", c2c:"$160-190", margin:"22-28%", notes:"AWS + SAP on Cloud" },
-    { category:"AI / ML Engineer",         level:"Senior (5+ yrs)",   w2:"$155-185", c2c:"$170-205", margin:"20-26%", notes:"Python, MLflow, LLMs, BTP AI" },
-    { category:"Data Governance Analyst",  level:"Mid-Senior",        w2:"$95-120",  c2c:"$110-135", margin:"18-24%", notes:"MDM, data quality, stewardship" },
+  const RATE_BOOK_DEFAULT = [
+    { category:"SAP BRIM / Billing",       level:"Senior (8+ yrs)",  w2:"$145-165", c2c:"$160-185", margin:"22-28%", notes:"High demand, rare skillset" },
+    { category:"SAP BRIM / Billing",       level:"Mid (4-7 yrs)",    w2:"$115-135", c2c:"$130-150", margin:"20-25%", notes:"" },
+    { category:"SAP IS-U / Utilities",     level:"Senior (8+ yrs)",  w2:"$140-160", c2c:"$155-180", margin:"22-28%", notes:"Tolling + utilities specialists" },
+    { category:"SAP S/4HANA FI/CO",        level:"Senior (8+ yrs)",  w2:"$130-150", c2c:"$145-170", margin:"20-25%", notes:"FSCM, AR/AP, Asset Accounting" },
+    { category:"SAP S/4HANA FI/CO",        level:"Mid (4-7 yrs)",    w2:"$105-120", c2c:"$120-140", margin:"18-23%", notes:"" },
+    { category:"SAP SuccessFactors / HCM", level:"Senior (8+ yrs)",  w2:"$120-140", c2c:"$135-155", margin:"20-25%", notes:"EC, Payroll, Time, Recruiting" },
+    { category:"SAP SuccessFactors / HCM", level:"Mid (4-7 yrs)",    w2:"$95-115",  c2c:"$110-130", margin:"18-22%", notes:"" },
+    { category:"SAP MDG / Data Governance",level:"Senior (8+ yrs)",  w2:"$135-155", c2c:"$150-170", margin:"20-26%", notes:"MDG-M, MDG-F, BRIM + MDG combo" },
+    { category:"SAP MM / SD / PP",         level:"Senior (8+ yrs)",  w2:"$120-140", c2c:"$135-155", margin:"20-25%", notes:"Procure-to-Pay, Order-to-Cash" },
+    { category:"SAP MM / SD / PP",         level:"Mid (4-7 yrs)",    w2:"$95-115",  c2c:"$110-130", margin:"18-22%", notes:"" },
+    { category:"SAP BTP / Integration",    level:"Senior (8+ yrs)",  w2:"$140-165", c2c:"$155-180", margin:"22-28%", notes:"BTP, CPI, ABAP, API Management" },
+    { category:"SAP Project Manager",      level:"Senior / PMP",     w2:"$145-170", c2c:"$160-190", margin:"22-28%", notes:"PMP or SAP PM certification preferred" },
+    { category:"SAP ABAP / Technical",     level:"Senior (8+ yrs)",  w2:"$125-145", c2c:"$140-165", margin:"20-26%", notes:"OO ABAP, BADI, Fiori extensions" },
+    { category:"Databricks / Data Eng",    level:"Senior (6+ yrs)",  w2:"$140-165", c2c:"$155-185", margin:"22-28%", notes:"PySpark, Delta Lake, Azure" },
+    { category:"AWS / Cloud Architect",    level:"Senior (6+ yrs)",  w2:"$145-170", c2c:"$160-190", margin:"22-28%", notes:"Solutions Architect certification preferred" },
+    { category:"AI / ML Engineer",         level:"Senior (5+ yrs)",  w2:"$155-185", c2c:"$170-205", margin:"23-30%", notes:"LLM, RAG, MLOps experience" },
+    { category:"Data Governance Analyst",  level:"Mid-Senior",       w2:"$95-120",  c2c:"$110-135", margin:"18-24%", notes:"MDM, data quality, cataloging" },
   ];
+  const [rateBook, setRateBook] = useState(RATE_BOOK_DEFAULT);
+  const [editingRow, setEditingRow] = useState(null);  // index of row being edited
+  const [editRowForm, setEditRowForm] = useState(null);
+  const [showRateAdmin, setShowRateAdmin] = useState(false);
+  const RATE_BOOK = rateBook;  // alias so existing buildQuote() code still works
 
   const ROLES = [...new Set(RATE_BOOK.map(r=>r.category))];
   const PAY_TYPES = [
@@ -35808,17 +35917,52 @@ Email should:
             </div>
             <button className="btn bp" style={{fontSize:11}} onClick={()=>setView("quote")}>+ Quick Quote →</button>
           </div>
-          {/* Header */}
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 90px 90px 90px 1.2fr",gap:6,padding:"6px 12px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
-            <div>Role / Skill Set</div><div>Level</div><div style={{textAlign:"right"}}>W-2 /hr</div><div style={{textAlign:"right"}}>C2C /hr</div><div style={{textAlign:"center"}}>Margin</div><div>Notes</div>
+          {/* Rate Book Header + Edit Toggle */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 90px 90px 90px 1fr",gap:6,fontSize:10,fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:.5,padding:"6px 10px",flex:1}}>
+              <div>Role / Skill Set</div><div>Level</div>
+              <div style={{textAlign:"right"}}>W-2 /hr</div>
+              <div style={{textAlign:"right"}}>C2C /hr</div>
+              <div style={{textAlign:"center"}}>Margin</div>
+              <div>Notes</div>
+            </div>
+            <div style={{display:"flex",gap:6,marginLeft:10,flexShrink:0}}>
+              <button className="btn bg" style={{fontSize:10}} onClick={()=>setShowRateAdmin(v=>!v)}>
+                {showRateAdmin ? "✓ Done Editing" : "✏ Edit Rates"}
+              </button>
+              {showRateAdmin&&<button className="btn bp" style={{fontSize:10}} onClick={()=>{
+                const newRow={category:"New Role",level:"Senior",w2:"$100-120",c2c:"$115-135",margin:"20-25%",notes:""};
+                setRateBook(rb=>[...rb,newRow]);
+              }}><I d={ICONS.plus} s={11}/>Add Row</button>}
+              {showRateAdmin&&<button className="btn bg" style={{fontSize:10,color:"#f59e0b",borderColor:"#f59e0b"}} onClick={()=>{if(window.confirm("Reset to default rate book?"))setRateBook(RATE_BOOK_DEFAULT);}}>Reset</button>}
+            </div>
           </div>
-          {/* Group by category */}
-          {[...new Set(RATE_BOOK.map(r=>r.category))].map(cat => {
-            const rows = RATE_BOOK.filter(r=>r.category===cat);
-            return rows.map((row,ri) => (
-              <div key={cat+ri} style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 90px 90px 90px 1.2fr",gap:6,padding:"9px 12px",borderRadius:6,marginBottom:3,
-                background:ri===0?"#060d1c":"#040810",border:`1px solid ${ri===0?"#1a2d45":"#0a1626"}`}}>
-                <div style={{fontSize:11,fontWeight:ri===0?700:400,color:ri===0?"#e2e8f0":"#94a3b8"}}>{ri===0?cat:""}</div>
+          {/* Rows */}
+          {rateBook.map((row,ri)=>(
+            editingRow===ri ? (
+              <div key={ri} style={{background:"#0a1626",border:"1px solid #1e3a5f",borderRadius:8,padding:"10px 12px",marginBottom:4}}>
+                <div style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 90px 90px 90px 1fr",gap:8,marginBottom:8}}>
+                  <input className="inp" style={{fontSize:11}} value={editRowForm.category} onChange={e=>setEditRowForm(f=>({...f,category:e.target.value}))} placeholder="Role / Skill Set"/>
+                  <input className="inp" style={{fontSize:11}} value={editRowForm.level} onChange={e=>setEditRowForm(f=>({...f,level:e.target.value}))} placeholder="Level"/>
+                  <input className="inp" style={{fontSize:11,textAlign:"right"}} value={editRowForm.w2} onChange={e=>setEditRowForm(f=>({...f,w2:e.target.value}))} placeholder="$140-160"/>
+                  <input className="inp" style={{fontSize:11,textAlign:"right"}} value={editRowForm.c2c} onChange={e=>setEditRowForm(f=>({...f,c2c:e.target.value}))} placeholder="$155-180"/>
+                  <input className="inp" style={{fontSize:11,textAlign:"center"}} value={editRowForm.margin} onChange={e=>setEditRowForm(f=>({...f,margin:e.target.value}))} placeholder="20-25%"/>
+                  <input className="inp" style={{fontSize:11}} value={editRowForm.notes} onChange={e=>setEditRowForm(f=>({...f,notes:e.target.value}))} placeholder="Notes..."/>
+                </div>
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <button className="btn bp" style={{fontSize:10,padding:"3px 10px"}} onClick={()=>{setRateBook(rb=>rb.map((r,i)=>i===ri?editRowForm:r));setEditingRow(null);setEditRowForm(null);}}>Save</button>
+                  <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}} onClick={()=>{setEditingRow(null);setEditRowForm(null);}}>Cancel</button>
+                  <button className="btn br" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>{if(window.confirm("Delete this row?"))setRateBook(rb=>rb.filter((_,i)=>i!==ri));setEditingRow(null);}}>Delete</button>
+                </div>
+              </div>
+            ) : (
+              <div key={ri} style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 90px 90px 90px 1fr",gap:6,
+                padding:"8px 10px",borderRadius:6,marginBottom:2,alignItems:"center",
+                background:ri%2===0?"#060d1c":"#040810",border:"1px solid #0a1626",
+                cursor:showRateAdmin?"pointer":undefined,
+                ...(showRateAdmin&&{outline:"1px dashed #1e3a5f"})}}
+                onClick={()=>{if(showRateAdmin){setEditingRow(ri);setEditRowForm({...row});}}}>
+                <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0"}}>{row.category}</div>
                 <div style={{fontSize:10,color:"#94a3b8"}}>{row.level}</div>
                 <div style={{textAlign:"right",fontSize:11,fontWeight:700,color:"#38bdf8",fontFamily:"monospace"}}>{row.w2}</div>
                 <div style={{textAlign:"right",fontSize:11,color:"#94a3b8",fontFamily:"monospace"}}>{row.c2c}</div>
@@ -35827,9 +35971,9 @@ Email should:
                 </div>
                 <div style={{fontSize:9,color:"#334155"}}>{row.notes}</div>
               </div>
-            ));
-          })}
-          <div style={{marginTop:12,padding:"8px 14px",background:"#0c1e3d",borderRadius:8,border:"1px solid #0369a1",fontSize:10,color:"#7dd3fc"}}>
+            )
+          ))}
+                    <div style={{marginTop:12,padding:"8px 14px",background:"#0c1e3d",borderRadius:8,border:"1px solid #0369a1",fontSize:10,color:"#7dd3fc"}}>
             💡 WBE/HUB/WOSB certification means many enterprise procurement teams have diversity spend mandates — use this to justify premium rates.
           </div>
         </div>
