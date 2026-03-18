@@ -399,9 +399,9 @@ const store = (() => {
 const BURDEN = { fica: 0.0765, futa: 0.006, futaCap: 7000, suta: 0.027, sutaCap: 9000, wc: 0.005, health: 7200, retire: 0.03, other: 0.015, hoursPerYear: 1920 };
 
 const ROSTER_SEED = [
-  { id:"r1",  name:"Nuthan Joshi",       role:"SAP BRIM Sr Consultant",        type:"FTE", client:"PTC",                billRate:155, clientRates:[{clientId:"cl4",rate:155},{clientId:"cl1",rate:165}], util:1.0, baseSalary:120000, skills:"SAP BRIM, ABAP, BTP, S/4HANA",              projects:"PTC BRIM Phase 2, Tolling Billing",         revShare:0, fixedRate:155, thirdPartySplit:0, insurance:7200 },
-  { id:"r2",  name:"Malla Reddy",        role:"SAP Functional Architect",       type:"FTE", client:"HPE",                billRate:135, util:0.8, baseSalary:98000,  skills:"SAP IS-U, S/4HANA FI/CO, CPI, Integration",  projects:"HPE IS-U Migration, S4 Upgrade",            revShare:0, fixedRate:135, thirdPartySplit:0, insurance:7200 , clientRates:[]},
-  { id:"r3",  name:"Sudheendra Mujamdhar",role:"SAP Master Data Governance Lead",type:"FTE", client:"SCG",               billRate:145, util:1.0, baseSalary:110000, skills:"SAP MDG, Data Governance, S/4HANA, ABAP",    projects:"SCG Data Governance Program",               revShare:0, fixedRate:145, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r1",  name:"Nuthan Joshi",       role:"SAP BRIM Sr Consultant",        type:"FTE", client:"PTC",                billRate:155, clientRates:[{clientId:"cl4",rate:155},{clientId:"cl1",rate:165}], compType:"revenue_share", lcaWage:120000, util:1.0, baseSalary:120000, skills:"SAP BRIM, ABAP, BTP, S/4HANA",              projects:"PTC BRIM Phase 2, Tolling Billing",         revShare:0, fixedRate:155, thirdPartySplit:0, insurance:7200 },
+  { id:"r2",  name:"Malla Reddy",        role:"SAP Functional Architect", compType:"fixed_salary",       type:"FTE", client:"HPE",                billRate:135, util:0.8, baseSalary:98000,  skills:"SAP IS-U, S/4HANA FI/CO, CPI, Integration",  projects:"HPE IS-U Migration, S4 Upgrade",            revShare:0, fixedRate:135, thirdPartySplit:0, insurance:7200 , clientRates:[]},
+  { id:"r3",  name:"Sudheendra Mujamdhar", compType:"revenue_share", lcaWage:110000,role:"SAP Master Data Governance Lead",type:"FTE", client:"SCG",               billRate:145, util:1.0, baseSalary:110000, skills:"SAP MDG, Data Governance, S/4HANA, ABAP",    projects:"SCG Data Governance Program",               revShare:0, fixedRate:145, thirdPartySplit:0, insurance:7200 , clientRates:[]},
   { id:"r4",  name:"Vivek Khajuria",     role:"SAP SuccessFactors Consultant",  type:"FTE", client:"Toyota",             billRate:130, util:1.0, baseSalary:95000,  skills:"SAP SuccessFactors, HCM, Payroll, EC",       projects:"Toyota HCM Transformation",                 revShare:0, fixedRate:130, thirdPartySplit:0, insurance:7200 , clientRates:[]},
   { id:"r5",  name:"Kartheek",           role:"SAP AI / ML Consultant",         type:"FTE", client:"Arhasi",             billRate:140, util:1.0, baseSalary:105000, skills:"SAP BTP, AI/ML, Databricks, Python, AWS",    projects:"Arhasi AI Analytics Platform",              revShare:0, fixedRate:140, thirdPartySplit:0, insurance:7200 , clientRates:[]},
   { id:"r6",  name:"Naveen",             role:"SAP Finance Consultant",          type:"FTE", client:"Freeman - Mouritech",billRate:125, util:1.0, baseSalary:90000,  skills:"SAP S/4HANA Finance, FSCM, TR, COPA",        projects:"Freeman Finance Transformation",             revShare:0, fixedRate:125, thirdPartySplit:0, insurance:7200 , clientRates:[]},
@@ -3583,7 +3583,7 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
     setSelRows(new Set());
   };
 
-  const emptyForm = { name:"", role:"", type:"FTE", client:"", projects:"", billRate:"", util:"", baseSalary:"", revShare:"", fixedRate:"", thirdPartySplit:"", insurance:"7200", contrib401k:"", clientRates:[] };
+  const emptyForm = { name:"", role:"", type:"FTE", client:"", projects:"", billRate:"", util:"", baseSalary:"", revShare:"", fixedRate:"", thirdPartySplit:"", insurance:"7200", contrib401k:"", clientRates:[], compType:"fixed_salary", lcaWage:"" };
 
   const open = (r=null) => { setEditing(r?.id||null); setForm(r ? {...r, projects: r.projects||""} : {...emptyForm}); setModal(true); };
   const save = () => {
@@ -3685,8 +3685,19 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
               <input type="checkbox" checked={selRows.has(r.id)} onChange={()=>toggleRow(r.id)} onClick={e=>e.stopPropagation()} style={{accentColor:"#0369a1",cursor:"pointer",marginTop:4}}/>
               {/* Inline-editable Name */}
               <div>
-                <InlineCell r={r} field="name" value={r.name} color="#cbd5e1" style={{fontWeight:600,fontSize:13}}/>
-                <div style={{fontSize:10,color:"#3d5a7a",paddingLeft:5,marginTop:2}}>{r.role}</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <InlineCell r={r} field="name" value={r.name} color="#cbd5e1" style={{fontWeight:600,fontSize:13}}/>
+                  {r.type==="FTE" && r.compType && (
+                    <span title={r.compType==="revenue_share"?`Revenue Share · LCA $${(+r.lcaWage||0).toLocaleString()}/yr`:"Fixed Salary + Bonus"}
+                      style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:3,cursor:"default",
+                        background:r.compType==="revenue_share"?"#1a0a2e":"#021f0a",
+                        color:r.compType==="revenue_share"?"#a78bfa":"#34d399",
+                        border:`1px solid ${r.compType==="revenue_share"?"#7c3aed44":"#22c55e44"}`}}>
+                      {r.compType==="revenue_share"?"📊 REV%":"💼 FIXED"}
+                    </span>
+                  )}
+                </div>
+                <div style={{fontSize:10,color:"#3d5a7a",paddingLeft:2,marginTop:2}}>{r.role}</div>
               </div>
 
               {/* Projects — inline editable, shown as tags */}
@@ -3790,6 +3801,66 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
             {/* Compensation section */}
             <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"14px 16px",marginBottom:14}}>
               <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:12}}>Compensation & Billing</div>
+              {/* ── Comp Type Toggle (PII — internal only) ── */}
+              <div style={{marginBottom:12,padding:"10px 14px",borderRadius:8,background:"#040a14",border:"1px solid #1e3a5f"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>
+                  🔒 Comp Structure <span style={{fontWeight:400,color:"#1e3a5f",fontSize:9}}>(Internal PII — not shared with employee)</span>
+                </div>
+                <div style={{display:"flex",gap:8,marginBottom:form.compType==="revenue_share"?12:0}}>
+                  {[["fixed_salary","💼 Fixed Salary"],["revenue_share","📊 Revenue Share (LCA-based)"]].map(([val,lbl])=>(
+                    <button key={val} onClick={()=>setForm({...form,compType:val})}
+                      style={{flex:1,padding:"7px 12px",borderRadius:6,border:`1px solid ${form.compType===val?"#0ea5e9":"#1a2d45"}`,
+                        background:form.compType===val?"#0c2340":"transparent",
+                        color:form.compType===val?"#38bdf8":"#475569",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+                {form.compType==="revenue_share" && (()=>{
+                  const lca      = +form.lcaWage || 0;
+                  const billR    = +form.billRate || 0;
+                  const revPct   = +form.revShare || 0.8;
+                  const hrs      = BURDEN.hoursPerYear;
+                  // Loaded hourly cost = (lcaWage + employer taxes) / hrs
+                  const empBurden = lca * (BURDEN.fica + BURDEN.futa/lca*Math.min(lca,BURDEN.futaCap)/lca + BURDEN.suta/lca*Math.min(lca,BURDEN.sutaCap)/lca + BURDEN.wc);
+                  const loadedHr  = lca > 0 ? Math.round((lca + empBurden) / hrs * 100) / 100 : 0;
+                  // Consultant pool per hr = revPct × billRate
+                  const consPoolHr = billR * revPct;
+                  // Bonus pool per hr = consultant pool - loaded cost
+                  const bonusHr   = Math.max(0, consPoolHr - loadedHr);
+                  const bonusAnn  = Math.round(bonusHr * hrs);
+                  // Company margin per hr
+                  const companyHr = billR * (1 - revPct);
+                  const companyAnn = Math.round(companyHr * hrs);
+                  return (
+                    <div>
+                      <FF label="LCA Minimum Wage ($/yr)">
+                        <input className="inp" type="number" value={form.lcaWage||""} placeholder="120000"
+                          onChange={e=>setForm({...form,lcaWage:e.target.value})}/>
+                      </FF>
+                      {lca > 0 && billR > 0 && (
+                        <div style={{marginTop:12,padding:"10px 14px",background:"#020d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+                          <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>
+                            💡 Revenue Share Breakdown (internal)
+                          </div>
+                          {[
+                            ["Billing Rate (client pays)",   `$${billR}/hr`, "#38bdf8"],
+                            ["Consultant pool ("+Math.round(revPct*100)+"%)", `$${consPoolHr.toFixed(2)}/hr`, "#a78bfa"],
+                            ["LCA loaded cost to generate $"+lca.toLocaleString(),`$${loadedHr.toFixed(2)}/hr`, "#f59e0b"],
+                            ["→ Consultant bonus pool",     `$${bonusHr.toFixed(2)}/hr = $${bonusAnn.toLocaleString()}/yr`, bonusHr>0?"#34d399":"#f87171"],
+                            ["Company margin ("+Math.round((1-revPct)*100)+"%)", `$${companyHr.toFixed(2)}/hr = $${companyAnn.toLocaleString()}/yr`, "#64748b"],
+                          ].map(([lbl,val,col])=>(
+                            <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                              <span style={{color:"#64748b"}}>{lbl}</span>
+                              <span style={{color:col,fontFamily:"monospace",fontWeight:600}}>{val}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                 <FF label="Bill Rate/hr ($)"><input className="inp" type="number" value={form.billRate} onChange={e=>setForm({...form,billRate:e.target.value})} placeholder="155"/></FF>
                 <FF label="Utilization (0–1)"><input className="inp" type="number" step="0.1" min="0" max="1" value={form.util} onChange={e=>setForm({...form,util:e.target.value})} placeholder="0.8"/></FF>
