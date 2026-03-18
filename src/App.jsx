@@ -15317,11 +15317,11 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
   const [selProject, setSelProject]   = useState(""); // for multi-project timesheets
   const [selClient,  setSelClient]    = useState(""); // override client
 
-  // Sync activeSheet when month changes
-  useState(() => {
+  // Sync activeSheet when month/year changes — MUST be useEffect (not useState)
+  useEffect(() => {
     const existing = mySheets.find(s => s.period === currentSheetKey);
     setActiveSheet(existing || buildBlankSheet());
-  });
+  }, [selMonth, selYear]); // re-runs whenever the user navigates months
 
   // ── US Federal Holidays 2026 ─────────────────────────────────────────────
   const US_HOLIDAYS_TS = {
@@ -15341,7 +15341,7 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
         const isHol  = !!US_HOLIDAYS_TS[d.date];
         if (isWknd) return { ...d, hours:0, type:"regular", notes:"" };
         if (isHol)  return { ...d, hours:8, type:"holiday", notes:US_HOLIDAYS_TS[d.date] };
-        return { ...d, hours: d.hours > 0 ? d.hours : 8, type: d.type||"regular" };
+        return { ...d, hours: 8, type: "regular" }; // always set 8h on auto-fill
       })
     };
     setActiveSheet(recalc(updated));
