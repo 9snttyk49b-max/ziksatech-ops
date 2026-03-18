@@ -15873,8 +15873,6 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
         </div>
       )}
 
-    
-      
 
       {/* ── REJECT APPROVED TIMESHEET MODAL ── */}
       {rejectModal && (
