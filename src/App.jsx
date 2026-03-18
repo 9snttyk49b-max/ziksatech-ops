@@ -1580,8 +1580,9 @@ const fmtDate = d => { if(!d) return "—"; const dt=new Date(d+"T00:00:00"); re
 
 function calcRoster(r, clientId) {
   // Use per-client rate if available, else fall back to default billRate
-  const effectiveRate = (clientId && r.clientRates?.find(cr => cr.clientId === clientId)?.rate) || r.billRate;
-  const hrs = Math.round(r.util * BURDEN.hoursPerYear);
+  const rates = Array.isArray(r.clientRates) ? r.clientRates : [];
+  const effectiveRate = (clientId && rates.find(cr => cr.clientId === clientId)?.rate) || r.billRate || 0;
+  const hrs = Math.round((+r.util || 0) * BURDEN.hoursPerYear);
   const rev = hrs * effectiveRate;
   let bonus = 0;
   if (r.revShare > 0 && r.baseSalary > 0) {
@@ -2027,6 +2028,7 @@ export default function ZiksatechOps() {
   const [authView, setAuthView] = useState("login"); // login | register | pending
   const [authSession, setAuthSession] = useState(() => supaAuth ? supaAuth.loadSession() : null);
   const [authProfile, setAuthProfile] = useState(null);
+  const [pendingRegistrations, setPendingRegistrations] = useState(0);
 
   // Redirect to role home if current tab is inaccessible
   useEffect(() => {
@@ -8106,7 +8108,7 @@ function FinOverview({ roster, clients, finInvoices, finPayments, finExpenses })
   });
 
   // Gross margin from roster
-  const rData = roster.map(r => ({...calcRoster(r, r.client) }));
+  const rData = roster.map(r => ({ ...r, clientRates:r.clientRates||[], ...calcRoster(r, r.client) }));
   const annualRev   = rData.reduce((s,r)=>s+r.rev,0);
   const annualCost  = rData.reduce((s,r)=>s+r.totalCost,0);
   const grossMargin = annualRev > 0 ? (annualRev - annualCost) / annualRev : 0;
@@ -32137,15 +32139,15 @@ function CapacityPlanner({ roster, projects, sows, clients, tsHours }) {
   const [hovered, setHovered] = useState(null);
   const [selPerson, setSelPerson] = useState(null);
 
-  const rData = roster.map(r => ({...calcRoster(r, r.client)}));
+  const rData = roster.map(r => ({ ...r, clientRates:r.clientRates||[], ...calcRoster(r, r.client) }));
 
   // Capacity model: each person has utilization → booked hours/week
   // Project assignments derived from roster.client + projects
   const WORK_HRS = 40;
   const personCapacity = rData.map(r => {
-    const bookedPct  = r.util;
+    const bookedPct  = +r.util || 0;
     const bookedHrs  = Math.round(WORK_HRS * bookedPct);
-    const freeHrs    = WORK_HRS - bookedHrs;
+    const freeHrs    = Math.max(0, WORK_HRS - bookedHrs);
     const assignments = projects.filter(p => p.team?.includes(r.id) || p.pm===r.name || r.client===p.client);
     return { ...r, bookedHrs, freeHrs, bookedPct, assignments };
   });
@@ -32382,7 +32384,7 @@ function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses,
   const [selProj, setSelProj] = useState(null);
   const [year, setYear] = useState("2026");
 
-  const rData = roster.map(r=>({...r,...calcRoster(r, r.client)}));
+  const rData = roster.map(r=>({...r, clientRates:r.clientRates||[], ...calcRoster(r, r.client)}));
 
   // ── Company-level budget model ──────────────────────────────────────────────
   const COMPANY_BUDGET = {
