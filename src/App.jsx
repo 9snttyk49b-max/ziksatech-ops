@@ -1595,41 +1595,56 @@ const pct = n => window.__ZT_MASK__!==false ? "●●.●%" : (n*100).toFixed(1)
 const fmtDate = d => { if(!d) return "—"; const dt=new Date(d+"T00:00:00"); return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
 
 function calcRoster(r, clientId) {
-  // Use per-client rate if available, else fall back to default billRate
   const rates = Array.isArray(r.clientRates) ? r.clientRates : [];
   const effectiveRate = (clientId && rates.find(cr => cr.clientId === clientId)?.rate) || r.billRate || 0;
-  const hrs = Math.round((+r.util || 0) * BURDEN.hoursPerYear);
-  const rev = hrs * effectiveRate;
+  const hrs  = Math.round((+r.util || 0) * BURDEN.hoursPerYear);
+  const rev  = hrs * effectiveRate;
+
+  // ── CONTRACTOR (C2C) ─────────────────────────────────────────────────────
+  // Simple: Bill client $X, pay contractor $Y, company keeps $(X-Y).
+  // Contractor pays their own taxes, benefits, insurance — zero employer burden.
+  if (r.type === "Contractor") {
+    const payRate   = +r.fixedRate || 0;         // what we pay contractor/hr
+    const totalCost = payRate * hrs;              // pure contractor cost
+    const coKeeps   = rev - totalCost;            // company margin
+    const netMargin = rev > 0 ? coKeeps / rev : 0;
+    const keepPct   = Math.round(netMargin * 100);
+    return { hrs, rev, bonus:0, consTake:totalCost, thirdParty:0,
+             coKeeps, totalCost, netMargin, keepPct,
+             payRate, keepHr: effectiveRate - payRate };
+  }
+
+  // ── FTE (W-2) ─────────────────────────────────────────────────────────────
+  // Company carries all employer taxes on top of base salary.
+  // Employer taxes: FICA (7.65%), FUTA, SUTA (TX), Workers Comp, health, 401k match.
+  const sal  = +r.baseSalary || 0;
+  const fica = sal * BURDEN.fica;
+  const futa = BURDEN.futa * Math.min(sal, BURDEN.futaCap);
+  const suta = BURDEN.suta * Math.min(sal, BURDEN.sutaCap);
+  const wc   = sal * BURDEN.wc;
+  const ret  = sal * BURDEN.retire;
+  const oth  = sal * BURDEN.other;
+  const k401 = +r.contrib401k || 0;
+  const ins  = +r.insurance || BURDEN.health;
+  // Employer burden = all taxes + benefits company pays
+  const employerBurden = fica + futa + suta + wc + ret + oth + ins + k401;
+
+  // Revenue share bonus (Type 2 — LCA-based, internal)
   let bonus = 0;
-  if (r.revShare > 0 && r.baseSalary > 0) {
-    const consRate = r.billRate * r.revShare;
-    const salRate = r.baseSalary / BURDEN.hoursPerYear;
-    bonus = Math.max(0, (consRate - salRate) * hrs);
+  if (r.compType === "revenue_share" && r.lcaWage && +r.revShare > 0) {
+    const lca        = +r.lcaWage || 0;
+    const consPoolHr = effectiveRate * (+r.revShare || 0);
+    const loadedHr   = (lca + lca * (BURDEN.fica + BURDEN.wc + BURDEN.retire + BURDEN.other)) / BURDEN.hoursPerYear;
+    bonus = Math.max(0, (consPoolHr - loadedHr) * hrs);
   }
-  const consTake = r.type === "Contractor" ? Math.round(r.fixedRate * hrs * r.revShare || r.fixedRate * hrs) : bonus;
-  const thirdParty = r.type === "Contractor" && r.thirdPartySplit > 0
-    ? Math.round((r.billRate - r.fixedRate) * hrs * r.thirdPartySplit) : 0;
-  // Calculate totalCost FIRST so coKeeps can use it
-  let totalCost = 0;
-  if (r.type === "FTE") {
-    const fica = r.baseSalary * BURDEN.fica;
-    const futa = BURDEN.futa * Math.min(r.baseSalary, BURDEN.futaCap);
-    const suta = BURDEN.suta * Math.min(r.baseSalary, BURDEN.sutaCap);
-    const wc = r.baseSalary * BURDEN.wc;
-    const ret = r.baseSalary * BURDEN.retire;
-    const oth = r.baseSalary * BURDEN.other;
-    totalCost = r.baseSalary + fica + futa + suta + wc + BURDEN.health + ret + oth + bonus;
-  } else {
-    totalCost = r.fixedRate * hrs + thirdParty + (r.insurance || 0);
-  }
-  // Co.Keeps = what the company nets after all costs
-  // FTE: revenue minus full employment cost
-  // Contractor: revenue minus what we pay the contractor + any third-party split
-  const coKeeps = r.type === "FTE"
-    ? rev - totalCost
-    : rev - (r.fixedRate * hrs) - thirdParty - (r.revShare > 0 && r.baseSalary > 0 ? bonus : 0);
-  const netMargin = rev > 0 ? (rev - totalCost) / rev : 0;
-  return { hrs, rev, bonus, consTake, thirdParty, coKeeps, totalCost, netMargin };
+
+  const totalCost = sal + employerBurden + bonus;
+  const coKeeps   = rev - totalCost;
+  const netMargin = rev > 0 ? coKeeps / rev : 0;
+
+  return { hrs, rev, bonus, consTake:bonus, thirdParty:0,
+           coKeeps, totalCost, netMargin, employerBurden, sal,
+           keepHr: rev > 0 ? (coKeeps / hrs) : 0 };
 }
 
 const statusColors = { draft:"#94a3b8", sent:"#f59e0b", paid:"#10b981", overdue:"#ef4444", processed:"#10b981", pending:"#f59e0b" };
@@ -3866,10 +3881,45 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
                 <FF label="Utilization (0–1)"><input className="inp" type="number" step="0.1" min="0" max="1" value={form.util} onChange={e=>setForm({...form,util:e.target.value})} placeholder="0.8"/></FF>
                 {form.type==="FTE" && <FF label="Base Salary ($)"><input className="inp" type="number" value={form.baseSalary} onChange={e=>setForm({...form,baseSalary:e.target.value})} placeholder="100000"/></FF>}
                 <FF label="Rev Share % (0–1)"><input className="inp" type="number" step="0.05" min="0" max="1" value={form.revShare} onChange={e=>setForm({...form,revShare:e.target.value})} placeholder="0"/></FF>
-                {form.type==="Contractor" && <>
-                  <FF label="Fixed Rate/hr — your cost ($)"><input className="inp" type="number" value={form.fixedRate} onChange={e=>setForm({...form,fixedRate:e.target.value})} placeholder="140"/></FF>
-                  <FF label="3rd Party Split (0–1)"><input className="inp" type="number" step="0.1" min="0" max="1" value={form.thirdPartySplit} onChange={e=>setForm({...form,thirdPartySplit:e.target.value})} placeholder="0.5"/></FF>
-                </>}
+                {form.type==="Contractor" && (()=>{
+                  const bill = +form.billRate || 0;
+                  const pay  = +form.fixedRate || 0;
+                  const hrs  = Math.round((+form.util||0) * BURDEN.hoursPerYear);
+                  const keepHr   = bill - pay;
+                  const keepAnn  = keepHr * hrs;
+                  const marginPct = bill > 0 ? Math.round(keepHr / bill * 100) : 0;
+                  return (
+                    <>
+                      <FF label="Pay Contractor/hr ($) — C2C rate">
+                        <input className="inp" type="number" value={form.fixedRate}
+                          onChange={e=>setForm({...form,fixedRate:e.target.value})} placeholder="80"/>
+                      </FF>
+                      {bill > 0 && pay > 0 && (
+                        <div style={{gridColumn:"span 2",padding:"10px 14px",background:"#020d1c",borderRadius:8,
+                          border:"1px solid #1a2d45",marginTop:4}}>
+                          <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>
+                            💡 C2C Margin Preview (internal)
+                          </div>
+                          {[
+                            ["Client billed",                   `$${bill}/hr`,                         "#38bdf8"],
+                            ["Pay contractor (C2C)",            `$${pay}/hr`,                          "#94a3b8"],
+                            ["→ Company keeps",                 `$${keepHr}/hr — ${marginPct}% margin`, keepHr>0?"#34d399":"#f87171"],
+                            ["Annual margin ("+Math.round((+form.util||0)*100)+"% util)", `$${keepAnn.toLocaleString()}/yr`, keepHr>0?"#34d399":"#f87171"],
+                          ].map(([lbl,val,col])=>(
+                            <div key={lbl} style={{display:"flex",justifyContent:"space-between",
+                              padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                              <span style={{color:"#64748b"}}>{lbl}</span>
+                              <span style={{color:col,fontFamily:"monospace",fontWeight:600}}>{val}</span>
+                            </div>
+                          ))}
+                          <div style={{fontSize:9,color:"#1e3a5f",marginTop:6}}>
+                            ℹ Contractor handles their own taxes, benefits, and insurance — no employer burden.
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 <FF label="Insurance/yr ($) — employer + employee share">
                   <input className="inp" type="number" value={form.insurance} onChange={e=>setForm({...form,insurance:e.target.value})} placeholder="7200"/>
                   <div style={{fontSize:10,color:"#334155",marginTop:4}}>Split between employer &amp; employee (e.g. employer pays $500/mo, employee pays $100/mo → enter $7,200)</div>
@@ -3961,6 +4011,84 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
                         )}
                       </div>
                   }
+                </div>
+              );
+            })()}
+
+            {/* ── Company P&L at a Glance ── */}
+            {(()=>{
+              const billR  = +form.billRate || 0;
+              const util   = +form.util     || 0;
+              const hrs    = Math.round(util * BURDEN.hoursPerYear);
+              const rev    = billR * hrs;
+              if (!rev) return null;
+              if (form.type === "Contractor") {
+                const pay     = +form.fixedRate || 0;
+                const keepHr  = billR - pay;
+                const keepAnn = keepHr * hrs;
+                const margin  = billR > 0 ? Math.round(keepHr/billR*100) : 0;
+                return (
+                  <div style={{background:"#050e1c",border:"1px solid #1a2d45",borderRadius:10,padding:"14px 16px",marginBottom:14}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:1}}>
+                        Company P&L — C2C
+                      </div>
+                      <div style={{fontSize:18,fontWeight:800,color:keepHr>0?"#34d399":"#f87171",fontFamily:"'DM Mono',monospace"}}>
+                        ${keepAnn.toLocaleString()}/yr
+                        <span style={{fontSize:10,color:"#475569",fontWeight:400,marginLeft:6}}>{margin}% margin</span>
+                      </div>
+                    </div>
+                    {[
+                      ["Client billed",                     `$${billR}/hr × ${hrs}h`,    `$${rev.toLocaleString()}`,     "#38bdf8"],
+                      ["Pay contractor (C2C)",              `$${pay}/hr × ${hrs}h`,     `-$${(pay*hrs).toLocaleString()}`, "#94a3b8"],
+                      ["Company keeps",                     `$${keepHr}/hr × ${hrs}h`,  `$${keepAnn.toLocaleString()}`,   keepHr>0?"#34d399":"#f87171"],
+                    ].map(([lbl,sub,val,col])=>(
+                      <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                        <div>
+                          <div style={{fontSize:11,color:"#94a3b8"}}>{lbl}</div>
+                          <div style={{fontSize:9,color:"#334155"}}>{sub}</div>
+                        </div>
+                        <div style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700,color:col}}>{val}</div>
+                      </div>
+                    ))}
+                    <div style={{fontSize:9,color:"#1e3a5f",marginTop:8,padding:"6px 8px",background:"#040a14",borderRadius:4}}>
+                      ℹ Contractor pays own taxes & benefits — no employer burden on Ziksatech side.
+                    </div>
+                  </div>
+                );
+              }
+              // FTE P&L
+              const sal     = +form.baseSalary || 0;
+              const burden  = sal*(BURDEN.fica+BURDEN.wc+BURDEN.retire+BURDEN.other) + BURDEN.futa*Math.min(sal,BURDEN.futaCap) + BURDEN.suta*Math.min(sal,BURDEN.sutaCap) + (+form.insurance||BURDEN.health) + (+form.contrib401k||0);
+              const totalCost = sal + burden;
+              const profit  = rev - totalCost;
+              const margin  = rev > 0 ? Math.round(profit/rev*100) : 0;
+              return (
+                <div style={{background:"#050e1c",border:"1px solid #1a2d45",borderRadius:10,padding:"14px 16px",marginBottom:14}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:1}}>
+                      Company P&L — FTE W-2
+                    </div>
+                    <div style={{fontSize:18,fontWeight:800,color:profit>0?"#34d399":"#f87171",fontFamily:"'DM Mono',monospace"}}>
+                      ${profit.toLocaleString()}/yr
+                      <span style={{fontSize:10,color:"#475569",fontWeight:400,marginLeft:6}}>{margin}% margin</span>
+                    </div>
+                  </div>
+                  {[
+                    ["Client billed",                  `$${billR}/hr × ${hrs}h`,               `$${rev.toLocaleString()}`,             "#38bdf8"],
+                    ["Employee base salary",            "fixed cost",                           `-$${sal.toLocaleString()}`,              "#e2e8f0"],
+                    ["Employer taxes & benefits",       "FICA, FUTA, SUTA, WC, health, 401k",  `-$${Math.round(burden).toLocaleString()}`, "#f59e0b"],
+                    ["Total employment cost",           `$${Math.round(totalCost).toLocaleString()} vs $${rev.toLocaleString()} revenue`, `-$${Math.round(totalCost).toLocaleString()}`, "#f87171"],
+                    ["→ Company gross profit",          `${margin}% margin`,                    `$${profit.toLocaleString()}`,           profit>0?"#34d399":"#f87171"],
+                  ].map(([lbl,sub,val,col])=>(
+                    <div key={lbl} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                      <div>
+                        <div style={{fontSize:11,color:"#94a3b8"}}>{lbl}</div>
+                        <div style={{fontSize:9,color:"#334155"}}>{sub}</div>
+                      </div>
+                      <div style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700,color:col}}>{val}</div>
+                    </div>
+                  ))}
                 </div>
               );
             })()}
