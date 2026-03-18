@@ -15871,22 +15871,6 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
             </table>
           </div>
         </div>
-    
-      {/* ── REJECT APPROVED TIMESHEET MODAL ── */}
-      {rejectModal && (
-        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setRejectModal(null)}>
-          <div className="modal" style={{maxWidth:460}}>
-            <MH title="Reject Approved Timesheet" onClose={()=>setRejectModal(null)}/>
-            <div style={{marginBottom:16,padding:"12px 16px",background:"#1a0808",border:"1px solid #f8717144",borderRadius:8}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#f87171",marginBottom:4}}>⚠ This will reverse approval</div>
-              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>
-                <strong style={{color:"#e2e8f0"}}>{rejectModal.name}</strong> — {rejectModal.period}<br/>
-                Status: <strong style={{color:"#34d399"}}>{rejectModal.fromStatus==="client_approved"?"Client Approved":"Approved"}</strong> → <strong style={{color:"#f87171"}}>Rejected</strong>.<br/>
-                The consultant will see this reason and must resubmit.
-              </div>
-            </div>
-            <FF label="Reason for Rejection *">
-              <textarea className="inp" rows={3}
                 value={rejectReason}
                 onChange={e=>setRejectReason(e.target.value)}
                 placeholder="e.g. Week of Jan 13 shows 8h but client PO only shows 4h. Please correct and resubmit."
@@ -15907,6 +15891,42 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
         </div>
       )}
   )}
+
+    
+      
+
+      {/* ── REJECT APPROVED TIMESHEET MODAL ── */}
+      {rejectModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setRejectModal(null)}>
+          <div className="modal" style={{maxWidth:460}}>
+            <MH title="Reject Approved Timesheet" onClose={()=>setRejectModal(null)}/>
+            <div style={{marginBottom:16,padding:"12px 16px",background:"#1a0808",border:"1px solid #f8717144",borderRadius:8}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f87171",marginBottom:4}}>⚠ This will reverse approval</div>
+              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>
+                <strong style={{color:"#e2e8f0"}}>{rejectModal.name}</strong> — {rejectModal.period}<br/>
+                Status: <strong style={{color:"#34d399"}}>{rejectModal.fromStatus==="client_approved"?"Client Approved":"Approved"}</strong> → <strong style={{color:"#f87171"}}>Rejected</strong>.<br/>
+                The consultant will see this reason and must resubmit.
+              </div>
+            </div>
+            <FF label="Reason for Rejection *">
+              <textarea className="inp" rows={3} value={rejectReason} autoFocus
+                onChange={e=>setRejectReason(e.target.value)}
+                placeholder="e.g. Week of Jan 13 shows 8h but client PO says 4h. Please correct and resubmit."/>
+            </FF>
+            <div style={{fontSize:10,color:"#475569",marginTop:6,marginBottom:16}}>
+              This reason will be visible to the consultant on their My View tab.
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button className="btn bg" onClick={()=>setRejectModal(null)}>Cancel</button>
+              <button className="btn br" style={{fontWeight:700}}
+                disabled={!rejectReason.trim()}
+                onClick={()=>{ adminReject(rejectModal.sheetId, rejectReason.trim()); setRejectModal(null); setRejectReason(""); }}>
+                ↩ Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
