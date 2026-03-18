@@ -15336,7 +15336,7 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
   const autoFillMonth = () => {
     const updated = { ...activeSheet,
       days: activeSheet.days.map(d => {
-        const dow    = new Date(d.date).getDay();
+        const dow    = new Date(d.date + "T12:00:00").getDay(); // noon local avoids UTC midnight timezone shift
         const isWknd = dow === 0 || dow === 6;
         const isHol  = !!US_HOLIDAYS_TS[d.date];
         if (isWknd) return { ...d, hours:0, type:"regular", notes:"" };
