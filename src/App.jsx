@@ -424,15 +424,15 @@ const PIPELINE_SEED = [
 ];
 
 const CLIENTS_SEED = [
-  { id:"cl1", name:"HOPE-IDI",             vertical:"Utilities / Energy",   engType:"Project",   annualRev:1200000, grossMargin:0.35, health:"Green", csmId:"", notes:"Core anchor. SAP BRIM Phase 3. Deepa + Arun on-site.", consultants:2, renewalDate:"2026-12-31" },
-  { id:"cl2", name:"Toyota",               vertical:"Automotive",           engType:"Staff Aug", annualRev:180000,  grossMargin:0.25, health:"Green", csmId:"", notes:"Vivek on SuccessFactors HCM. Expansion discussions Q3.", consultants:1, renewalDate:"2026-08-31" },
-  { id:"cl3", name:"HPE",                  vertical:"Technology",           engType:"Staff Aug", annualRev:180000,  grossMargin:0.28, health:"Green", csmId:"", notes:"Malla on IS-U/S4HANA. Rachel is primary contact.", consultants:1, renewalDate:"2026-08-31" },
-  { id:"cl4", name:"PTC",                  vertical:"Transportation / Tolling",engType:"Project", annualRev:450000,  grossMargin:0.30, health:"Green", csmId:"", notes:"Nuthan on BRIM tolling billing. Stable. Expand to 3.", consultants:1, renewalDate:"2026-09-30" },
-  { id:"cl5", name:"Arhasi",               vertical:"AI / Analytics",       engType:"Staff Aug", annualRev:108000,  grossMargin:0.20, health:"Green", csmId:"", notes:"Kartheek on AI/ML + BTP. Performance strong.", consultants:1, renewalDate:"2027-02-02" },
-  { id:"cl6", name:"SCG",                  vertical:"Gas Utilities",         engType:"Staff Aug", annualRev:300000,  grossMargin:0.28, health:"Green", csmId:"", notes:"Sudheendra on MDG/Data Governance program.", consultants:1, renewalDate:"2027-02-02" },
-  { id:"cl7", name:"Freeman - Mouritech",  vertical:"Media / Events",       engType:"Staff Aug", annualRev:180000,  grossMargin:0.18, health:"Green", csmId:"", notes:"Naveen on S/4HANA Finance. Ravi Soni stakeholder.", consultants:1, renewalDate:"2027-06-30" },
-  { id:"cl8", name:"NTTA",                 vertical:"Government / Tolling",  engType:"Staff Aug", annualRev:220000,  grossMargin:0.32, health:"Green", csmId:"", notes:"Rajesh at $185/hr. IS-U tolling specialist. Stable.", consultants:1, renewalDate:"2026-12-31" },
-  { id:"cl9", name:"Toyota Connected",     vertical:"Automotive / Data",    engType:"Staff Aug", annualRev:180000,  grossMargin:0.25, health:"Green", csmId:"", notes:"Priya on Databricks + AWS data pipeline.", consultants:1, renewalDate:"2026-09-30" },
+  { id:"cl1", name:"HOPE-IDI",             vertical:"Utilities / Energy",   engType:"Project",   annualRev:1200000, grossMargin:0.35, health:"Green", csmId:"", notes:"Core anchor. SAP BRIM Phase 3. Deepa + Arun on-site.", consultants:2, renewalDate:"2026-12-31", address:"123 Energy Blvd", city:"Houston", state:"TX", zip:"77002", contactName:"Mike Reynolds", contactEmail:"mreynolds@hope-idi.com", contactPhone:"713-555-1001" },
+  { id:"cl2", name:"Toyota",               vertical:"Automotive",           engType:"Staff Aug", annualRev:180000,  grossMargin:0.25, health:"Green", csmId:"", notes:"Vivek on SuccessFactors HCM. Expansion discussions Q3.", consultants:1, renewalDate:"2026-08-31", address:"6565 Headquarters Dr", city:"Plano", state:"TX", zip:"75024", contactName:"David Kim", contactEmail:"dkim@toyota.com", contactPhone:"469-555-2001" },
+  { id:"cl3", name:"HPE",                  vertical:"Technology",           engType:"Staff Aug", annualRev:180000,  grossMargin:0.28, health:"Green", csmId:"", notes:"Malla on IS-U/S4HANA. Rachel is primary contact.", consultants:1, renewalDate:"2026-08-31", address:"11445 Compaq Center Dr W", city:"Houston", state:"TX", zip:"77070", contactName:"Rachel Torres", contactEmail:"rtorres@hpe.com", contactPhone:"281-555-3001" },
+  { id:"cl4", name:"PTC",                  vertical:"Transportation / Tolling",engType:"Project", annualRev:450000,  grossMargin:0.30, health:"Green", csmId:"", notes:"Nuthan on BRIM tolling billing. Stable. Expand to 3.", consultants:1, renewalDate:"2026-09-30", address:"121 Seaport Blvd", city:"Plano", state:"TX", zip:"75075", contactName:"James McAllister", contactEmail:"jmcallister@ptc.com", contactPhone:"972-555-4001" },
+  { id:"cl5", name:"Arhasi",               vertical:"AI / Analytics",       engType:"Staff Aug", annualRev:108000,  grossMargin:0.20, health:"Green", csmId:"", notes:"Kartheek on AI/ML + BTP. Performance strong.", consultants:1, renewalDate:"2027-02-02", address:"5601 Bridge St", city:"Fort Worth", state:"TX", zip:"76112", contactName:"Preethi Sharma", contactEmail:"psharma@arhasi.com", contactPhone:"817-555-5001" },
+  { id:"cl6", name:"SCG",                  vertical:"Gas Utilities",         engType:"Staff Aug", annualRev:300000,  grossMargin:0.28, health:"Green", csmId:"", notes:"Sudheendra on MDG/Data Governance program.", consultants:1, renewalDate:"2027-02-02", address:"1 Transmission Way", city:"Houston", state:"TX", zip:"77092", contactName:"Bill Foster", contactEmail:"bfoster@scg.com", contactPhone:"713-555-6001" },
+  { id:"cl7", name:"Freeman - Mouritech",  vertical:"Media / Events",       engType:"Staff Aug", annualRev:180000,  grossMargin:0.18, health:"Green", csmId:"", notes:"Naveen on S/4HANA Finance. Ravi Soni stakeholder.", consultants:1, renewalDate:"2027-06-30", address:"98 San Jacinto Blvd", city:"Austin", state:"TX", zip:"78701", contactName:"Chris Mouritech", contactEmail:"cmouritech@freeman.com", contactPhone:"512-555-7001" },
+  { id:"cl8", name:"NTTA",                 vertical:"Government / Tolling",  engType:"Staff Aug", annualRev:220000,  grossMargin:0.32, health:"Green", csmId:"", notes:"Rajesh at $185/hr. IS-U tolling specialist. Stable.", consultants:1, renewalDate:"2026-12-31", address:"5900 W Plano Pkwy", city:"Plano", state:"TX", zip:"75093", contactName:"Sandra Wells", contactEmail:"swells@ntta.org", contactPhone:"972-555-8001" },
+  { id:"cl9", name:"Toyota Connected",     vertical:"Automotive / Data",    engType:"Staff Aug", annualRev:180000,  grossMargin:0.25, health:"Green", csmId:"", notes:"Priya on Databricks + AWS data pipeline.", consultants:1, renewalDate:"2026-09-30", address:"6565 Headquarters Dr", city:"Plano", state:"TX", zip:"75024", contactName:"Ryan Park", contactEmail:"rpark@toyotaconnected.com", contactPhone:"469-555-9001" },
 ];
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -6514,7 +6514,7 @@ function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
   const { dragProps: dragP_c } = useDragSort(clients, setClients);
   const [form, setForm] = useState(null);
   const [editing, setEditing] = useState(null);
-  const empty = { name:"", vertical:"", engType:"Staff Aug", annualRev:"", consultants:"", grossMargin:"", health:"Green", renewal:"", notes:"" };
+  const empty = { name:"", vertical:"", engType:"Staff Aug", annualRev:"", consultants:"", grossMargin:"", health:"Green", renewal:"", notes:"", address:"", city:"", state:"", zip:"", contactName:"", contactEmail:"", contactPhone:"" };
 
   const open = (c=null) => { setEditing(c?.id||null); setForm(c?{...c}:{...empty}); setModal(true); };
   const save = () => {
@@ -6557,6 +6557,8 @@ function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
           <div key={c.id} className="tr" {...dragP_c(_di_)} style={{gridTemplateColumns:"1.2fr 100px 120px 100px 60px 80px 80px 100px auto"}}>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c.name}</div>
+              {(c.city||c.address) && <div style={{fontSize:9,color:"#3d5a7a",marginTop:1}}>{[c.address,c.city,c.state].filter(Boolean).join(", ")}</div>}
+              {c.contactName && <div style={{fontSize:9,color:"#334155"}}>{c.contactName}{c.contactPhone?" · "+c.contactPhone:""}</div>}
               <div style={{fontSize:10,color:"#3d5a7a",marginTop:1}}>{c.notes}</div>
             </div>
             <span style={{fontSize:11,color:"#64748b"}}>{c.vertical}</span>
@@ -6590,6 +6592,17 @@ function ClientPortfolio({ clients, setClients, finInvoices, finPayments }) {
               <FF label="Gross Margin (0-1)"><input className="inp" type="number" step="0.01" value={form.grossMargin} onChange={e=>setForm({...form,grossMargin:e.target.value})} placeholder="0.22"/></FF>
               <FF label="Health"><select className="inp" value={form.health} onChange={e=>setForm({...form,health:e.target.value})}><option>Green</option><option>Amber</option><option>Red</option></select></FF>
               <FF label="Renewal Date"><input className="inp" type="date" value={form.renewal} onChange={e=>setForm({...form,renewal:e.target.value})}/></FF>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}}>
+              <FF label="Contact Name"><input className="inp" value={form.contactName||""} onChange={e=>setForm({...form,contactName:e.target.value})} placeholder="Jane Smith"/></FF>
+              <FF label="Contact Email"><input className="inp" type="email" value={form.contactEmail||""} onChange={e=>setForm({...form,contactEmail:e.target.value})} placeholder="jane@client.com"/></FF>
+              <FF label="Contact Phone"><input className="inp" value={form.contactPhone||""} onChange={e=>setForm({...form,contactPhone:e.target.value})} placeholder="214-555-0100"/></FF>
+              <FF label="Street Address"><input className="inp" value={form.address||""} onChange={e=>setForm({...form,address:e.target.value})} placeholder="123 Main Street"/></FF>
+              <FF label="City"><input className="inp" value={form.city||""} onChange={e=>setForm({...form,city:e.target.value})} placeholder="Dallas"/></FF>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <FF label="State"><input className="inp" value={form.state||""} onChange={e=>setForm({...form,state:e.target.value})} placeholder="TX"/></FF>
+                <FF label="ZIP"><input className="inp" value={form.zip||""} onChange={e=>setForm({...form,zip:e.target.value})} placeholder="75201"/></FF>
+              </div>
             </div>
             <FF label="Notes"><textarea className="inp" rows={2} style={{resize:"none"}} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Account notes..."/></FF>
             <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}>
@@ -8400,7 +8413,15 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
           <div className="modal" style={{maxWidth:640}}>
             <MH title="New Invoice" onClose={()=>setNewModal(false)}/>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Client"><select className="inp" value={form.clientId} onChange={e=>setForm({...form,clientId:e.target.value})}>
+              <FF label="Client"><select className="inp" value={form.clientId} onChange={e=>{
+                  const sel=clients.find(cl=>cl.id===e.target.value)||{};
+                  const addr=[sel.address,sel.city&&sel.state?`${sel.city}, ${sel.state} ${sel.zip||""}`:sel.city||sel.state].filter(Boolean).join("\n");
+                  setForm({...form,clientId:e.target.value,
+                    clientAddress:addr.trim(),
+                    clientEmail:sel.contactEmail||"",
+                    clientContact:sel.contactName||""
+                  });
+                }}>
                 <option value="">Select…</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
               </select></FF>
               <FF label="Project Name"><input className="inp" value={form.projectName} onChange={e=>setForm({...form,projectName:e.target.value})} placeholder="AT&T Managed Services"/></FF>
