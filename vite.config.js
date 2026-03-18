@@ -65,6 +65,10 @@ export default defineConfig({
       },
     }),
   ],
+  // Expose ANTHROPIC_API_KEY (set in Vercel without VITE_ prefix) to the client bundle
+  define: {
+    'import.meta.env.VITE_ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY || ''),
+  },
   build: {
     rollupOptions: {
       output: {
