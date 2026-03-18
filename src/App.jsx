@@ -1601,22 +1601,18 @@ function calcRoster(r, clientId) {
   const rev  = hrs * effectiveRate;
 
   // ── CONTRACTOR (C2C) ─────────────────────────────────────────────────────
-  // Simple: Bill client $X, pay contractor $Y, company keeps $(X-Y).
-  // Contractor pays their own taxes, benefits, insurance — zero employer burden.
+  // Simple: Bill $X, pay contractor $Y, keep $(X-Y). Zero employer burden.
   if (r.type === "Contractor") {
-    const payRate   = +r.fixedRate || 0;         // what we pay contractor/hr
-    const totalCost = payRate * hrs;              // pure contractor cost
-    const coKeeps   = rev - totalCost;            // company margin
+    const payRate   = +r.fixedRate || 0;
+    const totalCost = payRate * hrs;
+    const coKeeps   = rev - totalCost;
     const netMargin = rev > 0 ? coKeeps / rev : 0;
-    const keepPct   = Math.round(netMargin * 100);
     return { hrs, rev, bonus:0, consTake:totalCost, thirdParty:0,
-             coKeeps, totalCost, netMargin, keepPct,
+             coKeeps, totalCost, netMargin, keepPct:Math.round(netMargin*100),
              payRate, keepHr: effectiveRate - payRate };
   }
 
   // ── FTE (W-2) ─────────────────────────────────────────────────────────────
-  // Company carries all employer taxes on top of base salary.
-  // Employer taxes: FICA (7.65%), FUTA, SUTA (TX), Workers Comp, health, 401k match.
   const sal  = +r.baseSalary || 0;
   const fica = sal * BURDEN.fica;
   const futa = BURDEN.futa * Math.min(sal, BURDEN.futaCap);
@@ -1625,26 +1621,44 @@ function calcRoster(r, clientId) {
   const ret  = sal * BURDEN.retire;
   const oth  = sal * BURDEN.other;
   const k401 = +r.contrib401k || 0;
-  const ins  = +r.insurance || BURDEN.health;
-  // Employer burden = all taxes + benefits company pays
+
+  const isRevShare = r.compType === "revenue_share";
+
+  // TYPE 1 — FIXED SALARY: company pays full benefits incl. health insurance
+  // TYPE 2 — REVENUE SHARE: company does NOT provide health benefits
+  //   (employee is responsible for own health coverage)
+  const ins = isRevShare ? 0 : (+r.insurance || BURDEN.health);
+
   const employerBurden = fica + futa + suta + wc + ret + oth + ins + k401;
 
-  // Revenue share bonus (Type 2 — LCA-based, internal)
+  // TYPE 2 bonus pool calculation:
+  //   Consultant pool = revShare% × billRate
+  //   Loaded hourly cost to meet LCA = (lcaWage + employer taxes on LCA) / hrs
+  //   Bonus = (consultant pool/hr - loaded cost/hr) × hrs
+  //   (company pays LCA wage as base + bonus on top; employee keeps the surplus)
   let bonus = 0;
-  if (r.compType === "revenue_share" && r.lcaWage && +r.revShare > 0) {
-    const lca        = +r.lcaWage || 0;
-    const consPoolHr = effectiveRate * (+r.revShare || 0);
-    const loadedHr   = (lca + lca * (BURDEN.fica + BURDEN.wc + BURDEN.retire + BURDEN.other)) / BURDEN.hoursPerYear;
-    bonus = Math.max(0, (consPoolHr - loadedHr) * hrs);
+  let lcaLoadedHr = 0;
+  let consPoolHr  = 0;
+  if (isRevShare && +r.lcaWage > 0 && +r.revShare > 0) {
+    const lca    = +r.lcaWage;
+    const lcaBurden = lca*(BURDEN.fica + BURDEN.wc + BURDEN.retire + BURDEN.other)
+                    + BURDEN.futa*Math.min(lca,BURDEN.futaCap)
+                    + BURDEN.suta*Math.min(lca,BURDEN.sutaCap);
+    lcaLoadedHr  = (lca + lcaBurden) / hrs;
+    consPoolHr   = effectiveRate * (+r.revShare);
+    bonus        = Math.max(0, (consPoolHr - lcaLoadedHr) * hrs);
   }
 
-  const totalCost = sal + employerBurden + bonus;
-  const coKeeps   = rev - totalCost;
-  const netMargin = rev > 0 ? coKeeps / rev : 0;
+  // For revenue share: baseSalary = LCA wage (guaranteed floor)
+  const baseCost   = isRevShare ? (+r.lcaWage || sal) : sal;
+  const totalCost  = baseCost + employerBurden + bonus;
+  const coKeeps    = rev - totalCost;
+  const netMargin  = rev > 0 ? coKeeps / rev : 0;
 
   return { hrs, rev, bonus, consTake:bonus, thirdParty:0,
-           coKeeps, totalCost, netMargin, employerBurden, sal,
-           keepHr: rev > 0 ? (coKeeps / hrs) : 0 };
+           coKeeps, totalCost, netMargin, employerBurden,
+           sal:baseCost, ins, isRevShare, lcaLoadedHr, consPoolHr,
+           keepHr: hrs > 0 ? coKeeps / hrs : 0 };
 }
 
 const statusColors = { draft:"#94a3b8", sent:"#f59e0b", paid:"#10b981", overdue:"#ef4444", processed:"#10b981", pending:"#f59e0b" };
@@ -3821,13 +3835,17 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
                 <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>
                   🔒 Comp Structure <span style={{fontWeight:400,color:"#1e3a5f",fontSize:9}}>(Internal PII — not shared with employee)</span>
                 </div>
-                <div style={{display:"flex",gap:8,marginBottom:form.compType==="revenue_share"?12:0}}>
-                  {[["fixed_salary","💼 Fixed Salary"],["revenue_share","📊 Revenue Share (LCA-based)"]].map(([val,lbl])=>(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+                  {[
+                    ["fixed_salary",  "💼 Fixed Salary",    "Fixed pay + company perf bonus · Health benefits included"],
+                    ["revenue_share", "📊 Revenue Share",   "LCA guaranteed + billing % bonus · No health benefits"],
+                  ].map(([val,lbl,desc])=>(
                     <button key={val} onClick={()=>setForm({...form,compType:val})}
-                      style={{flex:1,padding:"7px 12px",borderRadius:6,border:`1px solid ${form.compType===val?"#0ea5e9":"#1a2d45"}`,
-                        background:form.compType===val?"#0c2340":"transparent",
-                        color:form.compType===val?"#38bdf8":"#475569",fontSize:11,fontWeight:600,cursor:"pointer"}}>
-                      {lbl}
+                      style={{padding:"8px 12px",borderRadius:6,textAlign:"left",
+                        border:`1px solid ${form.compType===val?"#0ea5e9":"#1a2d45"}`,
+                        background:form.compType===val?"#0c2340":"transparent",cursor:"pointer"}}>
+                      <div style={{fontSize:12,fontWeight:700,color:form.compType===val?"#38bdf8":"#475569"}}>{lbl}</div>
+                      <div style={{fontSize:9,color:form.compType===val?"#1e3a5f":"#1a2d45",marginTop:2,lineHeight:1.4}}>{desc}</div>
                     </button>
                   ))}
                 </div>
@@ -3861,9 +3879,10 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
                           {[
                             ["Billing Rate (client pays)",   `$${billR}/hr`, "#38bdf8"],
                             ["Consultant pool ("+Math.round(revPct*100)+"%)", `$${consPoolHr.toFixed(2)}/hr`, "#a78bfa"],
-                            ["LCA loaded cost to generate $"+lca.toLocaleString(),`$${loadedHr.toFixed(2)}/hr`, "#f59e0b"],
+                            ["LCA loaded cost (salary+taxes, no health)",`$${loadedHr.toFixed(2)}/hr`, "#f59e0b"],
                             ["→ Consultant bonus pool",     `$${bonusHr.toFixed(2)}/hr = $${bonusAnn.toLocaleString()}/yr`, bonusHr>0?"#34d399":"#f87171"],
                             ["Company margin ("+Math.round((1-revPct)*100)+"%)", `$${companyHr.toFixed(2)}/hr = $${companyAnn.toLocaleString()}/yr`, "#64748b"],
+                            ["🚫 Health benefits",          "Employee provides own coverage", "#7f1d1d"],
                           ].map(([lbl,val,col])=>(
                             <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
                               <span style={{color:"#64748b"}}>{lbl}</span>
@@ -3920,12 +3939,20 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
                     </>
                   );
                 })()}
+                {form.compType !== "revenue_share" && (
                 <FF label="Insurance/yr ($) — employer + employee share">
                   <input className="inp" type="number" value={form.insurance} onChange={e=>setForm({...form,insurance:e.target.value})} placeholder="7200"/>
                   <div style={{fontSize:10,color:"#334155",marginTop:4}}>Split between employer &amp; employee (e.g. employer pays $500/mo, employee pays $100/mo → enter $7,200)</div>
                 </FF>
-                {form.type==="FTE" && (
-                  <FF label="401(k) Employer Contribution/yr ($) — optional">
+                )}
+                {form.compType === "revenue_share" && (
+                  <div style={{gridColumn:"span 1",padding:"8px 12px",background:"#1a0808",border:"1px solid #7f1d1d44",borderRadius:6}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#f87171",marginBottom:2}}>🚫 No Health Benefits</div>
+                    <div style={{fontSize:9,color:"#7f1d1d"}}>Revenue share employees provide their own health coverage. Company does not contribute.</div>
+                  </div>
+                )}
+                {form.type==="FTE" && form.compType!=="revenue_share" && (
+  <FF label="401(k) Employer Contribution/yr ($) — optional">
                     <input className="inp" type="number" value={form.contrib401k||""} onChange={e=>setForm({...form,contrib401k:e.target.value})} placeholder="Optional — e.g. 3600"/>
                   </FF>
                 )}
@@ -4058,9 +4085,8 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
                 );
               }
               // FTE P&L
-              const sal     = +form.baseSalary || 0;
-              const burden  = sal*(BURDEN.fica+BURDEN.wc+BURDEN.retire+BURDEN.other) + BURDEN.futa*Math.min(sal,BURDEN.futaCap) + BURDEN.suta*Math.min(sal,BURDEN.sutaCap) + (+form.insurance||BURDEN.health) + (+form.contrib401k||0);
-              const totalCost = sal + burden;
+              const isRS=form.compType==="revenue_share"; const fteSal=isRS?(+form.lcaWage||(+form.baseSalary||0)):(+form.baseSalary||0); const burden=(fteSal*(BURDEN.fica+BURDEN.wc+BURDEN.retire+BURDEN.other)+BURDEN.futa*Math.min(fteSal,BURDEN.futaCap)+BURDEN.suta*Math.min(fteSal,BURDEN.sutaCap)+(isRS?0:(+form.insurance||BURDEN.health))+(+form.contrib401k||0));
+              const totalCost = fteSal + burden;
               const profit  = rev - totalCost;
               const margin  = rev > 0 ? Math.round(profit/rev*100) : 0;
               return (
@@ -4076,8 +4102,8 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
                   </div>
                   {[
                     ["Client billed",                  `$${billR}/hr × ${hrs}h`,               `$${rev.toLocaleString()}`,             "#38bdf8"],
-                    ["Employee base salary",            "fixed cost",                           `-$${sal.toLocaleString()}`,              "#e2e8f0"],
-                    ["Employer taxes & benefits",       "FICA, FUTA, SUTA, WC, health, 401k",  `-$${Math.round(burden).toLocaleString()}`, "#f59e0b"],
+                    ["Employee base salary (LCA min)" ,isRS?"LCA guaranteed minimum":"fixed cost",`-$${fteSal.toLocaleString()}`,              "#e2e8f0"],
+                    ["Employer taxes & benefits", form.compType==="revenue_share"?"FICA, FUTA, SUTA, WC, 401k (no health)":"FICA, FUTA, SUTA, WC, health, 401k", `-$${Math.round(burden).toLocaleString()}`, "#f59e0b"],
                     ["Total employment cost",           `$${Math.round(totalCost).toLocaleString()} vs $${rev.toLocaleString()} revenue`, `-$${Math.round(totalCost).toLocaleString()}`, "#f87171"],
                     ["→ Company gross profit",          `${margin}% margin`,                    `$${profit.toLocaleString()}`,           profit>0?"#34d399":"#f87171"],
                   ].map(([lbl,sub,val,col])=>(
