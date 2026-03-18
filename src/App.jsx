@@ -29537,6 +29537,11 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
   const [visionPlans, setVisionPlans] = useState(VISION_PLANS_DEFAULT);
   const [editPlan,    setEditPlan]  = useState(null);
 
+  // ── Sync plan state → global aliases used by cost functions ──────────────
+  useEffect(() => { HEALTH_PLANS = healthPlans; }, [healthPlans]);
+  useEffect(() => { DENTAL_PLANS = dentalPlans; }, [dentalPlans]);
+  useEffect(() => { VISION_PLANS = visionPlans; }, [visionPlans]);
+
   // ── Auto-sync: add a default benefits record for any FTE not yet tracked ──
   // Only runs when roster changes. Uses rosterId as primary key to avoid dupes.
   useEffect(() => {
@@ -29654,7 +29659,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
           {/* Plan summary cards */}
           <div className="card" style={{padding:"18px 20px"}}>
             <div className="section-hdr">Health Plan Enrollment</div>
-            {HEALTH_PLANS.map(plan=>{
+            {healthPlans.map(plan=>{
               const enrolled = benefits.filter(b=>b.healthPlan===plan.id && b.name && b.name !== "New Employee");
               if (enrolled.length===0) return null;
               return (
@@ -29690,7 +29695,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
             <div className="section-hdr">Employee Benefits Summary</div>
             {benefits.map(b=>{
               const monthly = totalMonthlyCost(b);
-              const plan    = HEALTH_PLANS.find(p=>p.id===b.healthPlan);
+              const plan    = healthPlans.find(p=>p.id===b.healthPlan);
               const pctOf   = b.salary>0 ? (monthly*12/b.salary*100).toFixed(1) : 0;
               return (
                 <div key={b.id}
@@ -29731,8 +29736,8 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
               </thead>
               <tbody>
                 {benefits.map(b=>{
-                  const dental = DENTAL_PLANS.find(p=>p.id===b.dentalPlan);
-                  const vision = VISION_PLANS.find(p=>p.id===b.visionPlan);
+                  const dental = dentalPlans.find(p=>p.id===b.dentalPlan);
+                  const vision = visionPlans.find(p=>p.id===b.visionPlan);
                   return (
                     <tr key={b.id} style={{borderBottom:"1px solid #070b14"}}>
                       <td style={{padding:"7px 8px",color:"#94a3b8",fontWeight:500}}>{b.name.split(" ")[0]}</td>
@@ -29819,7 +29824,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
                     <div>
                       <div className="lbl">Health Plan</div>
                       <select className="inp" value={editForm.healthPlan} onChange={e=>setEditForm(f=>({...f,healthPlan:e.target.value}))}>
-                        {HEALTH_PLANS.map(p=><option key={p.id} value={p.id}>{p.name} (${p.premium_ee}/mo EE)</option>)}
+                        {healthPlans.map(p=><option key={p.id} value={p.id}>{p.name} (${p.premium_ee}/mo EE)</option>)}
                       </select>
                     </div>
                     <div>
@@ -29831,13 +29836,13 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
                     <div>
                       <div className="lbl">Dental Plan</div>
                       <select className="inp" value={editForm.dentalPlan} onChange={e=>setEditForm(f=>({...f,dentalPlan:e.target.value}))}>
-                        {DENTAL_PLANS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                        {dentalPlans.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                     </div>
                     <div>
                       <div className="lbl">Vision Plan</div>
                       <select className="inp" value={editForm.visionPlan} onChange={e=>setEditForm(f=>({...f,visionPlan:e.target.value}))}>
-                        {VISION_PLANS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                        {visionPlans.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                     </div>
                   </div>
@@ -29872,8 +29877,8 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                     <div>
                       <div className="lbl">HSA Balance ($)</div>
-                      <input className="inp" type="number" value={editForm.hsa} onChange={e=>setEditForm(f=>({...f,hsa:+e.target.value}))} disabled={!HEALTH_PLANS.find(p=>p.id===editForm.healthPlan)?.hsaEligible}/>
-                      {!HEALTH_PLANS.find(p=>p.id===editForm.healthPlan)?.hsaEligible&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:2}}>HSA requires HDHP enrollment</div>}
+                      <input className="inp" type="number" value={editForm.hsa} onChange={e=>setEditForm(f=>({...f,hsa:+e.target.value}))} disabled={!healthPlans.find(p=>p.id===editForm.healthPlan)?.hsaEligible}/>
+                      {!healthPlans.find(p=>p.id===editForm.healthPlan)?.hsaEligible&&<div style={{fontSize:9,color:"#1e3a5f",marginTop:2}}>HSA requires HDHP enrollment</div>}
                     </div>
                     <div>
                       <div className="lbl">FSA Balance ($)</div>
@@ -29905,9 +29910,9 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
             // Enrollment grid
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
               {benefits.filter(b => b.name && b.name.trim() && b.name !== "New Employee").map(b=>{
-                const plan    = HEALTH_PLANS.find(p=>p.id===b.healthPlan);
-                const dental  = DENTAL_PLANS.find(p=>p.id===b.dentalPlan);
-                const vision  = VISION_PLANS.find(p=>p.id===b.visionPlan);
+                const plan    = healthPlans.find(p=>p.id===b.healthPlan);
+                const dental  = dentalPlans.find(p=>p.id===b.dentalPlan);
+                const vision  = visionPlans.find(p=>p.id===b.visionPlan);
                 const monthly = totalMonthlyCost(b);
                 const alerts  = [];
                 if (!b.beneficiaryOnFile) alerts.push({msg:"Missing beneficiary form",c:"#f87171"});
@@ -43402,4 +43407,3 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
     </div>
   );
 }
-// v4.4.5b Wed Mar 18 16:22:52 UTC 2026
