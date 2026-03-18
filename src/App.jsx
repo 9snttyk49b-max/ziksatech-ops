@@ -1242,7 +1242,18 @@ const VISION_PLANS = [
 ];
 
 // Per-employee benefits enrollment & 401k data
-const BENEFITS_SEED = [];
+const BENEFITS_SEED = [
+  { id:"b1", rosterId:"r1", name:"Nuthan Joshi", salary:120000, healthPlan:"ppo_gold", healthTier:"ee_spouse", dentalPlan:"dental_plus", visionPlan:"vision_std", lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:true, hsaContrib:0, k401_enrolled:true, k401_ee_pct:6, k401_match_pct:3, beneficiaryOnFile:true },
+  { id:"b2", rosterId:"r2", name:"Malla Reddy", salary:98000, healthPlan:"hdhp", healthTier:"ee_only", dentalPlan:"dental_basic", visionPlan:"vision_std", lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:true, hsaContrib:250, k401_enrolled:true, k401_ee_pct:5, k401_match_pct:3, beneficiaryOnFile:true },
+  { id:"b3", rosterId:"r3", name:"Sudheendra Mujamdhar", salary:110000, healthPlan:"ppo_gold", healthTier:"family", dentalPlan:"dental_plus", visionPlan:"vision_plus", lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:true, hsaContrib:0, k401_enrolled:true, k401_ee_pct:8, k401_match_pct:3, beneficiaryOnFile:true },
+  { id:"b4", rosterId:"r4", name:"Vivek Khajuria", salary:95000, healthPlan:"hmo_silver", healthTier:"ee_only", dentalPlan:"dental_basic", visionPlan:"vision_std", lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:false, hsaContrib:0, k401_enrolled:true, k401_ee_pct:4, k401_match_pct:3, beneficiaryOnFile:false },
+  { id:"b5", rosterId:"r5", name:"Kartheek", salary:105000, healthPlan:"hdhp", healthTier:"ee_spouse", dentalPlan:"dental_plus", visionPlan:"vision_plus", lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:true, hsaContrib:200, k401_enrolled:true, k401_ee_pct:6, k401_match_pct:3, beneficiaryOnFile:true },
+  { id:"b6", rosterId:"r6", name:"Naveen", salary:90000, healthPlan:"hmo_silver", healthTier:"ee_only", dentalPlan:"dental_basic", visionPlan:"vision_std", lifeInsured:false, lifeMultiple:1, stdEnrolled:false, ltdEnrolled:false, hsaContrib:0, k401_enrolled:false, k401_ee_pct:0, k401_match_pct:3, beneficiaryOnFile:false },
+  { id:"b7", rosterId:"r7", name:"Rajesh Kumar", salary:130000, healthPlan:"ppo_gold", healthTier:"family", dentalPlan:"dental_plus", visionPlan:"vision_plus", lifeInsured:true, lifeMultiple:3, stdEnrolled:true, ltdEnrolled:true, hsaContrib:0, k401_enrolled:true, k401_ee_pct:10, k401_match_pct:4, beneficiaryOnFile:true },
+  { id:"b8", rosterId:"r8", name:"Priya Rajan", salary:112000, healthPlan:"ppo_gold", healthTier:"ee_spouse", dentalPlan:"dental_plus", visionPlan:"vision_std", lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:true, hsaContrib:0, k401_enrolled:true, k401_ee_pct:7, k401_match_pct:3, beneficiaryOnFile:true },
+  { id:"b9", rosterId:"r9", name:"Arun Patel", salary:108000, healthPlan:"hdhp", healthTier:"family", dentalPlan:"dental_plus", visionPlan:"vision_plus", lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:true, hsaContrib:300, k401_enrolled:true, k401_ee_pct:6, k401_match_pct:3, beneficiaryOnFile:true },
+  { id:"b10", rosterId:"r10", name:"Deepa Krishnan", salary:125000, healthPlan:"ppo_gold", healthTier:"family", dentalPlan:"dental_plus", visionPlan:"vision_plus", lifeInsured:true, lifeMultiple:3, stdEnrolled:true, ltdEnrolled:true, hsaContrib:0, k401_enrolled:true, k401_ee_pct:8, k401_match_pct:4, beneficiaryOnFile:true },
+];
 
 // Annual 401k IRS limits 2026
 const LIMIT_401K_EE   = 23000;   // employee contribution limit
@@ -29257,10 +29268,28 @@ function annual401kMatchCost(b) { return b.k401_enrolled ? b.salary * b.k401_mat
 const TIER_LABELS = { ee_only:"EE Only", ee_spouse:"EE + Spouse", family:"Family" };
 
 function BenefitsTracker({ benefits, setBenefits, roster }) {
-  const [sub,      setSub]      = useState("overview");   // overview | enrollment | 401k | costs
+  const [sub,      setSub]      = useState("overview");
   const [selId,    setSelId]    = useState(null);
   const [editId,   setEditId]   = useState(null);
   const [editForm, setEditForm] = useState(null);
+
+  // ── Auto-sync: add a default benefits record for any FTE not yet tracked ──
+  useEffect(() => {
+    const ftes = roster.filter(r => r.type === "FTE");
+    const missing = ftes.filter(r => !benefits.find(b => b.rosterId === r.id || b.name === r.name));
+    if (missing.length > 0) {
+      const newRecs = missing.map(r => ({
+        id: "b" + uid(), rosterId: r.id, name: r.name, salary: r.baseSalary || 0,
+        healthPlan: "hmo_silver", healthTier: "ee_only",
+        dentalPlan: "dental_basic", visionPlan: "vision_std",
+        lifeInsured: true, lifeMultiple: 2,
+        stdEnrolled: true, ltdEnrolled: false,
+        hsaContrib: 0, k401_enrolled: false, k401_ee_pct: 0, k401_match_pct: 3,
+        beneficiaryOnFile: false
+      }));
+      setBenefits(bs => [...bs, ...newRecs]);
+    }
+  }, [roster]);
 
   const sel  = benefits.find(b=>b.id===selId);
   const edit = benefits.find(b=>b.id===editId);
@@ -29288,7 +29317,16 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
 
   return (
     <div>
-      <PH title="Benefits Tracker" sub="Health, dental, vision, 401(k), HSA/FSA, and insurance — full benefits administration"/>
+      <PH title="Benefits Tracker" sub="Health, dental, vision, 401(k), HSA/FSA, and insurance — full benefits administration">
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>{
+          const newRec = { id:"b"+uid(), rosterId:"", name:"New Employee", salary:0,
+            healthPlan:"hmo_silver", healthTier:"ee_only", dentalPlan:"dental_basic", visionPlan:"vision_std",
+            lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:false,
+            hsaContrib:0, k401_enrolled:false, k401_ee_pct:0, k401_match_pct:3, beneficiaryOnFile:false };
+          setBenefits(bs=>[...bs,newRec]);
+          setEditId(newRec.id); setEditForm({...newRec}); setSub("enrollment");
+        }}><I d={ICONS.plus} s={13}/>Add Employee</button>
+      </PH>
 
       {/* Action alerts */}
       {(missingBenef.length>0||notEnrolled401k.length>0)&&(
