@@ -398,6 +398,44 @@ const store = (() => {
 // ─── ZIKSATECH SEED DATA (from Ops Center spreadsheet) ───────────────────────
 const BURDEN = { fica: 0.0765, futa: 0.006, futaCap: 7000, suta: 0.027, sutaCap: 9000, wc: 0.005, health: 7200, retire: 0.03, other: 0.015, hoursPerYear: 1920 };
 
+// ─── CANONICAL COST HELPER ──────────────────────────────────────────────────
+// Single source of truth for annual cost of any employee/contractor.
+// All modules should call this instead of rolling their own formulas.
+function getEmployeeCost(r) {
+  if (!r) return 0;
+  if (r.type === "Contractor") {
+    // C2C: we pay fixedRate/hr. Zero employer burden.
+    const hrs = Math.round((+r.util || 0) * BURDEN.hoursPerYear);
+    return (+r.fixedRate || 0) * hrs;
+  }
+  // FTE: base = LCA wage (revenue_share) or base salary (fixed)
+  const isRevShare = r.compType === "revenue_share";
+  const sal = isRevShare ? (+r.lcaWage || +r.baseSalary || 0) : (+r.baseSalary || 0);
+  const fica  = sal * BURDEN.fica;
+  const futa  = BURDEN.futa  * Math.min(sal, BURDEN.futaCap);
+  const suta  = BURDEN.suta  * Math.min(sal, BURDEN.sutaCap);
+  const wc    = sal * BURDEN.wc;
+  const ret   = sal * BURDEN.retire;
+  const oth   = sal * BURDEN.other;
+  const k401  = +r.contrib401k || 0;
+  // TYPE 1 (fixed salary): company pays health. TYPE 2 (rev share): no health.
+  const ins   = isRevShare ? 0 : (+r.insurance || BURDEN.health);
+  const employerBurden = fica + futa + suta + wc + ret + oth + ins + k401;
+  // Revenue share bonus (if applicable)
+  let bonus = 0;
+  if (isRevShare && +r.lcaWage > 0 && +r.revShare > 0) {
+    const hrs = Math.round((+r.util || 0) * BURDEN.hoursPerYear);
+    const lcaBurden = sal*(BURDEN.fica+BURDEN.wc+BURDEN.retire+BURDEN.other) + BURDEN.futa*Math.min(sal,BURDEN.futaCap) + BURDEN.suta*Math.min(sal,BURDEN.sutaCap);
+    const loadedHr = (sal + lcaBurden) / hrs;
+    const poolHr   = (+r.billRate || 0) * (+r.revShare);
+    bonus = Math.max(0, (poolHr - loadedHr) * hrs);
+  }
+  return sal + employerBurden + bonus;
+}
+
+// Monthly version
+function getEmployeeCostMonthly(r) { return getEmployeeCost(r) / 12; }
+
 const ROSTER_SEED = [
   { id:"r1",  name:"Nuthan Joshi",       role:"SAP BRIM Sr Consultant",        type:"FTE", client:"PTC",                billRate:155, clientRates:[{clientId:"cl4",rate:155},{clientId:"cl1",rate:165}], compType:"revenue_share", lcaWage:120000, util:1.0, baseSalary:120000, skills:"SAP BRIM, ABAP, BTP, S/4HANA",              projects:"PTC BRIM Phase 2, Tolling Billing",         revShare:0, fixedRate:155, thirdPartySplit:0, insurance:7200 },
   { id:"r2",  name:"Malla Reddy",        role:"SAP Functional Architect", compType:"fixed_salary",       type:"FTE", client:"HPE",                billRate:135, util:0.8, baseSalary:98000,  skills:"SAP IS-U, S/4HANA FI/CO, CPI, Integration",  projects:"HPE IS-U Migration, S4 Upgrade",            revShare:0, fixedRate:135, thirdPartySplit:0, insurance:7200 , clientRates:[]},
@@ -3201,7 +3239,7 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
   const dsoTrend = [42,38,36,34,33,avgDSO||32];
 
   // ── Consultant ROI — revenue generated per $1 of salary ───────────────────
-  const totalSalaries  = rData.reduce((s,r) => s + (r.baseSalary||0), 0);
+  const totalSalaries  = roster.reduce((s,r) => s + getEmployeeCost(r), 0); // fully loaded cost
   const consultantROI  = totalSalaries > 0 ? +(totalRev / totalSalaries).toFixed(2) : 0;
   const roiTrend       = [2.1, 2.3, 2.4, 2.5, 2.6, consultantROI||2.8];
 
@@ -5752,7 +5790,7 @@ function RevenueForecast({ clients, roster, finInvoices, finPayments, crmDeals, 
     // Revenue: billRate × utilization × working hours per year
     const annualBillable = (r.billRate || 0) * (r.util || 0) * 2000;
     // Cost: salary + insurance + overhead (20%)
-    const annualCost     = (r.baseSalary || 0) + (r.insurance || 0) + (r.baseSalary || 0) * 0.20;
+    const annualCost     = getEmployeeCost(r);
     // Actual invoiced YTD (from finInvoices lines)
     const ytdInvoiced = safeInv.reduce((s, inv) => {
       const lines = (inv.lines || []).filter(l => l.desc?.toLowerCase().includes(r.name.split(" ")[0].toLowerCase()));
@@ -7336,7 +7374,7 @@ function ADPPayroll({ roster, adpRuns, setAdpRuns }) {
     const futa = b.futa * Math.min(emp.baseSalary, b.futaCap) / 12;
     const suta = b.suta * Math.min(emp.baseSalary, b.sutaCap) / 12;
     const wc = emp.baseSalary * b.wc / 12;
-    const health = b.health / 12;
+    const health = emp.compType === "revenue_share" ? 0 : b.health / 12; // rev-share: no company health
     const ret = emp.baseSalary * b.retire / 12;
     const oth = emp.baseSalary * b.other / 12;
     const gross = emp.baseSalary / 12;
@@ -7356,7 +7394,7 @@ function ADPPayroll({ roster, adpRuns, setAdpRuns }) {
     setAdpRuns(runs => runs.map(r => r.id===confirmRun.id ? {...r, status:"processed", processedAt:TODAY_STR} : r));
     setConfirmRun(null);
   };
-  const totalPayroll = ftes.reduce((s,e)=>s+e.baseSalary/12,0);
+  const totalPayroll = ftes.reduce((s,e)=>s+getEmployeeCostMonthly(e),0);
 
   // Parse ADP CSV upload
   const handleADPFile = text => {
@@ -9095,9 +9133,7 @@ function FinWaterfall({ roster, clients, tsHours, finInvoices, finPayments }) {
   const calcRosterFin = (r) => {
     const hrs = MONTHS.reduce((s,_,i)=>s+(tsHours[r.id]?.[i]||0),0);
     const billRev   = hrs * r.billRate;
-    const costRate  = r.type==="FTE"
-      ? r.baseSalary + (r.baseSalary * (BURDEN.fica+BURDEN.futa+BURDEN.suta+BURDEN.wc)) + BURDEN.health + (r.baseSalary*BURDEN.retire) + (r.baseSalary*BURDEN.other)
-      : r.fixedRate * hrs + (r.thirdPartySplit * (r.billRate - r.fixedRate) * hrs);
+    const costRate = getEmployeeCost(r);
     const revShare  = r.revShare > 0 ? billRev * r.revShare : 0;
     const coGross   = billRev - costRate - revShare;
     const grossMargin = billRev > 0 ? coGross / billRev : 0;
@@ -19245,15 +19281,7 @@ function ProjectProfitability({ projects, roster, tsHours, changeOrders, finInvo
   const HEALTH_YR   = 7200;
 
   // ── Consultant fully-loaded cost ────────────────────────────────────────
-  const consultantCost = (r) => {
-    if (r.type === "FTE") {
-      const sal   = r.baseSalary || 0;
-      return sal + (sal * BURDEN_RATE) + HEALTH_YR;
-    }
-    // Contractor: fixedRate * hours + split
-    const hrs = (r.util || 0) * 1920;
-    return (r.fixedRate || r.billRate * 0.75) * hrs;
-  };
+  const consultantCost = (r) => getEmployeeCost(r);
 
   const consultantRevenue = (r) => {
     const hrs = (r.util || 0) * 1920;
@@ -31978,9 +32006,9 @@ function BenchManagement({ roster, clients, projects, crmDeals, crmAccounts, con
   const consultants = safeRoster.map(r => {
     const util        = r.util || 0;
     const billRate    = r.billRate || 0;
-    const salary      = r.baseSalary || 0;
-    const insurance   = r.insurance || 0;
-    const overhead    = salary * 0.20; // benefits, taxes, overhead
+    const salary = getEmployeeCost(r); // includes salary + all employer taxes/benefits
+    const insurance = 0; // included in getEmployeeCost
+    const overhead = 0;  // included in getEmployeeCost // benefits, taxes, overhead
     const dailyCost   = (salary + insurance + overhead) / 250;
     const weekCost    = dailyCost * 5;
 
@@ -32793,7 +32821,7 @@ function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses,
 
   const companyRows = [
     { label:"Revenue",        budget:COMPANY_BUDGET.revenue,    actual:ytdRevActual,             annualRun:annualizeRun(ytdRevActual),     type:"income" },
-    { label:"Payroll (FTE)",  budget:COMPANY_BUDGET.payroll,    actual:ytdPayrollActual||Math.round(rData.filter(r=>r.type==="FTE").reduce((s,r)=>s+r.baseSalary,0)/4*MONTHS_ELAPSED), annualRun:0, type:"expense" },
+    { label:"Payroll (FTE)",  budget:COMPANY_BUDGET.payroll,    actual:ytdPayrollActual||Math.round(rData.filter(r=>r.type==="FTE").reduce((s,r)=>s+getEmployeeCost(r),0)/12*MONTHS_ELAPSED), annualRun:0, type:"expense" },
     { label:"Contractor Pay", budget:COMPANY_BUDGET.contractors,actual:Math.round(rData.filter(r=>r.type==="Contractor").reduce((s,r)=>s+r.totalCost,0)/12*MONTHS_ELAPSED), annualRun:0, type:"expense" },
     { label:"Operating Exp.", budget:COMPANY_BUDGET.opex,       actual:(expByCategory["office"]||0)+(expByCategory["admin"]||0)+(expByCategory["general"]||0), annualRun:0, type:"expense" },
     { label:"Software/SaaS",  budget:COMPANY_BUDGET.software,   actual:expByCategory["software"]||0, annualRun:0, type:"expense" },
@@ -41730,7 +41758,7 @@ function ReconcileReport({ roster, finInvoices, finPayments, adpRuns, fbInvoices
   const pymtTotal = pymtForPeriod.reduce((s,p)=>s+(+p.amount||0),0);
   const fbForPeriod = (fbInvoices||[]).filter(i=>i.date?.startsWith(month));
   const fbTotal = fbForPeriod.reduce((s,i)=>s+(+i.amount||0),0);
-  const expectedPayroll = ftes.reduce((s,r)=>s+(+r.baseSalary||0)/12,0);
+  const expectedPayroll = ftes.reduce((s,r)=>s+getEmployeeCostMonthly(r),0);
   const expectedRev = (roster||[]).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0);
 
   const handleFile = async (file) => {
@@ -41841,7 +41869,7 @@ Provide: Key Discrepancies, Missing Entries, Reconciliation Status, Action Items
             {["Consultant","Expected/mo","ADP Actual","Variance","Burden","Status"].map(h=><span key={h} className="th">{h}</span>)}
           </div>
           {ftes.map(r=>{
-            const expected=Math.round((+r.baseSalary||0)/12);
+            const expected=Math.round(getEmployeeCostMonthly(r));
             const adpRow=adpForPeriod.flatMap(run=>(run.rows||[]).filter(row=>row.employeeName?.toLowerCase().includes(r.name.toLowerCase())));
             const actual=adpRow.reduce((s,row)=>s+(+row.gross||0),0);
             const variance=actual-expected;
