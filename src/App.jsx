@@ -15251,7 +15251,9 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
   const [selYear, setSelYear]         = useState(new Date().getFullYear());
   const [sheets, setSheets]           = useState(() => { try { return JSON.parse(localStorage.getItem("zt-timesheets")||"[]"); } catch { return []; }});
   const [uploadModal, setUploadModal] = useState(false);
-  const [invoiceModal, setInvoiceModal] = useState(null);   // sheet to convert
+  const [invoiceModal, setInvoiceModal] = useState(null);
+  const [rejectModal, setRejectModal]   = useState(null); // { sheetId, fromStatus }
+  const [rejectReason, setRejectReason] = useState("");   // sheet to convert
   const [analyzing, setAnalyzing]     = useState(false);
   const [uploadedDoc, setUploadedDoc] = useState(null);
   const [extractedData, setExtractedData] = useState(null);
@@ -15797,6 +15799,11 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                     {s.status==="submitted"&&<button className="btn bp" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>adminApprove(s.id)}>✓ Approve</button>}
                     {s.status==="submitted"&&<button className="btn br" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>adminReject(s.id,"Please resubmit with corrections")}>✗ Reject</button>}
                     {s.status==="approved"&&!s.clientApproved&&<button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>markClientApproved(s.id)}>🏢 Client OK</button>}
+                    {(s.status==="approved"||s.status==="client_approved")&&<button
+                      className="btn br" style={{fontSize:9,padding:"2px 7px"}}
+                      title="Reject this approved timesheet — consultant must resubmit"
+                      onClick={()=>{ setRejectModal({sheetId:s.id,fromStatus:s.status,name:s.consultantName,period:s.periodLabel}); setRejectReason(""); }}>
+                      ↩ Reject</button>}
                     {(s.clientApproved||s.status==="approved")&&!s.invoiceId&&<button className="btn bg" style={{fontSize:9,padding:"2px 7px",color:"#f59e0b"}} onClick={()=>convertToInvoice(s)}>💰 Invoice</button>}
                     {s.invoiceId&&<span style={{fontSize:9,color:"#f59e0b"}}>📄 {s.invoiceId}</span>}
                   </div>
@@ -15864,7 +15871,42 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
             </table>
           </div>
         </div>
+    
+      {/* ── REJECT APPROVED TIMESHEET MODAL ── */}
+      {rejectModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setRejectModal(null)}>
+          <div className="modal" style={{maxWidth:460}}>
+            <MH title="Reject Approved Timesheet" onClose={()=>setRejectModal(null)}/>
+            <div style={{marginBottom:16,padding:"12px 16px",background:"#1a0808",border:"1px solid #f8717144",borderRadius:8}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f87171",marginBottom:4}}>⚠ This will reverse approval</div>
+              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>
+                <strong style={{color:"#e2e8f0"}}>{rejectModal.name}</strong> — {rejectModal.period}<br/>
+                Status: <strong style={{color:"#34d399"}}>{rejectModal.fromStatus==="client_approved"?"Client Approved":"Approved"}</strong> → <strong style={{color:"#f87171"}}>Rejected</strong>.<br/>
+                The consultant will see this reason and must resubmit.
+              </div>
+            </div>
+            <FF label="Reason for Rejection *">
+              <textarea className="inp" rows={3}
+                value={rejectReason}
+                onChange={e=>setRejectReason(e.target.value)}
+                placeholder="e.g. Week of Jan 13 shows 8h but client PO only shows 4h. Please correct and resubmit."
+                autoFocus/>
+            </FF>
+            <div style={{fontSize:10,color:"#475569",marginTop:6,marginBottom:16}}>
+              This reason will be visible to the consultant on their My View tab.
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button className="btn bg" onClick={()=>setRejectModal(null)}>Cancel</button>
+              <button className="btn br" style={{fontWeight:700}}
+                disabled={!rejectReason.trim()}
+                onClick={()=>{ adminReject(rejectModal.sheetId, rejectReason.trim()); setRejectModal(null); setRejectReason(""); }}>
+                ↩ Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
       )}
+  )}
     </div>
   );
 }
@@ -16109,13 +16151,23 @@ function TSConsultant({ roster, tsSubmissions, setTsSubmissions, tsHours, setTsH
               </div>
             )}
 
-            {/* Rejection notice */}
+                         {/* Rejection notice */}
             {isRejected&&(
-              <div style={{padding:"12px 14px",background:"#1a0808",borderRadius:8,border:"1px solid #3d1010",
+              <div style={{padding:"12px 14px",background:"#1a0808",borderRadius:8,border:"1px solid #f8717144",
                 marginBottom:14}}>
-                <div style={{fontSize:12,color:"#f87171",fontWeight:700,marginBottom:4}}>Timesheet Rejected</div>
-                <div style={{fontSize:11,color:"#f87171",marginBottom:8}}>{existingSub.rejectionNote||"Please review and resubmit."}</div>
-                <div style={{fontSize:11,color:"#3d5a7a"}}>Update your hours below and resubmit.</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{fontSize:12,color:"#f87171",fontWeight:700}}>↩ Timesheet Rejected</div>
+                  {existingSub.rejectedBy&&<div style={{fontSize:10,color:"#7f1d1d"}}>
+                    by {existingSub.rejectedBy}{existingSub.rejectedDate?` on ${existingSub.rejectedDate}`:""}
+                  </div>}
+                </div>
+                <div style={{fontSize:11,color:"#fca5a5",marginBottom:8,padding:"8px 10px",
+                  background:"#2a0a0a",borderRadius:6,fontStyle:"italic"}}>
+                  "{existingSub.rejectionNote||"Please review and resubmit with corrections."}"
+                </div>
+                <div style={{fontSize:11,color:"#3d5a7a"}}>
+                  Correct the issues above, update your hours, and resubmit.
+                </div>
               </div>
             )}
 
