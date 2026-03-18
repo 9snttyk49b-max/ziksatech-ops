@@ -43905,9 +43905,9 @@ function AICOODashboard({ roster, clients, finInvoices, finPayments, crmDeals,
     setLoading(true);
     const digest = buildDigest();
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 1000,
           system: `You are the AI COO for ${digest.company}, a SAP consulting firm specializing in Utilities, BRIM, and SuccessFactors in the DFW market. You have full visibility into all operations. Give brutally honest, specific, actionable daily decisions. Be direct — no fluff. Format as JSON only.`,
@@ -44155,7 +44155,7 @@ function DealAccelerator({ crmDeals, clients, roster, proposals, authProfile }) 
     const daysSince = lastAct ? Math.floor((Date.now()-new Date(lastAct))/86400000) : "unknown";
 
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:600,
@@ -44407,7 +44407,7 @@ function RevLeakageDetector({ roster, clients, finInvoices, finPayments, tsHours
 
     // Get AI summary
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:400,
@@ -44588,7 +44588,7 @@ function ConsultantOptimizer({ roster, clients, finInvoices, tsHours, crmDeals, 
       daysOnClient: r.daysOn,
     }));
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:800,
@@ -44792,7 +44792,7 @@ function ConsultantProfitOpt({ roster, clients, finInvoices, tsHours, crmDeals, 
       `${r.name}: ${r.util}% util, $${r.billRate}/hr, ${r.margin}% margin, client=${r.client}, gap=$${r.rateGap}/hr`
     ).join("\n");
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:800,
@@ -44950,7 +44950,7 @@ function Client360Intelligence({ clients, finInvoices, finPayments, crmDeals, ro
     if (intel[cl.id]) return;
     setLoading(true);
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:800,
@@ -45156,7 +45156,7 @@ function KnowledgeEngine({ crmDeals, proposals, roster, clients, authProfile }) 
       roles: [...new Set(roster.map(r=>r.role))].slice(0,10),
     });
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:600,
@@ -45305,7 +45305,7 @@ function ScenarioSimulator({ roster, clients, finInvoices, finPayments, crmDeals
   const runNarrative = async () => {
     setLoading(true);
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514", max_tokens:400,
@@ -45539,7 +45539,7 @@ Respond in JSON only (no markdown):
 }`;
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/claude", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
