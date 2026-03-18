@@ -15314,12 +15314,38 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
   };
 
   const [activeSheet, setActiveSheet] = useState(currentSheet || buildBlankSheet());
+  const [selProject, setSelProject]   = useState(""); // for multi-project timesheets
+  const [selClient,  setSelClient]    = useState(""); // override client
 
   // Sync activeSheet when month changes
   useState(() => {
     const existing = mySheets.find(s => s.period === currentSheetKey);
     setActiveSheet(existing || buildBlankSheet());
   });
+
+  // ── US Federal Holidays 2026 ─────────────────────────────────────────────
+  const US_HOLIDAYS_TS = {
+    "2026-01-01":"New Year's Day","2026-01-19":"MLK Jr. Day","2026-02-16":"Presidents' Day",
+    "2026-05-25":"Memorial Day","2026-06-19":"Juneteenth","2026-07-03":"Independence Day (obs.)",
+    "2026-07-04":"Independence Day","2026-09-07":"Labor Day","2026-10-12":"Columbus Day",
+    "2026-11-11":"Veterans Day","2026-11-26":"Thanksgiving","2026-11-27":"Day after Thanksgiving",
+    "2026-12-25":"Christmas Day",
+  };
+
+  // ── Auto-fill current month ───────────────────────────────────────────────
+  const autoFillMonth = () => {
+    const updated = { ...activeSheet,
+      days: activeSheet.days.map(d => {
+        const dow    = new Date(d.date).getDay();
+        const isWknd = dow === 0 || dow === 6;
+        const isHol  = !!US_HOLIDAYS_TS[d.date];
+        if (isWknd) return { ...d, hours:0, type:"regular", notes:"" };
+        if (isHol)  return { ...d, hours:8, type:"holiday", notes:US_HOLIDAYS_TS[d.date] };
+        return { ...d, hours: d.hours > 0 ? d.hours : 8, type: d.type||"regular" };
+      })
+    };
+    setActiveSheet(recalc(updated));
+  };
 
   const recalc = (sh) => {
     const totalHours = sh.days.reduce((s, d) => s + (d.hours || 0), 0);
@@ -15501,8 +15527,32 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                 {stCfg(activeSheet.status).icon} {stCfg(activeSheet.status).label}
               </span>
             </div>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              {/* Client + project info */}
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              {/* Project + Client selector for multi-project consultants */}
+              {!isLocked && (
+                <>
+                  <select className="inp" style={{fontSize:11,padding:"4px 8px",minWidth:140}}
+                    value={selClient}
+                    onChange={e=>{ setSelClient(e.target.value);
+                      setActiveSheet(s=>({...s, clientName:e.target.value||myConsultant?.client||"",
+                        clientId:clients.find(cl=>cl.name===e.target.value)?.id||s.clientId})); }}>
+                    <option value="">🏢 {myConsultant?.client||"Client"}</option>
+                    {clients.map(cl=><option key={cl.id} value={cl.name}>{cl.name}</option>)}
+                    <option value="Internal">Internal</option>
+                  </select>
+                  <input className="inp" style={{fontSize:11,padding:"4px 8px",minWidth:120}}
+                    value={selProject}
+                    onChange={e=>{ setSelProject(e.target.value);
+                      setActiveSheet(s=>({...s, project:e.target.value})); }}
+                    placeholder="📋 Project name"/>
+                  <button className="btn bp" style={{fontSize:11,padding:"5px 12px",whiteSpace:"nowrap"}}
+                    onClick={autoFillMonth}
+                    title="Auto-fills: weekends=0, holidays=8h(Holiday), working days=8h">
+                    ⚡ Auto-Fill
+                  </button>
+                </>
+              )}
+              {/* Client + project info (locked view) */}
               {(myConsultant?.client||activeSheet.clientName) && <div style={{fontSize:11,color:"#3d5a7a"}}>🏢 {myConsultant?.client||activeSheet.clientName}</div>}
               {(myConsultant?.billRate||activeSheet.billRate)>0 && <div style={{fontSize:11,color:"#f59e0b"}}>💰 ${myConsultant?.billRate||activeSheet.billRate}/hr</div>}
             </div>
@@ -15539,10 +15589,13 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
               // Day cells
               activeSheet.days.forEach((day, idx) => {
                 const isWeekend = (firstDay + idx) % 7 >= 5;
+                const isHoliday = !!US_HOLIDAYS_TS[day.date];
                 const isToday   = day.date === TODAY_STR;
                 const hrs       = day.hours || 0;
+                const cellBorder = isToday?"#0284c7":isHoliday?"#f59e0b44":isWeekend?"#0a1626":"#1a2d45";
+                const cellBg    = isWeekend?"#060c18":isHoliday?"#1a1000":"";
                 cells.push(
-                  <div key={day.day} style={{border:`1px solid ${isToday?"#0284c7":"#1a2d45"}`,borderRadius:8,padding:"6px 8px",background:isToday?"#0c2340":isWeekend?"#060d1c":"#0a1120",minHeight:70}}>
+                  <div key={day.day} style={{border:`1px solid ${cellBorder}`,borderRadius:8,background:cellBg,padding:"6px 8px",background:isToday?"#0c2340":isWeekend?"#060d1c":"#0a1120",minHeight:70}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                       <span style={{fontSize:10,color:isToday?"#38bdf8":"#334155",fontWeight:isToday?700:400}}>{day.day}</span>
                       {/* Type selector */}
@@ -15560,7 +15613,7 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                     ) : (
                       <input type="number" min={0} max={24} step={0.5} value={hrs||""}
                         onChange={e=>updateDay(idx,"hours",e.target.value)}
-                        placeholder={isWeekend?"—":"0"}
+                        placeholder={isWeekend?"—":isHoliday?"H":"0"} readOnly={isWeekend} style={{...style, opacity:isWeekend?0.3:1, cursor:isWeekend?"not-allowed":"text"}}
                         style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid #1a2d45",color:dayColor(day.type),fontSize:16,fontWeight:700,textAlign:"center",padding:"2px 0",outline:"none"}}/>
                     )}
                     {/* Notes icon */}
@@ -15582,6 +15635,45 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
               ))}
             </div>
           </div>
+
+          {/* ── Verify Summary ── */}
+          {!isLocked && (() => {
+            const workDays = activeSheet.days.filter(d=>{ const dow=new Date(d.date).getDay(); return dow!==0&&dow!==6; });
+            const holidays = workDays.filter(d=>US_HOLIDAYS_TS[d.date]).length;
+            const missing  = workDays.filter(d=>!US_HOLIDAYS_TS[d.date]&&!d.hours&&d.type!=="holiday").length;
+            const billable = activeSheet.days.filter(d=>d.type==="regular").reduce((s,d)=>s+d.hours,0);
+            const rate     = myConsultant?.billRate||activeSheet.billRate||0;
+            return (
+              <div className="card" style={{padding:"14px 18px",marginBottom:14,border:"1px solid #1e3a5f"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>
+                  🔍 Timesheet Verify — {activeSheet.periodLabel}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+                  {[
+                    ["Client",    selClient||myConsultant?.client||"—",     "#38bdf8"],
+                    ["Project",   selProject||activeSheet.project||"—",     "#a78bfa"],
+                    ["Billable",  `${billable}h`,                           "#34d399"],
+                    ["Revenue",   `$${(billable*rate).toLocaleString()}`,   "#f59e0b"],
+                    ["Holidays",  `${holidays} days`,                       "#f59e0b"],
+                    ["Weekends",  `${activeSheet.days.length - workDays.length} days`, "#475569"],
+                    ["Total hrs", `${activeSheet.totalHours}h`,             "#e2e8f0"],
+                    ["Missing",   `${missing} days`,                        missing>0?"#f87171":"#34d399"],
+                  ].map(([l,v,col])=>(
+                    <div key={l} style={{background:"#070c18",borderRadius:6,padding:"6px 10px",border:"1px solid #1a2d45"}}>
+                      <div style={{fontSize:9,color:"#475569",marginBottom:2}}>{l}</div>
+                      <div style={{fontSize:12,fontWeight:700,color:col,fontFamily:"monospace"}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {missing > 0 && (
+                  <div style={{padding:"6px 10px",background:"#1a0808",border:"1px solid #f8717144",borderRadius:6,
+                    fontSize:11,color:"#f87171",marginBottom:8}}>
+                    ⚠ {missing} working {missing===1?"day":"days"} still need hours. Fill them in or set to 0.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Action buttons */}
           {!isLocked && (
