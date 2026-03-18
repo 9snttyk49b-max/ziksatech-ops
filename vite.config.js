@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  define: {
+    // Inject ANTHROPIC_API_KEY from Vercel env at build time → available as window.__ANTHROPIC_KEY__
+    'window.__ANTHROPIC_KEY__': JSON.stringify(process.env.ANTHROPIC_API_KEY || ''),
+  },
   plugins: [
     react(),
     VitePWA({

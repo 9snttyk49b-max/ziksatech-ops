@@ -318,6 +318,9 @@ const supaAuth = (() => {
   };
 })();
 
+// Anthropic API key — injected at build time from ANTHROPIC_API_KEY env var via vite.config.js define
+// window.__ANTHROPIC_KEY__ is set by Vite define plugin at build time
+
 const store = (() => {
   // ── Supabase backend (multi-user, real-time) ──────────────────────────────
   if (SUPA_URL && SUPA_ANON) {
@@ -5184,7 +5187,7 @@ function PerformanceReview({ roster, clients, finInvoices, addAudit, authProfile
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -9574,7 +9577,7 @@ function LinkedInRecruiter({ candidates, setCandidates, offers, roster, crmDeals
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -9652,7 +9655,7 @@ Return JSON:
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -9689,7 +9692,7 @@ Keep it under 1,300 characters for best LinkedIn reach. Make it scroll-stopping.
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -15442,7 +15445,7 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
         try {
           const resp = await fetch("/api/claude", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
             body: JSON.stringify({
               model: "claude-sonnet-4-20250514",
               max_tokens: 600,
@@ -22601,7 +22604,7 @@ function MeetingNotes({ projects, setProjects, roster, clients, crmDeals, addAud
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -22662,7 +22665,7 @@ Return JSON with this exact structure:
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -23033,7 +23036,7 @@ function SkillsGapAnalyzer({ roster, crmDeals, crmAccounts, workAuth, addAudit }
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -23930,7 +23933,7 @@ function NotificationsHub({
     try {
       const relayResp = await fetch("/api/webhook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({ url: webhook, payload })
       });
       if (relayResp.ok) {
@@ -23947,7 +23950,7 @@ function NotificationsHub({
       try {
         const resp = await fetch(webhook, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
           body: JSON.stringify(payload)
         });
         const text = await resp.text();
@@ -23959,7 +23962,7 @@ function NotificationsHub({
     try {
       await fetch(webhook, {
         method: "POST", mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify(payload)
       });
       return { ok: true, fallback: true };
@@ -25727,7 +25730,7 @@ function ProposalWriterV2({ proposals, setProposals, crmDeals, crmAccounts, crmC
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 1000,
           system: "You are an expert SAP consulting proposal writer for Ziksatech LLC. Write professional, compelling content. For JSON requests return only valid JSON, no markdown.",
@@ -25769,7 +25772,7 @@ function ProposalWriterV2({ proposals, setProposals, crmDeals, crmAccounts, crmC
     try {
       const resp = await fetch("/api/claude", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 1000,
           system: "You are a senior proposal writer for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. Generate structured proposal content. Return JSON only, no markdown.",
@@ -43904,7 +43907,7 @@ function AICOODashboard({ roster, clients, finInvoices, finPayments, crmDeals,
     try {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 1000,
           system: `You are the AI COO for ${digest.company}, a SAP consulting firm specializing in Utilities, BRIM, and SuccessFactors in the DFW market. You have full visibility into all operations. Give brutally honest, specific, actionable daily decisions. Be direct — no fluff. Format as JSON only.`,
