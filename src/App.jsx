@@ -15871,26 +15871,7 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
             </table>
           </div>
         </div>
-                value={rejectReason}
-                onChange={e=>setRejectReason(e.target.value)}
-                placeholder="e.g. Week of Jan 13 shows 8h but client PO only shows 4h. Please correct and resubmit."
-                autoFocus/>
-            </FF>
-            <div style={{fontSize:10,color:"#475569",marginTop:6,marginBottom:16}}>
-              This reason will be visible to the consultant on their My View tab.
-            </div>
-            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-              <button className="btn bg" onClick={()=>setRejectModal(null)}>Cancel</button>
-              <button className="btn br" style={{fontWeight:700}}
-                disabled={!rejectReason.trim()}
-                onClick={()=>{ adminReject(rejectModal.sheetId, rejectReason.trim()); setRejectModal(null); setRejectReason(""); }}>
-                ↩ Confirm Rejection
-              </button>
-            </div>
-          </div>
-        </div>
       )}
-  )}
 
     
       
