@@ -4173,104 +4173,334 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
 
 // ─── TIMESHEET ────────────────────────────────────────────────────────────────
 function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
-  const [editCell, setEditCell] = useState(null);
-  const [editVal, setEditVal]   = useState("");
+  const YEAR = 2026;
+  // Month names
+  const MONTHS_LIST = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const MONTH_DAYS  = [31,28,28,31,30,31,30,31,31,30,31,30,31]; // 2026 is not a leap year
 
-  const updateHrs = (rid, mi, val) => setTsHours(h => ({ ...h, [rid]: h[rid].map((v,i) => i===mi ? +val : v) }));
-  const totalsByMonth = MONTHS.map((_,mi) => roster.reduce((s,r) => s + (tsHours[r.id]?.[mi]||0), 0));
-  const totalRevByMonth = MONTHS.map((_,mi) => roster.reduce((s,r) => s + (tsHours[r.id]?.[mi]||0) * r.billRate, 0));
-
-  const startEdit = (rid, field, val) => { setEditCell({rid,field}); setEditVal(val); };
-  const commitEdit = () => {
-    if (!editCell) return;
-    setRoster(rs => rs.map(r => r.id===editCell.rid ? {...r, [editCell.field]: editCell.field==="billRate"?+editVal:editVal} : r));
-    setEditCell(null);
+  // US Federal Holidays 2026
+  const US_HOLIDAYS = {
+    "2026-01-01":"New Year's Day","2026-01-19":"MLK Jr. Day","2026-02-16":"Presidents' Day",
+    "2026-05-25":"Memorial Day","2026-06-19":"Juneteenth","2026-07-03":"Independence Day (obs.)",
+    "2026-07-04":"Independence Day","2026-09-07":"Labor Day","2026-10-12":"Columbus Day",
+    "2026-11-11":"Veterans Day","2026-11-26":"Thanksgiving","2026-11-27":"Day after Thanksgiving",
+    "2026-12-25":"Christmas Day",
   };
-  const isEditing = (rid, field) => editCell?.rid===rid && editCell?.field===field;
 
-  const EditCell = ({rid, field, value, style={}}) => isEditing(rid, field)
-    ? <input autoFocus className="inp" value={editVal}
-        onChange={e=>setEditVal(e.target.value)}
-        onBlur={commitEdit}
-        onKeyDown={e=>{ if(e.key==="Enter") commitEdit(); if(e.key==="Escape") setEditCell(null); }}
-        style={{width:"100%",padding:"3px 6px",fontSize:12,...style}}/>
-    : <div onClick={()=>startEdit(rid,field,value)}
-        title="Click to edit"
-        style={{cursor:"text",padding:"2px 4px",borderRadius:4,transition:"background 0.15s",...style}}
-        onMouseEnter={e=>e.currentTarget.style.background="#0f1e30"}
-        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-        {value}
-      </div>;
+  const isWeekend = (y,m,d) => { const dow = new Date(y,m,d).getDay(); return dow===0||dow===6; };
+  const isHoliday = (y,m,d) => {
+    const key = `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    return US_HOLIDAYS[key] || null;
+  };
+  const dateKey  = (y,m,d) => `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const workHrs  = 8; // standard work hours per day
+
+  // State
+  const [selMonth, setSelMonth] = useState(new Date().getMonth()); // 0-indexed
+  const [selConsultant, setSelConsultant] = useState(roster[0]?.id || "");
+  const [view, setView] = useState("monthly"); // monthly | annual
+  const [showVerify, setShowVerify] = useState(false);
+  const [submitted, setSubmitted] = useState({});
+
+  // Daily hours store: { [consultantId]: { [YYYY-MM-DD]: hours } }
+  const [dailyHrs, setDailyHrs] = useState({});
+
+  // Get daily hours for consultant+month
+  const getDayHrs = (cid, y, m, d) => dailyHrs?.[cid]?.[dateKey(y,m,d)] ?? null;
+  const setDayHrs = (cid, y, m, d, val) => {
+    setDailyHrs(prev => ({
+      ...prev,
+      [cid]: { ...(prev[cid]||{}), [dateKey(y,m,d)]: val }
+    }));
+  };
+
+  // Auto-fill a month for a consultant
+  const autoFillMonth = (cid, monthIdx) => {
+    const days = MONTH_DAYS[monthIdx];
+    const updates = {};
+    for (let d = 1; d <= days; d++) {
+      const key = dateKey(YEAR, monthIdx, d);
+      if (isWeekend(YEAR, monthIdx, d-1)) {
+        updates[key] = 0; // weekend = 0
+      } else if (isHoliday(YEAR, monthIdx, d)) {
+        updates[key] = "H"; // holiday
+      } else {
+        updates[key] = workHrs; // working day = 8h
+      }
+    }
+    setDailyHrs(prev => ({
+      ...prev,
+      [cid]: { ...(prev[cid]||{}), ...updates }
+    }));
+  };
+
+  // Monthly summary for a consultant
+  const monthSummary = (cid, monthIdx) => {
+    const days = MONTH_DAYS[monthIdx];
+    let totalHrs = 0, workDays = 0, holidays = 0, weekends = 0, missing = 0;
+    for (let d = 1; d <= days; d++) {
+      const v = getDayHrs(cid, YEAR, monthIdx, d);
+      if (isWeekend(YEAR, monthIdx, d-1)) { weekends++; }
+      else if (isHoliday(YEAR, monthIdx, d)) {
+        holidays++;
+        if (v !== "H" && v !== null && +v > 0) totalHrs += +v;
+      } else {
+        workDays++;
+        if (v === null || v === "") missing++;
+        else if (v !== "H") totalHrs += +v || 0;
+      }
+    }
+    return { totalHrs, workDays, holidays, weekends, missing };
+  };
+
+  const consultant = roster.find(r=>r.id===selConsultant) || roster[0];
+  const days = MONTH_DAYS[selMonth];
+
+  // Verify panel data
+  const summary = consultant ? monthSummary(consultant.id, selMonth) : {};
+  const isSubmitted = submitted[`${consultant?.id}-${selMonth}`];
 
   return (
     <div>
-      <PH title="Monthly Timesheet 2026" sub="Click name, role or rate to edit inline · Hours and revenue auto-calculate"/>
-      <div className="card" style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-          <thead>
-            <tr style={{borderBottom:"1px solid #111d2d"}}>
-              <th style={{padding:"10px 14px",textAlign:"left"}} className="th">Consultant</th>
-              <th className="th" style={{padding:"8px 6px",textAlign:"left"}}>Rate</th>
-              {MONTHS.map(m=><th key={m} className="th" style={{padding:"8px 10px",textAlign:"center",minWidth:58}}>{m}</th>)}
-              <th className="th" style={{padding:"8px 12px",textAlign:"right"}}>Total Hrs</th>
-              <th className="th" style={{padding:"8px 12px",textAlign:"right"}}>Revenue</th>
-            </tr>
-          </thead>
-          <tbody>
-            {roster.map(r => {
-              const hrs = tsHours[r.id] || Array(12).fill(0);
-              const totalH = hrs.reduce((s,v)=>s+v,0);
-              const totalR = totalH * r.billRate;
-              return (
-                <tr key={r.id} style={{borderBottom:"1px solid #0a1626"}}>
-                  <td style={{padding:"6px 14px",minWidth:160}}>
-                    <EditCell rid={r.id} field="name" value={r.name} style={{fontWeight:600,color:"#cbd5e1"}}/>
-                    <EditCell rid={r.id} field="role" value={r.role} style={{fontSize:10,color:"#3d5a7a"}}/>
-                  </td>
-                  <td style={{padding:"4px 6px",minWidth:55}}>
-                    <EditCell rid={r.id} field="billRate" value={`$${r.billRate}`} style={{fontFamily:"'DM Mono',monospace",color:"#7dd3fc",fontSize:12}}/>
-                  </td>
-                  {hrs.map((h,mi)=>(
-                    <td key={mi} style={{padding:"4px 4px",textAlign:"center"}}>
-                      <input className="inp" type="number" value={h} onChange={e=>updateHrs(r.id,mi,e.target.value)}
-                        style={{width:50,padding:"4px 6px",textAlign:"center",fontSize:12,background:h===0?"#0a0f1a":mi<3?"#0c1e10":"#0b1120"}}/>
-                    </td>
-                  ))}
-                  <td className="mono" style={{padding:"8px 12px",textAlign:"right",fontWeight:700,color:"#e2e8f0"}}>{totalH}h</td>
-                  <td className="mono" style={{padding:"8px 12px",textAlign:"right",color:"#38bdf8",fontWeight:600}}>{fmt(totalR)}</td>
-                </tr>
-              );
-            })}
-            <tr style={{background:"#0a1626",borderTop:"1px solid #1a2d45"}}>
-              <td style={{padding:"10px 14px",fontSize:11,fontWeight:800,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.07em"}} colSpan={2}>TOTALS</td>
-              {totalsByMonth.map((t,i)=>(
-                <td key={i} className="mono" style={{padding:"8px 10px",textAlign:"center",fontWeight:700,fontSize:12,color:t>0?"#34d399":"#3d5a7a"}}>{t}</td>
-              ))}
-              <td className="mono" style={{padding:"10px 12px",textAlign:"right",fontWeight:700,fontSize:13,color:"#e2e8f0"}}>{totalsByMonth.reduce((s,v)=>s+v,0)}h</td>
-              <td className="mono" style={{padding:"10px 12px",textAlign:"right",fontWeight:700,fontSize:13,color:"#38bdf8"}}>{fmt(totalRevByMonth.reduce((s,v)=>s+v,0))}</td>
-            </tr>
-            <tr style={{background:"#050910"}}>
-              <td style={{padding:"8px 14px",fontSize:10,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:"0.07em"}} colSpan={2}>Rev/Mo</td>
-              {totalRevByMonth.map((r,i)=>(
-                <td key={i} className="mono" style={{padding:"6px 10px",textAlign:"center",fontSize:11,color:"#7dd3fc"}}>{fmt(r/1000)}k</td>
-              ))}
-              <td colSpan={2}/>
-            </tr>
-          </tbody>
-        </table>
+      <PH title="Employee Timesheet" sub="Daily timesheet · auto-fill weekends & holidays · verify before submit"/>
+
+      {/* Consultant + Month selector */}
+      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:16,flexWrap:"wrap"}}>
+        <select className="inp" style={{width:200}} value={selConsultant}
+          onChange={e=>setSelConsultant(e.target.value)}>
+          {roster.filter(r=>r.type==="FTE"||r.type==="Contractor").map(r=>(
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
+        <select className="inp" style={{width:120}} value={selMonth}
+          onChange={e=>setSelMonth(+e.target.value)}>
+          {MONTHS_LIST.map((m,i)=><option key={i} value={i}>{m} {YEAR}</option>)}
+        </select>
+        <button className="btn bp" style={{fontSize:12,padding:"7px 16px"}}
+          onClick={()=>autoFillMonth(consultant?.id, selMonth)}>
+          <I d={ICONS.bolt||ICONS.star} s={13}/>⚡ Auto-Fill {MONTHS_LIST[selMonth]}
+        </button>
+        <button className="btn bg" style={{fontSize:12,padding:"7px 14px"}}
+          onClick={()=>setShowVerify(v=>!v)}>
+          {showVerify?"Hide Verify":"🔍 Verify & Submit"}
+        </button>
+        {isSubmitted && (
+          <span style={{fontSize:11,color:"#34d399",fontWeight:700}}>✅ Submitted</span>
+        )}
       </div>
+
+      {/* Legend */}
+      <div style={{display:"flex",gap:16,marginBottom:12,flexWrap:"wrap"}}>
+        {[["#38bdf8","Working Day (8h)"],["#f59e0b","Public Holiday"],["#1a2d45","Weekend"],["#f87171","Missing"]].map(([col,lbl])=>(
+          <div key={lbl} style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#475569"}}>
+            <div style={{width:12,height:12,borderRadius:2,background:col}}/>{lbl}
+          </div>
+        ))}
+      </div>
+
+      {/* ── DAILY GRID ── */}
+      <div className="card" style={{padding:"16px 18px",overflowX:"auto"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>
+          {consultant?.name} — {MONTHS_LIST[selMonth]} {YEAR}
+        </div>
+
+        {/* Day headers */}
+        <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(days,16)}, 1fr)`,gap:3,marginBottom:4}}>
+          {Array.from({length:Math.min(days,16)},(_,i)=>i+1).map(d=>{
+            const dow = new Date(YEAR,selMonth,d).toLocaleDateString("en-US",{weekday:"short"});
+            const isWk = isWeekend(YEAR,selMonth,d-1);
+            const hol  = isHoliday(YEAR,selMonth,d);
+            return (
+              <div key={d} style={{textAlign:"center",fontSize:9,color:isWk?"#1a2d45":hol?"#f59e0b":"#64748b"}}>
+                <div style={{fontWeight:700}}>{d}</div>
+                <div>{dow.slice(0,2)}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Row 1: days 1-16 */}
+        <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(days,16)}, 1fr)`,gap:3,marginBottom:8}}>
+          {Array.from({length:Math.min(days,16)},(_,i)=>i+1).map(d=>{
+            const isWk  = isWeekend(YEAR,selMonth,d-1);
+            const hol   = isHoliday(YEAR,selMonth,d);
+            const val   = getDayHrs(consultant?.id,YEAR,selMonth,d);
+            const bg    = isWk?"#0a1626":hol?"#1a1000":val===null?"#0a1626":+val>0||val==="H"?"#021f14":"#1a0808";
+            const col   = isWk?"#1a2d45":hol?"#f59e0b":val==="H"?"#f59e0b":val===null?"#3d5a7a":+val>0?"#34d399":"#f87171";
+            const display = val===null?(isWk?"—":hol?"H":"?"):(val==="H"?"H":val);
+            return (
+              <div key={d} style={{textAlign:"center"}}>
+                <input
+                  type="text" maxLength={2}
+                  value={display==="?"?"":display==="—"?"":display}
+                  placeholder={isWk?"":hol?"H":"8"}
+                  readOnly={isWk}
+                  style={{
+                    width:"100%",padding:"5px 2px",textAlign:"center",fontSize:11,fontWeight:700,
+                    borderRadius:4,border:`1px solid ${col}44`,background:bg,color:col,
+                    cursor:isWk?"not-allowed":"text",
+                  }}
+                  onChange={e=>{
+                    if(isWk) return;
+                    const v = e.target.value.trim();
+                    setDayHrs(consultant?.id,YEAR,selMonth,d, v===""?null:isNaN(v)?v:+v);
+                  }}
+                  title={isWk?new Date(YEAR,selMonth,d).toLocaleDateString("en-US",{weekday:"long"}):hol||`Day ${d}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Row 2: days 17-end */}
+        {days > 16 && (
+          <>
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${days-16}, 1fr)`,gap:3,marginBottom:4,maxWidth:`${(days-16)*100/16*100}%`}}>
+              {Array.from({length:days-16},(_,i)=>i+17).map(d=>{
+                const dow = new Date(YEAR,selMonth,d).toLocaleDateString("en-US",{weekday:"short"});
+                const isWk = isWeekend(YEAR,selMonth,d-1);
+                const hol  = isHoliday(YEAR,selMonth,d);
+                return (
+                  <div key={d} style={{textAlign:"center",fontSize:9,color:isWk?"#1a2d45":hol?"#f59e0b":"#64748b"}}>
+                    <div style={{fontWeight:700}}>{d}</div>
+                    <div>{dow.slice(0,2)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${days-16}, 1fr)`,gap:3,marginBottom:8,maxWidth:`${(days-16)*100/16*100}%`}}>
+              {Array.from({length:days-16},(_,i)=>i+17).map(d=>{
+                const isWk  = isWeekend(YEAR,selMonth,d-1);
+                const hol   = isHoliday(YEAR,selMonth,d);
+                const val   = getDayHrs(consultant?.id,YEAR,selMonth,d);
+                const bg    = isWk?"#0a1626":hol?"#1a1000":val===null?"#0a1626":+val>0||val==="H"?"#021f14":"#1a0808";
+                const col   = isWk?"#1a2d45":hol?"#f59e0b":val==="H"?"#f59e0b":val===null?"#3d5a7a":+val>0?"#34d399":"#f87171";
+                return (
+                  <div key={d} style={{textAlign:"center"}}>
+                    <input type="text" maxLength={2}
+                      value={val===null?"":val==="H"?"H":val}
+                      placeholder={isWk?"":hol?"H":"8"}
+                      readOnly={isWk}
+                      style={{width:"100%",padding:"5px 2px",textAlign:"center",fontSize:11,fontWeight:700,
+                        borderRadius:4,border:`1px solid ${col}44`,background:bg,color:col,cursor:isWk?"not-allowed":"text"}}
+                      onChange={e=>{
+                        if(isWk) return;
+                        const v=e.target.value.trim();
+                        setDayHrs(consultant?.id,YEAR,selMonth,d,v===""?null:isNaN(v)?v:+v);
+                      }}
+                      title={isWk?new Date(YEAR,selMonth,d).toLocaleDateString("en-US",{weekday:"long"}):hol||`Day ${d}`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Monthly summary bar */}
+        <div style={{display:"flex",gap:20,padding:"10px 0",borderTop:"1px solid #1a2d45",flexWrap:"wrap"}}>
+          {[
+            ["💼 Working Days", summary.workDays],
+            ["🏛 Holidays",     summary.holidays],
+            ["🏖 Weekends",     summary.weekends],
+            ["⏱ Total Hours",   summary.totalHrs],
+            ["❓ Missing",      summary.missing],
+          ].map(([l,v])=>(
+            <div key={l} style={{textAlign:"center"}}>
+              <div style={{fontSize:11,fontWeight:700,color:l.includes("Missing")&&v>0?"#f87171":"#e2e8f0"}}>{v}</div>
+              <div style={{fontSize:9,color:"#475569"}}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── VERIFY & SUBMIT PANEL ── */}
+      {showVerify && (
+        <div className="card" style={{padding:"20px 22px",marginTop:14,border:"1px solid #1e3a5f"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:16}}>
+            🔍 Verify Timesheet — {consultant?.name} · {MONTHS_LIST[selMonth]} {YEAR}
+          </div>
+
+          {/* Summary table */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}}>
+            {[
+              ["Consultant",     consultant?.name,           "#38bdf8"],
+              ["Month / Year",   `${MONTHS_LIST[selMonth]} ${YEAR}`, "#38bdf8"],
+              ["Bill Rate",      `$${consultant?.billRate||0}/hr`, "#34d399"],
+              ["Total Hours",    `${summary.totalHrs}h`,     "#34d399"],
+              ["Working Days",   `${summary.workDays} days`, "#94a3b8"],
+              ["Holidays",       `${summary.holidays} days`, "#f59e0b"],
+              ["Weekends",       `${summary.weekends} days`, "#475569"],
+              ["Billable Revenue",`$${((summary.totalHrs)*(consultant?.billRate||0)).toLocaleString()}`,  "#a78bfa"],
+              ["Missing Entries", `${summary.missing} days`, summary.missing>0?"#f87171":"#34d399"],
+            ].map(([l,v,col])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"6px 10px",
+                background:"#070c18",borderRadius:6,border:"1px solid #1a2d45"}}>
+                <span style={{fontSize:11,color:"#64748b"}}>{l}</span>
+                <span style={{fontSize:11,fontWeight:700,color:col,fontFamily:"monospace"}}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Missing days warning */}
+          {summary.missing > 0 && (
+            <div style={{padding:"10px 14px",background:"#1a0808",border:"1px solid #f8717144",
+              borderRadius:8,marginBottom:14,fontSize:11,color:"#f87171"}}>
+              ⚠ {summary.missing} working {summary.missing===1?"day":"days"} still missing hours.
+              Go back and fill them in, or enter 0 for days not worked.
+            </div>
+          )}
+
+          {/* Day-by-day review */}
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",marginBottom:8,
+              textTransform:"uppercase",letterSpacing:.5}}>Day-by-Day Review</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+              {Array.from({length:days},(_,i)=>i+1).map(d=>{
+                const isWk = isWeekend(YEAR,selMonth,d-1);
+                const hol  = isHoliday(YEAR,selMonth,d);
+                const val  = getDayHrs(consultant?.id,YEAR,selMonth,d);
+                const bg   = isWk?"#0a1626":hol?"#1a1000":val===null?"#1a0808":+val>0||val==="H"?"#021f14":"#0a1626";
+                const col  = isWk?"#1e3a5f":hol?"#f59e0b":val==="H"?"#f59e0b":val===null?"#f87171":+val>0?"#34d399":"#475569";
+                const lbl  = isWk?"—":hol?"H":val===null?"?":val==="H"?"H":val;
+                return (
+                  <div key={d} title={hol||new Date(YEAR,selMonth,d).toLocaleDateString("en-US",{weekday:"long"})}
+                    style={{width:30,height:30,borderRadius:4,background:bg,border:`1px solid ${col}44`,
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      fontSize:9,fontWeight:700,color:col}}>
+                    {lbl}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Submit button */}
+          <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+            <button className="btn bg" onClick={()=>setShowVerify(false)}>
+              ← Back to Edit
+            </button>
+            <button className="btn bp" style={{fontSize:13,padding:"10px 28px",fontWeight:700}}
+              disabled={isSubmitted}
+              onClick={()=>{
+                const key=`${consultant?.id}-${selMonth}`;
+                setSubmitted(s=>({...s,[key]:true}));
+                setShowVerify(false);
+                // Also update tsHours (monthly total) for compatibility
+                const total = summary.totalHrs;
+                setTsHours(h=>({...h,[consultant?.id]:MONTHS.map((_,mi)=>mi===selMonth?total:(h[consultant?.id]?.[mi]||0))}));
+                alert(`✅ Timesheet submitted for ${consultant?.name} — ${MONTHS_LIST[selMonth]} ${YEAR} (${total}h)`);
+              }}>
+              {isSubmitted ? "✅ Submitted" : "📤 Submit Timesheet"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── CLIENT PORTFOLIO ─────────────────────────────────────────────────────────
 
-
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONTRACT RENEWAL TRACKER
-// Countdown timers · Auto-renewal SOW · Pipeline · Revenue at risk
-// ═══════════════════════════════════════════════════════════════════════════
 function ContractRenewalTracker({ contracts, setContracts, clients, crmDeals, roster, addAudit, setTab }) {
   const [sub,        setSub]      = useState("overview"); // overview | timeline | renewal
   const [selId,      setSel]      = useState(null);
@@ -31568,8 +31798,11 @@ function ClientPortal({ clients, finInvoices, finPayments, projects, sows, chang
   // Change request state
   const [reqForm, setReqForm] = useState({type:"change_order",desc:"",priority:"medium"});
   const [reqSent, setReqSent] = useState(false);
+  const descRef = useRef(null); // uncontrolled — avoids focus loss on re-render
   const submitRequest = () => {
-    if (!reqForm.desc) return;
+    const desc = descRef.current?.value || reqForm.desc;
+    if (!desc.trim()) return;
+    setReqForm(p=>({...p,desc})); // sync ref value to state before submit
     setReqSent(true);
     addAudit?.("Client Portal","Change Request Submitted",client?.name,reqForm.desc.slice(0,80));
     setTimeout(()=>setReqSent(false), 3000);
@@ -32016,8 +32249,12 @@ function ClientPortal({ clients, finInvoices, finPayments, projects, sows, chang
                 </div>
                 <div style={{marginBottom:14}}>
                   <div style={{fontSize:10,color:"#64748b",marginBottom:4,textTransform:"uppercase",fontWeight:600}}>Description *</div>
-                  <textarea rows={4} style={{width:"100%",padding:"8px 10px",borderRadius:6,border:`1px solid ${previewMode?"#cbd5e1":"#1a2d45"}`,background:previewMode?"#fff":"#0a1626",color:previewMode?"#0c1a2e":"#e2e8f0",fontSize:12,resize:"vertical",boxSizing:"border-box"}}
-                    placeholder="Describe your request..." value={reqForm.desc} onChange={e=>setReqForm(p=>({...p,desc:e.target.value}))}/>
+                  <textarea ref={descRef} rows={4}
+                    style={{width:"100%",padding:"8px 10px",borderRadius:6,border:`1px solid ${previewMode?"#cbd5e1":"#1a2d45"}`,background:previewMode?"#fff":"#0a1626",color:previewMode?"#0c1a2e":"#e2e8f0",fontSize:12,resize:"vertical",boxSizing:"border-box"}}
+                    placeholder="Describe your request..."
+                    defaultValue={reqForm.desc}
+                    onBlur={e=>setReqForm(p=>({...p,desc:e.target.value}))}
+                    key={reqSent ? "reset" : "active"}/>
                 </div>
                 {reqSent ? (
                   <div style={{padding:"10px 14px",background:"#021f14",border:"1px solid #15803d",borderRadius:8,textAlign:"center",fontSize:13,color:"#34d399",fontWeight:700}}>✅ Request submitted! We'll respond within 24 hours.</div>
