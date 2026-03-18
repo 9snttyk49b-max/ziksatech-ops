@@ -725,7 +725,16 @@ const CRM_ACTIVITIES_SEED = [
 // Module registry — all controllable modules
 const ALL_MODULES = [
   { id:"aicoo",      label:"🧠 AI COO",             group:"Overview"    },
+  { id:"consultant360", label:"🎯 Profit Optimizer",  group:"Overview"    },
+  { id:"client360",    label:"🏢 Client 360",          group:"Overview"    },
+  { id:"knowledge",    label:"🧠 Knowledge Engine",    group:"Overview"    },
+  { id:"scenario",     label:"📊 Scenario Sim",        group:"Overview"    },
   { id:"dealaccel",  label:"🎯 Deal Accelerator",   group:"Overview"    },
+  { id:"leakage",    label:"💰 Revenue Leakage",     group:"Overview"    },
+  { id:"profitopt",  label:"📈 Profit Optimizer",    group:"Overview"    },
+  { id:"client360",  label:"🏢 Client 360",          group:"Overview"    },
+  { id:"scenario",   label:"📊 Scenario Sim",        group:"Overview"    },
+  { id:"knowengine", label:"🧩 Knowledge Engine",    group:"Overview"    },
   { id:"revleakage", label:"💰 Revenue Leakage",    group:"Overview"    },
   { id:"dashboard",  label:"Executive Dashboard", group:"Overview"    },
   { id:"notifications",label:"Notifications",         group:"Overview"    },
@@ -2065,7 +2074,11 @@ export default function ZiksatechOps() {
   const skipSaveRef = useRef(true);
   // Collapsible sidebar groups — Finance collapsed by default (10 items)
   const [collapsedGroups, setCollapsedGroups] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("zt-collapsed-groups") || '["Finance"]'); }
+    try {
+      const saved = JSON.parse(localStorage.getItem("zt-collapsed-groups") || '["Finance"]');
+      // Always keep AI/Overview section expanded — remove it if user previously collapsed it
+      return saved.filter(g => g !== "Overview");
+    }
     catch { return ["Finance"]; }
   });
   const toggleGroup = (group) => {
@@ -2357,9 +2370,14 @@ export default function ZiksatechOps() {
   };
 
   const nav = [
-    { id:"aicoo",        label:"🧠 AI COO",              icon:ICONS.dash,     group:"Overview"    },
+    { id:"aicoo",        label:"🧠 AI COO",              icon:ICONS.dash,     group:"Overview",   keywords:"ai coo decisions revenue forecast" },
+    { id:"consultant360", label:"📈 Profit Optimizer",  icon:ICONS.dash,     group:"Overview",   keywords:"consultant profit margin optimize" },
+    { id:"client360",    label:"🏢 Client 360",          icon:ICONS.dash,     group:"Overview",   keywords:"client intelligence org chart" },
+    { id:"knowengine",   label:"🧩 Knowledge Engine",    icon:ICONS.dash,     group:"Overview",   keywords:"knowledge learning institutional brain" },
+    { id:"scenario",     label:"📊 Scenario Simulator",  icon:ICONS.dash,     group:"Overview",   keywords:"scenario what-if simulation forecast" },
     { id:"dealaccel",    label:"🎯 Deal Accelerator",    icon:ICONS.dash,     group:"Overview"    },
-    { id:"revleakage",   label:"💰 Revenue Leakage",     icon:ICONS.dash,     group:"Overview"    },
+    { id:"leakage",      label:"💰 Revenue Leakage",     icon:ICONS.dash,     group:"Overview"    },
+    { id:"perfcoach",    label:"🏆 Performance Coach",  icon:ICONS.dash,     group:"Overview"    },
     { id:"dashboard",    label:"Executive Dashboard",    icon:ICONS.dash,     group:"Overview"    },
     { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Overview"    },
     { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Overview"    },
@@ -2973,7 +2991,15 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="bankanalyzer" && <BankAnalyzer authProfile={authProfile}/>}
         {tab==="aicoo"      && <AICOODashboard    {...shared} authProfile={authProfile}/>}
         {tab==="dealaccel"  && <DealAccelerator   {...shared} authProfile={authProfile}/>}
-        {tab==="revleakage" && <RevLeakageDetector {...shared} authProfile={authProfile}/>}
+        {tab==="revleakage"    && <RevLeakageDetector  {...shared} authProfile={authProfile}/>}
+        {tab==="consultant360" && <ConsultantOptimizer {...shared} authProfile={authProfile}/>}
+        {tab==="leakage"      && <RevLeakageDetector   {...shared} authProfile={authProfile}/>}
+        {tab==="client360"     && <Client360Intelligence {...shared} authProfile={authProfile}/>}
+        {tab==="profitopt"     && <ConsultantProfitOpt   {...shared} authProfile={authProfile}/>}
+        {tab==="knowengine"    && <KnowledgeEngine       {...shared} authProfile={authProfile}/>}
+        {tab==="knowledge"     && <KnowledgeEngine      {...shared} authProfile={authProfile}/>}
+        {tab==="scenario"      && <ScenarioSimulator    {...shared} authProfile={authProfile}/>}
+        {tab==="perfcoach"     && <PerformanceCoach     {...shared} authProfile={authProfile}/>}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
         {tab==="notifhub"     && <NotificationsHub roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} contracts={shared.contracts} workAuth={shared.workAuth} compDocs={shared.compDocs} crmDeals={shared.crmDeals} ptoRequests={shared.ptoRequests} tsSubmissions={shared.tsSubmissions} projects={shared.projects} finPayments={shared.finPayments} apInvoices={shared.apInvoices} sows={shared.sows} crmActivities={shared.crmActivities} ptoBalances={shared.ptoBalances} changeOrders={shared.changeOrders} vendors={shared.vendors} risks={shared.risks} offers={shared.offers} dismissedAlerts={shared.dismissedAlerts} addAudit={shared.addAudit} appSettings={shared.appSettings}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
@@ -44273,6 +44299,13 @@ Respond ONLY with this JSON:
 // PHASE 1 — REVENUE LEAKAGE DETECTOR
 // Underbilling, timesheet vs invoice mismatch, bench burn, rate gaps
 // =============================================================================
+
+// =============================================================================
+// PHASE 1 — REVENUE LEAKAGE DETECTOR
+// Underbilling detection, timesheet/invoice mismatch, bench burn, rate gaps
+// =============================================================================
+// [RevLeakageDetector — implemented below]
+
 function RevLeakageDetector({ roster, clients, finInvoices, finPayments, tsHours, tsSubmissions, authProfile }) {
   const [loading, setLoading]   = useState(false);
   const [analysis, setAnalysis] = useState(null);
@@ -44507,3 +44540,1223 @@ Respond ONLY with JSON:
   );
 }
 
+
+// =============================================================================
+// PHASE 2A — CONSULTANT PROFIT OPTIMIZER
+// Move consultant A→B = +18% margin, rate timing, portfolio optimization
+// =============================================================================
+function ConsultantOptimizer({ roster, clients, finInvoices, tsHours, crmDeals, authProfile }) {
+  const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState(null);
+
+  const fmt = n => "$" + Math.round(n).toLocaleString();
+  const fmtK = n => n >= 1000 ? "$"+Math.round(n/1000)+"K" : "$"+Math.round(n);
+
+  const buildPortfolio = () => {
+    return roster.map(r => {
+      const rev    = MONTHS.reduce((s,_,mi) => s+(tsHours[r.id]?.[mi]||0), 0) * (r.billRate||0);
+      const cost   = getEmployeeCost(r);
+      const margin = rev > 0 ? Math.round((rev-cost)/rev*100) : -100;
+      const util   = Math.round((r.util||0)*100);
+      // Days on current client
+      const startDate = r.startDate || "2024-01-01";
+      const daysOn = Math.floor((Date.now()-new Date(startDate))/86400000);
+      // Available clients that could use this skill set
+      const potentialClients = clients.filter(cl => cl.name !== r.client)
+        .map(cl => {
+          // Simple scoring: higher value clients = better fit
+          const clientRevenue = finInvoices
+            .filter(i => (i.clientName||i.client) === cl.name)
+            .reduce((s,i) => s+(i.amount||0), 0);
+          return { name: cl.name, revenue: clientRevenue };
+        })
+        .sort((a,b) => b.revenue - a.revenue)
+        .slice(0, 3);
+      return { ...r, rev, cost, margin, util, daysOn, potentialClients };
+    }).sort((a,b) => a.margin - b.margin);
+  };
+
+  const runOptimizer = async () => {
+    setLoading(true);
+    const portfolio = buildPortfolio();
+    const snapshot = portfolio.map(r => ({
+      name: r.name, role: r.role, type: r.type,
+      client: r.client, rate: r.billRate, util: r.util, margin: r.margin,
+      daysOnClient: r.daysOn,
+    }));
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:800,
+          system:"You are a consultant portfolio optimization AI for a SAP consulting firm. Maximize margin and utilization.",
+          messages:[{ role:"user", content:
+            `Consultant Portfolio:\\n${JSON.stringify(snapshot, null, 2)}\\n\\n` +
+            `Respond ONLY with JSON:\\n` +
+            `{"summary":"1-sentence portfolio verdict","recommendations":[` +
+            `{"consultant":"name","action":"specific optimization action","currentState":"current situation","projectedImpact":"$ or % improvement","priority":"HIGH|MEDIUM","timeframe":"immediate|30days|next_renewal"}` +
+            `],"rateIncreaseCandidates":[{"consultant":"name","currentRate":0,"suggestedRate":0,"reason":"why increase","timing":"when to ask"}]}`
+          }]
+        })
+      });
+      const d = await resp.json();
+      const txt = d.content?.[0]?.text||"";
+      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
+      setPlan({ ...parsed, portfolio });
+    } catch(e) {
+      setPlan({ error: e.message, portfolio });
+    }
+    setLoading(false);
+  };
+
+  const portfolio = buildPortfolio();
+  const avgMargin = portfolio.length > 0 ? Math.round(portfolio.reduce((s,r)=>s+r.margin,0)/portfolio.length) : 0;
+  const totalRev   = portfolio.reduce((s,r)=>s+r.rev,0);
+  const totalCost  = portfolio.reduce((s,r)=>s+r.cost,0);
+
+  return (
+    <div>
+      <PH title="🎯 Consultant Profit Optimizer" sub="Portfolio optimization · rate benchmarking · client placement intelligence">
+        <button className="btn bp" style={{fontSize:12,padding:"8px 20px"}} onClick={runOptimizer} disabled={loading}>
+          {loading?"⏳ Optimizing...":"⚡ Run Optimizer"}
+        </button>
+      </PH>
+
+      {/* Portfolio KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Portfolio Revenue",  v:fmtK(totalRev),  c:"#38bdf8"},
+          {l:"Total Cost",         v:fmtK(totalCost), c:"#f87171"},
+          {l:"Avg Margin",         v:avgMargin+"%",   c:avgMargin>30?"#34d399":avgMargin>15?"#f59e0b":"#f87171"},
+          {l:"Consultants",        v:portfolio.length, c:"#a78bfa"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* AI Summary */}
+      {plan?.summary && (
+        <div style={{padding:"14px 18px",background:"#020d1c",border:"1px solid #0369a1",borderRadius:10,marginBottom:18}}>
+          <div style={{fontSize:10,color:"#38bdf8",marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>AI Optimizer Verdict</div>
+          <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{plan.summary}</div>
+        </div>
+      )}
+
+      {/* Portfolio table */}
+      <div className="card" style={{padding:"18px 20px",marginBottom:18,overflowX:"auto"}}>
+        <div className="section-hdr">Consultant Portfolio</div>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+          <thead>
+            <tr style={{borderBottom:"1px solid #1a2d45"}}>
+              {["Consultant","Type","Client","Rate","Util","Margin","Days on Client","Action"].map(h=>(
+                <th key={h} className="th" style={{padding:"6px 10px",textAlign:"left"}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {portfolio.map(r=>{
+              const marginCol = r.margin>30?"#34d399":r.margin>15?"#f59e0b":"#f87171";
+              return (
+                <tr key={r.id} style={{borderBottom:"1px solid #0a1626"}}>
+                  <td style={{padding:"8px 10px"}}>
+                    <div style={{fontWeight:600,color:"#e2e8f0"}}>{r.name}</div>
+                    <div style={{fontSize:9,color:"#3d5a7a"}}>{r.role}</div>
+                  </td>
+                  <td style={{padding:"8px 10px",color:"#94a3b8"}}>{r.type}</td>
+                  <td style={{padding:"8px 10px",color:"#38bdf8"}}>{r.client||"—"}</td>
+                  <td style={{padding:"8px 10px",color:"#34d399",fontFamily:"monospace",fontWeight:700}}>${r.billRate||0}/hr</td>
+                  <td style={{padding:"8px 10px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{width:40,height:4,background:"#1a2d45",borderRadius:2}}>
+                        <div style={{width:r.util+"%",height:4,background:r.util>70?"#34d399":"#f59e0b",borderRadius:2,maxWidth:"100%"}}/>
+                      </div>
+                      <span style={{fontSize:10,color:"#94a3b8"}}>{r.util}%</span>
+                    </div>
+                  </td>
+                  <td style={{padding:"8px 10px",color:marginCol,fontFamily:"monospace",fontWeight:700}}>{r.margin}%</td>
+                  <td style={{padding:"8px 10px",color:r.daysOn>365?"#f59e0b":"#475569"}}>{r.daysOn}d</td>
+                  <td style={{padding:"8px 10px"}}>
+                    {r.margin < 15 && <span style={{fontSize:9,color:"#f87171",background:"#1a0808",padding:"2px 6px",borderRadius:3}}>⚠ Low margin</span>}
+                    {r.daysOn > 365 && <span style={{fontSize:9,color:"#f59e0b",background:"#1a1000",padding:"2px 6px",borderRadius:3,marginLeft:4}}>↗ Rate review</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* AI Recommendations */}
+      {plan?.recommendations?.length > 0 && (
+        <div className="card" style={{padding:"18px 20px",marginBottom:18}}>
+          <div className="section-hdr">🤖 AI Optimization Recommendations</div>
+          {plan.recommendations.map((r,i)=>(
+            <div key={i} style={{marginBottom:10,padding:"12px 16px",background:"#070c18",borderRadius:8,
+              border:`1px solid ${r.priority==="HIGH"?"#f59e0b44":"#1a2d45"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{r.consultant}</div>
+                <span style={{fontSize:9,fontWeight:700,color:r.priority==="HIGH"?"#f59e0b":"#38bdf8",
+                  background:r.priority==="HIGH"?"#1a1000":"#020d1c",padding:"2px 8px",borderRadius:20}}>{r.priority}</span>
+              </div>
+              <div style={{fontSize:12,color:"#34d399",marginBottom:4,fontWeight:600}}>{r.action}</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,fontSize:10}}>
+                <div style={{color:"#475569"}}>Now: <span style={{color:"#94a3b8"}}>{r.currentState}</span></div>
+                <div style={{color:"#475569"}}>Impact: <span style={{color:"#34d399",fontWeight:700}}>{r.projectedImpact}</span></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Rate Increase Candidates */}
+      {plan?.rateIncreaseCandidates?.length > 0 && (
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div className="section-hdr">💰 Rate Increase Candidates</div>
+          {plan.rateIncreaseCandidates.map((r,i)=>(
+            <div key={i} style={{marginBottom:8,padding:"12px 16px",background:"#021f14",borderRadius:8,
+              border:"1px solid #15803d44",display:"grid",gridTemplateColumns:"1fr auto",gap:12,alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{r.consultant}</div>
+                <div style={{fontSize:11,color:"#64748b"}}>{r.reason}</div>
+                <div style={{fontSize:10,color:"#475569",marginTop:3}}>Timing: {r.timing}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:10,color:"#64748b"}}>Current → Target</div>
+                <div style={{fontSize:14,fontWeight:800,fontFamily:"monospace"}}>
+                  <span style={{color:"#f87171"}}>${r.currentRate}</span>
+                  <span style={{color:"#475569"}}> → </span>
+                  <span style={{color:"#34d399"}}>${r.suggestedRate}</span>
+                  <span style={{fontSize:10,color:"#34d399"}}>/hr</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// PHASE 2B — CLIENT 360 INTELLIGENCE
+// Org chart, budget cycles, champion/blocker mapping, interaction timeline
+// =============================================================================
+// [Client360Intelligence — implemented below]
+
+// [KnowledgeEngine — implemented below]
+
+// [ScenarioSimulator — implemented below]
+
+function ConsultantProfitOpt({ roster, clients, finInvoices, tsHours, crmDeals, authProfile }) {
+  const [loading, setLoading] = useState(false);
+  const [recs,    setRecs]    = useState(null);
+  const [selId,   setSelId]   = useState(null);
+  const fmt  = n => "$" + Math.round(n).toLocaleString();
+  const fmtK = n => n>=1000 ? "$"+Math.round(n/1000)+"K" : fmt(n);
+
+  // Build consultant portfolio data
+  const consultantData = roster.map(r => {
+    const annualCost = getEmployeeCost(r);
+    const hrs        = MONTHS.reduce((s,_,mi) => s+(tsHours[r.id]?.[mi]||0), 0);
+    const revenue    = hrs * (r.billRate||0);
+    const margin     = revenue > 0 ? Math.round((revenue-annualCost)/revenue*100) : 0;
+    const util       = Math.round((r.util||0)*100);
+    // Market rate gap: compare to RATE_BOOK average for senior SAP
+    const marketRate = r.role?.toLowerCase().includes("brim") ? 155
+      : r.role?.toLowerCase().includes("successfactor") ? 130
+      : r.role?.toLowerCase().includes("data") ? 150
+      : r.role?.toLowerCase().includes("pm") ? 160 : 140;
+    const rateGap    = marketRate - (r.billRate||0);
+    const rateUpliftAnn = Math.round((r.util||0) * 1920 * Math.max(0, rateGap));
+    // Client assignment: is this client growing or shrinking?
+    const clientObj  = clients.find(cl => cl.name === r.client || cl.id === r.client);
+    return {
+      id: r.id, name: r.name, role: r.role, type: r.type,
+      client: r.client, billRate: r.billRate||0, util,
+      annualCost, revenue, margin, marketRate, rateGap, rateUpliftAnn,
+      clientHealth: clientObj?.healthScore || "green",
+    };
+  }).sort((a,b) => a.margin - b.margin);
+
+  const totalOptPotential = consultantData.reduce((s,r) => s+r.rateUpliftAnn, 0);
+
+  const runAI = async () => {
+    setLoading(true);
+    const top5 = consultantData.slice(0,5).map(r =>
+      `${r.name}: ${r.util}% util, $${r.billRate}/hr, ${r.margin}% margin, client=${r.client}, gap=$${r.rateGap}/hr`
+    ).join("\n");
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:800,
+          system:"You are a consultant portfolio optimization AI for a SAP consulting firm. Give specific, actionable, data-driven recommendations. Be direct and quantify impact.",
+          messages:[{ role:"user", content:
+`Optimize this consultant portfolio for maximum margin. Here are the 5 lowest-margin consultants:
+${top5}
+
+Total rate-uplift potential: ${fmtK(totalOptPotential)}/year
+
+Respond ONLY with this JSON:
+{
+  "headline": "one sentence portfolio assessment",
+  "recommendations": [
+    {"consultant":"name","action":"specific move","impact":"$X uplift or Y% margin gain","timeline":"30/60/90 days"},
+    {"consultant":"name","action":"...","impact":"...","timeline":"..."},
+    {"consultant":"name","action":"...","impact":"...","timeline":"..."}
+  ],
+  "topMove": "single highest-ROI action this month"
+}` }]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text||"{}";
+      setRecs(JSON.parse(text.replace(/```json|```/g,"").trim()));
+    } catch(e) { setRecs({headline:"Analysis complete — see data below.",recommendations:[],topMove:""}) }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <PH title="📈 Consultant Profit Optimizer" sub="Rate benchmarking · margin analysis · portfolio optimization recommendations"/>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Headcount",   v:roster.length,                                 c:"#38bdf8"},
+          {l:"Avg Margin",        v:Math.round(consultantData.reduce((s,r)=>s+r.margin,0)/Math.max(1,consultantData.length))+"%", c:"#34d399"},
+          {l:"Rate Uplift Potential", v:fmtK(totalOptPotential)+"/yr",             c:"#f59e0b"},
+          {l:"Below Market Rate", v:consultantData.filter(r=>r.rateGap>0).length+" consultants", c:"#f87171"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:18,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* AI Recommendations */}
+      {recs ? (
+        <div className="card" style={{padding:"18px 20px",marginBottom:14,border:"1px solid #0369a144"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#38bdf8",marginBottom:12}}>🤖 AI Recommendations</div>
+          {recs.topMove && (
+            <div style={{padding:"10px 14px",background:"#021f14",border:"1px solid #34d39944",borderRadius:8,marginBottom:12,fontSize:12,color:"#34d399"}}>
+              ⚡ Top Move: <strong>{recs.topMove}</strong>
+            </div>
+          )}
+          {recs.headline && <div style={{fontSize:11,color:"#94a3b8",marginBottom:12,fontStyle:"italic"}}>{recs.headline}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            {(recs.recommendations||[]).map((r,i)=>(
+              <div key={i} style={{padding:"12px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{r.consultant}</div>
+                <div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>{r.action}</div>
+                <div style={{fontSize:10,color:"#34d399",fontFamily:"monospace",marginBottom:4}}>💰 {r.impact}</div>
+                <div style={{fontSize:9,color:"#3d5a7a"}}>⏱ {r.timeline}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={{marginBottom:14}}>
+          <button className="btn bp" style={{fontSize:13,padding:"10px 24px"}} onClick={runAI} disabled={loading}>
+            {loading?"⏳ Analyzing Portfolio...":"🤖 Run AI Portfolio Analysis"}
+          </button>
+          <span style={{fontSize:10,color:"#334155",marginLeft:12}}>Analyzes all consultants for rate gaps, utilization, and margin optimization</span>
+        </div>
+      )}
+
+      {/* Consultant table */}
+      <div className="card" style={{overflow:"auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 80px 80px 80px 80px 1fr",padding:"8px 14px",
+          borderBottom:"1px solid #1a2d45"}}>
+          {["Consultant","Role","Rate","Market","Gap","Margin","Action"].map(h=>(
+            <div key={h} className="th" style={{fontSize:10}}>{h}</div>
+          ))}
+        </div>
+        {consultantData.map(r=>(
+          <div key={r.id} style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 80px 80px 80px 80px 1fr",
+            padding:"8px 14px",borderBottom:"1px solid #070c18",
+            background:selId===r.id?"#0a1a2e":"transparent",cursor:"pointer"}}
+            onClick={()=>setSelId(selId===r.id?null:r.id)}>
+            <div>
+              <div style={{fontSize:12,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div>
+              <div style={{fontSize:10,color:"#3d5a7a"}}>{r.client} · {r.util}% util</div>
+            </div>
+            <div style={{fontSize:10,color:"#64748b",alignSelf:"center"}}>{r.role?.slice(0,25)}</div>
+            <div style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8",alignSelf:"center"}}>${r.billRate}</div>
+            <div style={{fontSize:12,fontFamily:"monospace",color:"#64748b",alignSelf:"center"}}>${r.marketRate}</div>
+            <div style={{fontSize:12,fontFamily:"monospace",
+              color:r.rateGap>0?"#f87171":"#34d399",alignSelf:"center",fontWeight:700}}>
+              {r.rateGap>0?"+$"+r.rateGap:"✓"}
+            </div>
+            <div style={{alignSelf:"center"}}>
+              <span style={{fontSize:11,fontWeight:700,
+                color:r.margin>=30?"#34d399":r.margin>=15?"#f59e0b":"#f87171"}}>
+                {r.margin}%
+              </span>
+            </div>
+            <div style={{fontSize:10,color:"#f59e0b",alignSelf:"center"}}>
+              {r.rateGap>0 ? `↑ +${fmtK(r.rateUpliftAnn)}/yr` : r.margin<20?"📊 Review mix":"✅ Optimized"}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// 🏢 CLIENT 360 INTELLIGENCE  (Phase 2)
+// =============================================================================
+function Client360Intelligence({ clients, finInvoices, finPayments, crmDeals, roster, contracts, projects, authProfile }) {
+  const [selClient, setSelClient] = useState(clients[0]?.id||"");
+  const [loading,   setLoading]   = useState(false);
+  const [intel,     setIntel]     = useState({});
+  const fmt  = n => "$"+Math.round(n).toLocaleString();
+  const fmtK = n => n>=1000?"$"+Math.round(n/1000)+"K":fmt(n);
+
+  const cl = clients.find(c=>c.id===selClient)||clients[0];
+  if (!cl) return <div className="card" style={{padding:20}}>No clients found.</div>;
+
+  // Build 360 data for selected client
+  const clInvoices  = finInvoices.filter(i => i.clientId===cl.id||i.clientName===cl.name);
+  const clPayments  = finPayments.filter(p => p.clientId===cl.id||p.clientName===cl.name);
+  const clDeals     = crmDeals.filter(d => d.clientId===cl.id||d.company===cl.name||d.clientName===cl.name);
+  const clConsults  = roster.filter(r => r.client===cl.name||r.client===cl.id);
+  const clContracts = contracts.filter(c => c.clientId===cl.id||c.clientName===cl.name);
+  const clProjects  = projects.filter(p => p.clientId===cl.id||p.client===cl.name);
+  const totalBilled = clInvoices.reduce((s,i)=>s+(i.amount||0),0);
+  const totalPaid   = clPayments.reduce((s,p)=>s+(p.amount||0),0);
+  const openAR      = totalBilled - totalPaid;
+  const avgDSO      = clInvoices.length>0 ? Math.round(
+    clInvoices.reduce((s,i)=>{
+      const d=new Date(i.paidDate||new Date()); const issued=new Date(i.date||i.issueDate||d);
+      return s+Math.max(0,(d-issued)/86400000);
+    },0)/clInvoices.length) : 0;
+
+  // Churn risk calculation
+  const renewalDays = cl.nextRenewal ?
+    Math.ceil((new Date(cl.nextRenewal)-new Date())/86400000) : 999;
+  const churnRisk = renewalDays<30?"HIGH":renewalDays<90?"MEDIUM":"LOW";
+  const churnColor = churnRisk==="HIGH"?"#f87171":churnRisk==="MEDIUM"?"#f59e0b":"#34d399";
+
+  const runClientAI = async () => {
+    if (intel[cl.id]) return;
+    setLoading(true);
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:800,
+          system:"You are a client intelligence AI for a SAP consulting firm. Give specific, actionable strategic insights about this client relationship.",
+          messages:[{role:"user", content:
+`Client: ${cl.name} | Vertical: ${cl.vertical||"Unknown"} | Since: ${cl.clientSince||"2024"}
+Revenue: ${fmtK(totalBilled)} billed | ${fmtK(totalPaid)} collected | AR: ${fmtK(openAR)}
+Consultants: ${clConsults.length} deployed | Contracts: ${clContracts.length} | Projects: ${clProjects.length}
+Renewal: ${renewalDays} days away | Health: ${cl.healthScore||"green"} | Churn risk: ${churnRisk}
+Open deals: ${clDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage)).length}
+Avg DSO: ${avgDSO} days
+
+Respond ONLY with this JSON:
+{
+  "executiveSummary": "2-sentence client health summary",
+  "growthOpportunities": ["specific upsell/expand opportunity 1", "opportunity 2", "opportunity 3"],
+  "riskFactors": ["specific risk 1", "risk 2"],
+  "nextActions": ["specific action this week", "action this month"],
+  "churnSignals": "assessment of renewal/churn risk",
+  "idealExpansion": "best expansion play for this client"
+}`}]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text||"{}";
+      setIntel(prev=>({...prev, [cl.id]: JSON.parse(text.replace(/```json|```/g,"").trim())}));
+    } catch(e) { setIntel(prev=>({...prev, [cl.id]:{executiveSummary:"Analysis complete.",growthOpportunities:[],riskFactors:[],nextActions:[]}})) }
+    setLoading(false);
+  };
+
+  const ci = intel[cl.id];
+
+  return (
+    <div>
+      <PH title="🏢 Client 360 Intelligence" sub="Full relationship view · AI insights · churn detection · growth opportunities"/>
+
+      {/* Client selector */}
+      <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+        {clients.map(c=>(
+          <button key={c.id} onClick={()=>{setSelClient(c.id);}}
+            className={`btn ${selClient===c.id?"bp":"bg"}`} style={{fontSize:11}}>
+            {c.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Header KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Total Billed",      v:fmtK(totalBilled),              c:"#38bdf8"},
+          {l:"Open AR",           v:fmtK(openAR),                    c:openAR>10000?"#f87171":"#34d399"},
+          {l:"Avg DSO",           v:avgDSO+" days",                  c:avgDSO>45?"#f87171":"#34d399"},
+          {l:"Consultants",       v:clConsults.length+" deployed",   c:"#a78bfa"},
+          {l:"Renewal Risk",      v:churnRisk,                       c:churnColor},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:16,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        {/* Left: relationship data */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {/* Client profile */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div className="section-hdr">Client Profile</div>
+            {[
+              ["Vertical",       cl.vertical||"—"],
+              ["Health Score",   cl.healthScore||"green"],
+              ["Next Renewal",   cl.nextRenewal||"—", renewalDays<90?churnColor:"#94a3b8"],
+              ["Days to Renewal",renewalDays>900?"No date set":`${renewalDays} days`,
+               renewalDays<30?"#f87171":renewalDays<90?"#f59e0b":"#34d399"],
+              ["Engagement Type",clContracts[0]?.type||cl.engagementType||"Staff Augmentation"],
+              ["Active Projects", clProjects.filter(p=>p.status==="active").length],
+            ].map(([l,v,col])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",
+                borderBottom:"1px solid #0a1626"}}>
+                <span style={{fontSize:11,color:"#64748b"}}>{l}</span>
+                <span style={{fontSize:11,fontWeight:600,color:col||"#e2e8f0"}}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Deployed consultants */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div className="section-hdr">Deployed Consultants ({clConsults.length})</div>
+            {clConsults.length===0 ? <div style={{fontSize:11,color:"#334155"}}>No consultants assigned</div> :
+            clConsults.map(r=>(
+              <div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",
+                borderBottom:"1px solid #0a1626"}}>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div>
+                  <div style={{fontSize:9,color:"#3d5a7a"}}>{r.role}</div>
+                </div>
+                <span style={{fontSize:11,color:"#38bdf8",fontFamily:"monospace"}}>${r.billRate}/hr</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: AI intelligence */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {ci ? (
+            <>
+              <div className="card" style={{padding:"16px 18px",border:"1px solid #0369a144"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#38bdf8",marginBottom:8}}>🤖 AI Executive Summary</div>
+                <p style={{fontSize:12,color:"#94a3b8",lineHeight:1.6,margin:0}}>{ci.executiveSummary}</p>
+              </div>
+
+              {ci.growthOpportunities?.length>0 && (
+                <div className="card" style={{padding:"16px 18px",border:"1px solid #34d39933"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:8}}>🚀 Growth Opportunities</div>
+                  {ci.growthOpportunities.map((o,i)=>(
+                    <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",
+                      borderBottom:"1px solid #0a1626"}}>💡 {o}</div>
+                  ))}
+                </div>
+              )}
+
+              {ci.riskFactors?.length>0 && (
+                <div className="card" style={{padding:"16px 18px",border:"1px solid #f8717133"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:8}}>⚠ Risk Factors</div>
+                  {ci.riskFactors.map((r,i)=>(
+                    <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",
+                      borderBottom:"1px solid #0a1626"}}>🔴 {r}</div>
+                  ))}
+                </div>
+              )}
+
+              {ci.nextActions?.length>0 && (
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8}}>⚡ Next Actions</div>
+                  {ci.nextActions.map((a,i)=>(
+                    <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",
+                      borderBottom:"1px solid #0a1626"}}>→ {a}</div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="card" style={{padding:"20px",textAlign:"center"}}>
+              <div style={{fontSize:12,color:"#3d5a7a",marginBottom:12}}>
+                Get AI-powered intelligence for {cl.name}
+              </div>
+              <button className="btn bp" style={{fontSize:12}} onClick={runClientAI} disabled={loading}>
+                {loading?"⏳ Analyzing...":"🤖 Generate Client Intelligence"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// 🧩 KNOWLEDGE ENGINE  (Phase 2 — Institutional Learning)
+// =============================================================================
+function KnowledgeEngine({ crmDeals, proposals, roster, clients, authProfile }) {
+  const [query,    setQuery]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [answer,   setAnswer]   = useState(null);
+  const [category, setCategory] = useState("all");
+
+  // Build knowledge base from existing data
+  const wonDeals   = crmDeals.filter(d => d.stage==="closed_won");
+  const lostDeals  = crmDeals.filter(d => d.stage==="closed_lost");
+  const winRate    = crmDeals.length>0 ? Math.round(wonDeals.length/crmDeals.filter(d=>["closed_won","closed_lost"].includes(d.stage)).length*100)||0 : 0;
+
+  // Win/loss patterns by vertical
+  const byVertical = {};
+  crmDeals.forEach(d => {
+    const v = clients.find(c=>c.name===d.company)?.vertical || d.vertical || "Unknown";
+    if (!byVertical[v]) byVertical[v] = {won:0,lost:0,vals:[]};
+    if (d.stage==="closed_won") byVertical[v].won++;
+    if (d.stage==="closed_lost") byVertical[v].lost++;
+    if (d.value) byVertical[v].vals.push(d.value);
+  });
+
+  const PRESET_QUERIES = [
+    "What's our best pitch for Utilities CIOs?",
+    "Which deal stages do we lose most often?",
+    "What pricing pattern wins BRIM roles?",
+    "Which consultant profiles close deals fastest?",
+    "What objections do we hear most from clients?",
+    "What's our average deal size by vertical?",
+  ];
+
+  const runQuery = async (q) => {
+    const qText = q || query;
+    if (!qText.trim()) return;
+    setLoading(true);
+    setAnswer(null);
+    const digest = JSON.stringify({
+      totalDeals: crmDeals.length,
+      wonDeals: wonDeals.length,
+      lostDeals: lostDeals.length,
+      winRate: winRate+"%",
+      byVertical: Object.entries(byVertical).map(([v,d])=>({vertical:v,won:d.won,lost:d.lost,avgVal:d.vals.length?Math.round(d.vals.reduce((a,b)=>a+b,0)/d.vals.length):0})),
+      topClients: clients.slice(0,5).map(c=>({name:c.name,vertical:c.vertical,health:c.healthScore})),
+      roles: [...new Set(roster.map(r=>r.role))].slice(0,10),
+    });
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:600,
+          system:`You are the institutional knowledge AI for Ziksatech, a WBE-certified SAP consulting firm specializing in Utilities (BRIM, IS-U), SuccessFactors, S/4HANA, MDG, and Data Governance in the DFW market. Answer questions based on the firm's actual deal data and consulting patterns. Be specific, practical, and quantified.`,
+          messages:[{role:"user", content:`Firm data: ${digest}\n\nQuestion: ${qText}\n\nRespond with a direct, specific answer based on this firm's data. Format as: key insight + supporting evidence from the data + 1-2 actionable recommendations.`}]
+        })
+      });
+      const data = await resp.json();
+      setAnswer({ question: qText, answer: data.content?.[0]?.text||"No response." });
+    } catch(e) { setAnswer({question:qText,answer:"Knowledge engine unavailable. Check API connection."}) }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <PH title="🧩 Knowledge Engine" sub="Institutional learning · win/loss patterns · best pitch intelligence · pricing playbook"/>
+
+      {/* Stats */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Deals",   v:crmDeals.length,        c:"#38bdf8"},
+          {l:"Win Rate",      v:winRate+"%",             c:winRate>60?"#34d399":winRate>40?"#f59e0b":"#f87171"},
+          {l:"Won Deals",     v:wonDeals.length,         c:"#34d399"},
+          {l:"Lost Deals",    v:lostDeals.length,        c:"#f87171"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:14}}>
+        {/* Left: query interface */}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>Ask the Knowledge Engine</div>
+            <textarea className="inp" rows={3} value={query}
+              onChange={e=>setQuery(e.target.value)}
+              placeholder="e.g. What pricing works best for Utilities clients?"
+              style={{marginBottom:8,resize:"vertical"}}/>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12}}
+              onClick={()=>runQuery()} disabled={loading||!query.trim()}>
+              {loading?"⏳ Searching knowledge base...":"🧠 Ask"}
+            </button>
+          </div>
+
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",marginBottom:8}}>SUGGESTED QUERIES</div>
+            {PRESET_QUERIES.map(q=>(
+              <button key={q} className="btn bg" style={{width:"100%",justifyContent:"flex-start",
+                fontSize:10,marginBottom:4,textAlign:"left",padding:"5px 10px"}}
+                onClick={()=>{setQuery(q);runQuery(q);}}>
+                💬 {q}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: answer + win/loss patterns */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {answer && (
+            <div className="card" style={{padding:"18px 20px",border:"1px solid #0369a144"}}>
+              <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>
+                Answer for: "{answer.question}"
+              </div>
+              <div style={{fontSize:12,color:"#e2e8f0",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{answer.answer}</div>
+            </div>
+          )}
+
+          {/* Win/loss by vertical */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div className="section-hdr">Win/Loss by Vertical</div>
+            {Object.entries(byVertical).filter(([v])=>v!=="Unknown").map(([v,d])=>{
+              const total = d.won + d.lost;
+              const wr = total > 0 ? Math.round(d.won/total*100) : 0;
+              return (
+                <div key={v} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:11,color:"#94a3b8"}}>{v}</span>
+                    <span style={{fontSize:11,fontFamily:"monospace",
+                      color:wr>=60?"#34d399":wr>=40?"#f59e0b":"#f87171",fontWeight:700}}>
+                      {wr}% win ({d.won}/{total})
+                    </span>
+                  </div>
+                  <div style={{height:6,background:"#1a2d45",borderRadius:3}}>
+                    <div style={{height:6,width:wr+"%",borderRadius:3,
+                      background:wr>=60?"#34d399":wr>=40?"#f59e0b":"#f87171"}}/>
+                  </div>
+                </div>
+              );
+            })}
+            {Object.keys(byVertical).filter(v=>v!=="Unknown").length===0 &&
+              <div style={{fontSize:11,color:"#334155"}}>Build deal history to see patterns</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// 📊 SCENARIO SIMULATOR  (Phase 3)
+// =============================================================================
+function ScenarioSimulator({ roster, clients, finInvoices, finPayments, crmDeals, finExpenses, authProfile }) {
+  const [scenario, setScenario] = useState({
+    newHires:      0,
+    avgBillRate:   150,
+    dealCloseProb: 0,
+    rateIncrease:  0,
+    clientChurn:   0,
+    benchReduction:0,
+  });
+  const [loading, setLoading] = useState(false);
+  const [narrative, setNarrative] = useState(null);
+  const fmt  = n => "$"+Math.round(n).toLocaleString();
+  const fmtK = n => n>=1000?"$"+Math.round(n/1000)+"K":fmt(n);
+
+  // Base metrics
+  const baseRevenue   = roster.reduce((s,r)=>{
+    const hrs=MONTHS.reduce((h,_,mi)=>h+(r.util||0)*160,0);
+    return s+hrs*(r.billRate||0)/12;
+  },0)*12;
+  const baseCost      = roster.reduce((s,r)=>s+getEmployeeCost(r),0);
+  const baseProfit    = baseRevenue - baseCost;
+  const baseMargin    = baseRevenue > 0 ? baseRevenue>0?(baseRevenue-baseCost)/baseRevenue*100 : 0 : 0;
+
+  // Scenario impact calculations
+  const newHireRevenue   = scenario.newHires * scenario.avgBillRate * 1920 * 0.85;
+  const newHireCost      = scenario.newHires * 130000; // avg fully loaded FTE cost
+  const pipelineRevenue  = crmDeals
+    .filter(d=>!["closed_won","closed_lost"].includes(d.stage))
+    .reduce((s,d)=>s+(d.value||0),0) * (scenario.dealCloseProb/100);
+  const rateUplift       = roster.reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*1920*(scenario.rateIncrease/100),0);
+  const churnLoss        = (scenario.clientChurn/100) * baseRevenue;
+  const benchSaving      = roster.filter(r=>(r.util||0)<0.3).reduce((s,r)=>
+    s+getEmployeeCost(r)*(scenario.benchReduction/100),0);
+
+  const projRevenue = baseRevenue + newHireRevenue + pipelineRevenue + rateUplift - churnLoss;
+  const projCost    = baseCost    + newHireCost;
+  const projProfit  = projRevenue - projCost + benchSaving;
+  const projMargin  = projRevenue > 0 ? (projRevenue-projCost)/projRevenue*100 : 0;
+  const revDelta    = projRevenue - baseRevenue;
+  const profitDelta = projProfit  - baseProfit;
+
+  const runNarrative = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:400,
+          system:"You are a CFO-level scenario analysis AI for a SAP consulting firm.",
+          messages:[{role:"user", content:
+`Base: Revenue ${fmtK(baseRevenue)}, Profit ${fmtK(baseProfit)}, Margin ${Math.round(baseMargin)}%
+Scenario: +${scenario.newHires} hires @ $${scenario.avgBillRate}/hr, ${scenario.dealCloseProb}% pipeline close, ${scenario.rateIncrease}% rate increase, ${scenario.clientChurn}% client churn, ${scenario.benchReduction}% bench reduction
+Projected: Revenue ${fmtK(projRevenue)}, Profit ${fmtK(projProfit)}, Margin ${Math.round(projMargin)}%
+Delta: Revenue ${revDelta>=0?"+":""}${fmtK(revDelta)}, Profit ${profitDelta>=0?"+":""}${fmtK(profitDelta)}
+
+In 3 sentences: assess this scenario, the biggest risk, and the #1 thing to do first.`}]
+        })
+      });
+      const data = await resp.json();
+      setNarrative(data.content?.[0]?.text||"");
+    } catch(e) { setNarrative("Scenario analysis complete — see metrics above.") }
+    setLoading(false);
+  };
+
+  const Metric = ({label, base, proj, color}) => {
+    const delta = proj-base;
+    const pct   = base>0?Math.round(delta/base*100):0;
+    return (
+      <div className="card" style={{padding:"12px 14px"}}>
+        <div style={{fontSize:10,color:"#475569",marginBottom:4}}>{label}</div>
+        <div style={{fontSize:10,color:"#3d5a7a",marginBottom:2}}>Base: <span style={{color:"#64748b",fontFamily:"monospace"}}>{fmtK(base)}</span></div>
+        <div style={{fontSize:14,fontWeight:800,color:delta>=0?"#34d399":"#f87171",fontFamily:"'DM Mono',monospace"}}>
+          {fmtK(proj)}
+        </div>
+        <div style={{fontSize:10,fontWeight:700,color:delta>=0?"#34d399":"#f87171"}}>
+          {delta>=0?"+":""}{fmtK(delta)} ({delta>=0?"+":""}{pct}%)
+        </div>
+      </div>
+    );
+  };
+
+  const Slider = ({label, field, min, max, step, suffix}) => (
+    <div style={{marginBottom:14}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+        <span style={{fontSize:11,color:"#94a3b8"}}>{label}</span>
+        <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8",fontWeight:700}}>
+          {scenario[field]}{suffix}
+        </span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={scenario[field]}
+        onChange={e=>setScenario(s=>({...s,[field]:+e.target.value}))}
+        style={{width:"100%",accentColor:"#0284c7"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#1e3a5f",marginTop:1}}>
+        <span>{min}{suffix}</span><span>{max}{suffix}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <PH title="📊 Scenario Simulator" sub="What-if modeling · revenue · margin · cash flow impact"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:14,alignItems:"start"}}>
+        {/* Controls */}
+        <div className="card" style={{padding:"18px 20px"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🎛 Adjust Scenarios</div>
+          <Slider label="New Hires"            field="newHires"       min={0} max={10} step={1}    suffix=" people"/>
+          <Slider label="Avg Bill Rate (new)"  field="avgBillRate"    min={80} max={250} step={5}  suffix="/hr"/>
+          <Slider label="Pipeline Close Rate"  field="dealCloseProb"  min={0} max={100} step={5}   suffix="%"/>
+          <Slider label="Rate Increase"        field="rateIncrease"   min={0} max={20} step={1}    suffix="%"/>
+          <Slider label="Client Churn Risk"    field="clientChurn"    min={0} max={30} step={1}    suffix="%"/>
+          <Slider label="Bench Reduction"      field="benchReduction" min={0} max={100} step={10}  suffix="%"/>
+          <button className="btn bg" style={{width:"100%",justifyContent:"center",fontSize:11,marginTop:4}}
+            onClick={()=>setScenario({newHires:0,avgBillRate:150,dealCloseProb:0,rateIncrease:0,clientChurn:0,benchReduction:0})}>
+            Reset
+          </button>
+        </div>
+
+        {/* Results */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <Metric label="Annual Revenue"  base={baseRevenue}  proj={projRevenue}  />
+            <Metric label="Annual Profit"   base={baseProfit}   proj={projProfit}   />
+            <Metric label="Margin %"        base={baseMargin}   proj={projMargin}   />
+          </div>
+
+          {/* Impact breakdown */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div className="section-hdr">Impact Breakdown</div>
+            {[
+              ["+New hire revenue",   newHireRevenue,  "#34d399"],
+              ["+New hire cost",      -newHireCost,    "#f87171"],
+              ["+Pipeline close",     pipelineRevenue, "#34d399"],
+              ["+Rate increase",      rateUplift,      "#34d399"],
+              ["−Client churn",       -churnLoss,      "#f87171"],
+              ["+Bench reduction",    benchSaving,     "#34d399"],
+            ].filter(([,v])=>v!==0).map(([l,v,c])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",
+                borderBottom:"1px solid #0a1626"}}>
+                <span style={{fontSize:11,color:"#64748b"}}>{l}</span>
+                <span style={{fontSize:11,fontFamily:"monospace",color:c,fontWeight:700}}>
+                  {v>=0?"+":""}{fmtK(v)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* AI narrative */}
+          {narrative ? (
+            <div className="card" style={{padding:"16px 18px",border:"1px solid #0369a144"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>🤖 CFO Assessment</div>
+              <p style={{fontSize:12,color:"#94a3b8",lineHeight:1.7,margin:0}}>{narrative}</p>
+            </div>
+          ) : (
+            <button className="btn bp" style={{fontSize:12}} onClick={runNarrative} disabled={loading}>
+              {loading?"⏳ Analyzing...":"🤖 Get AI CFO Assessment"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🏆 PERFORMANCE COACH — Personal Performance Intelligence (Phase 3.10)
+// Analyzes behavior patterns for Sales, Recruiters, Delivery Managers
+// ─────────────────────────────────────────────────────────────────────────────
+function PerformanceCoach({ roster, clients, crmDeals, proposals, tsSubmissions,
+  finInvoices, interviews, submissions, authProfile }) {
+
+  const [role,      setRole]      = useState("sales");
+  const [loading,   setLoading]   = useState(false);
+  const [insight,   setInsight]   = useState(null);
+  const [selMember, setSelMember] = useState("");
+
+  const ROLES = [
+    { id:"sales",     label:"🎯 Sales",         icon:"🎯" },
+    { id:"recruiter", label:"👥 Recruiter",      icon:"👥" },
+    { id:"delivery",  label:"🚀 Delivery Mgr",  icon:"🚀" },
+    { id:"exec",      label:"📊 Exec Overview",  icon:"📊" },
+  ];
+
+  // ── Build performance data per role ─────────────────────────────────────
+  const salesData = () => {
+    const deals = crmDeals || [];
+    const won   = deals.filter(d=>d.stage==="won");
+    const lost  = deals.filter(d=>d.stage==="lost");
+    const open  = deals.filter(d=>!["won","lost"].includes(d.stage));
+    const winRate = deals.length ? Math.round(won.length/Math.max(won.length+lost.length,1)*100) : 0;
+    const avgDeal = won.length ? Math.round(won.reduce((s,d)=>s+(+d.value||0),0)/won.length) : 0;
+    // Stage velocity — avg days per stage
+    const stageVel = {};
+    deals.forEach(d => {
+      if (d.stageHistory) {
+        d.stageHistory.forEach((s,i) => {
+          if (i>0) {
+            const days = Math.round((new Date(s.date)-new Date(d.stageHistory[i-1].date))/(86400000));
+            stageVel[s.stage] = stageVel[s.stage] || [];
+            stageVel[s.stage].push(days);
+          }
+        });
+      }
+    });
+    // Lost reasons
+    const lostReasons = {};
+    lost.forEach(d=>{
+      const r = d.lostReason||"Unknown";
+      lostReasons[r] = (lostReasons[r]||0)+1;
+    });
+    return { won:won.length, lost:lost.length, open:open.length, winRate, avgDeal,
+      totalPipeline: open.reduce((s,d)=>s+(+d.value||0),0),
+      lostReasons, recentWon: won.slice(-3), recentLost: lost.slice(-3) };
+  };
+
+  const recruiterData = () => {
+    const subs  = submissions || [];
+    const ints  = interviews  || [];
+    const offs  = [];
+    const placed = subs.filter(s=>s.status==="placed");
+    const submitToInt = subs.length ? Math.round(ints.length/Math.max(subs.length,1)*100) : 0;
+    const intToOffer  = ints.length ? Math.round(offs.length/Math.max(ints.length,1)*100) : 0;
+    const avgDaysToPlace = placed.length ? 30 : 0; // approximate
+    return { submitted:subs.length, interviewed:ints.length, placed:placed.length,
+      submitToInt, intToOffer, avgDaysToPlace,
+      topClients: [...new Set(placed.map(s=>s.clientId))].slice(0,3),
+      pipeline: subs.filter(s=>!["placed","rejected"].includes(s.status)).length };
+  };
+
+  const deliveryData = () => {
+    const sheets  = tsSubmissions || [];
+    const invoices= finInvoices   || [];
+    const approved = sheets.filter(s=>["approved","client_approved","invoiced"].includes(s.status));
+    const rejected = sheets.filter(s=>s.status==="rejected");
+    const onTime   = invoices.filter(i=>i.status==="paid").length;
+    const overdue  = invoices.filter(i=>i.status==="overdue").length;
+    const utilRate = roster?.length ?
+      Math.round(roster.filter(r=>r.status==="active").length/Math.max(roster.length,1)*100) : 0;
+    return { totalSheets:sheets.length, approved:approved.length, rejected:rejected.length,
+      rejectionRate: sheets.length ? Math.round(rejected.length/sheets.length*100) : 0,
+      invoicesPaid:onTime, invoicesOverdue:overdue, utilRate,
+      activeConsultants: roster?.filter(r=>r.status==="active").length||0 };
+  };
+
+  const execData = () => {
+    const s = salesData(); const r = recruiterData(); const d = deliveryData();
+    const rev = (finInvoices||[]).filter(i=>i.status==="paid").reduce((sum,i)=>sum+(+i.amount||0),0);
+    const pipeline = s.totalPipeline;
+    return { ...s, ...r, ...d, rev, pipeline };
+  };
+
+  // ── AI Analysis ──────────────────────────────────────────────────────────
+  const analyze = async () => {
+    setLoading(true); setInsight(null);
+    const data = role==="sales"?salesData():role==="recruiter"?recruiterData():
+      role==="delivery"?deliveryData():execData();
+
+    const prompt = `You are a performance coach for a staffing & IT consulting firm.
+Analyze this ${role} performance data and give brutally honest, specific coaching insights.
+
+Role: ${role.toUpperCase()}
+Data: ${JSON.stringify(data, null, 2)}
+
+Respond in JSON only (no markdown):
+{
+  "headline": "one punchy insight sentence",
+  "score": 1-10,
+  "scoreLabel": "e.g. Strong / Needs Work / Critical",
+  "strengths": ["specific strength 1", "specific strength 2"],
+  "gaps": ["specific gap 1", "specific gap 2", "specific gap 3"],
+  "patterns": ["behavioral pattern observed 1", "behavioral pattern 2"],
+  "topAction": "THE single most impactful thing to do this week",
+  "quickWins": ["quick win 1", "quick win 2", "quick win 3"],
+  "benchmark": "How this compares to top-performing consulting firms",
+  "forecast": "What happens in 30 days if nothing changes"
+}`;
+
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          messages:[{role:"user",content:prompt}]
+        })
+      });
+      const d = await res.json();
+      const text = d.content?.[0]?.text||"{}";
+      const clean = text.replace(/```json|```/g,"").trim();
+      setInsight(JSON.parse(clean));
+    } catch(e) { setInsight({headline:"Analysis failed — check connection",score:0,strengths:[],gaps:[],patterns:[],topAction:"",quickWins:[],benchmark:"",forecast:""}); }
+    setLoading(false);
+  };
+
+  const data = role==="sales"?salesData():role==="recruiter"?recruiterData():
+    role==="delivery"?deliveryData():execData();
+
+  const scoreColor = s => s>=8?"#34d399":s>=6?"#f59e0b":s>=4?"#fb923c":"#f87171";
+
+  return (
+    <div>
+      <PH title="🏆 Performance Coach" sub="Behavioral analysis · pattern detection · coaching for sales, recruiters & delivery"/>
+
+      {/* Role Selector */}
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+        {ROLES.map(r=>(
+          <button key={r.id} className={role===r.id?"btn bp":"btn bg"}
+            style={{fontSize:12,padding:"8px 18px",fontWeight:role===r.id?700:400}}
+            onClick={()=>{setRole(r.id);setInsight(null);}}>
+            {r.label}
+          </button>
+        ))}
+        <button className="btn bp" style={{fontSize:12,padding:"8px 18px",marginLeft:"auto",fontWeight:700}}
+          onClick={analyze} disabled={loading}>
+          {loading?"⏳ Analyzing...":"🔍 Run Analysis"}
+        </button>
+      </div>
+
+      {/* Live KPI Snapshot */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        {role==="sales" && [
+          ["Win Rate",       `${data.winRate}%`,        "#34d399"],
+          ["Deals Won",      data.won,                  "#38bdf8"],
+          ["Open Pipeline",  `$${(data.totalPipeline/1000).toFixed(0)}K`, "#a78bfa"],
+          ["Avg Deal Size",  `$${(data.avgDeal/1000).toFixed(0)}K`,       "#f59e0b"],
+        ].map(([l,v,col])=>(
+          <div key={l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:col}}>{v}</div>
+          </div>
+        ))}
+        {role==="recruiter" && [
+          ["Submitted",    data.submitted,          "#38bdf8"],
+          ["Interviewed",  data.interviewed,        "#a78bfa"],
+          ["Placed",       data.placed,             "#34d399"],
+          ["Sub→Int Rate", `${data.submitToInt}%`,  "#f59e0b"],
+        ].map(([l,v,col])=>(
+          <div key={l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:col}}>{v}</div>
+          </div>
+        ))}
+        {role==="delivery" && [
+          ["Active Consultants", data.activeConsultants,  "#38bdf8"],
+          ["Utilization",        `${data.utilRate}%`,     data.utilRate>=80?"#34d399":data.utilRate>=60?"#f59e0b":"#f87171"],
+          ["Rejection Rate",     `${data.rejectionRate}%`,data.rejectionRate<5?"#34d399":"#f87171"],
+          ["Overdue Invoices",   data.invoicesOverdue,    data.invoicesOverdue===0?"#34d399":"#f87171"],
+        ].map(([l,v,col])=>(
+          <div key={l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:col}}>{v}</div>
+          </div>
+        ))}
+        {role==="exec" && [
+          ["Total Revenue",   `$${((data.rev||0)/1000).toFixed(0)}K`,      "#34d399"],
+          ["Pipeline",        `$${((data.pipeline||0)/1000).toFixed(0)}K`, "#38bdf8"],
+          ["Win Rate",        `${data.winRate||0}%`,                        "#a78bfa"],
+          ["Consultants",     data.activeConsultants||0,                    "#f59e0b"],
+        ].map(([l,v,col])=>(
+          <div key={l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:col}}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Prompt to run analysis */}
+      {!insight && !loading && (
+        <div className="card" style={{padding:"40px",textAlign:"center",color:"#3d5a7a"}}>
+          <div style={{fontSize:40,marginBottom:12}}>🏆</div>
+          <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>
+            AI Performance Coaching
+          </div>
+          <div style={{fontSize:12,marginBottom:20,maxWidth:400,margin:"0 auto 20px"}}>
+            Click <strong style={{color:"#C9A84C"}}>Run Analysis</strong> to get brutally honest behavioral insights,
+            pattern detection, and your #1 action for this week.
+          </div>
+          <button className="btn bp" style={{fontSize:13,padding:"10px 28px",fontWeight:700}} onClick={analyze}>
+            🔍 Run Analysis
+          </button>
+        </div>
+      )}
+
+      {loading && (
+        <div className="card" style={{padding:"40px",textAlign:"center"}}>
+          <div style={{fontSize:13,color:"#38bdf8"}}>⏳ Analyzing performance patterns...</div>
+        </div>
+      )}
+
+      {/* AI Coaching Results */}
+      {insight && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+
+          {/* Score + Headline */}
+          <div className="card" style={{padding:"20px 22px",gridColumn:"1/-1",
+            background:`linear-gradient(135deg,#070c18,#0c1a2e)`}}>
+            <div style={{display:"flex",alignItems:"center",gap:20}}>
+              <div style={{textAlign:"center",flexShrink:0}}>
+                <div style={{fontSize:48,fontWeight:900,color:scoreColor(insight.score),lineHeight:1}}>
+                  {insight.score}
+                </div>
+                <div style={{fontSize:10,color:scoreColor(insight.score),fontWeight:700}}>
+                  / 10
+                </div>
+                <div style={{fontSize:11,color:scoreColor(insight.score),fontWeight:700,marginTop:4}}>
+                  {insight.scoreLabel}
+                </div>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>
+                  AI Assessment
+                </div>
+                <div style={{fontSize:16,fontWeight:700,color:"#e2e8f0",lineHeight:1.4}}>
+                  {insight.headline}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Top Action */}
+          <div className="card" style={{padding:"18px 20px",gridColumn:"1/-1",
+            background:"#021f14",border:"1px solid #15803d44"}}>
+            <div style={{fontSize:10,color:"#34d399",textTransform:"uppercase",letterSpacing:.5,marginBottom:6,fontWeight:700}}>
+              🎯 Your #1 Action This Week
+            </div>
+            <div style={{fontSize:14,color:"#4ade80",fontWeight:700,lineHeight:1.5}}>
+              {insight.topAction}
+            </div>
+          </div>
+
+          {/* Strengths */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:10,color:"#34d399",textTransform:"uppercase",letterSpacing:.5,marginBottom:10,fontWeight:700}}>
+              ✅ What You're Doing Well
+            </div>
+            {(insight.strengths||[]).map((s,i)=>(
+              <div key={i} style={{display:"flex",gap:8,marginBottom:8,fontSize:11,color:"#94a3b8",lineHeight:1.5}}>
+                <span style={{color:"#34d399",flexShrink:0}}>✓</span>{s}
+              </div>
+            ))}
+          </div>
+
+          {/* Gaps */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:10,color:"#f87171",textTransform:"uppercase",letterSpacing:.5,marginBottom:10,fontWeight:700}}>
+              ⚠ Critical Gaps
+            </div>
+            {(insight.gaps||[]).map((g,i)=>(
+              <div key={i} style={{display:"flex",gap:8,marginBottom:8,fontSize:11,color:"#94a3b8",lineHeight:1.5}}>
+                <span style={{color:"#f87171",flexShrink:0}}>✗</span>{g}
+              </div>
+            ))}
+          </div>
+
+          {/* Behavioral Patterns */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:10,color:"#a78bfa",textTransform:"uppercase",letterSpacing:.5,marginBottom:10,fontWeight:700}}>
+              🧠 Behavior Patterns Detected
+            </div>
+            {(insight.patterns||[]).map((p,i)=>(
+              <div key={i} style={{padding:"8px 10px",background:"#0d0b1a",borderRadius:6,
+                border:"1px solid #1e1b4b",marginBottom:6,fontSize:11,color:"#c4b5fd",lineHeight:1.5}}>
+                {p}
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Wins */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontSize:10,color:"#f59e0b",textTransform:"uppercase",letterSpacing:.5,marginBottom:10,fontWeight:700}}>
+              ⚡ Quick Wins (This Week)
+            </div>
+            {(insight.quickWins||[]).map((q,i)=>(
+              <div key={i} style={{display:"flex",gap:8,marginBottom:8,fontSize:11,color:"#94a3b8",lineHeight:1.5}}>
+                <span style={{color:"#f59e0b",flexShrink:0}}>{i+1}.</span>{q}
+              </div>
+            ))}
+          </div>
+
+          {/* Benchmark + Forecast */}
+          <div className="card" style={{padding:"18px 20px",gridColumn:"1/-1"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <div>
+                <div style={{fontSize:10,color:"#38bdf8",textTransform:"uppercase",letterSpacing:.5,marginBottom:8,fontWeight:700}}>
+                  📊 Industry Benchmark
+                </div>
+                <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>{insight.benchmark}</div>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:"#fb923c",textTransform:"uppercase",letterSpacing:.5,marginBottom:8,fontWeight:700}}>
+                  🔮 30-Day Forecast (if nothing changes)
+                </div>
+                <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>{insight.forecast}</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+}
