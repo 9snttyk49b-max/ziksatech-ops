@@ -46,6 +46,9 @@ const RBAC = {
   soplibrary:   ["super_admin","admin"],
   certtracker:  ["super_admin","admin","hr_immigration"],
   sowgen:       ["super_admin","admin"],
+  aicoo:        ["super_admin","admin"],
+  dealaccel:    ["super_admin","admin","accounts"],
+  revleakage:   ["super_admin","admin","accounts"],
   ratequote:    ["super_admin","admin","accounts"],
   availmatrix:  ["super_admin","admin","accounts"],
   industrypitch:["super_admin","admin"],
@@ -721,6 +724,9 @@ const CRM_ACTIVITIES_SEED = [
 
 // Module registry — all controllable modules
 const ALL_MODULES = [
+  { id:"aicoo",      label:"🧠 AI COO",             group:"Overview"    },
+  { id:"dealaccel",  label:"🎯 Deal Accelerator",   group:"Overview"    },
+  { id:"revleakage", label:"💰 Revenue Leakage",    group:"Overview"    },
   { id:"dashboard",  label:"Executive Dashboard", group:"Overview"    },
   { id:"notifications",label:"Notifications",         group:"Overview"    },
   { id:"notifhub",  label:"Teams / Slack",          group:"Overview"    },
@@ -2351,7 +2357,10 @@ export default function ZiksatechOps() {
   };
 
   const nav = [
-    { id:"dashboard",    label:"Executive Dashboard", icon:ICONS.dash,     group:"Overview"    },
+    { id:"aicoo",        label:"🧠 AI COO",              icon:ICONS.dash,     group:"Overview"    },
+    { id:"dealaccel",    label:"🎯 Deal Accelerator",    icon:ICONS.dash,     group:"Overview"    },
+    { id:"revleakage",   label:"💰 Revenue Leakage",     icon:ICONS.dash,     group:"Overview"    },
+    { id:"dashboard",    label:"Executive Dashboard",    icon:ICONS.dash,     group:"Overview"    },
     { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Overview"    },
     { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Overview"    },
     { id:"notifhub",    label:"Teams / Slack",          icon:ICONS.dash,     group:"Overview"    },
@@ -2962,6 +2971,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
         {tab==="bankanalyzer" && <BankAnalyzer authProfile={authProfile}/>}
+        {tab==="aicoo"      && <AICOODashboard    {...shared} authProfile={authProfile}/>}
+        {tab==="dealaccel"  && <DealAccelerator   {...shared} authProfile={authProfile}/>}
+        {tab==="revleakage" && <RevLeakageDetector {...shared} authProfile={authProfile}/>}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
         {tab==="notifhub"     && <NotificationsHub roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} contracts={shared.contracts} workAuth={shared.workAuth} compDocs={shared.compDocs} crmDeals={shared.crmDeals} ptoRequests={shared.ptoRequests} tsSubmissions={shared.tsSubmissions} projects={shared.projects} finPayments={shared.finPayments} apInvoices={shared.apInvoices} sows={shared.sows} crmActivities={shared.crmActivities} ptoBalances={shared.ptoBalances} changeOrders={shared.changeOrders} vendors={shared.vendors} risks={shared.risks} offers={shared.offers} dismissedAlerts={shared.dismissedAlerts} addAudit={shared.addAudit} appSettings={shared.appSettings}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
@@ -43787,3 +43799,711 @@ function PortalHub({ goToOps, goCRM, authProfile, roster, clients, finInvoices, 
     </div>
   );
 }
+
+// =============================================================================
+// PHASE 1 — AI COO DASHBOARD
+// Reads ALL modules, generates daily decisions via Claude AI
+// =============================================================================
+function AICOODashboard({ roster, clients, finInvoices, finPayments, crmDeals,
+  tsHours, projects, proposals, benefits, candidates, finExpenses, authProfile }) {
+
+  const [loading, setLoading] = useState(false);
+  const [insight,  setInsight]  = useState(null);
+  const [lastRun,  setLastRun]  = useState(null);
+  const [tab, setTab] = useState("decisions"); // decisions | signals | forecast
+
+  // Build a compact data digest for the AI
+  const buildDigest = () => {
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const fmtK = (n) => n >= 1000 ? `$${Math.round(n/1000)}K` : `$${Math.round(n)}`;
+
+    // Revenue metrics
+    const billableRev = roster.reduce((s,r) => {
+      const hrs = MONTHS.reduce((h,_,mi) => h + (tsHours[r.id]?.[mi]||0), 0);
+      return s + hrs * (r.billRate||0);
+    }, 0);
+    const ytdInvoiced = finInvoices.filter(i => i.date >= `${today.getFullYear()}-01-01`)
+      .reduce((s,i) => s + (i.amount||0), 0);
+    const ytdCollected = finPayments.filter(p => p.date >= `${today.getFullYear()}-01-01`)
+      .reduce((s,p) => s + (p.amount||0), 0);
+    const openAR = ytdInvoiced - ytdCollected;
+
+    // Utilization
+    const ftes = roster.filter(r => r.type === "FTE");
+    const avgUtil = ftes.length > 0
+      ? Math.round(ftes.reduce((s,r) => s + (r.util||0), 0) / ftes.length * 100) : 0;
+    const benchCount = ftes.filter(r => (r.util||0) < 0.3).length;
+
+    // Pipeline
+    const pipelineVal = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage))
+      .reduce((s,d) => s + (d.value||0), 0);
+    const hotDeals = crmDeals.filter(d => (d.probability||0) >= 70 && d.stage !== "closed_won");
+    const staleDeal = crmDeals.filter(d => {
+      const lastAct = d.lastActivity || d.updatedAt || "";
+      const days = lastAct ? Math.floor((Date.now() - new Date(lastAct)) / 86400000) : 999;
+      return days > 14 && !["closed_won","closed_lost"].includes(d.stage);
+    });
+
+    // AR risk
+    const overdueInv = finInvoices.filter(i => i.status !== "paid" && i.dueDate < today.toISOString().slice(0,10));
+    const overdueAmt = overdueInv.reduce((s,i) => s + (i.amount||0) - (i.paidAmount||0), 0);
+
+    // Consultant margins
+    const consultantMargins = roster.map(r => {
+      const rev = MONTHS.reduce((s,_,mi) => s + (tsHours[r.id]?.[mi]||0), 0) * (r.billRate||0);
+      const cost = getEmployeeCost(r);
+      const margin = rev > 0 ? Math.round((rev - cost) / rev * 100) : 0;
+      return { name: r.name, margin, util: Math.round((r.util||0)*100), billRate: r.billRate||0 };
+    }).sort((a,b) => a.margin - b.margin);
+
+    return {
+      date: today.toLocaleDateString("en-US", {weekday:"long", month:"long", day:"numeric"}),
+      company: "Ziksatech",
+      ytdInvoiced: fmtK(ytdInvoiced), ytdCollected: fmtK(ytdCollected), openAR: fmtK(openAR),
+      avgUtil: avgUtil + "%", benchCount,
+      pipelineVal: fmtK(pipelineVal), hotDeals: hotDeals.length, staleDeals: staleDeal.length,
+      overdueAmt: fmtK(overdueAmt), overdueCount: overdueInv.length,
+      headcount: roster.length, clients: clients.length,
+      lowestMargin: consultantMargins[0] || null,
+      highestUtil: consultantMargins.sort((a,b) => b.util-a.util)[0] || null,
+      candidatesPipeline: candidates.filter(c => c.status !== "rejected").length,
+      openDeals: crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage)).length,
+    };
+  };
+
+  const runAICOO = async () => {
+    setLoading(true);
+    const digest = buildDigest();
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514", max_tokens: 1000,
+          system: `You are the AI COO for ${digest.company}, a SAP consulting firm specializing in Utilities, BRIM, and SuccessFactors in the DFW market. You have full visibility into all operations. Give brutally honest, specific, actionable daily decisions. Be direct — no fluff. Format as JSON only.`,
+          messages: [{
+            role: "user",
+            content: `Today is ${digest.date}. Here is the operational snapshot:
+
+FINANCIALS: YTD Invoiced: ${digest.ytdInvoiced} | Collected: ${digest.ytdCollected} | Open AR: ${digest.openAR} | Overdue: ${digest.overdueAmt} (${digest.overdueCount} invoices)
+PEOPLE: ${digest.headcount} consultants | Avg util: ${digest.avgUtil} | On bench (<30%): ${digest.benchCount}
+PIPELINE: $${digest.pipelineVal} pipeline | ${digest.hotDeals} hot deals | ${digest.staleDeals} stale deals (>14 days no activity)
+BUSINESS: ${digest.clients} active clients | ${digest.openDeals} open deals | ${digest.candidatesPipeline} candidates in pipeline
+
+Respond ONLY with this exact JSON (no markdown, no backticks):
+{
+  "headline": "one-sentence COO assessment of today's health",
+  "score": <0-100 company health score>,
+  "decisions": [
+    {"priority": "URGENT|HIGH|MEDIUM", "action": "specific action to take TODAY", "why": "data-driven reason", "impact": "expected outcome"},
+    {"priority": "...", "action": "...", "why": "...", "impact": "..."},
+    {"priority": "...", "action": "...", "why": "...", "impact": "..."}
+  ],
+  "risks": [
+    {"risk": "specific risk", "probability": "HIGH|MEDIUM|LOW", "mitigation": "what to do"},
+    {"risk": "...", "probability": "...", "mitigation": "..."}
+  ],
+  "opportunities": [
+    {"opportunity": "specific growth opportunity", "potential": "estimated $ or % impact", "action": "first step"}
+  ],
+  "forecast": {"thisMonth": "revenue forecast", "nextMonth": "next month outlook", "quarterRisk": "key risk to quarter"}
+}`
+          }]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text || "";
+      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      setInsight({ ...parsed, digest, generatedAt: new Date().toLocaleTimeString() });
+      setLastRun(new Date());
+    } catch(e) {
+      setInsight({ error: "Failed to generate insights. " + e.message });
+    }
+    setLoading(false);
+  };
+
+  const priColor = (p) => p==="URGENT"?"#f87171":p==="HIGH"?"#f59e0b":"#38bdf8";
+  const priBg   = (p) => p==="URGENT"?"#1a0808":p==="HIGH"?"#1a1000":"#020d1c";
+  const riskCol = (p) => p==="HIGH"?"#f87171":p==="MEDIUM"?"#f59e0b":"#34d399";
+  const score   = insight?.score || 0;
+  const scoreCol= score >= 75 ? "#34d399" : score >= 50 ? "#f59e0b" : "#f87171";
+
+  return (
+    <div>
+      <PH title="🧠 AI COO Dashboard" sub="Cross-module intelligence · daily decisions · predictive alerts">
+        <button className="btn bp" style={{fontSize:12,padding:"8px 20px"}}
+          onClick={runAICOO} disabled={loading}>
+          {loading ? "⏳ Analyzing..." : "⚡ Run AI COO"}
+        </button>
+      </PH>
+
+      {!insight && !loading && (
+        <div style={{textAlign:"center",padding:"60px 20px",color:"#1e3a5f"}}>
+          <div style={{fontSize:48,marginBottom:16}}>🧠</div>
+          <div style={{fontSize:18,fontWeight:700,color:"#334155",marginBottom:8}}>Your AI COO is ready</div>
+          <div style={{fontSize:13,color:"#3d5a7a",marginBottom:24,maxWidth:480,margin:"0 auto 24px"}}>
+            Reads every module — financials, pipeline, utilization, AR, headcount — and tells you exactly what to do today.
+          </div>
+          <button className="btn bp" style={{fontSize:14,padding:"12px 32px"}}
+            onClick={runAICOO}>⚡ Generate Daily Brief</button>
+        </div>
+      )}
+
+      {loading && (
+        <div style={{textAlign:"center",padding:"60px 20px"}}>
+          <div style={{fontSize:36,marginBottom:16,animation:"spin 1s linear infinite",display:"inline-block"}}>⚙️</div>
+          <div style={{fontSize:14,color:"#475569"}}>Reading all modules and generating decisions...</div>
+        </div>
+      )}
+
+      {insight && !insight.error && (
+        <div>
+          {/* Header score */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,alignItems:"center",
+            background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"20px 24px",marginBottom:20}}>
+            <div>
+              <div style={{fontSize:13,color:"#475569",marginBottom:6}}>AI COO Assessment — {insight.digest?.date}</div>
+              <div style={{fontSize:18,fontWeight:700,color:"#e2e8f0",lineHeight:1.4}}>{insight.headline}</div>
+              <div style={{fontSize:11,color:"#334155",marginTop:8}}>Generated at {insight.generatedAt} · Based on live data from all modules</div>
+            </div>
+            <div style={{textAlign:"center",minWidth:100}}>
+              <div style={{fontSize:42,fontWeight:800,color:scoreCol,fontFamily:"'DM Mono',monospace"}}>{score}</div>
+              <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:1}}>Health Score</div>
+              <div style={{width:80,height:6,background:"#1a2d45",borderRadius:3,marginTop:6}}>
+                <div style={{width:`${score}%`,height:6,background:scoreCol,borderRadius:3,transition:"width 1s"}}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub tabs */}
+          <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45"}}>
+            {[["decisions","🎯 Decisions"],["risks","⚠️ Risks"],["opportunities","🚀 Opportunities"],["forecast","📈 Forecast"]].map(([v,l])=>(
+              <button key={v} onClick={()=>setTab(v)}
+                style={{flex:1,padding:"7px 0",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
+                  background:tab===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+                  color:tab===v?"#fff":"#475569"}}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* Decisions */}
+          {tab==="decisions" && (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {(insight.decisions||[]).map((d,i) => (
+                <div key={i} style={{background:priBg(d.priority),border:`1px solid ${priColor(d.priority)}44`,
+                  borderRadius:10,padding:"16px 18px",borderLeft:`4px solid ${priColor(d.priority)}`}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                    <span style={{fontSize:9,fontWeight:800,padding:"2px 8px",borderRadius:20,
+                      background:priColor(d.priority)+"22",color:priColor(d.priority),letterSpacing:1}}>
+                      {d.priority}
+                    </span>
+                    <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{d.action}</div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8}}>
+                    <div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase",letterSpacing:.5}}>Why</div>
+                      <div style={{fontSize:11,color:"#94a3b8"}}>{d.why}</div>
+                    </div>
+                    <div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase",letterSpacing:.5}}>Expected Impact</div>
+                      <div style={{fontSize:11,color:"#34d399",fontWeight:600}}>{d.impact}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Risks */}
+          {tab==="risks" && (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {(insight.risks||[]).map((r,i) => (
+                <div key={i} className="card" style={{padding:"14px 18px",borderLeft:`4px solid ${riskCol(r.probability)}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{r.risk}</div>
+                    <span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:20,
+                      color:riskCol(r.probability),background:riskCol(r.probability)+"22"}}>
+                      {r.probability} RISK
+                    </span>
+                  </div>
+                  <div style={{fontSize:11,color:"#64748b"}}>
+                    <span style={{color:"#3d5a7a"}}>Mitigation: </span>{r.mitigation}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Opportunities */}
+          {tab==="opportunities" && (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {(insight.opportunities||[]).map((o,i) => (
+                <div key={i} className="card" style={{padding:"14px 18px",borderLeft:"4px solid #34d399"}}>
+                  <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>{o.opportunity}</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>POTENTIAL</div>
+                      <div style={{fontSize:12,fontWeight:700,color:"#34d399",fontFamily:"monospace"}}>{o.potential}</div>
+                    </div>
+                    <div>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>FIRST STEP</div>
+                      <div style={{fontSize:11,color:"#94a3b8"}}>{o.action}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Forecast */}
+          {tab==="forecast" && insight.forecast && (
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+              {[
+                ["This Month", insight.forecast.thisMonth, "#38bdf8"],
+                ["Next Month", insight.forecast.nextMonth, "#a78bfa"],
+                ["Quarter Risk", insight.forecast.quarterRisk, "#f87171"],
+              ].map(([l,v,col])=>(
+                <div key={l} className="card" style={{padding:"18px 20px",textAlign:"center"}}>
+                  <div style={{fontSize:10,color:"#475569",marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>{l}</div>
+                  <div style={{fontSize:14,fontWeight:600,color:col,lineHeight:1.5}}>{v}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button className="btn bg" style={{marginTop:16,fontSize:11}} onClick={runAICOO}>
+            🔄 Refresh Brief
+          </button>
+        </div>
+      )}
+
+      {insight?.error && (
+        <div style={{padding:"16px",background:"#1a0808",border:"1px solid #f87171",borderRadius:8,color:"#f87171"}}>
+          {insight.error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// PHASE 1 — DEAL ACCELERATION ENGINE
+// Next best action per deal, risk scoring, stakeholder gaps
+// =============================================================================
+function DealAccelerator({ crmDeals, clients, roster, proposals, authProfile }) {
+  const [selDeal, setSelDeal]   = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [advice,  setAdvice]    = useState({});
+  const [filter,  setFilter]    = useState("all");
+
+  const activeDeal = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage));
+
+  const riskScore = (d) => {
+    let risk = 0;
+    const lastAct = d.lastActivity || d.updatedAt || "";
+    const daysSince = lastAct ? Math.floor((Date.now()-new Date(lastAct))/86400000) : 999;
+    if (daysSince > 21) risk += 40;
+    else if (daysSince > 14) risk += 20;
+    if ((d.probability||0) < 40) risk += 30;
+    if (!d.contactName && !d.stakeholders) risk += 20;
+    if ((d.value||0) > 200000 && !(d.executiveSponsor)) risk += 20;
+    return Math.min(100, risk);
+  };
+
+  const getRiskLabel = (score) =>
+    score >= 70 ? { label: "HIGH RISK", color: "#f87171", bg: "#1a0808" } :
+    score >= 40 ? { label: "AT RISK",   color: "#f59e0b", bg: "#1a1000" } :
+                  { label: "ON TRACK",  color: "#34d399", bg: "#021f14" };
+
+  const runDealAI = async (deal) => {
+    setSelDeal(deal.id);
+    if (advice[deal.id]) return;
+    setLoading(true);
+    const risk = riskScore(deal);
+    const lastAct = deal.lastActivity || deal.updatedAt || "";
+    const daysSince = lastAct ? Math.floor((Date.now()-new Date(lastAct))/86400000) : "unknown";
+
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:600,
+          system:"You are a B2B sales acceleration AI for a SAP consulting firm. Give sharp, specific next actions to close deals. Respond in JSON only — no markdown.",
+          messages:[{ role:"user", content:
+            `Deal: ${deal.company||deal.clientName||"Unknown"} | Stage: ${deal.stage} | Value: $${(deal.value||0).toLocaleString()} | Probability: ${deal.probability||0}% | Days since last activity: ${daysSince} | Risk score: ${risk}/100 | Contact: ${deal.contactName||"unknown"} | Notes: ${deal.notes||"none"}
+            
+Respond ONLY with this JSON:
+{"nextAction":"single most important action to take THIS WEEK","why":"data-driven reason","stakeholderGap":"who is missing from the buying committee","closingMove":"the one thing that will accelerate this deal to close","riskFlag":"biggest risk to this deal","probability30d":estimated close probability in 30 days as 0-100}`
+          }]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text||"";
+      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      setAdvice(prev => ({...prev, [deal.id]: parsed}));
+    } catch(e) {
+      setAdvice(prev => ({...prev, [deal.id]: {nextAction:"Failed: "+e.message}}));
+    }
+    setLoading(false);
+  };
+
+  const displayed = filter === "all" ? activeDeal :
+    filter === "risky" ? activeDeal.filter(d=>riskScore(d)>=40) :
+    activeDeal.filter(d=>(d.probability||0)>=70);
+
+  return (
+    <div>
+      <PH title="🎯 Deal Acceleration Engine" sub="Next best action · risk scoring · stakeholder gap detection"/>
+
+      {/* Summary KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {[
+          {l:"Active Deals",   v:activeDeal.length,                                   c:"#38bdf8"},
+          {l:"High Risk",      v:activeDeal.filter(d=>riskScore(d)>=70).length,       c:"#f87171"},
+          {l:"Hot (≥70%)",     v:activeDeal.filter(d=>(d.probability||0)>=70).length, c:"#34d399"},
+          {l:"Pipeline Value", v:"$"+Math.round(activeDeal.reduce((s,d)=>s+(d.value||0),0)/1000)+"K", c:"#a78bfa"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter */}
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {[["all","All Deals"],["risky","⚠️ At Risk"],["hot","🔥 Hot Deals"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setFilter(v)}
+            style={{padding:"6px 14px",borderRadius:6,border:`1px solid ${filter===v?"#0ea5e9":"#1a2d45"}`,
+              background:filter===v?"#0c2340":"transparent",color:filter===v?"#38bdf8":"#475569",
+              fontSize:11,fontWeight:600,cursor:"pointer"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        {/* Deal list */}
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {displayed.map(d => {
+            const risk = riskScore(d);
+            const rl = getRiskLabel(risk);
+            const isSel = selDeal === d.id;
+            const lastAct = d.lastActivity || d.updatedAt || "";
+            const days = lastAct ? Math.floor((Date.now()-new Date(lastAct))/86400000) : null;
+            return (
+              <div key={d.id} onClick={()=>runDealAI(d)}
+                style={{padding:"12px 14px",borderRadius:8,cursor:"pointer",
+                  background:isSel?"#0a1a2e":"#060d1c",
+                  border:`1px solid ${isSel?"#0284c7":"#1a2d45"}`,
+                  transition:"all 0.15s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>
+                    {d.company||d.clientName||"Unknown"}
+                  </div>
+                  <span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,
+                    background:rl.bg,color:rl.color}}>{rl.label}</span>
+                </div>
+                <div style={{display:"flex",gap:12,fontSize:10,color:"#3d5a7a"}}>
+                  <span>${((d.value||0)/1000).toFixed(0)}K</span>
+                  <span>{d.stage}</span>
+                  <span style={{color:(d.probability||0)>=70?"#34d399":"#64748b"}}>{d.probability||0}% prob</span>
+                  {days !== null && <span style={{color:days>14?"#f87171":"#64748b"}}>{days}d ago</span>}
+                </div>
+              </div>
+            );
+          })}
+          {displayed.length === 0 && (
+            <div style={{padding:"32px",textAlign:"center",color:"#1e3a5f"}}>No deals match this filter</div>
+          )}
+        </div>
+
+        {/* Deal AI advice */}
+        <div>
+          {!selDeal && (
+            <div style={{padding:"40px 20px",textAlign:"center",color:"#1e3a5f",background:"#060d1c",
+              border:"1px dashed #1a2d45",borderRadius:10}}>
+              <div style={{fontSize:24,marginBottom:12}}>🎯</div>
+              <div style={{fontSize:12,color:"#3d5a7a"}}>Click any deal to get AI acceleration advice</div>
+            </div>
+          )}
+          {selDeal && loading && (
+            <div style={{padding:"40px 20px",textAlign:"center",background:"#060d1c",
+              border:"1px solid #1a2d45",borderRadius:10}}>
+              <div style={{fontSize:13,color:"#475569"}}>⏳ Analyzing deal...</div>
+            </div>
+          )}
+          {selDeal && advice[selDeal] && (
+            <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"18px 20px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#3d5a7a",marginBottom:14,textTransform:"uppercase",letterSpacing:.5}}>
+                AI Deal Coach
+              </div>
+              {[
+                ["🎯 Next Action (This Week)", advice[selDeal].nextAction, "#38bdf8"],
+                ["💡 Why",                     advice[selDeal].why,        "#94a3b8"],
+                ["👥 Stakeholder Gap",         advice[selDeal].stakeholderGap, "#f59e0b"],
+                ["🏆 Closing Move",            advice[selDeal].closingMove, "#34d399"],
+                ["⚠️ Key Risk",               advice[selDeal].riskFlag,   "#f87171"],
+              ].map(([l,v,col])=>(
+                <div key={l} style={{marginBottom:12,padding:"10px 12px",background:"#040a14",borderRadius:8}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>{l}</div>
+                  <div style={{fontSize:12,color:col,lineHeight:1.5}}>{v||"—"}</div>
+                </div>
+              ))}
+              {advice[selDeal].probability30d !== undefined && (
+                <div style={{marginTop:12,padding:"10px 14px",background:"#021f14",border:"1px solid #34d39944",
+                  borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:11,color:"#64748b"}}>30-Day Close Probability</span>
+                  <span style={{fontSize:18,fontWeight:800,color:"#34d399",fontFamily:"'DM Mono',monospace"}}>
+                    {advice[selDeal].probability30d}%
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PHASE 1 — REVENUE LEAKAGE DETECTOR
+// Underbilling, timesheet vs invoice mismatch, bench burn, rate gaps
+// =============================================================================
+function RevLeakageDetector({ roster, clients, finInvoices, finPayments, tsHours, tsSubmissions, authProfile }) {
+  const [loading, setLoading]   = useState(false);
+  const [analysis, setAnalysis] = useState(null);
+  const [tab, setTab]           = useState("leaks");
+
+  const TODAY = new Date();
+  const CUR_MONTH = TODAY.getMonth();
+  const CUR_YEAR  = TODAY.getFullYear();
+
+  const runLeakageDetect = async () => {
+    setLoading(true);
+    
+    // ── Compute leakage signals locally ───────────────────────────────────
+    const leaks = [];
+    let totalLeakage = 0;
+
+    // 1. Bench cost burn (consultants utilised < 50%)
+    const benchConsultants = roster.filter(r => (r.util||0) < 0.5 && r.type !== "Contractor");
+    benchConsultants.forEach(r => {
+      const potentialHrs = Math.round((0.85 - (r.util||0)) * BURDEN.hoursPerYear / 12);
+      const monthlyLoss  = potentialHrs * (r.billRate||0);
+      totalLeakage += monthlyLoss;
+      leaks.push({
+        type: "BENCH BURN",
+        name: r.name,
+        detail: `${Math.round((r.util||0)*100)}% utilized — ${potentialHrs}h unbilled/month at $${r.billRate}/hr`,
+        monthly: monthlyLoss,
+        severity: monthlyLoss > 15000 ? "HIGH" : monthlyLoss > 5000 ? "MEDIUM" : "LOW",
+        fix: `Push ${r.name} to bench BD or find new placement. Each week = $${Math.round(monthlyLoss/4).toLocaleString()} lost.`
+      });
+    });
+
+    // 2. Rate underpricing vs typical market
+    const marketBenchmarks = { "SAP BRIM": 155, "SAP S/4HANA": 140, "SAP SuccessFactors": 125, "SAP MDG": 145, default: 130 };
+    roster.forEach(r => {
+      const roleKey = Object.keys(marketBenchmarks).find(k => (r.role||"").includes(k.replace("SAP ",""))) || "default";
+      const benchmark = marketBenchmarks[roleKey];
+      if ((r.billRate||0) > 0 && r.billRate < benchmark - 10) {
+        const gap = benchmark - r.billRate;
+        const annualLoss = gap * (r.util||0) * BURDEN.hoursPerYear;
+        totalLeakage += annualLoss / 12;
+        leaks.push({
+          type: "RATE GAP",
+          name: r.name,
+          detail: `Billing at $${r.billRate}/hr vs market $${benchmark}/hr for ${roleKey}`,
+          monthly: Math.round(annualLoss / 12),
+          severity: gap > 20 ? "HIGH" : "MEDIUM",
+          fix: `Renegotiate rate at next renewal. +$${gap}/hr = +$${Math.round(annualLoss/1000)}K/yr.`
+        });
+      }
+    });
+
+    // 3. Invoices overdue > 30 days
+    const overdueInv = finInvoices.filter(i => {
+      if (i.status === "paid") return false;
+      const due = new Date(i.dueDate || i.date);
+      return (TODAY - due) / 86400000 > 30;
+    });
+    overdueInv.forEach(inv => {
+      const outstanding = (inv.amount||0) - (inv.paidAmount||0);
+      totalLeakage += outstanding;
+      leaks.push({
+        type: "OVERDUE AR",
+        name: inv.clientName || inv.client || "Unknown",
+        detail: `Invoice ${inv.id || ""} — $${outstanding.toLocaleString()} overdue ${Math.round((TODAY-new Date(inv.dueDate||inv.date))/86400000)} days`,
+        monthly: outstanding,
+        severity: outstanding > 20000 ? "HIGH" : "MEDIUM",
+        fix: `Call AP contact immediately. Send formal overdue notice. Consider pausing delivery until paid.`
+      });
+    });
+
+    // 4. Timesheet gaps (hours entered but not invoiced yet)
+    const submittedHrs = (tsSubmissions||[]).filter(s => ["approved","client_approved"].includes(s.status))
+      .reduce((s,sub) => s + (sub.totalHours||0), 0);
+    const invoicedHrs = finInvoices.reduce((s,i) => {
+      const hrs = i.hours || i.units || 0;
+      return s + hrs;
+    }, 0);
+    if (submittedHrs > invoicedHrs + 40) {
+      const gapHrs = submittedHrs - invoicedHrs;
+      const avgRate = roster.length > 0 ? roster.reduce((s,r)=>s+(r.billRate||0),0)/roster.length : 150;
+      const leakVal = Math.round(gapHrs * avgRate);
+      totalLeakage += leakVal;
+      leaks.push({
+        type: "TIMESHEET-INVOICE GAP",
+        name: "All Consultants",
+        detail: `${gapHrs}h approved timesheets not yet converted to invoices`,
+        monthly: leakVal,
+        severity: leakVal > 20000 ? "HIGH" : "MEDIUM",
+        fix: `Generate invoices from ${gapHrs} approved hours immediately. ~$${leakVal.toLocaleString()} unbilled.`
+      });
+    }
+
+    // Sort by monthly impact
+    leaks.sort((a,b) => b.monthly - a.monthly);
+
+    // Get AI summary
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:400,
+          system:"You are a CFO-level AI advisor for a SAP consulting firm. Be direct and dollar-specific. JSON only.",
+          messages:[{role:"user", content:
+            `Revenue leakage analysis: Total detected monthly leakage: $${Math.round(totalLeakage).toLocaleString()}. 
+Issues found (${leaks.length}): ${leaks.map(l=>`${l.type}: ${l.name} ($${Math.round(l.monthly).toLocaleString()}/mo)`).join("; ")}
+
+Respond ONLY with JSON:
+{"cfoHeadline":"one blunt sentence for the CFO","topPriority":"single most impactful action to stop the bleeding","annualProjection":"estimated annual leakage if unaddressed","quickWin":"action that can recover money THIS WEEK"}`
+          }]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text||"";
+      const aiInsight = JSON.parse(text.replace(/```json|```/g,"").trim());
+      setAnalysis({ leaks, totalLeakage, aiInsight });
+    } catch(e) {
+      setAnalysis({ leaks, totalLeakage, aiInsight: null });
+    }
+    setLoading(false);
+  };
+
+  const sevCol = (s) => s==="HIGH"?"#f87171":s==="MEDIUM"?"#f59e0b":"#34d399";
+  const sevBg  = (s) => s==="HIGH"?"#1a0808":s==="MEDIUM"?"#1a1000":"#021f14";
+  const typeIcon = (t) => t==="BENCH BURN"?"🪑":t==="RATE GAP"?"📉":t==="OVERDUE AR"?"📬":"⏱";
+
+  return (
+    <div>
+      <PH title="💰 Revenue Leakage Detector" sub="Underbilling · AR overdue · rate gaps · timesheet-invoice mismatch">
+        <button className="btn bp" style={{fontSize:12,padding:"8px 20px"}} onClick={runLeakageDetect} disabled={loading}>
+          {loading?"⏳ Scanning...":"🔍 Detect Leakage"}
+        </button>
+      </PH>
+
+      {!analysis && !loading && (
+        <div style={{textAlign:"center",padding:"60px 20px",color:"#1e3a5f"}}>
+          <div style={{fontSize:48,marginBottom:16}}>💰</div>
+          <div style={{fontSize:18,fontWeight:700,color:"#334155",marginBottom:8}}>Revenue Leakage Detector</div>
+          <div style={{fontSize:13,color:"#3d5a7a",marginBottom:24,maxWidth:480,margin:"0 auto 24px"}}>
+            Scans bench utilization, billing rates, overdue AR, and timesheet gaps to find every dollar you're leaving on the table.
+          </div>
+          <button className="btn bp" style={{fontSize:14,padding:"12px 32px"}} onClick={runLeakageDetect}>
+            🔍 Run Leakage Scan
+          </button>
+        </div>
+      )}
+
+      {loading && (
+        <div style={{textAlign:"center",padding:"60px 20px"}}>
+          <div style={{fontSize:14,color:"#475569"}}>⏳ Scanning all revenue streams for leakage...</div>
+        </div>
+      )}
+
+      {analysis && (
+        <div>
+          {/* Header */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+            <div className="card" style={{padding:"16px 18px",textAlign:"center",border:"1px solid #f8717144"}}>
+              <div style={{fontSize:28,fontWeight:800,color:"#f87171",fontFamily:"'DM Mono',monospace"}}>
+                ${Math.round(analysis.totalLeakage/1000)}K
+              </div>
+              <div style={{fontSize:10,color:"#475569",marginTop:2}}>Monthly Leakage Detected</div>
+            </div>
+            <div className="card" style={{padding:"16px 18px",textAlign:"center"}}>
+              <div style={{fontSize:28,fontWeight:800,color:"#f59e0b",fontFamily:"'DM Mono',monospace"}}>
+                {analysis.leaks.length}
+              </div>
+              <div style={{fontSize:10,color:"#475569",marginTop:2}}>Issues Found</div>
+            </div>
+            <div className="card" style={{padding:"16px 18px",textAlign:"center",border:"1px solid #34d39944"}}>
+              <div style={{fontSize:28,fontWeight:800,color:"#34d399",fontFamily:"'DM Mono',monospace"}}>
+                ${Math.round(analysis.totalLeakage*12/1000)}K
+              </div>
+              <div style={{fontSize:10,color:"#475569",marginTop:2}}>Annual Impact if Unfixed</div>
+            </div>
+          </div>
+
+          {/* AI CFO Insight */}
+          {analysis.aiInsight && (
+            <div style={{marginBottom:18,padding:"16px 20px",background:"#040a14",
+              border:"1px solid #0284c744",borderRadius:10}}>
+              <div style={{fontSize:10,color:"#3d5a7a",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>AI CFO Assessment</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>
+                {analysis.aiInsight.cfoHeadline}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                {[
+                  ["Top Priority",      analysis.aiInsight.topPriority,      "#f87171"],
+                  ["Quick Win This Week",analysis.aiInsight.quickWin,        "#34d399"],
+                  ["Annual Projection", analysis.aiInsight.annualProjection, "#f59e0b"],
+                ].map(([l,v,col])=>(
+                  <div key={l} style={{padding:"10px 12px",background:"#060d1c",borderRadius:6}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>{l}</div>
+                    <div style={{fontSize:11,color:col,lineHeight:1.5}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Leakage items */}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {analysis.leaks.map((leak,i) => (
+              <div key={i} style={{background:sevBg(leak.severity),border:`1px solid ${sevCol(leak.severity)}44`,
+                borderRadius:10,padding:"14px 16px",borderLeft:`4px solid ${sevCol(leak.severity)}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:16}}>{typeIcon(leak.type)}</span>
+                    <div>
+                      <span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:10,
+                        background:sevCol(leak.severity)+"22",color:sevCol(leak.severity),marginRight:8}}>
+                        {leak.severity}
+                      </span>
+                      <span style={{fontSize:11,fontWeight:700,color:"#94a3b8"}}>{leak.type}</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:14,fontWeight:800,color:sevCol(leak.severity),fontFamily:"'DM Mono',monospace"}}>
+                    -${Math.round(leak.monthly).toLocaleString()}/mo
+                  </div>
+                </div>
+                <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0",marginBottom:4}}>{leak.name}</div>
+                <div style={{fontSize:11,color:"#64748b",marginBottom:8}}>{leak.detail}</div>
+                <div style={{fontSize:11,color:"#94a3b8",padding:"6px 10px",background:"#0a1626",borderRadius:6}}>
+                  <span style={{color:"#3d5a7a"}}>Fix: </span>{leak.fix}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
