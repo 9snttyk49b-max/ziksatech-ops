@@ -15595,7 +15595,7 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                 const cellBorder = isToday?"#0284c7":isHoliday?"#f59e0b44":isWeekend?"#0a1626":"#1a2d45";
                 const cellBg    = isWeekend?"#060c18":isHoliday?"#1a1000":"";
                 cells.push(
-                  <div key={day.day} style={{border:`1px solid ${cellBorder}`,borderRadius:8,background:cellBg,padding:"6px 8px",background:isToday?"#0c2340":isWeekend?"#060d1c":"#0a1120",minHeight:70}}>
+                  <div key={day.day} style={{border:`1px solid ${cellBorder}`,borderRadius:8,padding:"6px 8px",background:isToday?"#0c2340":isWeekend?"#060d1c":isHoliday?"#1a1000":"#0a1120",minHeight:70}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                       <span style={{fontSize:10,color:isToday?"#38bdf8":"#334155",fontWeight:isToday?700:400}}>{day.day}</span>
                       {/* Type selector */}
@@ -15613,8 +15613,8 @@ function TimesheetApproval({ roster, tsHours, setTsHours, clients, setFinInvoice
                     ) : (
                       <input type="number" min={0} max={24} step={0.5} value={hrs||""}
                         onChange={e=>updateDay(idx,"hours",e.target.value)}
-                        placeholder={isWeekend?"—":isHoliday?"H":"0"} readOnly={isWeekend} style={{...style, opacity:isWeekend?0.3:1, cursor:isWeekend?"not-allowed":"text"}}
-                        style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid #1a2d45",color:dayColor(day.type),fontSize:16,fontWeight:700,textAlign:"center",padding:"2px 0",outline:"none"}}/>
+                        placeholder={isWeekend?"—":isHoliday?"H":"0"} readOnly={isWeekend}
+                        style={{width:"100%",background:"transparent",border:"none",borderBottom:"1px solid #1a2d45",opacity:isWeekend?0.3:1,cursor:isWeekend?"not-allowed":"text",color:dayColor(day.type),fontSize:16,fontWeight:700,textAlign:"center",padding:"2px 0",outline:"none"}}/>
                     )}
                     {/* Notes icon */}
                     {!isLocked && hrs > 0 && <input value={day.notes} onChange={e=>updateDay(idx,"notes",e.target.value)}
