@@ -321,6 +321,30 @@ const supaAuth = (() => {
 // Anthropic API key — injected at build time from ANTHROPIC_API_KEY env var via vite.config.js define
 // window.__ANTHROPIC_KEY__ is set by Vite define plugin at build time
 
+
+// Robust JSON extractor — handles markdown fences and partial truncation
+const extractJSON = (text) => {
+  const t = text.replace(/```json|```/g, "").trim();
+  // Try direct parse first
+  try { return JSON.parse(t); } catch(e1) {}
+  // Try to find JSON object in the text
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(t.slice(start, end + 1)); } catch(e2) {}
+  }
+  // Try to auto-close incomplete JSON by counting braces
+  let depth = 0, lastValid = -1;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === "{") depth++;
+    else if (t[i] === "}") { depth--; if (depth === 0) lastValid = i; }
+  }
+  if (lastValid > 0) {
+    try { return JSON.parse(t.slice(0, lastValid + 1)); } catch(e3) {}
+  }
+  throw new Error("Could not parse JSON from response");
+};
+
 const store = (() => {
   // ── Supabase backend (multi-user, real-time) ──────────────────────────────
   if (SUPA_URL && SUPA_ANON) {
@@ -25732,7 +25756,7 @@ function ProposalWriterV2({ proposals, setProposals, crmDeals, crmAccounts, crmC
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 1000,
+          model: "claude-sonnet-4-20250514", max_tokens: 2000,
           system: "You are an expert SAP consulting proposal writer for Ziksatech LLC. Write professional, compelling content. For JSON requests return only valid JSON, no markdown.",
           messages: [{ role:"user", content: prompts[section] }]
         })
@@ -25774,7 +25798,7 @@ function ProposalWriterV2({ proposals, setProposals, crmDeals, crmAccounts, crmC
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": (window.__ANTHROPIC_KEY__||""), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 1000,
+          model: "claude-sonnet-4-20250514", max_tokens: 2000,
           system: "You are a senior proposal writer for Ziksatech LLC, a WBE/HUB/WOSB SAP consulting firm. Generate structured proposal content. Return JSON only, no markdown.",
           messages: [{ role:"user", content: [
             // Text prompt
@@ -43204,7 +43228,7 @@ function CRMImport({ setLeads, setCrmContacts, crmAccounts, crmLeads, crmContact
     try {
       const srcLabel = {apollo:"Apollo.io",zoominfo:"ZoomInfo",linkedin:"LinkedIn Sales Navigator",hunter:"Hunter.io"}[importSrc]||importSrc;
       const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,stream:false,
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,stream:false,
           messages:[{role:"user",content:`You are a B2B data enrichment tool (${srcLabel}) for an IT staffing company.
 Query: "${enrichQuery}"
 Return ONLY a JSON array of 5 realistic SAP/IT decision-maker contacts:
@@ -43909,7 +43933,7 @@ function AICOODashboard({ roster, clients, finInvoices, finPayments, crmDeals,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 1000,
+          model: "claude-sonnet-4-20250514", max_tokens: 2000,
           system: `You are the AI COO for ${digest.company}, a SAP consulting firm specializing in Utilities, BRIM, and SuccessFactors in the DFW market. You have full visibility into all operations. Give brutally honest, specific, actionable daily decisions. Be direct — no fluff. Format as JSON only.`,
           messages: [{
             role: "user",
@@ -43943,7 +43967,7 @@ Respond ONLY with this exact JSON (no markdown, no backticks):
       });
       const data = await resp.json();
       const text = data.content?.[0]?.text || "";
-      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      const parsed = extractJSON(text);
       setInsight({ ...parsed, digest, generatedAt: new Date().toLocaleTimeString() });
       setLastRun(new Date());
     } catch(e) {
@@ -44170,7 +44194,7 @@ Respond ONLY with this JSON:
       });
       const data = await resp.json();
       const text = data.content?.[0]?.text||"";
-      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      const parsed = extractJSON(text);
       setAdvice(prev => ({...prev, [deal.id]: parsed}));
     } catch(e) {
       setAdvice(prev => ({...prev, [deal.id]: {nextAction:"Failed: "+e.message}}));
@@ -44423,7 +44447,7 @@ Respond ONLY with JSON:
       });
       const data = await resp.json();
       const text = data.content?.[0]?.text||"";
-      const aiInsight = JSON.parse(text.replace(/```json|```/g,"").trim());
+      const aiInsight = extractJSON(text);
       setAnalysis({ leaks, totalLeakage, aiInsight });
     } catch(e) {
       setAnalysis({ leaks, totalLeakage, aiInsight: null });
@@ -44604,7 +44628,7 @@ function ConsultantOptimizer({ roster, clients, finInvoices, tsHours, crmDeals, 
       });
       const d = await resp.json();
       const txt = d.content?.[0]?.text||"";
-      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
+      const parsed = extractJSON(txt);
       setPlan({ ...parsed, portfolio });
     } catch(e) {
       setPlan({ error: e.message, portfolio });
@@ -44817,7 +44841,7 @@ Respond ONLY with this JSON:
       });
       const data = await resp.json();
       const text = data.content?.[0]?.text||"{}";
-      setRecs(JSON.parse(text.replace(/```json|```/g,"").trim()));
+      setRecs(extractJSON(text));
     } catch(e) { setRecs({headline:"Analysis complete — see data below.",recommendations:[],topMove:""}) }
     setLoading(false);
   };
@@ -44976,7 +45000,7 @@ Respond ONLY with this JSON:
       });
       const data = await resp.json();
       const text = data.content?.[0]?.text||"{}";
-      setIntel(prev=>({...prev, [cl.id]: JSON.parse(text.replace(/```json|```/g,"").trim())}));
+      setIntel(prev=>({...prev, [cl.id]: extractJSON(text)}));
     } catch(e) { setIntel(prev=>({...prev, [cl.id]:{executiveSummary:"Analysis complete.",growthOpportunities:[],riskFactors:[],nextActions:[]}})) }
     setLoading(false);
   };
@@ -45543,14 +45567,14 @@ Respond in JSON only (no markdown):
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:1000,
+          model:"claude-sonnet-4-20250514", max_tokens:2000,
           messages:[{role:"user",content:prompt}]
         })
       });
       const d = await res.json();
       const text = d.content?.[0]?.text||"{}";
       const clean = text.replace(/```json|```/g,"").trim();
-      setInsight(JSON.parse(clean));
+      setInsight(extractJSON(clean));
     } catch(e) { setInsight({headline:"Analysis failed — check connection",score:0,strengths:[],gaps:[],patterns:[],topAction:"",quickWins:[],benchmark:"",forecast:""}); }
     setLoading(false);
   };
