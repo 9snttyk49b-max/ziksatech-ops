@@ -29530,18 +29530,28 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
   const [selId,       setSelId]     = useState(null);
   const [editId,      setEditId]    = useState(null);
   const [editForm,    setEditForm]  = useState(null);
+  const [addModal,    setAddModal]  = useState(false);  // "Add Employee" modal
+  const [addForm,     setAddForm]   = useState(null);
   const [healthPlans, setHealthPlans] = useState(HEALTH_PLANS_DEFAULT);
   const [dentalPlans, setDentalPlans] = useState(DENTAL_PLANS_DEFAULT);
   const [visionPlans, setVisionPlans] = useState(VISION_PLANS_DEFAULT);
-  const [editPlan,    setEditPlan]  = useState(null);   // { type, idx, form }
+  const [editPlan,    setEditPlan]  = useState(null);
 
   // ── Auto-sync: add a default benefits record for any FTE not yet tracked ──
+  // Only runs when roster changes. Uses rosterId as primary key to avoid dupes.
   useEffect(() => {
+    if (!roster || !benefits) return;
     const ftes = roster.filter(r => r.type === "FTE");
-    const missing = ftes.filter(r => !benefits.find(b => b.rosterId === r.id || b.name === r.name));
+    // Match by rosterId first, then fall back to name — prevents ghost records
+    const missing = ftes.filter(r =>
+      r.id && r.name &&             // must have valid id and name
+      r.name !== "New Employee" &&  // skip placeholder names
+      !benefits.find(b => b.rosterId === r.id || b.name === r.name)
+    );
     if (missing.length > 0) {
       const newRecs = missing.map(r => ({
-        id: "b" + uid(), rosterId: r.id, name: r.name, salary: r.baseSalary || 0,
+        id: "b" + uid(), rosterId: r.id, name: r.name,
+        salary: r.baseSalary || r.lcaWage || 0,
         healthPlan: "hmo_silver", healthTier: "ee_only",
         dentalPlan: "dental_basic", visionPlan: "vision_std",
         lifeInsured: true, lifeMultiple: 2,
@@ -29551,17 +29561,19 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
       }));
       setBenefits(bs => [...bs, ...newRecs]);
     }
-  }, [roster]);
+  }, [roster.length]);  // only fire when roster SIZE changes, not every render
 
   const sel  = benefits.find(b=>b.id===selId);
   const edit = benefits.find(b=>b.id===editId);
 
-  const totalMonthly    = benefits.reduce((s,b)=>s+totalMonthlyCost(b), 0);
+  // Only count valid, named employees (exclude ghost/blank records)
+  const validBenefits   = benefits.filter(b => b.name && b.name.trim() && b.name !== "New Employee" && (+b.salary||0) > 0);
+  const totalMonthly    = validBenefits.reduce((s,b)=>s+totalMonthlyCost(b), 0);
   const totalAnnual     = totalMonthly * 12;
-  const total401kMatch  = benefits.reduce((s,b)=>s+annual401kMatchCost(b), 0);
-  const enrolled401k    = benefits.filter(b=>b.k401_enrolled).length;
-  const missingBenef    = benefits.filter(b=>!b.beneficiaryOnFile);
-  const notEnrolled401k = benefits.filter(b=>!b.k401_enrolled);
+  const total401kMatch  = validBenefits.reduce((s,b)=>s+annual401kMatchCost(b), 0);
+  const enrolled401k    = validBenefits.filter(b=>b.k401_enrolled).length;
+  const missingBenef    = validBenefits.filter(b=>!b.beneficiaryOnFile);
+  const notEnrolled401k = validBenefits.filter(b=>!b.k401_enrolled);
 
   const openEdit = (b) => { setEditId(b.id); setEditForm({...b}); setSub("enrollment"); };
   const saveEdit = () => {
@@ -29582,12 +29594,11 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
     <div>
       <PH title="Benefits Tracker" sub="Health, dental, vision, 401(k), HSA/FSA, and insurance — full benefits administration">
         <button className="btn bp" style={{fontSize:11}} onClick={()=>{
-          const newRec = { id:"b"+uid(), rosterId:"", name:"New Employee", salary:0,
+          setAddForm({ id:"b"+uid(), rosterId:"", name:"", salary:0,
             healthPlan:"hmo_silver", healthTier:"ee_only", dentalPlan:"dental_basic", visionPlan:"vision_std",
             lifeInsured:true, lifeMultiple:2, stdEnrolled:true, ltdEnrolled:false,
-            hsaContrib:0, k401_enrolled:false, k401_ee_pct:0, k401_match_pct:3, beneficiaryOnFile:false };
-          setBenefits(bs=>[...bs,newRec]);
-          setEditId(newRec.id); setEditForm({...newRec}); setSub("enrollment");
+            hsaContrib:0, k401_enrolled:false, k401_ee_pct:0, k401_match_pct:3, beneficiaryOnFile:false });
+          setAddModal(true);
         }}><I d={ICONS.plus} s={13}/>Add Employee</button>
       </PH>
 
@@ -29615,8 +29626,8 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
           { l:"Monthly Benefits Cost", v:fmt(totalMonthly),           c:"#38bdf8" },
           { l:"Annual Benefits Cost",  v:fmt(totalAnnual),            c:"#a78bfa" },
           { l:"Annual 401k Match",     v:fmt(total401kMatch),         c:"#34d399" },
-          { l:"401k Participation",    v:`${enrolled401k}/${benefits.length}`, c:enrolled401k===benefits.length?"#34d399":"#f59e0b" },
-          { l:"Total Benefits Burden", v:fmt((totalAnnual+total401kMatch)/benefits.length)+"/ee", c:"#f59e0b" },
+          { l:"401k Participation",    v:`${enrolled401k}/${validBenefits.length}`, c:enrolled401k===benefits.length?"#34d399":"#f59e0b" },
+          { l:"Total Benefits Burden", v:fmt(validBenefits.length>0?(totalAnnual+total401kMatch)/validBenefits.length:0)+"/ee", c:"#f59e0b" },
         ].map(k=>(
           <div key={k.l} className="card" style={{padding:"12px 14px",textAlign:"center"}}>
             <div style={{fontSize:k.v.length>8?16:20,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
@@ -29644,7 +29655,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
           <div className="card" style={{padding:"18px 20px"}}>
             <div className="section-hdr">Health Plan Enrollment</div>
             {HEALTH_PLANS.map(plan=>{
-              const enrolled = benefits.filter(b=>b.healthPlan===plan.id);
+              const enrolled = benefits.filter(b=>b.healthPlan===plan.id && b.name && b.name !== "New Employee");
               if (enrolled.length===0) return null;
               return (
                 <div key={plan.id} style={{marginBottom:12,padding:"10px 14px",background:"#070c18",borderRadius:8,border:"1px solid #1a2d45"}}>
@@ -29893,7 +29904,7 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
           ) : (
             // Enrollment grid
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-              {benefits.map(b=>{
+              {benefits.filter(b => b.name && b.name.trim() && b.name !== "New Employee").map(b=>{
                 const plan    = HEALTH_PLANS.find(p=>p.id===b.healthPlan);
                 const dental  = DENTAL_PLANS.find(p=>p.id===b.dentalPlan);
                 const vision  = VISION_PLANS.find(p=>p.id===b.visionPlan);
@@ -30212,6 +30223,114 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
           ))}
         </div>
       )}
+
+      {/* ── ADD EMPLOYEE MODAL ─────────────────────────────────────────── */}
+      {addModal && addForm && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setAddModal(false)}>
+          <div className="modal" style={{maxWidth:520}}>
+            <MH title="Add Employee to Benefits" onClose={()=>setAddModal(false)}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Full Name *">
+                <input className="inp" value={addForm.name} autoFocus
+                  onChange={e=>setAddForm(f=>({...f,name:e.target.value}))}
+                  placeholder="Nuthan Joshi"/>
+              </FF>
+              <FF label="Annual Salary ($) *">
+                <input className="inp" type="number" value={addForm.salary||""}
+                  onChange={e=>setAddForm(f=>({...f,salary:+e.target.value}))}
+                  placeholder="120000"/>
+              </FF>
+              <FF label="Health Plan">
+                <select className="inp" value={addForm.healthPlan}
+                  onChange={e=>setAddForm(f=>({...f,healthPlan:e.target.value}))}>
+                  {healthPlans.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </FF>
+              <FF label="Coverage Tier">
+                <select className="inp" value={addForm.healthTier}
+                  onChange={e=>setAddForm(f=>({...f,healthTier:e.target.value}))}>
+                  <option value="ee_only">EE Only</option>
+                  <option value="ee_spouse">EE + Spouse</option>
+                  <option value="family">Family</option>
+                </select>
+              </FF>
+              <FF label="Dental Plan">
+                <select className="inp" value={addForm.dentalPlan}
+                  onChange={e=>setAddForm(f=>({...f,dentalPlan:e.target.value}))}>
+                  {dentalPlans.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </FF>
+              <FF label="Vision Plan">
+                <select className="inp" value={addForm.visionPlan}
+                  onChange={e=>setAddForm(f=>({...f,visionPlan:e.target.value}))}>
+                  {visionPlans.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </FF>
+              <FF label="Life Insurance">
+                <div style={{display:"flex",alignItems:"center",gap:10,paddingTop:8}}>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,color:"#94a3b8"}}>
+                    <input type="checkbox" checked={addForm.lifeInsured}
+                      onChange={e=>setAddForm(f=>({...f,lifeInsured:e.target.checked}))}/>
+                    Enrolled
+                  </label>
+                  {addForm.lifeInsured && (
+                    <select className="inp" style={{width:100}} value={addForm.lifeMultiple}
+                      onChange={e=>setAddForm(f=>({...f,lifeMultiple:+e.target.value}))}>
+                      {[1,2,3,4,5].map(n=><option key={n} value={n}>{n}× salary</option>)}
+                    </select>
+                  )}
+                </div>
+              </FF>
+              <FF label="401(k)">
+                <div style={{display:"flex",alignItems:"center",gap:10,paddingTop:8}}>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,color:"#94a3b8"}}>
+                    <input type="checkbox" checked={addForm.k401_enrolled}
+                      onChange={e=>setAddForm(f=>({...f,k401_enrolled:e.target.checked}))}/>
+                    Enrolled
+                  </label>
+                  {addForm.k401_enrolled && (
+                    <input className="inp" type="number" style={{width:80}} value={addForm.k401_ee_pct||""}
+                      placeholder="EE %" onChange={e=>setAddForm(f=>({...f,k401_ee_pct:+e.target.value}))}/>
+                  )}
+                </div>
+              </FF>
+              <FF label="STD / LTD">
+                <div style={{display:"flex",gap:12,paddingTop:8}}>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,color:"#94a3b8"}}>
+                    <input type="checkbox" checked={addForm.stdEnrolled}
+                      onChange={e=>setAddForm(f=>({...f,stdEnrolled:e.target.checked}))}/>STD
+                  </label>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,color:"#94a3b8"}}>
+                    <input type="checkbox" checked={addForm.ltdEnrolled}
+                      onChange={e=>setAddForm(f=>({...f,ltdEnrolled:e.target.checked}))}/>LTD
+                  </label>
+                </div>
+              </FF>
+              <FF label="Beneficiary on File">
+                <div style={{paddingTop:8}}>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,color:"#94a3b8"}}>
+                    <input type="checkbox" checked={addForm.beneficiaryOnFile}
+                      onChange={e=>setAddForm(f=>({...f,beneficiaryOnFile:e.target.checked}))}/>
+                    Yes
+                  </label>
+                </div>
+              </FF>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}>
+              <button className="btn bg" onClick={()=>setAddModal(false)}>Cancel</button>
+              <button className="btn bp" disabled={!addForm.name||!addForm.salary}
+                onClick={()=>{
+                  if(!addForm.name.trim()||!addForm.salary){return;}
+                  setBenefits(bs=>[...bs,{...addForm}]);
+                  setAddModal(false);
+                  setAddForm(null);
+                  setSub("enrollment");
+                }}><I d={ICONS.check} s={13}/>Add to Benefits</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
