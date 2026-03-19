@@ -1,4 +1,3 @@
-// v4.4.21 — Ziksatech Ops Center
 // Ziksatech OPS Center v3.8.3-1773624151 — All components defined, stable build
 // Global PII masking helper — reads window.__ZT_MASK__ flag
 const mask = (val, type="text") => {
@@ -45067,82 +45066,105 @@ Respond ONLY with this JSON:
 // 🏢 CLIENT 360 INTELLIGENCE  (Phase 2)
 // =============================================================================
 function Client360Intelligence({ clients, finInvoices, finPayments, crmDeals, roster, contracts, projects, authProfile }) {
-  const [selClient, setSelClient] = useState(clients[0]?.id||"");
-  const [loading,   setLoading]   = useState(false);
+  const [selClient, setSelClient] = useState(clients[0]?.id || "");
+  const [tab,       setTab]       = useState("overview");
+  const [loading,   setLoading]   = useState({});
   const [intel,     setIntel]     = useState({});
-  const fmt  = n => "$"+Math.round(n).toLocaleString();
-  const fmtK = n => n>=1000?"$"+Math.round(n/1000)+"K":fmt(n);
+  const fmt  = n => "$"+Math.round(n||0).toLocaleString();
+  const fmtK = n => (n||0)>=1000?"$"+Math.round((n||0)/1000)+"K":fmt(n);
+  const TODAY = new Date().toISOString().split("T")[0];
 
-  const cl = clients.find(c=>c.id===selClient)||clients[0];
-  if (!cl) return <div className="card" style={{padding:20}}>No clients found.</div>;
+  const cl = clients.find(c=>c.id===selClient) || clients[0] || {};
+  const ci = intel[selClient]?.overview;
+  const upsell = intel[selClient]?.upsell;
+  const renewal = intel[selClient]?.renewal;
 
-  // Build 360 data for selected client
-  const clInvoices  = finInvoices.filter(i => i.clientId===cl.id||i.clientName===cl.name);
-  const clPayments  = finPayments.filter(p => p.clientId===cl.id||p.clientName===cl.name);
-  const clDeals     = crmDeals.filter(d => d.clientId===cl.id||d.company===cl.name||d.clientName===cl.name);
-  const clConsults  = roster.filter(r => r.client===cl.name||r.client===cl.id);
-  const clContracts = contracts.filter(c => c.clientId===cl.id||c.clientName===cl.name);
-  const clProjects  = projects.filter(p => p.clientId===cl.id||p.client===cl.name);
+  // ── Client metrics ───────────────────────────────────────────────────────
+  const clInvoices  = finInvoices.filter(i=>i.clientId===selClient||i.clientName===cl.name);
+  const clPayments  = finPayments.filter(p=>p.clientId===selClient);
+  const clDeals     = crmDeals.filter(d=>d.clientId===selClient||d.clientName===cl.name||d.company===cl.name);
+  const clConsults  = roster.filter(r=>r.clientId===selClient||r.client===cl.name);
+  const clContracts = contracts?.filter(c=>c.clientId===selClient)||[];
+  const clProjects  = projects?.filter(p=>p.clientId===selClient)||[];
+
   const totalBilled = clInvoices.reduce((s,i)=>s+(i.amount||0),0);
   const totalPaid   = clPayments.reduce((s,p)=>s+(p.amount||0),0);
-  const openAR      = totalBilled - totalPaid;
-  const avgDSO      = clInvoices.length>0 ? Math.round(
-    clInvoices.reduce((s,i)=>{
-      const d=new Date(i.paidDate||new Date()); const issued=new Date(i.date||i.issueDate||d);
-      return s+Math.max(0,(d-issued)/86400000);
-    },0)/clInvoices.length) : 0;
+  const openAR      = clInvoices.filter(i=>i.status!=="paid").reduce((s,i)=>s+(i.amount||0)-(i.paidAmount||0),0);
+  const avgDSO      = clInvoices.length > 0
+    ? Math.round(clInvoices.reduce((s,i)=>{ const d=(new Date(i.paidDate||TODAY)-new Date(i.date))/86400000; return s+(d>0?d:0); },0)/clInvoices.length)
+    : 0;
 
-  // Churn risk calculation
-  const renewalDays = cl.nextRenewal ?
-    Math.ceil((new Date(cl.nextRenewal)-new Date())/86400000) : 999;
-  const churnRisk = renewalDays<30?"HIGH":renewalDays<90?"MEDIUM":"LOW";
+  const nearestRenewal = clContracts.sort((a,b)=>new Date(a.endDate||"2099")-new Date(b.endDate||"2099"))[0];
+  const renewalDays = nearestRenewal?.endDate
+    ? Math.ceil((new Date(nearestRenewal.endDate)-new Date())/86400000)
+    : 999;
+  const churnRisk  = renewalDays<30?"HIGH":renewalDays<90?"MEDIUM":"LOW";
   const churnColor = churnRisk==="HIGH"?"#f87171":churnRisk==="MEDIUM"?"#f59e0b":"#34d399";
 
-  const runClientAI = async () => {
-    if (intel[cl.id]) return;
-    setLoading(true);
-    try {
-      const resp = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:2000,
-          system:"You are a client intelligence AI for a SAP consulting firm. Give specific, actionable strategic insights about this client relationship.",
-          messages:[{role:"user", content:
-`Client: ${cl.name} | Vertical: ${cl.vertical||"Unknown"} | Since: ${cl.clientSince||"2024"}
-Revenue: ${fmtK(totalBilled)} billed | ${fmtK(totalPaid)} collected | AR: ${fmtK(openAR)}
-Consultants: ${clConsults.length} deployed | Contracts: ${clContracts.length} | Projects: ${clProjects.length}
-Renewal: ${renewalDays} days away | Health: ${cl.healthScore||"green"} | Churn risk: ${churnRisk}
-Open deals: ${clDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage)).length}
-Avg DSO: ${avgDSO} days
+  const buildClientContext = () => `
+Client: ${cl.name} | Vertical: ${cl.vertical||"—"} | Health: ${cl.healthScore||"green"}
+Total billed: ${fmtK(totalBilled)} | Open AR: ${fmtK(openAR)} | Avg DSO: ${avgDSO} days
+Consultants deployed: ${clConsults.length} (${clConsults.map(r=>r.name+" "+r.role).slice(0,4).join(", ")})
+Open deals: ${clDeals.filter(d=>!["closed-won","closed_won","closed-lost","closed_lost"].includes(d.stage)).length}
+Active projects: ${clProjects.filter(p=>p.status==="active").length}
+Next renewal: ${nearestRenewal?.endDate||"no date"} (${renewalDays<999?renewalDays+" days":"no contract"})
+Annual contract value: ${fmtK(cl.annualValue||cl.contractValue||0)}
+Notes: ${cl.notes||"SAP consulting engagement"}
+`;
 
-Respond ONLY with this JSON:
-{
-  "executiveSummary": "2-sentence client health summary",
-  "growthOpportunities": ["specific upsell/expand opportunity 1", "opportunity 2", "opportunity 3"],
-  "riskFactors": ["specific risk 1", "risk 2"],
-  "nextActions": ["specific action this week", "action this month"],
-  "churnSignals": "assessment of renewal/churn risk",
-  "idealExpansion": "best expansion play for this client"
-}`}]
+  // ── AI runners ───────────────────────────────────────────────────────────
+  const runAI = async (type) => {
+    setLoading(l=>({...l,[`${selClient}-${type}`]:true}));
+    const ctx = buildClientContext();
+    let prompt = "";
+    let schema = "";
+
+    if (type === "overview") {
+      prompt = `Analyze this client for strategic intelligence:
+${ctx}`;
+      schema = `{"executiveSummary":"2-sentence client health + relationship summary","growthOpportunities":["specific upsell 1","upsell 2","upsell 3"],"riskFactors":["risk 1","risk 2"],"nextActions":["action this week","action this month"],"churnSignals":"renewal/churn risk assessment","relationshipScore":0-100,"budgetCycleIntel":"when this client typically approves budgets and what drives their decisions"}`;
+    } else if (type === "upsell") {
+      prompt = `Generate upsell and expansion intelligence for this client:
+${ctx}`;
+      schema = `{"headline":"one-sentence upsell opportunity summary","topPlay":{"service":"specific SAP service to sell","why":"why this client needs it now","estimatedValue":"$XXX,000","timing":"when to pitch","approach":"how to position it"},"expansionPlays":[{"play":"...","revenue":"...","effort":"LOW|MEDIUM|HIGH"},{"play":"...","revenue":"...","effort":"..."},{"play":"...","revenue":"...","effort":"..."}],"stakeholderStrategy":"who to target for expansion conversations","competitorRisk":"what competitor might be trying to steal this client","executivePitch":"two sentences Manju can say to the CIO/VP to open expansion conversation"}`;
+    } else if (type === "renewal") {
+      prompt = `Generate a renewal and retention playbook for this client:
+${ctx}
+Days to renewal: ${renewalDays}`;
+      schema = `{"urgency":"HIGH|MEDIUM|LOW","headline":"one-sentence renewal situation assessment","renewalHealth":0-100,"timeline":[{"week":"Week 1","action":"..."},{"week":"Week 2","action":"..."},{"week":"Week 3","action":"..."},{"week":"Week 4","action":"..."}],"rateIncreaseStrategy":"how much to ask for and how to justify it","championMessage":"what to say to your champion to lock in renewal","blockerStrategy":"how to handle procurement or budget objections","walkAwayLine":"minimum terms Ziksatech should accept"}`;
+    }
+
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000,
+          system:`You are a strategic client intelligence AI for Ziksatech, a WBE SAP consulting firm in DFW. Give specific, practical intelligence.`,
+          messages:[{role:"user",content:`${prompt}
+
+Respond ONLY with JSON (no markdown):
+${schema}`}]
         })
       });
       const data = await resp.json();
-      const text = data.content?.[0]?.text||"{}";
-      setIntel(prev=>({...prev, [cl.id]: extractJSON(text)}));
-    } catch(e) { setIntel(prev=>({...prev, [cl.id]:{executiveSummary:"Analysis complete.",growthOpportunities:[],riskFactors:[],nextActions:[]}})) }
-    setLoading(false);
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setIntel(prev=>({...prev, [selClient]:{...(prev[selClient]||{}), [type]:parsed}}));
+    } catch(e) { setIntel(prev=>({...prev, [selClient]:{...(prev[selClient]||{}), [type]:{error:e.message}}})); }
+    setLoading(l=>({...l,[`${selClient}-${type}`]:false}));
   };
 
-  const ci = intel[cl.id];
+  const TABS = [
+    {id:"overview", label:"📊 Overview"},
+    {id:"upsell",   label:"🚀 Upsell Intel"},
+    {id:"renewal",  label:"🔄 Renewal Playbook"},
+  ];
 
   return (
     <div>
-      <PH title="🏢 Client 360 Intelligence" sub="Full relationship view · AI insights · churn detection · growth opportunities"/>
+      <PH title="🏢 Client 360 Intelligence" sub="Full relationship view · upsell intelligence · renewal playbook · churn detection"/>
 
       {/* Client selector */}
-      <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+      <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
         {clients.map(c=>(
-          <button key={c.id} onClick={()=>{setSelClient(c.id);}}
+          <button key={c.id} onClick={()=>setSelClient(c.id)}
             className={`btn ${selClient===c.id?"bp":"bg"}`} style={{fontSize:11}}>
             {c.name}
           </button>
@@ -45150,13 +45172,13 @@ Respond ONLY with this JSON:
       </div>
 
       {/* Header KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14}}>
         {[
-          {l:"Total Billed",      v:fmtK(totalBilled),              c:"#38bdf8"},
-          {l:"Open AR",           v:fmtK(openAR),                    c:openAR>10000?"#f87171":"#34d399"},
-          {l:"Avg DSO",           v:avgDSO+" days",                  c:avgDSO>45?"#f87171":"#34d399"},
-          {l:"Consultants",       v:clConsults.length+" deployed",   c:"#a78bfa"},
-          {l:"Renewal Risk",      v:churnRisk,                       c:churnColor},
+          {l:"Total Billed",    v:fmtK(totalBilled),             c:"#38bdf8"},
+          {l:"Open AR",         v:fmtK(openAR),                   c:openAR>10000?"#f87171":"#34d399"},
+          {l:"Avg DSO",         v:avgDSO+" days",                 c:avgDSO>45?"#f87171":"#34d399"},
+          {l:"Consultants",     v:clConsults.length+" deployed",  c:"#a78bfa"},
+          {l:"Renewal Risk",    v:churnRisk,                       c:churnColor},
         ].map(k=>(
           <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
             <div style={{fontSize:16,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
@@ -45165,100 +45187,249 @@ Respond ONLY with this JSON:
         ))}
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-        {/* Left: relationship data */}
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {/* Client profile */}
-          <div className="card" style={{padding:"16px 18px"}}>
-            <div className="section-hdr">Client Profile</div>
-            {[
-              ["Vertical",       cl.vertical||"—"],
-              ["Health Score",   cl.healthScore||"green"],
-              ["Next Renewal",   cl.nextRenewal||"—", renewalDays<90?churnColor:"#94a3b8"],
-              ["Days to Renewal",renewalDays>900?"No date set":`${renewalDays} days`,
-               renewalDays<30?"#f87171":renewalDays<90?"#f59e0b":"#34d399"],
-              ["Engagement Type",clContracts[0]?.type||cl.engagementType||"Staff Augmentation"],
-              ["Active Projects", clProjects.filter(p=>p.status==="active").length],
-            ].map(([l,v,col])=>(
-              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",
-                borderBottom:"1px solid #0a1626"}}>
-                <span style={{fontSize:11,color:"#64748b"}}>{l}</span>
-                <span style={{fontSize:11,fontWeight:600,color:col||"#e2e8f0"}}>{v}</span>
-              </div>
-            ))}
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:14,borderBottom:"1px solid #1a2d45",paddingBottom:4}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)}
+            style={{padding:"7px 16px",borderRadius:"6px 6px 0 0",border:"none",fontSize:11,fontWeight:600,cursor:"pointer",
+              background:tab===t.id?"#0c2340":"transparent",color:tab===t.id?"#38bdf8":"#475569",
+              borderBottom:tab===t.id?"2px solid #0ea5e9":"2px solid transparent"}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── OVERVIEW TAB ── */}
+      {tab==="overview" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {/* Left: relationship data */}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div className="section-hdr">Client Profile</div>
+              {[
+                ["Vertical",        cl.vertical||"—"],
+                ["Health Score",    cl.healthScore||"green"],
+                ["Next Renewal",    nearestRenewal?.endDate||"—", renewalDays<90?churnColor:"#94a3b8"],
+                ["Days to Renewal", renewalDays>900?"No date set":`${renewalDays} days`,
+                  renewalDays<30?"#f87171":renewalDays<90?"#f59e0b":"#34d399"],
+                ["Engagement Type", clContracts[0]?.type||cl.engagementType||"Staff Augmentation"],
+                ["Active Projects", clProjects.filter(p=>p.status==="active").length],
+                ["Won Deals",       clDeals.filter(d=>d.stage==="closed-won"||d.stage==="closed_won").length],
+              ].map(([l,v,col])=>(
+                <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                  <span style={{fontSize:11,color:"#64748b"}}>{l}</span>
+                  <span style={{fontSize:11,fontWeight:600,color:col||"#e2e8f0"}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div className="section-hdr">Deployed Team ({clConsults.length})</div>
+              {clConsults.length===0 ? <div style={{fontSize:11,color:"#334155"}}>No consultants assigned</div>
+              : clConsults.map(r=>(
+                <div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                  <div>
+                    <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div>
+                    <div style={{fontSize:9,color:"#3d5a7a"}}>{r.role}</div>
+                  </div>
+                  <span style={{fontSize:11,color:"#38bdf8",fontFamily:"monospace"}}>${r.billRate}/hr</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Deployed consultants */}
-          <div className="card" style={{padding:"16px 18px"}}>
-            <div className="section-hdr">Deployed Consultants ({clConsults.length})</div>
-            {clConsults.length===0 ? <div style={{fontSize:11,color:"#334155"}}>No consultants assigned</div> :
-            clConsults.map(r=>(
-              <div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",
-                borderBottom:"1px solid #0a1626"}}>
-                <div>
-                  <div style={{fontSize:11,fontWeight:600,color:"#cbd5e1"}}>{r.name}</div>
-                  <div style={{fontSize:9,color:"#3d5a7a"}}>{r.role}</div>
+          {/* Right: AI overview */}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {ci ? (
+              <>
+                <div className="card" style={{padding:"14px 16px",border:"1px solid #0369a144"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 AI Executive Summary</div>
+                    {ci.relationshipScore!==undefined&&(
+                      <div style={{fontSize:18,fontWeight:800,color:ci.relationshipScore>=70?"#34d399":ci.relationshipScore>=50?"#f59e0b":"#f87171",fontFamily:"monospace"}}>{ci.relationshipScore}<span style={{fontSize:10,color:"#475569"}}>/100</span></div>
+                    )}
+                  </div>
+                  <p style={{fontSize:12,color:"#94a3b8",lineHeight:1.6,margin:0}}>{ci.executiveSummary}</p>
+                  {ci.budgetCycleIntel&&<div style={{marginTop:8,padding:"6px 10px",background:"#0c1a2e",borderRadius:5,fontSize:10,color:"#38bdf8"}}><strong>💰 Budget Intel:</strong> {ci.budgetCycleIntel}</div>}
                 </div>
-                <span style={{fontSize:11,color:"#38bdf8",fontFamily:"monospace"}}>${r.billRate}/hr</span>
+                {ci.growthOpportunities?.length>0&&(
+                  <div className="card" style={{padding:"14px 16px",border:"1px solid #34d39933"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:8}}>🚀 Growth Opportunities</div>
+                    {ci.growthOpportunities.map((o,i)=><div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>💡 {o}</div>)}
+                  </div>
+                )}
+                {ci.riskFactors?.length>0&&(
+                  <div className="card" style={{padding:"14px 16px",border:"1px solid #f8717133"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:8}}>⚠ Risk Factors</div>
+                    {ci.riskFactors.map((r,i)=><div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>🔴 {r}</div>)}
+                  </div>
+                )}
+                {ci.nextActions?.length>0&&(
+                  <div className="card" style={{padding:"14px 16px"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8}}>⚡ Next Actions</div>
+                    {ci.nextActions.map((a,i)=><div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>→ {a}</div>)}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="card" style={{padding:"24px",textAlign:"center"}}>
+                <div style={{fontSize:12,color:"#3d5a7a",marginBottom:12}}>Get AI-powered intelligence for {cl.name}</div>
+                <button className="btn bp" style={{fontSize:12}} onClick={()=>runAI("overview")} disabled={loading[`${selClient}-overview`]}>
+                  {loading[`${selClient}-overview`]?"⏳ Analyzing...":"🤖 Generate Client Intelligence"}
+                </button>
               </div>
-            ))}
+            )}
           </div>
         </div>
+      )}
 
-        {/* Right: AI intelligence */}
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {ci ? (
-            <>
-              <div className="card" style={{padding:"16px 18px",border:"1px solid #0369a144"}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#38bdf8",marginBottom:8}}>🤖 AI Executive Summary</div>
-                <p style={{fontSize:12,color:"#94a3b8",lineHeight:1.6,margin:0}}>{ci.executiveSummary}</p>
+      {/* ── UPSELL TAB ── */}
+      {tab==="upsell" && (
+        <div>
+          {!upsell && (
+            <div className="card" style={{padding:"32px",textAlign:"center"}}>
+              <div style={{fontSize:32,marginBottom:10}}>🚀</div>
+              <div style={{fontSize:13,color:"#94a3b8",marginBottom:16}}>
+                AI analyzes {cl.name}'s SAP landscape, budget cycles, and expansion signals to identify the highest-value upsell plays
               </div>
-
-              {ci.growthOpportunities?.length>0 && (
-                <div className="card" style={{padding:"16px 18px",border:"1px solid #34d39933"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:8}}>🚀 Growth Opportunities</div>
-                  {ci.growthOpportunities.map((o,i)=>(
-                    <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",
-                      borderBottom:"1px solid #0a1626"}}>💡 {o}</div>
-                  ))}
-                </div>
-              )}
-
-              {ci.riskFactors?.length>0 && (
-                <div className="card" style={{padding:"16px 18px",border:"1px solid #f8717133"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:8}}>⚠ Risk Factors</div>
-                  {ci.riskFactors.map((r,i)=>(
-                    <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",
-                      borderBottom:"1px solid #0a1626"}}>🔴 {r}</div>
-                  ))}
-                </div>
-              )}
-
-              {ci.nextActions?.length>0 && (
-                <div className="card" style={{padding:"16px 18px"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8}}>⚡ Next Actions</div>
-                  {ci.nextActions.map((a,i)=>(
-                    <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",
-                      borderBottom:"1px solid #0a1626"}}>→ {a}</div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="card" style={{padding:"20px",textAlign:"center"}}>
-              <div style={{fontSize:12,color:"#3d5a7a",marginBottom:12}}>
-                Get AI-powered intelligence for {cl.name}
-              </div>
-              <button className="btn bp" style={{fontSize:12}} onClick={runClientAI} disabled={loading}>
-                {loading?"⏳ Analyzing...":"🤖 Generate Client Intelligence"}
+              <button className="btn bp" style={{fontSize:13,padding:"10px 28px"}} onClick={()=>runAI("upsell")} disabled={loading[`${selClient}-upsell`]}>
+                {loading[`${selClient}-upsell`]?"⏳ Analyzing upsell opportunities...":"🚀 Generate Upsell Intelligence"}
               </button>
             </div>
           )}
+          {upsell && !upsell.error && (
+            <div>
+              {/* Top upsell play */}
+              <div className="card" style={{padding:"18px 20px",border:"1px solid #34d39944",marginBottom:14}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:10}}>🏆 Top Upsell Play — {upsell.topPlay?.service}</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+                  {[
+                    ["Service",   upsell.topPlay?.service,      "#38bdf8"],
+                    ["Est Value", upsell.topPlay?.estimatedValue,"#34d399"],
+                    ["Timing",    upsell.topPlay?.timing,        "#f59e0b"],
+                    ["Effort",    "MEDIUM",                       "#a78bfa"],
+                  ].map(([l,v,col])=>(
+                    <div key={l} style={{padding:"8px 10px",background:"#040a14",borderRadius:6}}>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>{l}</div>
+                      <div style={{fontSize:11,color:col,fontWeight:600}}>{v||"—"}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.5,marginBottom:8}}><strong style={{color:"#e2e8f0"}}>Why: </strong>{upsell.topPlay?.why}</div>
+                <div style={{padding:"8px 12px",background:"#0c2340",borderRadius:6,border:"1px solid #0369a144"}}>
+                  <div style={{fontSize:10,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase"}}>📣 Executive Pitch</div>
+                  <div style={{fontSize:12,color:"#38bdf8",fontStyle:"italic"}}>"{upsell.executivePitch}"</div>
+                </div>
+              </div>
+
+              {/* Expansion plays grid */}
+              {(upsell.expansionPlays||[]).length>0&&(
+                <div className="card" style={{padding:"16px 18px",marginBottom:14}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📋 All Expansion Plays</div>
+                  {upsell.expansionPlays.map((p,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{p.play}</div>
+                        <div style={{fontSize:9,color:"#64748b",marginTop:1}}>Effort: <span style={{color:p.effort==="LOW"?"#34d399":p.effort==="HIGH"?"#f87171":"#f59e0b"}}>{p.effort}</span></div>
+                      </div>
+                      <div style={{fontSize:12,fontWeight:700,color:"#34d399",fontFamily:"monospace"}}>{p.revenue}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{padding:"10px 14px",background:"#0c1a2e",border:"1px solid #0369a144",borderRadius:8}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>👥 Stakeholder Strategy</div>
+                  <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.4}}>{upsell.stakeholderStrategy}</div>
+                </div>
+                <div style={{padding:"10px 14px",background:"#1a0808",border:"1px solid #dc262644",borderRadius:8}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>🥊 Competitor Risk</div>
+                  <div style={{fontSize:11,color:"#f87171",lineHeight:1.4}}>{upsell.competitorRisk}</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* ── RENEWAL PLAYBOOK TAB ── */}
+      {tab==="renewal" && (
+        <div>
+          {/* Renewal urgency banner */}
+          <div style={{padding:"12px 16px",background:renewalDays<30?"#1a0808":renewalDays<90?"#1a1000":"#021f14",
+            border:`1px solid ${churnColor}44`,borderRadius:10,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:churnColor}}>
+                  {churnRisk==="HIGH"?"🔴 URGENT":churnRisk==="MEDIUM"?"🟡 ATTENTION NEEDED":"✅ STABLE"} — Renewal Risk: {churnRisk}
+                </div>
+                <div style={{fontSize:11,color:"#64748b",marginTop:2}}>
+                  {renewalDays<999?`${renewalDays} days until renewal — ${nearestRenewal?.endDate}`:"No renewal date set"}
+                </div>
+              </div>
+              <button className="btn bp" style={{fontSize:11}} onClick={()=>runAI("renewal")} disabled={loading[`${selClient}-renewal`]}>
+                {loading[`${selClient}-renewal`]?"⏳...":"📖 Generate Renewal Playbook"}
+              </button>
+            </div>
+          </div>
+
+          {!renewal && !loading[`${selClient}-renewal`] && (
+            <div className="card" style={{padding:"28px",textAlign:"center",color:"#475569",fontSize:12}}>
+              Click "Generate Renewal Playbook" to get a week-by-week action plan to secure renewal
+            </div>
+          )}
+
+          {renewal && !renewal.error && (
+            <div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                <div style={{padding:"12px 16px",background:"#060d1c",border:`1px solid ${churnColor}44`,borderRadius:8}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Renewal Health</div>
+                  <div style={{fontSize:24,fontWeight:800,color:churnColor,fontFamily:"monospace"}}>{renewal.renewalHealth}/100</div>
+                  <div style={{fontSize:11,color:"#94a3b8",marginTop:4}}>{renewal.headline}</div>
+                </div>
+                <div style={{padding:"12px 16px",background:"#0c1a2e",border:"1px solid #0369a144",borderRadius:8}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>💬 Champion Message</div>
+                  <div style={{fontSize:11,color:"#38bdf8",fontStyle:"italic",lineHeight:1.5}}>"{renewal.championMessage}"</div>
+                </div>
+              </div>
+
+              {/* 4-week timeline */}
+              {(renewal.timeline||[]).length>0&&(
+                <div className="card" style={{padding:"14px 16px",marginBottom:12}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📅 Renewal Timeline</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                    {renewal.timeline.map((t,i)=>(
+                      <div key={i} style={{padding:"10px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1e3a5f"}}>
+                        <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>{t.week}</div>
+                        <div style={{fontSize:10,color:"#94a3b8",lineHeight:1.4}}>{t.action}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{padding:"10px 14px",background:"#021f14",border:"1px solid #15803d44",borderRadius:8}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>💰 Rate Increase Strategy</div>
+                  <div style={{fontSize:11,color:"#34d399",lineHeight:1.4}}>{renewal.rateIncreaseStrategy}</div>
+                </div>
+                <div style={{padding:"10px 14px",background:"#1a0808",border:"1px solid #f8717144",borderRadius:8}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>🚫 Walk-Away Line</div>
+                  <div style={{fontSize:11,color:"#f87171",lineHeight:1.4}}>{renewal.walkAwayLine}</div>
+                </div>
+                <div style={{padding:"10px 14px",background:"#1a1000",border:"1px solid #d9770644",borderRadius:8,gridColumn:"1/-1"}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>🛡 Blocker Strategy</div>
+                  <div style={{fontSize:11,color:"#f59e0b",lineHeight:1.4}}>{renewal.blockerStrategy}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
 
 // =============================================================================
 // 🧩 KNOWLEDGE ENGINE  (Phase 2 — Institutional Learning)
