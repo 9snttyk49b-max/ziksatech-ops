@@ -3248,6 +3248,29 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
   });
   const [aiDashLoading, setAiDashLoading] = useState(false);
 
+  const [weeklyDigest,     setWeeklyDigest]     = useState(null);
+  const [weeklyDigestLoad, setWeeklyDigestLoad] = useState(false);
+  const runWeeklyDigest = async () => {
+    setWeeklyDigestLoad(true); setWeeklyDigest(null);
+    const fmtK = n => n>=1e6?"$"+Math.round(n/1e6*10)/10+"M":n>=1e3?"$"+Math.round(n/1e3)+"K":"$"+n;
+    const weekEnding = new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+    const activeDeals = (crmDeals||[]).filter(d=>!["closed-won","closed-lost"].includes(d.stage));
+    const pipeline = activeDeals.reduce((s,d)=>s+(d.value||0),0);
+    const overdue = (finInvoices||[]).filter(i=>i.status==="overdue").length;
+    const utilPct = Math.round(roster.filter(r=>(r.util||0)>0.8).length/Math.max(roster.length,1)*100);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,
+          system:"You are generating a weekly business digest for Ziksatech CEO Manju. Be specific, data-driven, and actionable. Write in a professional but concise tone.",
+          messages:[{role:"user",content:`Week ending ${weekEnding}. Team: ${roster.length} consultants, ${utilPct}% fully utilized. Pipeline: ${fmtK(pipeline)} across ${activeDeals.length} deals. Overdue AR: ${overdue} invoices. Bench: ${roster.filter(r=>(r.util||0)<0.3).length} consultants.\nGenerate a weekly business digest. Return ONLY JSON:\n{"weekHeadline":"single bold headline for the week","wins":["win1","win2"],"concerns":["concern1","concern2"],"pipeline_summary":"2-sentence pipeline update","team_summary":"2-sentence team/utilization update","financial_summary":"2-sentence AR/revenue update","next_week_priorities":["priority1","priority2","priority3"],"motivationalNote":"one-line motivational closing"}`}]
+        })
+      });
+      const data = await resp.json();
+      setWeeklyDigest(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setWeeklyDigest({error:e.message}); }
+    setWeeklyDigestLoad(false);
+  };
+
   const runDashBrief = async () => {
     setAiDashLoading(true);
     const fmtK = n => n>=1000000?"$"+Math.round(n/1000000*10)/10+"M":n>=1000?"$"+Math.round(n/1000)+"K":"$"+Math.round(n);
@@ -3414,10 +3437,36 @@ Give today's executive brief. Return ONLY JSON:
           <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setAiDashBrief(null)}>✕</button>
         </div>
       )}
+      {weeklyDigest && !weeklyDigest.error && (
+        <div style={{padding:"14px 18px",background:"#050c1a",border:"1px solid #0369a144",borderRadius:10,marginBottom:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#e2e8f0"}}>📋 {weeklyDigest.weekHeadline}</div>
+            <div style={{display:"flex",gap:6}}>
+              <button className="btn bg" style={{fontSize:9}} onClick={()=>{
+                const wins=(weeklyDigest.wins||[]).map(w=>"• "+w).join("\n");
+                const concerns=(weeklyDigest.concerns||[]).map(x=>"• "+x).join("\n");
+                const next=(weeklyDigest.next_week_priorities||[]).map((p,i)=>(i+1)+". "+p).join("\n");
+                navigator.clipboard?.writeText(`WEEKLY DIGEST\n\n${weeklyDigest.weekHeadline}\n\nWINS:\n${wins}\n\nWATCH:\n${concerns}\n\nPIPELINE: ${weeklyDigest.pipeline_summary||""}\nTEAM: ${weeklyDigest.team_summary||""}\nFINANCIALS: ${weeklyDigest.financial_summary||""}\n\nNEXT WEEK:\n${next}\n\n"${weeklyDigest.motivationalNote||""}"`);
+              }}>📋 Copy</button>
+              <button className="btn bg" style={{fontSize:9}} onClick={()=>setWeeklyDigest(null)}>✕</button>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+            <div><div style={{fontSize:9,color:"#15803d",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>✅ Wins</div>{(weeklyDigest.wins||[]).map((w,i)=><div key={i} style={{fontSize:11,color:"#4ade80",marginBottom:3}}>• {w}</div>)}</div>
+            <div><div style={{fontSize:9,color:"#991b1b",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>⚠️ Watch</div>{(weeklyDigest.concerns||[]).map((x,i)=><div key={i} style={{fontSize:11,color:"#f87171",marginBottom:3}}>• {x}</div>)}</div>
+          </div>
+          {[["Pipeline",weeklyDigest.pipeline_summary],["Team",weeklyDigest.team_summary],["Financials",weeklyDigest.financial_summary]].map(([l,v])=>v&&<div key={l} style={{fontSize:11,color:"#94a3b8",padding:"5px 0",borderTop:"1px solid #0a1626"}}><span style={{color:"#475569",fontWeight:600}}>{l}: </span>{v}</div>)}
+          {(weeklyDigest.next_week_priorities||[]).length>0&&<div style={{marginTop:8}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>Next Week</div>{(weeklyDigest.next_week_priorities||[]).map((p,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:3}}>{i+1}. {p}</div>)}</div>}
+          {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
+        </div>
+      )}
       <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.41 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
+          </button>
+          <button className="btn bg" style={{fontSize:11}} onClick={runWeeklyDigest} disabled={weeklyDigestLoad}>
+            {weeklyDigestLoad?"⏳ Generating...":"📋 Weekly Digest"}
           </button>
           <span className="adp-badge" style={{padding:"4px 10px",fontSize:11}}>ADP ●</span>
           <span className="fb-badge" style={{padding:"4px 10px",fontSize:11}}>FreshBooks ●</span>
@@ -28828,6 +28877,24 @@ function ProposalEditor({ proposals, setProposals, crmDeals, roster, selId, setS
   const getSource = () => showNew ? makeBlank() : (edit || sel || null);
   const [form, setForm] = useState(()=>getSource()||makeBlank());
   const [activeSection, setActiveSection] = useState("exec");
+  const [ProposalEditorAI,     setProposalEditorAI]     = useState(null);
+  const [ProposalEditorAILoad, setProposalEditorAILoad] = useState(false);
+  const runProposalEditorAI = async () => {
+    setProposalEditorAILoad(true); setProposalEditorAI(null);
+    const p = proposals?.find(x=>x.id===editId||x.id===selId) || proposals?.[0] || {};
+    const deal = (crmDeals||[]).find(d=>d.id===p.dealId) || {};
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,
+          system:"You are a proposal writer for Ziksatech, a WBE/HUB certified SAP consulting firm in Plano TX specializing in BRIM, IS-U, S/4HANA, SuccessFactors. Write compelling executive summaries.",
+          messages:[{role:"user",content:`Proposal for: ${p.clientName||deal.name||"client"}, value $${Math.round((p.value||deal.value||0)/1000)}K, type: ${p.type||"SAP consulting"}.\nReturn ONLY JSON:\n{"executiveSummary":"2-paragraph executive summary for the proposal","valueProposition":"top 3 value props in bullet points","differentiators":"why Ziksatech WBE over a big SI","callToAction":"compelling closing sentence","subjectLine":"email subject for sending this proposal"}`}]
+        })
+      });
+      const data = await resp.json();
+      setProposalEditorAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setProposalEditorAI({error:e.message}); }
+    setProposalEditorAILoad(false);
+  };
 
   // Sync form when switching proposal or entering new mode
   useEffect(()=>{
