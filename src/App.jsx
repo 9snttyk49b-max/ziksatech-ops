@@ -193,6 +193,16 @@ function useDragSort(items, setItems) {
   return { dragProps };
 }
 
+// ─── Global date utilities (used across multiple components) ─────────────────
+const daysUntil = (dateStr) => {
+  if (!dateStr) return null;
+  return Math.ceil((new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00')) - new Date()) / 86400000);
+};
+const daysSince = (dateStr) => {
+  if (!dateStr) return null;
+  return Math.floor((new Date() - new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00'))) / 86400000);
+};
+
 function DragHandle() {
   return <span title="Drag to reorder" style={{cursor:"grab",color:"#1e3a5f",fontSize:15,padding:"0 6px 0 0",userSelect:"none",flexShrink:0}}>⋮⋮</span>;
 }
