@@ -3676,9 +3676,9 @@ function NaxonOSCommand({ addAudit, authProfile }) {
 
   // Pull live state from localStorage
   const phase0Deals   = (() => { try { return JSON.parse(localStorage.getItem("zt-bd-accounts")||"null") || []; } catch { return []; } })();
-  const siPartners    = (() => { try { return JSON.parse(localStorage.getItem("zt-si-partners")||"null") || SI_DEFAULT_PARTNERS; } catch { return SI_DEFAULT_PARTNERS; } })();
-  const fcsData       = (() => { try { return JSON.parse(localStorage.getItem("zt-fcs-transactions")||"null") || FCS_DEFAULT_TRANSACTIONS; } catch { return FCS_DEFAULT_TRANSACTIONS; } })();
-  const candidates    = (() => { try { return JSON.parse(localStorage.getItem("zt-talent-candidates")||"null") || TALENT_DEFAULT_CANDIDATES; } catch { return TALENT_DEFAULT_CANDIDATES; } })();
+  const siPartners    = (() => { try { return JSON.parse(localStorage.getItem("zt-si-partners")||"null") || []; } catch { return []; } })();
+  const fcsData       = (() => { try { return JSON.parse(localStorage.getItem("zt-fcs-transactions")||"null") || []; } catch { return []; } })();
+  const candidates    = (() => { try { return JSON.parse(localStorage.getItem("zt-talent-candidates")||"null") || []; } catch { return []; } })();
   const fmtK = v => v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1e3?`$${Math.round(v/1000)}K`:`$${Math.round(v)}`;
 
   // Naxon metrics
