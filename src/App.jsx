@@ -40806,7 +40806,7 @@ Open deals needing staffing: ${openDeals.map(d=>d.name||"deal").slice(0,4).join(
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
         {[
-          {l:"Total Consultants",  v:roster||[].length,          c:"#94a3b8"},
+          {l:"Total Consultants",  v:(roster||[]).length,         c:"#94a3b8"},
           {l:"Available / Bench",  v:availableCount,              c:"#34d399"},
           {l:"Rolling Off (<90d)", v:rolloffCount,                c:"#f59e0b"},
           {l:"Fully Placed",       v:enriched.filter(r=>!r.onBench&&!r.rolloffSoon).length, c:"#38bdf8"},
