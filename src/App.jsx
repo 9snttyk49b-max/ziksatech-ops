@@ -2141,7 +2141,7 @@ function FinanceControlSystem(props) {
   const [cfoMsgLoad, setCfoMsgLoad] = useState(false);
 
   // Auto-run CFO brief on first visit each day
-  React.useEffect(() => {
+  useEffect(() => {
     const lastRun = localStorage.getItem('zt-fcs-brief-date');
     if (lastRun !== new Date().toDateString()) {
       setTimeout(() => {
@@ -24721,7 +24721,7 @@ function HelpCenter({ authProfile }) {
 }
 
 function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crmDeals, clients, tsSubmissions, workAuth, candidates, setTab, onClose }) {
-  const [activeIdx, setActiveIdx] = React.useState(0);
+  const [activeIdx, setActiveIdx] = useState(0);
   const qq = q.trim().toLowerCase();
   const hit = (...vals) => vals.some(v => v && String(v).toLowerCase().includes(qq));
 
