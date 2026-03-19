@@ -4296,11 +4296,11 @@ export default function ZiksatechOps() {
     { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Tools"    },
     { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Tools"    },
     { id:"naxonos",      label:"Naxon Command ⚡",        icon:ICONS.dash,     group:"Naxon OS" },
-    { id:"fcs",          label:"Finance Control 💰",       icon:ICONS.chart,    group:"Naxon OS" },
-    { id:"sitracker",    label:"SI Sub-Contracting 🤝",   icon:ICONS.team,     group:"Naxon OS" },
+    { id:"fcs",          label:"Finance Control 💰",       icon:ICONS.pl,       group:"Naxon OS" },
+    { id:"sitracker",    label:"SI Sub-Contracting 🤝",   icon:ICONS.dash,     group:"Naxon OS" },
     { id:"bdengine",     label:"BD Engine 🚀",             icon:ICONS.dash,     group:"Naxon OS" },
-    { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.team,     group:"Hiring"   },
-    { id:"fcs", label:"Finance Control 💰", icon:ICONS.chart, group:"Finance" },
+    { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
+    { id:"fcs", label:"Finance Control 💰", icon:ICONS.pl, group:"Finance" },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, jobReqs, setJobReqs, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
