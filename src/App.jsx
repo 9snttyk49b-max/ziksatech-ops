@@ -14696,6 +14696,25 @@ function ProjOverview({ projects, setProjects, tasks, risks, roster, crmAccounts
   const [editing, setEditing] = useState(null);
   const [selected, setSelected] = useState(null);
 
+  const [ProjOverviewAI,     setProjOverviewAI]     = useState(null);
+  const [ProjOverviewAILoad, setProjOverviewAILoad] = useState(false);
+  const runProjOverviewAI = async () => {
+    setProjOverviewAILoad(true); setProjOverviewAI(null);
+    const activeProjs = (projects||[]).filter(p=>p.status==="active");
+    const atRisk = (risks||[]).filter(r=>r.severity==="high"||r.severity==="critical");
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are a project delivery advisor for a SAP consulting firm.",
+          messages:[{role:"user",content:`${activeProjs.length} active projects. High-risk items: ${atRisk.length}. Projects: ${activeProjs.map(p=>p.name||"proj").slice(0,4).join(", ")}.\nReturn ONLY JSON:\n{"healthScore":85,"redFlag":"most urgent project issue","clientRisk":"client relationship most at risk","deliveryAction":"single most important delivery action this week","scopeCreep":"where scope creep is likely occurring"}`}]
+        })
+      });
+      const data = await resp.json();
+      setProjOverviewAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setProjOverviewAI({error:e.message}); }
+    setProjOverviewAILoad(false);
+  };
+
   const empty = { accountId:"", sowId:"", name:"", status:"planning", health:"green", startDate:"", endDate:"", budget:0, spent:0, pm:"", consultants:[], notes:"" };
   const open  = (p=null) => { setEditing(p?.id||null); setForm(p?{...p}:{...empty}); setModal(true); };
   const save  = () => {
@@ -14718,6 +14737,18 @@ function ProjOverview({ projects, setProjects, tasks, risks, roster, crmAccounts
 
   return (
     <div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button className="btn bp" style={{fontSize:11}} onClick={runProjOverviewAI} disabled={ProjOverviewAILoad}>{ProjOverviewAILoad?"⏳...":"🤖 Delivery Health"}</button></div>
+      {ProjOverviewAI && !ProjOverviewAI.error && (
+        <div style={{padding:"10px 14px",marginBottom:12,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8,display:"flex",gap:12,flexWrap:"wrap",alignItems:"flex-start"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",flexShrink:0}}>🤖 Delivery Health</div>
+          {ProjOverviewAI.healthScore&&<div style={{fontFamily:"monospace",fontSize:18,fontWeight:800,color:(+ProjOverviewAI.healthScore||0)>70?"#34d399":"#f87171",flexShrink:0}}>{ProjOverviewAI.healthScore}</div>}
+          {[["🚨 Red Flag",ProjOverviewAI.redFlag,"#f87171"],["⚡ Action",ProjOverviewAI.deliveryAction,"#34d399"],["👥 Client Risk",ProjOverviewAI.clientRisk,"#f59e0b"]].map(([l,v,col])=>
+            v&&<div key={l} style={{flex:"1 0 130px"}}><div style={{fontSize:8,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:10,color:col,lineHeight:1.3}}>{v}</div></div>
+          )}
+          <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setProjOverviewAI(null)}>✕</button>
+        </div>
+      )}
+
       {/* Summary KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
@@ -19715,6 +19746,23 @@ function CFRunway({ finInvoices, finPayments, apInvoices, adpRuns, roster, cfOve
   const [revGrowth,    setRevGrowth]    = useState(0);   // % per month
   const [scenarioName, setScenarioName] = useState("Base Case");
 
+  const [CFRunwayAI,     setCFRunwayAI]     = useState(null);
+  const [CFRunwayAILoad, setCFRunwayAILoad] = useState(false);
+  const runCFRunwayAI = async () => {
+    setCFRunwayAILoad(true); setCFRunwayAI(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are a financial runway advisor for a SAP consulting firm.",
+          messages:[{role:"user",content:`Consulting firm cash runway scenario analysis needed. Target: 12+ months runway. Monthly burn: ~$180K (payroll+overhead). Monthly revenue: ~$200K.\nReturn ONLY JSON:\n{"runwayStatus":"SAFE/WATCH/CRITICAL","currentRunway":"X months at current burn rate","burnReduction":"fastest way to reduce monthly burn by $20K","revenueAcceleration":"fastest way to add $30K/month revenue","safetyNet":"minimum cash reserve to maintain"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCFRunwayAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCFRunwayAI({error:e.message}); }
+    setCFRunwayAILoad(false);
+  };
+
   // Auto-estimates
   const totalCollected = finPayments.reduce((s,p)=>s+(+p.amount||0),0);
   const totalApPaid    = apInvoices.filter(i=>i.status==="paid").reduce((s,i)=>s+(+i.amount||0),0);
@@ -19781,6 +19829,17 @@ function CFRunway({ finInvoices, finPayments, apInvoices, adpRuns, roster, cfOve
 
   return (
     <div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button className="btn bp" style={{fontSize:11}} onClick={runCFRunwayAI} disabled={CFRunwayAILoad}>{CFRunwayAILoad?"⏳...":"🤖 AI Runway"}</button></div>
+      {CFRunwayAI && !CFRunwayAI.error && (
+        <div style={{padding:"10px 14px",marginBottom:12,background:"#060d1c",border:`1px solid ${CFRunwayAI.runwayStatus==="CRITICAL"?"#f87171":"#0369a1"}44`,borderRadius:8,display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-start"}}>
+          <div style={{fontSize:10,fontWeight:700,color:CFRunwayAI.runwayStatus==="SAFE"?"#34d399":CFRunwayAI.runwayStatus==="WATCH"?"#f59e0b":"#f87171",flexShrink:0}}>🤖 Runway: {CFRunwayAI.runwayStatus} · {CFRunwayAI.currentRunway}</div>
+          {[["Burn Reduction",CFRunwayAI.burnReduction,"#38bdf8"],["Rev Acceleration",CFRunwayAI.revenueAcceleration,"#34d399"],["Safety Net",CFRunwayAI.safetyNet,"#a78bfa"]].map(([l,v,col])=>
+            v&&<div key={l} style={{flex:"1 0 140px"}}><div style={{fontSize:8,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:10,color:col,lineHeight:1.3}}>{v}</div></div>
+          )}
+          <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setCFRunwayAI(null)}>✕</button>
+        </div>
+      )}
+
       {/* Scenario inputs */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:18}}>
         <div className="card" style={{padding:"18px 20px"}}>
