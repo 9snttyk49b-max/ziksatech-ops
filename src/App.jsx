@@ -6751,7 +6751,7 @@ Revenue at risk: $${Math.round(atRisk.reduce((s,cl)=>s+(cl.annualRevPotential||0
 
   const safeInv  = finInvoices  || [];
   const safePay  = finPayments  || [];
-  const safeDeals = crmDeals    || [];
+  const safeDeals  = crmDeals    || [];
   const safeRoster = roster     || [];
 
   // ── Score Engine ──────────────────────────────────────────────────────────
@@ -33931,18 +33931,14 @@ function BenchManagement({ roster, clients, projects, crmDeals, crmAccounts, con
 
   const runBenchAI = async () => {
     setBenchAILoad(true); setBenchAI(null);
-    const benchList = safeRoster.filter(r=>(r.util||0)<0.5);
-    const openDeals = crmDeals?.filter(d=>!["closed-won","closed-lost"].includes(d.stage))||[];
-    const ctx = `Bench consultants (${benchList.length}): ${benchList.map(r=>`${r.name} (${r.role||"SAP"}, $${r.billRate||0}/hr, util=${Math.round((r.util||0)*100)}%)`).join("; ")}
-Open pipeline deals (${openDeals.length}): ${openDeals.slice(0,5).map(d=>`${d.name||"Deal"} ${d.stage} $${Math.round((d.value||0)/1000)}K`).join("; ")}`;
+    const benchList = (roster||[]).filter(r=>(r.util||0)<0.5);
+    const openDeals = (crmDeals||[]).filter(d=>!["closed-won","closed-lost"].includes(d.stage));
+    const ctx = `Bench consultants (${benchList.length}): ${benchList.map(r=>`${r.name} (${r.role||"SAP"}, $${r.billRate||0}/hr, util=${Math.round((r.util||0)*100)}%)`).join("; ")}. Open deals (${openDeals.length}): ${openDeals.slice(0,5).map(d=>`${d.name||"Deal"} ${d.stage}`).join("; ")}`;
     try {
       const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
-          system:"You are a staffing strategist for Ziksatech, a SAP consulting firm. Match bench consultants to open pipeline deals.",
-          messages:[{role:"user",content:`${ctx}
-
-Return ONLY JSON:
-{"weeklyBenchCost":"$XXk","totalAtRisk":3,"placements":[{"consultant":"Name","role":"title","matchedDeal":"deal name","fitReason":"why","urgency":"HIGH/MEDIUM/LOW"}],"topAction":"single most important action this week","marketingTip":"one skill to promote on LinkedIn this week"}`}]
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a staffing strategist for Ziksatech, a SAP consulting firm.",
+          messages:[{role:"user",content:`${ctx}\nReturn ONLY JSON:\n{"weeklyBenchCost":"$XXk","totalAtRisk":3,"placements":[{"consultant":"Name","role":"title","matchedDeal":"deal","fitReason":"why","urgency":"HIGH/MEDIUM/LOW"}],"topAction":"single most important action this week","marketingTip":"skill to promote on LinkedIn"}`}]
         })
       });
       const data = await resp.json();
@@ -38574,11 +38570,11 @@ Open deals needing staffing: ${openDeals.map(d=>d.name||"deal").slice(0,4).join(
     setAvailabilityMatrixAILoad(false);
   }; // matrix | availability | skills
 
-  const safeRoster  = roster  || [];
-  const safeClients = clients || [];
-  const safeDeals   = crmDeals|| [];
+  const safeRoster  = roster    || [];
+  const safeClients = clients   || [];
+  const safeDeals   = crmDeals  || [];
 
-  const openReqs = safeDeals.filter(d=>!["closed_won","closed_lost"].includes(d.stage));
+  const openReqs = crmDeals||[].filter(d=>!["closed_won","closed_lost"].includes(d.stage));
 
   // Skill taxonomy
   const ALL_SKILLS = [
@@ -38588,8 +38584,8 @@ Open deals needing staffing: ${openDeals.map(d=>d.name||"deal").slice(0,4).join(
   ];
 
   // Enrich roster with derived fields
-  const enriched = safeRoster.map(r => {
-    const cl = safeClients.find(c=>c.name && r.client && r.client.toLowerCase().includes(c.name.toLowerCase().split(" ")[0]));
+  const enriched = roster||[].map(r => {
+    const cl = clients||[].find(c=>c.name && r.client && r.client.toLowerCase().includes(c.name.toLowerCase().split(" ")[0]));
     const renewal = cl?.renewalDate;
     const daysToRenewal = renewal ? Math.ceil((new Date(renewal) - new Date()) / 86400000) : null;
     const rolloffSoon = daysToRenewal !== null && daysToRenewal <= 90;
@@ -38654,7 +38650,7 @@ Open deals needing staffing: ${openDeals.map(d=>d.name||"deal").slice(0,4).join(
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
         {[
-          {l:"Total Consultants",  v:safeRoster.length,          c:"#94a3b8"},
+          {l:"Total Consultants",  v:roster||[].length,          c:"#94a3b8"},
           {l:"Available / Bench",  v:availableCount,              c:"#34d399"},
           {l:"Rolling Off (<90d)", v:rolloffCount,                c:"#f59e0b"},
           {l:"Fully Placed",       v:enriched.filter(r=>!r.onBench&&!r.rolloffSoon).length, c:"#38bdf8"},
@@ -38844,8 +38840,8 @@ function IndustryPitchTemplates({ roster, clients, crmDeals, addAudit }) {
 
   const copy = (t,k) => { navigator.clipboard?.writeText(t).catch(()=>{}); setCopied(k); setTimeout(()=>setCopied(""),2500); };
 
-  const safeRoster  = roster  || [];
-  const safeClients = clients || [];
+  const safeRoster  = roster    || [];
+  const safeClients = clients   || [];
 
   const INDUSTRIES = [
     {
@@ -38947,8 +38943,8 @@ function IndustryPitchTemplates({ roster, clients, crmDeals, addAudit }) {
 
   const genPitch = async (industry) => {
     setAiLoading(true); setAiPitch("");
-    const activeCons = safeRoster.filter(r=>industry.ourExperts.some(e=>e.includes(r.name.split(" ")[0]))).map(r=>`${r.name} (${r.role}, $${r.billRate}/hr)`).join(", ");
-    const curClients = safeClients.filter(c=>industry.clients.toLowerCase().includes(c.name.toLowerCase().split(" ")[0])).map(c=>c.name).join(", ");
+    const activeCons = roster||[].filter(r=>industry.ourExperts.some(e=>e.includes(r.name.split(" ")[0]))).map(r=>`${r.name} (${r.role}, $${r.billRate}/hr)`).join(", ");
+    const curClients = clients||[].filter(c=>industry.clients.toLowerCase().includes(c.name.toLowerCase().split(" ")[0])).map(c=>c.name).join(", ");
     const pitchDesc = PITCH_TYPES.find(p=>p.id===pitchType)?.desc || "";
     try {
       const resp = await fetch("/api/claude", {
