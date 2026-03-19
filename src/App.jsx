@@ -12232,38 +12232,61 @@ const ACCT_TYPE_C  = { customer:"#34d399", prospect:"#38bdf8", partner:"#a78bfa"
 
 function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients, addAudit, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, roster }) {
   const [sub, setSub] = useState("overview");
-  const tabs = [
-    { id:"overview",    label:"📊 Overview" },
-    { id:"leads",       label:"🎯 Leads" },
-    { id:"accounts",    label:"🏢 Accounts" },
-    { id:"contacts",    label:"👤 Contacts" },
-    { id:"deals",       label:"🤝 Deals" },
-    { id:"tasks",       label:"✅ Tasks" },
-    { id:"notes",       label:"📝 Notes" },
-    { id:"orders",      label:"📦 Orders" },
-    { id:"activities",  label:"⚡ Activities" },
-    { id:"forecast",    label:"📈 Forecast" },
-    { id:"import",      label:"⬆️ Import" },
-    { id:"bdengine",    label:"🚀 BD Engine" },
-    { id:"prospectintel",  label:"🔍 Prospect Intel" },
-    { id:"outreachtrk",  label:"📞 Outreach Tracker" },
+  // PRIMARY: core CRM tabs always visible
+  const primaryTabs = [
+    { id:"overview",      label:"📊 Overview" },
+    { id:"leads",         label:"🎯 Leads" },
+    { id:"accounts",      label:"🏢 Accounts" },
+    { id:"contacts",      label:"👤 Contacts" },
+    { id:"deals",         label:"🤝 Deals" },
   ];
+  // SECONDARY: operations & intelligence tools
+  const secondaryTabs = [
+    { id:"tasks",         label:"✅ Tasks" },
+    { id:"notes",         label:"📝 Notes" },
+    { id:"activities",    label:"⚡ Activities" },
+    { id:"forecast",      label:"📈 Forecast" },
+    { id:"orders",        label:"📦 Orders" },
+    { id:"import",        label:"⬆️ Import" },
+    { id:"bdengine",      label:"🚀 BD Engine" },
+    { id:"prospectintel", label:"🔍 Prospect Intel" },
+    { id:"outreachtrk",   label:"📞 Outreach" },
+  ];
+  const tabs = [...primaryTabs, ...secondaryTabs];
+  const isSecondaryActive = secondaryTabs.some(t => t.id === sub);
   const props = { crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients };
   const extProps = { ...props, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, roster, addAudit };
   return (
     <div>
       <PH title="Sales CRM" sub="Leads (Cold→Warm→Hot→Qualified) · Deals (Prospecting→Proposal→Negotiation→Won) · BD Engine · Prospect Intel"/>
-      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
-        {tabs.map(t=>(
+      {/* PRIMARY TAB ROW */}
+      <div style={{display:"flex",gap:3,marginBottom:4,background:"#060d1c",borderRadius:"10px 10px 0 0",padding:"4px 4px 0 4px",border:"1px solid #1a2d45",borderBottom:"none"}}>
+        {primaryTabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)}
-            style={{padding:"7px 18px",borderRadius:8,border:t.id==="bdengine"&&sub!==t.id?"1px solid #0369a166":"none",
-              cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap",
-              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":t.id==="bdengine"?"#071428":"transparent",
-              color:sub===t.id?"#fff":t.id==="bdengine"?"#38bdf8":"#475569",transition:"all 0.15s"}}>
+            style={{padding:"7px 16px",borderRadius:"6px 6px 0 0",border:"none",cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap",
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===t.id?"#fff":"#64748b",transition:"all 0.15s"}}>
+            {t.label}
+          </button>
+        ))}
+        <div style={{flex:1}}/>
+        {isSecondaryActive&&<div style={{fontSize:10,color:"#38bdf8",padding:"8px 10px",display:"flex",alignItems:"center",gap:4}}>
+          <span style={{background:"#0369a1",borderRadius:4,padding:"2px 6px"}}>{secondaryTabs.find(t=>t.id===sub)?.label}</span>
+          <span style={{color:"#334155"}}>active</span>
+        </div>}
+      </div>
+      {/* SECONDARY TAB ROW */}
+      <div style={{display:"flex",gap:2,marginBottom:18,background:"#040b15",borderRadius:"0 0 8px 8px",padding:"3px 4px",border:"1px solid #1a2d45",borderTop:"1px solid #0c2035",flexWrap:"wrap"}}>
+        {secondaryTabs.map(t=>(
+          <button key={t.id} onClick={()=>setSub(t.id)}
+            style={{padding:"4px 12px",borderRadius:5,border:sub===t.id?"none":t.id==="bdengine"?"1px solid #0369a133":"none",cursor:"pointer",fontSize:11,fontWeight:500,whiteSpace:"nowrap",
+              background:sub===t.id?"#0c2340":t.id==="bdengine"?"#071428":"transparent",
+              color:sub===t.id?"#38bdf8":t.id==="bdengine"?"#38bdf8":"#475569",transition:"all 0.15s"}}>
             {t.label}
           </button>
         ))}
       </div>
+
       {sub==="overview"   && <CRMOverview   {...props}/>}
       {sub==="leads"      && <CRMLeads leads={crmLeads} setLeads={setCrmLeads} crmAccounts={crmAccounts} crmDeals={crmDeals} setCrmDeals={setCrmDeals} addAudit={addAudit}/>}
       {sub==="accounts"   && <CRMAccounts   {...props}/>}
@@ -40127,17 +40150,26 @@ Next: ${r.nextStep}`,
 
   const display = activeHist || result;
 
-  // Auto-analyze first quick pick if history is empty
+  // Auto-analyze on first mount if no history
   useEffect(()=>{
     if(!result && !activeHist && history.length===0){
       setCompany("Oncor Electric");
-      setContext("DFW utility, likely on SAP IS-U + MDG. Target for Ziksatech BRIM practice.");
-      // small delay so component is mounted
-      setTimeout(()=>{
-        // don't auto-run to avoid API spam — just pre-fill
-      }, 100);
+      setContext("DFW utility on SAP IS-U. Target for Ziksatech BRIM practice. Met at SAP Sapphire.");
+      // auto-trigger after state settles
+      const t = setTimeout(()=>{
+        // trigger analyze via DOM — company state won't be ready in closure
+      }, 300);
+      return ()=>clearTimeout(t);
     }
   }, []);
+
+  // Trigger analysis when company is pre-filled and no result yet
+  useEffect(()=>{
+    if(company==="Oncor Electric" && !result && !loading && history.length===0){
+      const t = setTimeout(()=>{ analyze(); }, 500);
+      return ()=>clearTimeout(t);
+    }
+  }, [company]);
   const riskColor = {Critical:"#f87171",High:"#f59e0b",Medium:"#fbbf24",Low:"#34d399"};
   const scoreColor = n => n>=80?"#34d399":n>=60?"#f59e0b":"#f87171";
 
