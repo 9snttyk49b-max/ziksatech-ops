@@ -7806,7 +7806,28 @@ function EbitdaOpt({ ebitdaLevers, setEbitdaLevers, finInvoices, finPayments, fi
 
 // ─── P&L ─────────────────────────────────────────────────────────────────────
 function PandL({ plIncome, setPlIncome, plExpense, setPlExpense }) {
-  const [view, setView] = useState("pl"); // pl | projection
+  const [view, setView] = useState("pl");
+
+  const [PandLAI,     setPandLAI]     = useState(null);
+  const [PandLAILoad, setPandLAILoad] = useState(false);
+  const runPandLAI = async () => {
+    setPandLAILoad(true); setPandLAI(null);
+    const income = (plIncome||[]).reduce((s,i)=>s+(+i.amount||0),0);
+    const expenses = (plExpense||[]).reduce((s,e)=>s+(+e.amount||0),0);
+    const netProfit = income - expenses;
+    const margin = income>0?Math.round(netProfit/income*100):0;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are a P&L advisor for a small SAP consulting firm targeting 20%+ net margin.",
+          messages:[{role:"user",content:`Income: $${Math.round(income/1000)}K, Expenses: $${Math.round(expenses/1000)}K, Net Profit: $${Math.round(netProfit/1000)}K (${margin}% margin).\nReturn ONLY JSON:\n{"marginAssessment":"healthy/concerning/critical + brief reason","expenseTrend":"largest expense category concern","revenueGap":"gap vs $2.5M target","profitAction":"single action to improve net margin most","tax":"tax implication to consider"}`}]
+        })
+      });
+      const data = await resp.json();
+      setPandLAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setPandLAI({error:e.message}); }
+    setPandLAILoad(false);
+  }; // pl | projection
   const incomeByMonth = MONTHS.map((_,mi) => plIncome.reduce((s,r)=>s+(r.months[mi]||0),0));
   const expByMonth = MONTHS.map((_,mi) => plExpense.reduce((s,r)=>s+(r.months[mi]||0),0));
   const netByMonth = MONTHS.map((_,mi) => incomeByMonth[mi] - expByMonth[mi]);
@@ -7823,7 +7844,19 @@ function PandL({ plIncome, setPlIncome, plExpense, setPlExpense }) {
 
   return (
     <div>
-      <PH title="Income & Expenses (P&L)" sub="Monthly view · Enter actuals for past months · Projections for future"/>
+      <PH title="Income & Expenses (P&L)" sub="Monthly view · Enter actuals for past months · Projections for future">
+        <button className="btn bp" style={{fontSize:11}} onClick={runPandLAI} disabled={PandLAILoad}>{PandLAILoad?"⏳...":"🤖 AI P&L Analysis"}</button>
+      </PH>
+      {PandLAI && !PandLAI.error && (
+        <div style={{padding:"12px 16px",marginBottom:12,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8,display:"flex",gap:14,flexWrap:"wrap",alignItems:"flex-start"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",flexShrink:0}}>🤖 P&L AI</div>
+          {[["Margin",PandLAI.marginAssessment,"#38bdf8"],["Expense Trend",PandLAI.expenseTrend,"#f87171"],["Revenue Gap",PandLAI.revenueGap,"#f59e0b"],["Best Action",PandLAI.profitAction,"#34d399"]].map(([l,v,col])=>
+            v&&<div key={l} style={{flex:"1 0 130px"}}><div style={{fontSize:8,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:10,color:col,lineHeight:1.3}}>{v}</div></div>
+          )}
+          <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setPandLAI(null)}>✕</button>
+        </div>
+      )}
+
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[{l:"Annual Revenue",v:fmt(totalIncome),c:"#38bdf8"},{l:"Annual Expenses",v:fmt(totalExp),c:"#f87171"},{l:"Annual Net Profit",v:fmt(totalNet),c:"#34d399"},{l:"Net Margin",v:pct(totalIncome>0?totalNet/totalIncome:0),c:"#a78bfa"}].map(k=>(
           <div key={k.l} className="card" style={{padding:"14px 18px"}}><div className="th" style={{marginBottom:6}}>{k.l}</div><div className="mono" style={{fontSize:20,fontWeight:700,color:k.c}}>{k.v}</div><div style={{fontSize:10,color:"#3d5a7a"}}>YTD: {k.l==="Annual Revenue"?fmt(ytdInc):k.l==="Annual Net Profit"?fmt(ytdNet):""}</div></div>
@@ -9205,6 +9238,25 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
   };
 
   const [copiedId, setCopiedId] = useState(null);
+  const [FinInvoicesAI,     setFinInvoicesAI]     = useState(null);
+  const [FinInvoicesAILoad, setFinInvoicesAILoad] = useState(false);
+  const runFinInvoicesAI = async () => {
+    setFinInvoicesAILoad(true); setFinInvoicesAI(null);
+    const overdue = (finInvoices||[]).filter(i=>i.status==="overdue");
+    const totalAR = (finInvoices||[]).filter(i=>i.status!=="paid").reduce((s,i)=>s+(i.amount||0),0);
+    const collected = (finPayments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are an AR collections advisor. Be direct and action-oriented.",
+          messages:[{role:"user",content:`Outstanding AR: $${Math.round(totalAR/1000)}K. Overdue invoices: ${overdue.length}. YTD collected: $${Math.round(collected/1000)}K.\nReturn ONLY JSON:\n{"arHealthScore":"0-100","overdueRisk":"HIGH/MEDIUM/LOW with reason","dso":"estimated days sales outstanding","collectionAction":"most important collection action today","cashAcceleration":"fastest way to turn AR into cash this week"}`}]
+        })
+      });
+      const data = await resp.json();
+      setFinInvoicesAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setFinInvoicesAI({error:e.message}); }
+    setFinInvoicesAILoad(false);
+  };
   const copyPortalLink = (invId) => {
     const url = `${window.location.origin}${window.location.pathname}?portal=invoice&id=${invId}`;
     navigator.clipboard.writeText(url).catch(()=>{});
@@ -34599,6 +34651,23 @@ function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses,
   const [selProj, setSelProj] = useState(null);
   const [year, setYear] = useState("2026");
 
+  const [BudgetActualAI,     setBudgetActualAI]     = useState(null);
+  const [BudgetActualAILoad, setBudgetActualAILoad] = useState(false);
+  const runBudgetActualAI = async () => {
+    setBudgetActualAILoad(true); setBudgetActualAI(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are a financial advisor for a WBE SAP consulting firm targeting $2.5M revenue.",
+          messages:[{role:"user",content:`SAP consulting firm budget analysis. Target revenue: $2.5M. Analyze budget vs actuals.\nReturn ONLY JSON:\n{"variance":"overall budget performance","topOverspend":"biggest overspend category","costCutOpportunity":"where to reduce costs without hurting growth","investmentPriority":"where to increase budget for maximum ROI","cashPositionAlert":"cash position concern to address now","forecast":"end-of-year financial forecast"}`}]
+        })
+      });
+      const data = await resp.json();
+      setBudgetActualAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setBudgetActualAI({error:e.message}); }
+    setBudgetActualAILoad(false);
+  };
+
   const rData = roster.map(r=>({...r, clientRates:r.clientRates||[], ...calcRoster(r, r.client)}));
 
   // ── Company-level budget model ──────────────────────────────────────────────
@@ -34672,7 +34741,25 @@ function BudgetActual({ roster, projects, finInvoices, finPayments, finExpenses,
 
   return (
     <div>
-      <PH title="Budget vs. Actual" sub={`${year} fiscal year · YTD through March · ${MONTHS_ELAPSED} months elapsed`}/>
+      <PH title="Budget vs. Actual" sub={`${year} fiscal year · YTD through March · ${MONTHS_ELAPSED} months elapsed`}>
+        <button className="btn bp" style={{fontSize:11}} onClick={runBudgetActualAI} disabled={BudgetActualAILoad}>{BudgetActualAILoad?"⏳...":"🤖 AI Budget Advisor"}</button>
+      </PH>
+      {BudgetActualAI && !BudgetActualAI.error && (
+        <div style={{padding:"12px 16px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 Budget Intelligence</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setBudgetActualAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:8}}>
+            {[["Budget Variance",BudgetActualAI.variance,"#38bdf8"],["Top Overspend",BudgetActualAI.topOverspend,"#f87171"],["Cost Cut Opportunity",BudgetActualAI.costCutOpportunity,"#34d399"],["Investment Priority",BudgetActualAI.investmentPriority,"#a78bfa"]].map(([l,v,col])=>
+              v&&<div key={l} style={{padding:"6px 10px",background:"#040a14",borderRadius:5}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:11,color:col,lineHeight:1.3}}>{v}</div></div>
+            )}
+          </div>
+          {BudgetActualAI.cashPositionAlert&&<div style={{padding:"6px 12px",background:"#1a0808",borderRadius:5,border:"1px solid #f8717133",fontSize:11,color:"#f87171",marginBottom:6}}>⚠️ {BudgetActualAI.cashPositionAlert}</div>}
+          {BudgetActualAI.forecast&&<div style={{padding:"6px 12px",background:"#021f14",borderRadius:5,border:"1px solid #15803d33",fontSize:11,color:"#4ade80"}}>📈 {BudgetActualAI.forecast}</div>}
+        </div>
+      )}
+
 
       {/* Level toggle */}
       <div style={{display:"flex",gap:4,marginBottom:16,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45",width:"fit-content"}}>
