@@ -1,7 +1,7 @@
 {
   "name": "ziksatech-ops",
   "private": true,
-  "version": "1.7.1",
+  "version": "4.4.22",
   "type": "module",
   "scripts": {
     "dev": "vite",
