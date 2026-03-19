@@ -1791,6 +1791,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.41 · 90 AI modules</span>
         </div>
         {children}
       </div>
@@ -2763,8 +2764,24 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             </div>
           </button>
         </div>
-        {["Overview","Clients","Team","Delivery","Finance","Hiring","Compliance"].filter(group => {
-          // In CRM view, only show Clients + Overview (mini calc)
+        {/* ── Recently Used ── */}
+        {recentTabs && recentTabs.length > 0 && (
+          <div style={{marginBottom:6}}>
+            <div style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,padding:"4px 14px 2px"}}>Recent</div>
+            {recentTabs.slice(0,4).map(tabId => {
+              const item = nav.find(n=>n.id===tabId);
+              if (!item || !canAccess(tabId, authProfile?.role)) return null;
+              return (
+                <button key={tabId} className={`navi${tab===tabId?" on":""}`} onClick={()=>setTabSafe(tabId, authProfile?.role)} style={{opacity:0.85}}>
+                  <I d={item.icon||ICONS.dash} s={12}/><span style={{fontSize:11}}>{item.label}</span>
+                </button>
+              );
+            })}
+            <div style={{height:1,background:"#0a1a2e",margin:"4px 10px 4px"}}/>
+          </div>
+        )}
+        {["Overview","Clients","Sales Tools","Team","Delivery","Finance","Hiring","Compliance","Tools"].filter(group => {
+          // In CRM view, only show Clients + Overview
           if (portalView === "crm") return ["Clients","Overview"].includes(group);
           return true;
         }).map(group => {
@@ -2785,6 +2802,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                 <span style={{fontSize:9,color: hasActive ? "#38bdf8" : "#64748b",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>
                   {group}
                   {isCollapsed && hasActive && <span style={{marginLeft:5,fontSize:9,color:"#38bdf8"}}>●</span>}
+                  {isCollapsed && <span style={{marginLeft:4,fontSize:8,color:"#334155",background:"#0a1626",borderRadius:8,padding:"1px 5px"}}>{items.length}</span>}
                 </span>
                 <span style={{fontSize:8,color:"#64748b",transition:"transform 0.2s",display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>
               </button>
@@ -3396,7 +3414,7 @@ Give today's executive brief. Return ONLY JSON:
           <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setAiDashBrief(null)}>✕</button>
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.41 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
@@ -45984,12 +46002,18 @@ Respond ONLY with this exact JSON (no markdown, no backticks):
                   {/* Go Fix button — maps action keywords to module tabs */}
                   {(() => {
                     const a = (d.action||"").toLowerCase();
-                    const t = a.includes("invoice")||a.includes("bill")||a.includes("ar")||a.includes("collect") ? "arinvoices"
-                      : a.includes("prospect")||a.includes("outreach")||a.includes("target")||a.includes("cold") ? "crm"
+                    const t = a.includes("invoice")||a.includes("bill")||a.includes("ar")||a.includes("collect") ? "finance"
+                      : a.includes("prospect")||a.includes("bd engine")||a.includes("outreach")||a.includes("target") ? "crm"
                       : a.includes("deal")||a.includes("pipeline")||a.includes("close")||a.includes("proposal") ? "crm"
-                      : a.includes("consultant")||a.includes("bench")||a.includes("hire")||a.includes("util") ? "roster"
+                      : a.includes("bench")||a.includes("placement")||a.includes("staffing") ? "bench"
+                      : a.includes("consultant")||a.includes("hire")||a.includes("utilization")||a.includes("util") ? "roster"
                       : a.includes("rate")||a.includes("leakage")||a.includes("underbill") ? "leakage"
-                      : a.includes("workflow")||a.includes("follow")||a.includes("stale") ? "autoworkflow"
+                      : a.includes("workflow")||a.includes("follow")||a.includes("stale")||a.includes("overdue") ? "autoworkflow"
+                      : a.includes("immigration")||a.includes("visa")||a.includes("h1b") ? "immigration"
+                      : a.includes("contract")||a.includes("renewal")||a.includes("expir") ? "renewals"
+                      : a.includes("cash")||a.includes("payroll")||a.includes("adp") ? "adp"
+                      : a.includes("skill")||a.includes("training")||a.includes("cert") ? "skillsgap"
+                      : a.includes("ebitda")||a.includes("exit")||a.includes("valuation") ? "ebitda"
                       : null;
                     return t ? (
                       <div style={{marginTop:8,textAlign:"right"}}>
