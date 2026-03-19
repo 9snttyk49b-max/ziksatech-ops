@@ -1803,7 +1803,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.50 · 92 AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.51 · 93 AI modules</span>
         </div>
         {children}
       </div>
@@ -3430,6 +3430,241 @@ Return ONLY JSON:
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// ZIKSATECH TALENT — Candidate Management System
+// Source · Screen · Interview · Offer · Onboard · H1B Tracking
+// ══════════════════════════════════════════════════════════════════════
+const TALENT_DEFAULT_CANDIDATES = [
+  { id:"c1", name:"Arjun Sharma",     role:"SAP BRIM Architect",    source:"LinkedIn",   stage:"Interview",  visa:"H1B",  rate:145, score:88, applied:"2026-03-01", notes:"Strong BRIM CI/CM, NTTA experience, 12yr" },
+  { id:"c2", name:"Priya Nair",       role:"SAP IS-U Functional",   source:"Referral",   stage:"Offer",      visa:"H1B",  rate:125, score:91, applied:"2026-03-05", notes:"IS-U billing & device mgmt, 8yr, GC pending" },
+  { id:"c3", name:"Rahul Verma",      role:"SAP S/4HANA FICO",      source:"Dice",       stage:"Screening",  visa:"H1B",  rate:115, score:72, applied:"2026-03-10", notes:"FICO + RAR, S/4HANA migration exp" },
+  { id:"c4", name:"Anita Krishnan",   role:"SAP SuccessFactors",    source:"LinkedIn",   stage:"New",        visa:"OPT",  rate:95,  score:65, applied:"2026-03-12", notes:"SF EC + LMS, 4yr, OPT expiry Dec 2026" },
+  { id:"c5", name:"Vijay Menon",      role:"SAP BW/BI Consultant",  source:"Internal",   stage:"Hired",      visa:"GC",   rate:130, score:85, applied:"2026-02-20", notes:"BW 7.5 + SAC, US citizen equiv" },
+  { id:"c6", name:"Deepa Iyer",       role:"SAP ABAP Developer",    source:"Naukri",     stage:"Rejected",   visa:"H1B",  rate:105, score:55, applied:"2026-03-08", notes:"ABAP/OO, older exp, limited S/4" },
+];
+
+const TALENT_STAGES = ["New","Screening","Interview","Offer","Hired","Rejected","On Hold"];
+const TALENT_STAGE_COLORS = {
+  "New":"#38bdf8","Screening":"#a78bfa","Interview":"#f59e0b",
+  "Offer":"#34d399","Hired":"#4ade80","Rejected":"#f87171","On Hold":"#64748b"
+};
+
+function ZiksatechTalent({ roster, jobReqs, addAudit, authProfile }) {
+  const [candidates, setCandidates] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-talent-candidates")||"null") || TALENT_DEFAULT_CANDIDATES; } catch { return TALENT_DEFAULT_CANDIDATES; }
+  });
+  const [view, setView] = useState("kanban"); // kanban | list | pipeline
+  const [selId, setSelId] = useState(null);
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [addForm, setAddForm] = useState(null);
+  const [aiScreen, setAiScreen] = useState(null);
+  const [aiScreenLoad, setAiScreenLoad] = useState(false);
+
+  const save = (cs) => { setCandidates(cs); try{localStorage.setItem("zt-talent-candidates",JSON.stringify(cs));}catch{} };
+  const sel = candidates.find(c=>c.id===selId);
+
+  const runAIScreen = async (cand) => {
+    setAiScreenLoad(true); setAiScreen(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a technical recruiter for Ziksatech, a WBE SAP consulting firm specializing in BRIM, IS-U, and S/4HANA. Rate candidates specifically for SAP utility billing and consulting roles.",
+          messages:[{role:"user",content:`Candidate: ${cand.name}, Role: ${cand.role}, Visa: ${cand.visa}, Rate: $${cand.rate}/hr, Notes: ${cand.notes}.\nReturn JSON:\n{"fitScore":85,"hiringRec":"STRONG YES/YES/MAYBE/NO","billableDay1":true,"visaRisk":"LOW/MEDIUM/HIGH","visaNote":"specific visa concern","technicalGaps":["gap1"],"strengths":["strength1","strength2"],"rateAssessment":"fair/high/low vs market","suggestedRate":120,"interviewQuestions":["q1","q2","q3"],"placementFit":"which type of client/project fits best"}`}]
+        })
+      });
+      const data = await resp.json();
+      const txt = data.content?.[0]?.text||"{}";
+      setAiScreen(JSON.parse(txt.replace(/```json|```/g,"")));
+    } catch(e){ setAiScreen({error:e.message}); }
+    setAiScreenLoad(false);
+  };
+
+  const visaBadge = (v) => {
+    const map={H1B:"#f59e0b",OPT:"#f87171","GC":"#34d399","USC":"#34d399","TN":"#38bdf8","EAD":"#a78bfa"};
+    return <span style={{fontSize:9,background:"#040a14",color:map[v]||"#64748b",border:`1px solid ${map[v]||"#64748b"}44`,borderRadius:3,padding:"1px 5px",fontWeight:700}}>{v}</span>;
+  };
+
+  const stageBadge = (s) => (
+    <span style={{fontSize:9,background:"#040a14",color:TALENT_STAGE_COLORS[s]||"#64748b",border:`1px solid ${TALENT_STAGE_COLORS[s]||"#64748b"}44`,borderRadius:10,padding:"1px 7px",fontWeight:700}}>{s}</span>
+  );
+
+  const filtered = candidates.filter(c=>{
+    if(filter!=="all" && c.stage!==filter) return false;
+    if(search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.role.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const renderKanban = () => (
+    <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8}}>
+      {TALENT_STAGES.filter(s=>s!=="Rejected").map(stage=>{
+        const stageCands = candidates.filter(c=>c.stage===stage);
+        const color = TALENT_STAGE_COLORS[stage];
+        return (
+          <div key={stage} style={{minWidth:200,flex:"0 0 200px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8,padding:"4px 8px",borderBottom:`2px solid ${color}`}}>
+              <div style={{fontSize:10,fontWeight:700,color}}>{stage}</div>
+              <div style={{fontSize:10,color:"#475569"}}>{stageCands.length}</div>
+            </div>
+            {stageCands.map(cand=>(
+              <div key={cand.id} onClick={()=>setSelId(cand.id===selId?null:cand.id)}
+                style={{padding:"8px 10px",marginBottom:6,background:cand.id===selId?"#0c1a2e":"#040a14",border:`1px solid ${cand.id===selId?"#0369a1":color+"22"}`,borderRadius:6,cursor:"pointer"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:2}}>{cand.name}</div>
+                <div style={{fontSize:9,color:"#64748b",marginBottom:4}}>{cand.role}</div>
+                <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                  {visaBadge(cand.visa)}
+                  <span style={{fontSize:9,color:"#475569"}}>${cand.rate}/hr</span>
+                  {cand.score&&<span style={{fontSize:9,color:cand.score>=80?"#34d399":cand.score>=60?"#f59e0b":"#f87171",marginLeft:"auto"}}>⭐{cand.score}</span>}
+                </div>
+              </div>
+            ))}
+            {stageCands.length===0&&<div style={{fontSize:9,color:"#1e3a52",padding:"6px 8px",textAlign:"center",border:"1px dashed #0f1e30",borderRadius:6}}>Empty</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderList = () => (
+    <div>
+      <div style={{display:"flex",gap:8,marginBottom:10}}>
+        <input className="inp" style={{flex:1,fontSize:12}} placeholder="Search candidate or role..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <select className="inp" style={{width:140,fontSize:11}} value={filter} onChange={e=>setFilter(e.target.value)}>
+          <option value="all">All ({candidates.length})</option>
+          {TALENT_STAGES.map(s=><option key={s} value={s}>{s} ({candidates.filter(c=>c.stage===s).length})</option>)}
+        </select>
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>setAddForm({name:"",role:"",source:"LinkedIn",stage:"New",visa:"H1B",rate:"",notes:""})}>+ Add</button>
+      </div>
+      {addForm&&(
+        <div style={{padding:"12px 14px",marginBottom:10,background:"#040a14",border:"1px solid #0369a144",borderRadius:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:8}}>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Full Name</div><input className="inp" style={{width:"100%",fontSize:11}} value={addForm.name} onChange={e=>setAddForm({...addForm,name:e.target.value})} placeholder="Arjun Sharma"/></div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Role Applied For</div><input className="inp" style={{width:"100%",fontSize:11}} value={addForm.role} onChange={e=>setAddForm({...addForm,role:e.target.value})} placeholder="SAP BRIM Architect"/></div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Source</div><select className="inp" style={{width:"100%",fontSize:11}} value={addForm.source} onChange={e=>setAddForm({...addForm,source:e.target.value})}><option>LinkedIn</option><option>Referral</option><option>Dice</option><option>Internal</option><option>Monster</option><option>Direct</option></select></div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Visa Status</div><select className="inp" style={{width:"100%",fontSize:11}} value={addForm.visa} onChange={e=>setAddForm({...addForm,visa:e.target.value})}><option>H1B</option><option>OPT</option><option>GC</option><option>USC</option><option>TN</option><option>EAD</option></select></div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Bill Rate ($/hr)</div><input className="inp" type="number" style={{width:"100%",fontSize:11}} value={addForm.rate} onChange={e=>setAddForm({...addForm,rate:e.target.value})} placeholder="120"/></div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Stage</div><select className="inp" style={{width:"100%",fontSize:11}} value={addForm.stage} onChange={e=>setAddForm({...addForm,stage:e.target.value})}>{TALENT_STAGES.map(s=><option key={s}>{s}</option>)}</select></div>
+          </div>
+          <textarea className="inp" rows={2} style={{width:"100%",fontSize:11,marginBottom:8}} placeholder="Notes: skills, experience, SAP modules..." value={addForm.notes} onChange={e=>setAddForm({...addForm,notes:e.target.value})}/>
+          <div style={{display:"flex",gap:6}}>
+            <button className="btn bp" style={{fontSize:11}} onClick={()=>{
+              if(!addForm.name||!addForm.role) return;
+              save([...candidates,{...addForm,id:"c"+Date.now(),rate:+addForm.rate||0,score:0,applied:new Date().toISOString().slice(0,10)}]);
+              setAddForm(null);
+            }}>Save Candidate</button>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>setAddForm(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"2fr 2fr 80px 70px 70px 80px 60px",gap:4,padding:"4px 8px",fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:700,marginBottom:2}}>
+        <span>Candidate</span><span>Role</span><span>Source</span><span>Visa</span><span>Rate</span><span>Stage</span><span>Score</span>
+      </div>
+      {filtered.map(cand=>(
+        <div key={cand.id} onClick={()=>setSelId(cand.id===selId?null:cand.id)}
+          style={{display:"grid",gridTemplateColumns:"2fr 2fr 80px 70px 70px 80px 60px",gap:4,padding:"7px 8px",marginBottom:1,borderRadius:5,cursor:"pointer",
+            background:cand.id===selId?"#0c1a2e":"#040a14",border:cand.id===selId?"1px solid #0369a144":"1px solid transparent"}}>
+          <div><div style={{fontSize:11,color:"#cbd5e1",fontWeight:600}}>{cand.name}</div><div style={{fontSize:9,color:"#334155"}}>{cand.applied}</div></div>
+          <span style={{fontSize:10,color:"#64748b",alignSelf:"center"}}>{cand.role}</span>
+          <span style={{fontSize:9,color:"#475569",alignSelf:"center"}}>{cand.source}</span>
+          <span style={{alignSelf:"center"}}>{visaBadge(cand.visa)}</span>
+          <span style={{fontSize:11,color:"#38bdf8",fontFamily:"monospace",alignSelf:"center"}}>${cand.rate}</span>
+          <span style={{alignSelf:"center"}}>{stageBadge(cand.stage)}</span>
+          <span style={{fontSize:10,color:cand.score>=80?"#34d399":cand.score>=60?"#f59e0b":"#64748b",fontWeight:700,alignSelf:"center"}}>{cand.score||"—"}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <PH title="🎯 Ziksatech Talent" sub="Candidate pipeline · H1B tracking · AI screening · offer management">
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {["New","Screening","Interview","Offer"].map(s=>{
+            const n = candidates.filter(c=>c.stage===s).length;
+            return n>0?<span key={s} style={{fontSize:9,background:"#040a14",color:TALENT_STAGE_COLORS[s],border:`1px solid ${TALENT_STAGE_COLORS[s]}44`,borderRadius:10,padding:"1px 6px"}}>{n} {s}</span>:null;
+          })}
+        </div>
+      </PH>
+
+      {/* View toggle */}
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {[["kanban","📋 Kanban"],["list","📄 List"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)} style={{fontSize:11,padding:"5px 12px",background:view===v?"#0c2340":"transparent",color:view===v?"#38bdf8":"#475569",border:`1px solid ${view===v?"#0369a1":"#1a2d45"}`,borderRadius:4,cursor:"pointer",fontWeight:600}}>
+            {l}
+          </button>
+        ))}
+        <div style={{marginLeft:"auto",display:"flex",gap:8,fontSize:10,color:"#475569"}}>
+          <span>Total: {candidates.length}</span>
+          <span style={{color:"#34d399"}}>Hired: {candidates.filter(c=>c.stage==="Hired").length}</span>
+          <span style={{color:"#f59e0b"}}>In Progress: {candidates.filter(c=>["Screening","Interview","Offer"].includes(c.stage)).length}</span>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:sel?"1fr 360px":"1fr",gap:14}}>
+        <div>
+          {view==="kanban"&&renderKanban()}
+          {view==="list"&&renderList()}
+        </div>
+
+        {/* Detail panel */}
+        {sel&&(
+          <div style={{background:"#040a14",border:"1px solid #0f1e30",borderRadius:10,padding:"16px",position:"sticky",top:0,maxHeight:"80vh",overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:800,color:"#e2e8f0"}}>{sel.name}</div>
+                <div style={{fontSize:10,color:"#64748b",marginTop:1}}>{sel.role}</div>
+              </div>
+              <button className="btn bg" style={{fontSize:9}} onClick={()=>setSelId(null)}>✕</button>
+            </div>
+            <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+              {stageBadge(sel.stage)} {visaBadge(sel.visa)}
+              <span style={{fontSize:10,color:"#38bdf8",fontFamily:"monospace",fontWeight:700}}>${sel.rate}/hr</span>
+            </div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:10,lineHeight:1.6}}>{sel.notes}</div>
+            {/* Stage changer */}
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>Move to Stage</div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {TALENT_STAGES.map(s=>(
+                  <button key={s} onClick={()=>save(candidates.map(c=>c.id===sel.id?{...c,stage:s}:c))}
+                    style={{fontSize:9,padding:"2px 7px",background:sel.stage===s?"#0c2340":"transparent",color:sel.stage===s?TALENT_STAGE_COLORS[s]:"#334155",border:`1px solid ${sel.stage===s?TALENT_STAGE_COLORS[s]:"#1a2d45"}`,borderRadius:10,cursor:"pointer"}}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button className="btn bp" style={{width:"100%",fontSize:11,marginBottom:10}} onClick={()=>runAIScreen(sel)} disabled={aiScreenLoad}>
+              {aiScreenLoad?"⏳ Screening...":"🤖 AI Screen This Candidate"}
+            </button>
+            {aiScreen&&!aiScreen.error&&(
+              <div style={{background:"#060d1c",border:"1px solid #0369a133",borderRadius:8,padding:"12px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                  <span style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>AI Screening</span>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{fontSize:14,fontWeight:800,color:aiScreen.fitScore>=80?"#34d399":aiScreen.fitScore>=60?"#f59e0b":"#f87171"}}>{aiScreen.fitScore}/100</span>
+                    <span style={{fontSize:9,background:aiScreen.hiringRec?.includes("YES")?"#021f14":"#1a0808",color:aiScreen.hiringRec?.includes("YES")?"#34d399":"#f87171",border:`1px solid ${aiScreen.hiringRec?.includes("YES")?"#15803d":"#991b1b"}`,borderRadius:4,padding:"1px 5px",fontWeight:700}}>{aiScreen.hiringRec}</span>
+                  </div>
+                </div>
+                {aiScreen.visaRisk&&<div style={{padding:"4px 8px",background:aiScreen.visaRisk==="HIGH"?"#1a0808":"#040a14",borderRadius:4,marginBottom:6,fontSize:10,color:aiScreen.visaRisk==="HIGH"?"#f87171":aiScreen.visaRisk==="MEDIUM"?"#f59e0b":"#34d399"}}>🛂 Visa: {aiScreen.visaRisk} — {aiScreen.visaNote}</div>}
+                {aiScreen.strengths&&<div style={{marginBottom:6}}>{aiScreen.strengths.map((s,i)=><div key={i} style={{fontSize:10,color:"#4ade80",marginBottom:1}}>✓ {s}</div>)}</div>}
+                {aiScreen.technicalGaps?.length>0&&<div style={{marginBottom:6}}>{aiScreen.technicalGaps.map((g,i)=><div key={i} style={{fontSize:10,color:"#f87171",marginBottom:1}}>⚠ Gap: {g}</div>)}</div>}
+                {aiScreen.rateAssessment&&<div style={{fontSize:9,color:"#64748b",marginBottom:4}}>Rate: {aiScreen.rateAssessment} · Suggested: ${aiScreen.suggestedRate}/hr</div>}
+                {aiScreen.placementFit&&<div style={{fontSize:10,color:"#a78bfa",padding:"4px 8px",background:"#060d1c",borderRadius:4,marginBottom:6}}>🎯 Best fit: {aiScreen.placementFit}</div>}
+                {aiScreen.interviewQuestions?.length>0&&(
+                  <div>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>INTERVIEW QUESTIONS</div>
+                    {aiScreen.interviewQuestions.map((q,i)=><div key={i} style={{fontSize:10,color:"#94a3b8",marginBottom:3}}>{i+1}. {q}</div>)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ZiksatechOps() {
   const [tab, setTab] = useState(() => {
     try { const s = localStorage.getItem("zt-last-tab"); if(s) return s; } catch {}
@@ -4597,6 +4832,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="crm"         && <SalesCRM {...shared}/> }
         {tab==="lirecruiter"  && <LinkedInRecruiter candidates={shared.candidates} setCandidates={shared.setCandidates} offers={shared.offers} roster={shared.roster} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="recruiting"      && <RecruitingModule {...shared}/>}
+          {tab==="talent"      && <ZiksatechTalent roster={roster} jobReqs={jobReqs} addAudit={shared.addAudit} authProfile={authProfile}/>}
         {tab==="jobreqs"    && <JobReqManager  jobReqs={shared.jobReqs} setJobReqs={shared.setJobReqs} candidates={shared.candidates} setCandidates={shared.setCandidates} crmDeals={shared.crmDeals} clients={shared.clients} roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="resumemgr"  && <ResumeManager  candidates={shared.candidates} setCandidates={shared.setCandidates} addAudit={shared.addAudit}/>}
         {tab==="offerletter"&& <OfferLetterGen offers={shared.offers} candidates={shared.candidates} clients={shared.clients} roster={shared.roster} addAudit={shared.addAudit}/>}
@@ -44686,6 +44922,22 @@ function PAFFiles({ roster, authProfile }) {
     ? records.filter(r => (r.employee||r.name||"").toLowerCase().includes(myName.split(" ")[0]||"_"))
     : records;
   const [uploading, setUploading] = useState(false);
+  const [pafAI, setPafAI] = useState(null);
+  const [pafAILoad, setPafAILoad] = useState(false);
+  const runPafAI = async (rec) => {
+    setPafAILoad(true); setPafAI(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are an immigration compliance advisor for Ziksatech, a WBE SAP consulting firm with predominantly H1B employees. Latha & Associates is their immigration attorney.",
+          messages:[{role:"user",content:`Employee: ${rec?.name||"Unknown"}, Visa: ${rec?.visa||"H1B"}, Role: ${rec?.role||"SAP Consultant"}, Status: ${rec?.pafStatus||"Pending"}.\nReturn JSON: {"urgency":"HIGH/MEDIUM/LOW","nextAction":"what to do now","deadline":"key date","riskFlag":"compliance risk if any","lathaNote":"message to draft for Latha & Associates"}`}]
+        })
+      });
+      const data = await resp.json();
+      setPafAI(JSON.parse((data.content?.[0]?.text||"{}").replace(/\`\`\`json|\`\`\`/g,"")));
+    } catch(e){ setPafAI({error:e.message}); }
+    setPafAILoad(false);
+  };
   const [aiResult, setAiResult] = useState("");
   const [parsed, setParsed] = useState([]);
   const [fileText, setFileText] = useState("");
