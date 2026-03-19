@@ -3830,6 +3830,9 @@ Return ONLY JSON:
     <div>
       <PH title="Team Roster & Compensation" sub="Drag ☰ to reorder · Click column headers to sort · FICA 7.65% · TX SUTA 2.7% · 401(k) 3%">
         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          <button className="btn bp" style={{fontSize:11}} onClick={runRosterAI} disabled={RosterAILoad}>
+            {RosterAILoad?"⏳ Analyzing...":"🤖 AI Staff Advisor"}
+          </button>
           <div style={{display:"flex",gap:4,alignItems:"center",padding:"3px 8px",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:8}}>
             <span style={{fontSize:10,color:"#3d5a7a",fontWeight:600,marginRight:2}}>SORT:</span>
             <SortBtn field="name"    label="Name" />
@@ -3884,6 +3887,28 @@ Return ONLY JSON:
           <button className="btn bp" onClick={()=>open()}><I d={ICONS.plus} s={14}/>Add Consultant</button>
         </div>
       </PH>
+
+      {/* Roster AI Panel */}
+      {RosterAI && !RosterAI.error && (
+        <div style={{padding:"14px 18px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 AI Staffing Intelligence</div>
+              <div style={{fontSize:22,fontWeight:800,color:(RosterAI.healthScore||0)>70?"#34d399":(RosterAI.healthScore||0)>50?"#f59e0b":"#f87171",fontFamily:"monospace"}}>{RosterAI.healthScore}<span style={{fontSize:11}}>/100</span></div>
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setRosterAI(null)}>✕</button>
+          </div>
+          {RosterAI.insight&&<div style={{fontSize:12,color:"#94a3b8",marginBottom:10,fontStyle:"italic"}}>{RosterAI.insight}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>⚠️ Risk Flags</div>{(RosterAI.riskFlags||[]).map((r,i)=><div key={i} style={{fontSize:11,color:"#f59e0b",marginBottom:2}}>• {r}</div>)}</div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>✅ Recommendations</div>{(RosterAI.recommendations||[]).map((r,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:2}}>→ {r}</div>)}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {RosterAI.hiringPriority&&<div style={{padding:"8px 12px",background:"#040a14",borderRadius:6,border:"1px solid #a78bfa44"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Next Hire</div><div style={{fontSize:11,color:"#a78bfa"}}>{RosterAI.hiringPriority}</div></div>}
+            {RosterAI.rateOpportunity&&<div style={{padding:"8px 12px",background:"#040a14",borderRadius:6,border:"1px solid #34d39944"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Rate Opportunity</div><div style={{fontSize:11,color:"#34d399"}}>{RosterAI.rateOpportunity}</div></div>}
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{marginBottom:16,overflowX:"auto"}}>
         <div className="tr" style={{gridTemplateColumns:"22px 28px 200px 1fr 90px 80px 70px 80px 90px 90px 90px 80px 80px",padding:"8px 18px",minWidth:960}}>
