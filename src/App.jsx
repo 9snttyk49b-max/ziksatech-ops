@@ -47416,7 +47416,7 @@ const BD_MEETINGS_DEFAULT = [
   { id:"bdm3", accountId:"bda11", contactId:"bdc8", date:"2026-03-10", outcome:"Early conversation — scheduling follow-up", opportunityCreated:false, dealId:"", value:0 },
 ];
 
-function BDEngine({ crmDeals, roster, clients, finInvoices, authProfile }) {
+function BDEngine({ crmDeals, setCrmDeals, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, roster, clients, finInvoices, authProfile }) {
   const TODAY = new Date().toISOString().split("T")[0];
   const fmtK  = n => n>=1000000?"$"+Math.round(n/1000000*10)/10+"M":n>=1000?"$"+Math.round(n/1000)+"K":"$"+Math.round(n);
 
@@ -47505,6 +47505,16 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
     // update coverage count
     const accUpdated = accounts.map(a=>a.id===newForm.accountId?{...a,coverage:(a.coverage||0)+1}:a);
     setAccounts(accUpdated); save("zt-bd-accounts",accUpdated);
+    // Sync to CRM contacts
+    if (setCrmContacts) {
+      setCrmContacts(prev=>[...prev, {
+        id:"crm-bdc-"+Date.now(), name:newForm.name, title:newForm.title||"",
+        email:newForm.email||"", company:accounts.find(a=>a.id===newForm.accountId)?.name||"",
+        source:"BD Engine", status:"new", score:newForm.influence||50,
+        notes:`BD Role: ${newForm.role||"influencer"} | Influence: ${newForm.influence||50}`,
+        createdDate:TODAY, lastContact:TODAY,
+      }]);
+    }
     setAddModal(null); setNewForm({});
   };
   const addOutreach = () => {
@@ -47513,7 +47523,22 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
   };
   const addMeeting = () => {
     const m = { id:"bdm"+Date.now(), ...newForm, opportunityCreated:newForm.opportunityCreated==="true" };
-    const updated = [...meetings, m]; setMeetings(updated); save("zt-bd-meetings",updated); setAddModal(null); setNewForm({});
+    const updated = [...meetings, m]; setMeetings(updated); save("zt-bd-meetings",updated);
+    // Auto-create CRM deal if opportunity was created
+    if (newForm.opportunityCreated==="true" && newForm.value>0 && setCrmDeals) {
+      const ac = accounts.find(a=>a.id===newForm.accountId)||{};
+      const ct = contacts.find(c=>c.id===newForm.contactId)||{};
+      const newDeal = {
+        id: "deal-bd-"+Date.now(), clientName: ac.name||"BD Account",
+        name: `${ac.name||"Account"} — BD Opportunity`,
+        value: +newForm.value||0, stage:"prospecting", probability:25,
+        owner:"Manju", notes: newForm.outcome||"Originated from BD Engine meeting",
+        createdDate: TODAY, lastActivity: TODAY, nextStep: "Follow up from meeting",
+      };
+      setCrmDeals(prev=>[...prev, newDeal]);
+      console.log("BD→CRM: Created deal", newDeal.name, newDeal.value);
+    }
+    setAddModal(null); setNewForm({});
   };
 
   const SECTIONS = [
@@ -47543,6 +47568,18 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
           {aiLoading?"⏳ Planning...":"🧠 Generate Weekly Plan"}
         </button>
       </PH>
+
+      {/* CRM Integration Banner */}
+      <div style={{display:"flex",gap:8,padding:"8px 14px",background:"#040a14",border:"1px solid #1a2d45",borderRadius:8,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
+        <div style={{fontSize:10,color:"#64748b",flex:1}}>
+          <strong style={{color:"#38bdf8"}}>BD Engine</strong> = Top-of-funnel (target new accounts, track outreach, build coverage before deals exist) →
+          <strong style={{color:"#34d399"}}> Sales CRM</strong> = Mid/bottom-funnel (manage active deals, tasks, activities, close).
+          BD contacts &amp; opportunities auto-sync to CRM.
+        </div>
+        <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}} onClick={()=>setTabSafe("crm", authProfile?.role)}>
+          → Open CRM
+        </button>
+      </div>
 
       {/* AI Insight Banner */}
       {(aiInsight||!aiPlan) && (
@@ -47702,6 +47739,21 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
                         <button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={(e)=>{e.stopPropagation();setAddModal("outreach");setNewForm({accountId:a.id});}}>
                           📞 Outreach
                         </button>
+                        {setCrmAccounts && !crmAccounts?.some(ca=>ca.name===a.name) && (
+                          <button className="btn bg" style={{fontSize:9,padding:"2px 7px",color:"#34d399"}} onClick={(e)=>{
+                            e.stopPropagation();
+                            setCrmAccounts(prev=>[...prev, {
+                              id:"crm-bda-"+Date.now(), name:a.name, vertical:a.industry,
+                              website:"", phone:"", healthScore:"green", annualValue:0,
+                              notes:`Promoted from BD Engine. SAP: ${(a.sap||[]).join(", ")}. WBE: ${a.wbe}. Vendors: ${(a.vendors||[]).join(", ")}`,
+                              nextRenewal:"", engagementType:"Prospect",
+                            }]);
+                            updateAccountStatus(a.id,"Active");
+                            alert("✅ "+a.name+" added to CRM Accounts!");
+                          }}>
+                            ➕ CRM
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
