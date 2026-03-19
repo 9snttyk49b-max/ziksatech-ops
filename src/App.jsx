@@ -7636,6 +7636,23 @@ function Pipeline({ pipeline, setPipeline }) {
 }
 
 function EbitdaOpt({ ebitdaLevers, setEbitdaLevers, finInvoices, finPayments, finExpenses, roster, apInvoices, adpRuns }) {
+  const [EbitdaOptAI,     setEbitdaOptAI]     = useState(null);
+  const [EbitdaOptAILoad, setEbitdaOptAILoad] = useState(false);
+  const runEbitdaOptAI = async (rev, ebitda, margin, exitVal) => {
+    setEbitdaOptAILoad(true); setEbitdaOptAI(null);
+    const fmtK = n => n>=1000000?"$"+Math.round(n/1000000*10)/10+"M":n>=1000?"$"+Math.round(n/1000)+"K":"$"+Math.round(n);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are an M&A advisor helping a WBE-certified SAP consulting firm owner plan their exit. Be specific and strategic.",
+          messages:[{role:"user",content:`Revenue: ${fmtK(rev)}, EBITDA: ${fmtK(ebitda)} (${Math.round(margin*100)}% margin), Exit value at 7x: ${fmtK(exitVal)}. Target exit 2027-2028.\nReturn ONLY JSON:\n{"exitReadiness":"HIGH/MEDIUM/LOW","exitValue":"$XM","valuationMultiple":"X-Yx EBITDA","topLeversToMaxValue":["lever1","lever2","lever3"],"buyerProfile":"most likely acquirer type and why","timeToExit":"realistic timeline","criticalMilestone":"single most important thing to do in next 90 days to increase valuation"}`}]
+        })
+      });
+      const data = await resp.json();
+      setEbitdaOptAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setEbitdaOptAI({error:e.message}); }
+    setEbitdaOptAILoad(false);
+  };
   // Real revenue from finInvoices lines
   const BASE_REV = (finInvoices||[]).reduce((s,inv)=>s+(inv.lines||[]).reduce((ss,l)=>ss+(+l.amount||0),0),0) || 2350000;
   // Real collected
@@ -7653,7 +7670,33 @@ function EbitdaOpt({ ebitdaLevers, setEbitdaLevers, finInvoices, finPayments, fi
 
   return (
     <div>
-      <PH title="EBITDA Optimizer & Exit Planner" sub="Toggle levers to model revenue and exit value impact"/>
+      <PH title="EBITDA Optimizer & Exit Planner" sub="Toggle levers to model revenue and exit value impact">
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>runEbitdaOptAI(projRev, projEbitda, projEbitda/projRev, projEbitda*7)} disabled={EbitdaOptAILoad}>{EbitdaOptAILoad?"⏳...":"🤖 AI Exit Planner"}</button>
+      </PH>
+      {EbitdaOptAI && !EbitdaOptAI.error && (
+        <div style={{padding:"14px 18px",marginBottom:16,background:"linear-gradient(135deg,#0c1a2e,#071428)",border:`1px solid ${EbitdaOptAI.exitReadiness==="HIGH"?"#34d399":"#f59e0b"}44`,borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{display:"flex",gap:16,alignItems:"center"}}>
+              <div style={{fontSize:11,fontWeight:700,color:EbitdaOptAI.exitReadiness==="HIGH"?"#34d399":"#f59e0b"}}>🚀 Exit Readiness: {EbitdaOptAI.exitReadiness}</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#34d399",fontFamily:"monospace"}}>{EbitdaOptAI.exitValue}</div>
+              <div style={{fontSize:11,color:"#64748b"}}>{EbitdaOptAI.valuationMultiple}</div>
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setEbitdaOptAI(null)}>✕</button>
+          </div>
+          {EbitdaOptAI.criticalMilestone&&<div style={{padding:"8px 14px",background:"#0c2340",borderRadius:6,border:"1px solid #0369a144",fontSize:11,color:"#38bdf8",marginBottom:10}}>🎯 Next 90 Days: {EbitdaOptAI.criticalMilestone}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Top Value Levers</div>
+              {(EbitdaOptAI.topLeversToMaxValue||[]).map((l,i)=><div key={i} style={{fontSize:11,color:"#34d399",marginBottom:3}}>→ {l}</div>)}
+            </div>
+            <div>
+              {EbitdaOptAI.buyerProfile&&<div style={{marginBottom:8}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>Likely Buyer</div><div style={{fontSize:11,color:"#a78bfa"}}>{EbitdaOptAI.buyerProfile}</div></div>}
+              {EbitdaOptAI.timeToExit&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>Timeline</div><div style={{fontSize:11,color:"#f59e0b"}}>{EbitdaOptAI.timeToExit}</div></div>}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}}>
         <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
           const rows=ebitdaLevers.map(l=>[l.lever,l.done?"✓ Active":"",`$${(l.revImpact||0).toLocaleString()}`,`$${(l.ebitdaImpact||0).toLocaleString()}`,l.effort||"",l.timeframe||""]);
