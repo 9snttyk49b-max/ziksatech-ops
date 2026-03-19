@@ -14740,6 +14740,7 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
   const [winLossAI,     setWinLossAI]     = useState(null);
   const [winLossLoad,   setWinLossLoad]   = useState(false);
   const [winLossDeal,   setWinLossDeal]   = useState(null);
+  // Deal Coach AI state (runDealCoach already defined below with aiCoach/aiLoading)
   const runWinLossAI = async (deal) => {
     setWinLossLoad(true); setWinLossAI(null); setWinLossDeal(deal);
     const isWon = deal.stage === "closed-won";
@@ -14937,6 +14938,10 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
             <div style={{display:"flex",gap:8,marginTop:8}}>
               <button className="btn bs" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>{setCrmDeals(ds=>ds.map(d=>d.id===selDeal.id?{...d,stage:"closed-won",probability:100}:d));runWinLossAI({...selDeal,stage:"closed-won"});}}>✓ Won</button>
               <button className="btn br" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>{setCrmDeals(ds=>ds.map(d=>d.id===selDeal.id?{...d,stage:"closed-lost",probability:0}:d));runWinLossAI({...selDeal,stage:"closed-lost"});}}>✗ Lost</button>
+              <button className="btn bg" style={{fontSize:11,padding:"4px 8px",color:"#a78bfa",borderColor:"#7c3aed"}}
+                onClick={()=>{runDealCoach(selDeal);}} disabled={aiLoading}>
+                {aiLoading?"⏳ Coaching...":"🎯 Deal Coach"}
+              </button>
             </div>
             <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:11,marginTop:8}} onClick={()=>runDealCoach(selDeal)} disabled={aiLoading}>
               {aiLoading?"⏳ Coaching...":"🧠 AI Deal Coach"}
