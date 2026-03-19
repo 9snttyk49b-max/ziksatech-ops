@@ -40,7 +40,6 @@ const RBAC = {
   crm:          ["super_admin","admin"],
   proposals:    ["super_admin","admin"],
   rfpgen:       ["super_admin","admin"],
-  prospectintel:["super_admin","admin"],
   capdeck:      ["super_admin","admin"],
   outreachtrk:  ["super_admin","admin"],
   soplibrary:   ["super_admin","admin"],
@@ -792,8 +791,7 @@ const ALL_MODULES = [
   { id:"outreachtrk",   label:"Outreach Tracker", group:"Clients" },
   { id:"paffiles",   label:"PAF Files", group:"Compliance" },
   { id:"perfreviews",   label:"Performance Reviews", group:"Team" },
-  { id:"prospectintel",   label:"Prospect Intel", group:"Clients" },
-  { id:"proposalv2",   label:"AI Proposal Writer", group:"Clients" },
+    { id:"proposalv2",   label:"AI Proposal Writer", group:"Clients" },
   { id:"ratequote",   label:"Rate Card & Quote", group:"Clients" },
   { id:"reconcile",   label:"Reconciliation", group:"Finance" },
   { id:"renewaltrk",   label:"Renewal Tracker", group:"Clients" },
@@ -2369,8 +2367,7 @@ export default function ZiksatechOps() {
     { id:"client360",    label:"🏢 Client 360",          icon:ICONS.dash,     group:"Overview",   keywords:"client intelligence org chart" },
     { id:"knowengine",   label:"🧩 Knowledge Engine",    icon:ICONS.dash,     group:"Overview",   keywords:"knowledge learning institutional brain" },
     { id:"scenario",     label:"📊 Scenario Simulator",  icon:ICONS.dash,     group:"Overview",   keywords:"scenario what-if simulation forecast" },
-    { id:"dealaccel",    label:"🎯 Deal Accelerator",    icon:ICONS.dash,     group:"Overview"    },
-    { id:"leakage",      label:"💰 Revenue Leakage",     icon:ICONS.dash,     group:"Overview"    },
+        { id:"leakage",      label:"💰 Revenue Leakage",     icon:ICONS.dash,     group:"Overview"    },
 
     { id:"autoworkflow",  label:"⚡ Auto Workflows",      icon:ICONS.dash,     group:"Overview"    },
     { id:"perfcoach",    label:"🏆 Performance Coach",  icon:ICONS.dash,     group:"Overview"    },
@@ -2386,8 +2383,7 @@ export default function ZiksatechOps() {
     { id:"proposals",    label:"Proposals & Quotes",   icon:ICONS.pl,       group:"Clients"     },
     { id:"proposalv2",  label:"AI Proposal Writer",     icon:ICONS.pl,       group:"Clients"     },
     { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
-    { id:"prospectintel", label:"Prospect Intel",        icon:ICONS.pipeline, group:"Clients"     },
-    { id:"sowgen",      label:"SOW Generator",         icon:ICONS.pl,       group:"Clients"     },
+        { id:"sowgen",      label:"SOW Generator",         icon:ICONS.pl,       group:"Clients"     },
     { id:"ratequote",   label:"Rate Card & Quote",      icon:ICONS.pl,       group:"Clients"     },
     { id:"availmatrix", label:"Availability Matrix",    icon:ICONS.roster,   group:"Clients"     },
     { id:"industrypitch",label:"Industry Pitches",      icon:ICONS.pl,       group:"Clients"     },
@@ -2985,8 +2981,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         )}
         {tab==="home"       && <HomePage      {...shared} authProfile={authProfile} jobReqs={shared.jobReqs||[]} />}
         {tab==="rfpgen"     && <RFPGenerator   {...shared} />}
-        {tab==="prospectintel" && <ProspectIntel crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} addAudit={shared.addAudit} />}
-        {tab==="soplibrary"   && <SOPLibrary roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} apInvoices={shared.apInvoices} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
+                {tab==="soplibrary"   && <SOPLibrary roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} apInvoices={shared.apInvoices} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
         {tab==="capdeck"      && <CapabilityDeck clients={shared.clients} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="certtracker"  && <CertTracker addAudit={shared.addAudit}/>}
         {tab==="ideapad"      && <IdeaPad authProfile={authProfile} addAudit={shared.addAudit}/>}
@@ -12217,12 +12212,13 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
     { id:"forecast",    label:"📈 Forecast" },
     { id:"import",      label:"⬆️ Import" },
     { id:"bdengine",    label:"🚀 BD Engine" },
+    { id:"prospectintel", label:"🔍 Prospect Intel" },
   ];
   const props = { crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients };
   const extProps = { ...props, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, roster, addAudit };
   return (
     <div>
-      <PH title="Sales CRM" sub="Leads · Accounts · Contacts · Deals · Tasks · Notes · Orders · Activities · Forecast · 🚀 BD Engine"/>
+      <PH title="Sales CRM" sub="Leads (Cold→Warm→Hot→Qualified) · Deals (Prospecting→Proposal→Negotiation→Won) · BD Engine · Prospect Intel"/>
       <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)}
@@ -12656,12 +12652,21 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
                       <span style={{fontSize:11,fontWeight:700,color:stage.color}}>{stage.label}</span>
                       <span style={{fontSize:10,color:"#334155"}}>{stageDeals.length} · {fmt(stageValue)}</span>
                     </div>
-                    <div style={{minHeight:200,background:"#060d1c",border:`1px solid ${stage.color}33`,borderRadius:"0 0 8px 8px",padding:8,display:"flex",flexDirection:"column",gap:6}}>
+                    <div style={{minHeight:200,background:"#060d1c",border:`1px solid ${stage.color}33`,borderRadius:"0 0 8px 8px",padding:8,display:"flex",flexDirection:"column",gap:6}}
+                      onDragOver={e=>e.preventDefault()}
+                      onDrop={e=>{
+                        e.preventDefault();
+                        const id=e.dataTransfer.getData("dealId");
+                        if(id) setCrmDeals(ds=>ds.map(d=>d.id===id?{...d,stage:stage.key}:d));
+                      }}>
                       {stageDeals.map(d=>{
                         const acc=crmAccounts.find(a=>a.id===d.accountId);
                         return (
-                          <div key={d.id} onClick={()=>setSelected(selected===d.id?null:d.id)}
-                            style={{background:selected===d.id?"#0c1e30":"#0a1120",border:`1px solid ${selected===d.id?stage.color:"#1a2d45"}`,borderRadius:8,padding:"10px 12px",cursor:"pointer",transition:"all 0.15s"}}
+                          <div key={d.id}
+                            draggable
+                            onDragStart={e=>{e.dataTransfer.setData("dealId",d.id);}}
+                            onClick={()=>setSelected(selected===d.id?null:d.id)}
+                            style={{background:selected===d.id?"#0c1e30":"#0a1120",border:`1px solid ${selected===d.id?stage.color:"#1a2d45"}`,borderRadius:8,padding:"10px 12px",cursor:"grab",transition:"all 0.15s"}}
                             onMouseEnter={e=>e.currentTarget.style.borderColor=stage.color+"88"}
                             onMouseLeave={e=>e.currentTarget.style.borderColor=selected===d.id?stage.color:"#1a2d45"}>
                             <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0",marginBottom:3,lineHeight:1.3}}>{d.name}</div>
