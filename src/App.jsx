@@ -40730,7 +40730,7 @@ Open deals needing staffing: ${openDeals.map(d=>d.name||"deal").slice(0,4).join(
   const safeClients = clients   || [];
   const safeDeals   = crmDeals  || [];
 
-  const openReqs = crmDeals||[].filter(d=>!["closed_won","closed_lost"].includes(d.stage));
+  const openReqs = (crmDeals||[]).filter(d=>!["closed_won","closed_lost"].includes(d.stage));
 
   // Skill taxonomy
   const ALL_SKILLS = [
@@ -40740,8 +40740,8 @@ Open deals needing staffing: ${openDeals.map(d=>d.name||"deal").slice(0,4).join(
   ];
 
   // Enrich roster with derived fields
-  const enriched = roster||[].map(r => {
-    const cl = clients||[].find(c=>c.name && r.client && r.client.toLowerCase().includes(c.name.toLowerCase().split(" ")[0]));
+  const enriched = (roster||[]).map(r => {
+    const cl = (clients||[]).find(c=>c.name && r.client && r.client.toLowerCase().includes(c.name.toLowerCase().split(" ")[0]));
     const renewal = cl?.renewalDate;
     const daysToRenewal = renewal ? Math.ceil((new Date(renewal) - new Date()) / 86400000) : null;
     const rolloffSoon = daysToRenewal !== null && daysToRenewal <= 90;
@@ -41099,8 +41099,8 @@ function IndustryPitchTemplates({ roster, clients, crmDeals, addAudit }) {
 
   const genPitch = async (industry) => {
     setAiLoading(true); setAiPitch("");
-    const activeCons = roster||[].filter(r=>industry.ourExperts.some(e=>e.includes(r.name.split(" ")[0]))).map(r=>`${r.name} (${r.role}, $${r.billRate}/hr)`).join(", ");
-    const curClients = clients||[].filter(c=>industry.clients.toLowerCase().includes(c.name.toLowerCase().split(" ")[0])).map(c=>c.name).join(", ");
+    const activeCons = (roster||[]).filter(r=>industry.ourExperts.some(e=>e.includes(r.name.split(" ")[0]))).map(r=>`${r.name} (${r.role}, $${r.billRate}/hr)`).join(", ");
+    const curClients = (clients||[]).filter(c=>industry.clients.toLowerCase().includes(c.name.toLowerCase().split(" ")[0])).map(c=>c.name).join(", ");
     const pitchDesc = PITCH_TYPES.find(p=>p.id===pitchType)?.desc || "";
     try {
       const resp = await fetch("/api/claude", {
