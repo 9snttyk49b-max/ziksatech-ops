@@ -771,6 +771,7 @@ const ALL_MODULES = [
   { id:"budget",      label:"Budget vs. Actual",      group:"Finance"     },
   { id:"onboarding",  label:"Onboarding",             group:"Hiring"      },
   { id:"offboarding", label:"Offboarding",            group:"Hiring"      },
+    { id:"talent",      label:"Talent Pipeline 🎯",   icon:ICONS.team, group:"Hiring" },
   { id:"crm",        label:"Sales CRM",            group:"Sales"      },
   { id:"contracts",  label:"Contracts & SOW",      group:"Sales"      },
   { id:"renewals",  label:"Contract Renewals",    group:"Clients"    },
@@ -3665,6 +3666,135 @@ function ZiksatechTalent({ roster, jobReqs, addAudit, authProfile }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════
+// NAXON OS COMMAND CENTER
+// Phase-0 Pipeline · SI Partnerships · FCS · Talent · GTM
+// ══════════════════════════════════════════════════════════════
+function NaxonOSCommand({ addAudit, authProfile }) {
+  const [aiLoad, setAiLoad] = useState(false);
+  const [aiPlan, setAiPlan] = useState(null);
+
+  // Pull live state from localStorage
+  const phase0Deals   = (() => { try { return JSON.parse(localStorage.getItem("zt-bd-accounts")||"null") || []; } catch { return []; } })();
+  const siPartners    = (() => { try { return JSON.parse(localStorage.getItem("zt-si-partners")||"null") || SI_DEFAULT_PARTNERS; } catch { return SI_DEFAULT_PARTNERS; } })();
+  const fcsData       = (() => { try { return JSON.parse(localStorage.getItem("zt-fcs-transactions")||"null") || FCS_DEFAULT_TRANSACTIONS; } catch { return FCS_DEFAULT_TRANSACTIONS; } })();
+  const candidates    = (() => { try { return JSON.parse(localStorage.getItem("zt-talent-candidates")||"null") || TALENT_DEFAULT_CANDIDATES; } catch { return TALENT_DEFAULT_CANDIDATES; } })();
+  const fmtK = v => v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1e3?`$${Math.round(v/1000)}K`:`$${Math.round(v)}`;
+
+  // Naxon metrics
+  const activePartners   = siPartners.filter(p=>p.status==="Active").length;
+  const activeSIDeal     = siPartners.flatMap(p=>p.deals||[]).filter(d=>d.status==="Active");
+  const siPipelineVal    = activeSIDeal.reduce((s,d)=>s+(+d.value||0),0);
+  const fcsTxRevenue     = fcsData.filter(t=>t.type==="credit").reduce((s,t)=>s+Math.abs(t.amount),0);
+  const activeCandidates = candidates.filter(c=>["Screening","Interview","Offer"].includes(c.stage)).length;
+  const hiresThisMonth   = candidates.filter(c=>c.stage==="Hired").length;
+
+  const runNaxonAI = async () => {
+    setAiLoad(true); setAiPlan(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,
+          system:"You are Manju Murthy's strategic AI advisor for Naxon Systems — a WBE-certified SAP consulting firm specializing in BRIM and IS-U, targeting utilities and tolling in DFW. Naxon launched Jan 2026. Phase-0 BRIM audits are $25K-$50K. Breakeven = 7 deals. Revenue from Ziksatech: $2.2M+. Speak directly to Manju.",
+          messages:[{role:"user",content:`Today: ${new Date().toDateString()}. Naxon status: ${activePartners} active SI partners, $${Math.round(siPipelineVal/1000)}K SI deal pipeline, ${activeCandidates} candidates in pipeline, ${hiresThisMonth} hired, FCS revenue: $${Math.round(fcsTxRevenue/1000)}K. Return ONLY JSON: {"headline":"sharp one-liner on Naxon status","topPriority":"single most important thing to do today for Naxon revenue","week1Action":"most impactful action this week","week2Action":"most impactful action next week","riskToWatch":"biggest risk to monitor","quickWin":"something you can close or advance in 24 hours","sipitch":"one-liner to send to an SI contact right now"}`}]
+        })
+      });
+      const data = await resp.json();
+      const txt = data.content?.[0]?.text||"{}";
+      setAiPlan(JSON.parse(txt.replace(/```json|```/g,"")));
+    } catch(e){ setAiPlan({error:e.message}); }
+    setAiLoad(false);
+  };
+
+  const MetricCard = ({label,value,sub,color,urgent}) => (
+    <div className="card" style={{padding:"12px 14px",borderTop:`2px solid ${color}`,position:"relative"}}>
+      {urgent&&<div style={{position:"absolute",top:6,right:8,fontSize:8,background:"#1a0808",color:"#f87171",borderRadius:3,padding:"1px 4px",fontWeight:700}}>ACTION</div>}
+      <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>{label}</div>
+      <div style={{fontSize:20,fontWeight:800,color,fontFamily:"monospace"}}>{value}</div>
+      {sub&&<div style={{fontSize:9,color:"#334155",marginTop:2}}>{sub}</div>}
+    </div>
+  );
+
+  return (
+    <div>
+      <PH title="⚡ Naxon OS Command Center" sub="Phase-0 pipeline · SI partnerships · talent · FCS health · AI strategic advisor">
+        <button className="btn bp" style={{fontSize:11}} onClick={runNaxonAI} disabled={aiLoad}>
+          {aiLoad?"⏳ Analyzing...":"🤖 Naxon AI Advisor"}
+        </button>
+      </PH>
+
+      {/* KPI Row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:14}}>
+        <MetricCard label="Active SI Partners"  value={activePartners}                   sub="Mersol+LTIMindtree"   color="#34d399"/>
+        <MetricCard label="SI Pipeline"         value={fmtK(siPipelineVal)}              sub="active sub-contracts" color="#34d399"/>
+        <MetricCard label="Naxon Revenue (FCS)" value={fmtK(fcsTxRevenue)}              sub="Mar 2026"             color="#38bdf8"/>
+        <MetricCard label="Candidates Active"   value={activeCandidates}                 sub="in pipeline"          color="#a78bfa"/>
+        <MetricCard label="Hires MTD"           value={hiresThisMonth}                   sub="consultants"          color="#34d399"/>
+        <MetricCard label="WBE/HUB Status"      value="ACTIVE"                           sub="Cert maintained"      color="#f59e0b"/>
+      </div>
+
+      {/* AI Advisor Output */}
+      {aiPlan&&!aiPlan.error&&(
+        <div style={{padding:"16px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a155",borderRadius:10}}>
+          <div style={{fontSize:13,fontWeight:800,color:"#38bdf8",marginBottom:10}}>⚡ Naxon Strategic Brief</div>
+          {aiPlan.headline&&<div style={{fontSize:12,color:"#e2e8f0",marginBottom:10,fontStyle:"italic",padding:"6px 12px",background:"#0c1a2e",borderRadius:5}}>"{aiPlan.headline}"</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            {[[aiPlan.topPriority,"🎯 Top Priority Today","#f59e0b"],[aiPlan.quickWin,"⚡ Quick Win (24hrs)","#34d399"],[aiPlan.week1Action,"📅 This Week","#38bdf8"],[aiPlan.week2Action,"📅 Next Week","#a78bfa"]].map(([txt,label,color])=>txt&&(
+              <div key={label} style={{padding:"8px 12px",background:"#040a14",borderRadius:6,border:`1px solid ${color}22`}}>
+                <div style={{fontSize:9,color,marginBottom:3,fontWeight:700}}>{label}</div>
+                <div style={{fontSize:11,color:"#e2e8f0"}}>{txt}</div>
+              </div>
+            ))}
+          </div>
+          {aiPlan.sipitch&&<div style={{padding:"8px 12px",background:"#021f14",borderRadius:6,border:"1px solid #15803d33",fontSize:11,color:"#4ade80",marginBottom:6}}>
+            <span style={{fontSize:9,color:"#15803d",fontWeight:700,marginRight:6}}>SI PITCH:</span>{aiPlan.sipitch}
+          </div>}
+          {aiPlan.riskToWatch&&<div style={{fontSize:10,color:"#f87171"}}>⚠ Watch: {aiPlan.riskToWatch}</div>}
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        {/* SI Partners Status */}
+        <div className="card" style={{padding:"14px"}}>
+          <div className="section-hdr" style={{marginBottom:10}}>🤝 SI Partnership Status</div>
+          {siPartners.slice(0,5).map(p=>(
+            <div key={p.id} style={{display:"flex",gap:8,alignItems:"center",padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
+              <div style={{width:24,height:24,borderRadius:"50%",background:"#0c2340",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#38bdf8",flexShrink:0}}>{p.logo}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{p.name}</div>
+                <div style={{fontSize:9,color:"#475569"}}>{p.deals?.length>0?`${p.deals.length} deal(s)`:p.strength}</div>
+              </div>
+              <span style={{fontSize:9,fontWeight:700,color:p.status==="Active"?"#34d399":p.status==="Targeting"?"#38bdf8":"#64748b"}}>{p.status}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Talent Pipeline */}
+        <div className="card" style={{padding:"14px"}}>
+          <div className="section-hdr" style={{marginBottom:10}}>🎯 Talent Pipeline</div>
+          {["Screening","Interview","Offer","Hired"].map(stage=>{
+            const n = candidates.filter(c=>c.stage===stage).length;
+            const color = TALENT_STAGE_COLORS[stage]||"#64748b";
+            return (
+              <div key={stage} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                <span style={{fontSize:11,color:"#94a3b8"}}>{stage}</span>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:60,height:4,background:"#0a1626",borderRadius:2}}>
+                    <div style={{width:`${Math.min(100,n/candidates.length*100*3)}%`,height:"100%",background:color,borderRadius:2}}/>
+                  </div>
+                  <span style={{fontSize:12,fontWeight:700,color,minWidth:16,textAlign:"right"}}>{n}</span>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{marginTop:8,fontSize:9,color:"#3d5a7a"}}>
+            {candidates.filter(c=>c.visa==="H1B").length} H1B · {candidates.filter(c=>c.visa==="GC").length} GC · {candidates.filter(c=>c.visa==="OPT").length} OPT
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ZiksatechOps() {
   const [tab, setTab] = useState(() => {
     try { const s = localStorage.getItem("zt-last-tab"); if(s) return s; } catch {}
@@ -4192,7 +4322,10 @@ export default function ZiksatechOps() {
     { id:"wbecert",      label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
     { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Tools"    },
     { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Tools"    },
-    { id:"fcs", label:"Finance Control 💰", icon:ICONS.chart, group:"Naxon OS" },
+    { id:"naxonos",   label:"Naxon Command ⚡",   icon:ICONS.dash, group:"Naxon OS" },
+    { id:"fcs",        label:"Finance Control 💰",   icon:ICONS.chart, group:"Naxon OS" },
+    { id:"sitracker",  label:"SI Sub-Contracting 🤝", icon:ICONS.team, group:"Naxon OS" },
+    { id:"bdengine",   label:"BD Engine 🚀",           icon:ICONS.dash, group:"Naxon OS" },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, jobReqs, setJobReqs, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -4809,6 +4942,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="glexport"      && <FreshBooksGL finInvoices={shared.finInvoices||[]} fbInvoices={shared.fbInvoices||[]} clients={shared.clients||[]}/>}
         {tab==="esign"         && <ESignature {...shared}/>}
         {tab==="sitracker"  && <SISubConTracker {...shared} authProfile={authProfile}/>}
+          {tab==="naxonos"    && <NaxonOSCommand addAudit={shared.addAudit} authProfile={authProfile}/>}
+          {tab==="bdengine"   && <BDEngine crmDeals={shared.crmDeals} roster={shared.roster} clients={shared.crmAccounts} addAudit={shared.addAudit} setTab={setTab}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
         {tab==="timesheet"  && <TimesheetApproval {...shared} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="clients"    && <ClientPortfolio {...shared}/>}
