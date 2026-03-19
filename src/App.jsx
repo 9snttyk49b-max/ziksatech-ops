@@ -4300,8 +4300,7 @@ export default function ZiksatechOps() {
     { id:"sitracker",    label:"SI Sub-Contracting 🤝",   icon:ICONS.dash,     group:"Naxon OS" },
     { id:"bdengine",     label:"BD Engine 🚀",             icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
-    { id:"fcs", label:"Finance Control 💰", icon:ICONS.pl, group:"Finance" },
-  ];
+      ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, jobReqs, setJobReqs, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
 
@@ -6423,7 +6422,7 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
         </select>
         <button className="btn bp" style={{fontSize:12,padding:"7px 16px"}}
           onClick={()=>autoFillMonth(consultant?.id, selMonth)}>
-          <I d={ICONS.bolt||ICONS.star} s={13}/>⚡ Auto-Fill {MONTHS_LIST[selMonth]}
+          <I d={ICONS.dash||ICONS.ebitda} s={13}/>⚡ Auto-Fill {MONTHS_LIST[selMonth]}
         </button>
         <button className="btn bg" style={{fontSize:12,padding:"7px 14px"}}
           onClick={()=>setShowVerify(v=>!v)}>
