@@ -2818,7 +2818,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                   {n.id==="autoworkflow" && (() => {
                     const stale = (crmDeals||[]).filter(d=>!["closed-won","closed_won","closed-lost","closed_lost"].includes(d.stage) && ((new Date()-new Date(d.lastActivity||d.updatedAt||"2026-01-01"))/86400000)>7).length;
                     const overdue = (finInvoices||[]).filter(inv=>inv.status!=="paid" && ((new Date()-new Date(inv.dueDate||inv.date))/86400000)>30).length;
-                    const total = stale + overdue;
+                    const visaExpiring = (workAuth||[]).filter(w=>{try{return (new Date(w.expiryDate||w.i94Expiry||"2099-12-31")-new Date())/86400000<90;}catch{return false;}}).length;
+                    const contractsExp = (contracts||[]).filter(ct=>{try{return ct.endDate&&(new Date(ct.endDate)-new Date())/86400000<60;}catch{return false;}}).length;
+                    const total = stale + overdue + visaExpiring + contractsExp;
                     return total > 0 ? (
                       <span style={{marginLeft:"auto",background:"#f59e0b",color:"#000",borderRadius:"100px",fontSize:9,fontWeight:700,padding:"1px 5px",minWidth:16,textAlign:"center"}}>
                         {total}
@@ -48917,6 +48919,61 @@ function AutoWorkflows({ crmDeals, setCrmDeals, clients, roster, finInvoices, pr
       color: "#38bdf8",
       bg: "#0c1a2e",
       border: "#0369a144",
+    },
+    {
+      id: "wf-visa-expiry",
+      icon: "🛂",
+      title: "Visa Expiry Early Warning",
+      trigger: "When work auth expires within 90 days",
+      action: "Alerts Manju + drafts renewal checklist + notifies immigration attorney",
+      status: "active",
+      color: "#f87171",
+      bg: "#1a0808",
+      border: "#991b1b44",
+    },
+    {
+      id: "wf-contract-renewal",
+      icon: "📄",
+      title: "Contract Renewal Alert",
+      trigger: "When client contract expires within 60 days",
+      action: "AI drafts renewal proposal + sets follow-up task in CRM",
+      status: "active",
+      color: "#38bdf8",
+      bg: "#060d1c",
+      border: "#0369a144",
+    },
+    {
+      id: "wf-new-lead-intel",
+      icon: "🔍",
+      title: "New Lead Intelligence Blast",
+      trigger: "When new lead added to CRM",
+      action: "AI auto-runs Prospect Intel on the company + posts summary to team",
+      status: "active",
+      color: "#a78bfa",
+      bg: "#0f0a1a",
+      border: "#6d28d944",
+    },
+    {
+      id: "wf-utilization-drop",
+      icon: "📉",
+      title: "Utilization Drop Warning",
+      trigger: "When team utilization drops below 70%",
+      action: "AI identifies bench consultants + recommends placements + alerts BD team",
+      status: "active",
+      color: "#f59e0b",
+      bg: "#1a0f00",
+      border: "#92400e44",
+    },
+    {
+      id: "wf-monthly-kpi",
+      icon: "📊",
+      title: "Monthly KPI Digest",
+      trigger: "1st of every month (manual trigger available)",
+      action: "AI generates full monthly performance report with all KPIs",
+      status: "active",
+      color: "#34d399",
+      bg: "#021f14",
+      border: "#15803d44",
     },
   ];
 
