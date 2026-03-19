@@ -16,7 +16,7 @@ const mask = (val, type="text") => {
   if(type==="dob")     return "●●/●●/●●●●";
   return s.slice(0,2)+"●●●●";
 };
-import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════
 // RBAC — Role-based access control
