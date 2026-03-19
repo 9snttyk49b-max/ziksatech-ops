@@ -4413,6 +4413,29 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 
   // Daily hours store: { [consultantId]: { [YYYY-MM-DD]: hours } }
   const [dailyHrs, setDailyHrs] = useState({});
+  const [TimesheetAI,     setTimesheetAI]     = useState(null);
+  const [TimesheetAILoad, setTimesheetAILoad] = useState(false);
+  const runTimesheetAI = async () => {
+    setTimesheetAILoad(true); setTimesheetAI(null);
+    const month = selMonth;
+    const utilData = roster.map(r=>{
+      const hrs = Object.values(tsHours[r.id]||{}).reduce((s,d)=>s+Object.values(d||{}).reduce((ss,h)=>ss+(+h||0),0),0);
+      const billable = Math.round(hrs * 0.85);
+      const util = Math.round(billable / 160 * 100);
+      return `${r.name}: ${util}% util, ${billable}h billable`;
+    }).join("; ");
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are a utilization coach for a SAP consulting firm. Be specific.",
+          messages:[{role:"user",content:`Month ${month}. Team utilization: ${utilData||"no data yet"}.\nReturn ONLY JSON:\n{"avgUtil":"XX%","topPerformer":"name + stat","benchRisk":"who needs project ASAP","revenueLeakage":"$XXk from under-utilization","action":"single best action to improve utilization this week"}`}]
+        })
+      });
+      const data = await resp.json();
+      setTimesheetAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setTimesheetAI({error:e.message}); }
+    setTimesheetAILoad(false);
+  };
 
   // Get daily hours for consultant+month
   const getDayHrs = (cid, y, m, d) => dailyHrs?.[cid]?.[dateKey(y,m,d)] ?? null;
@@ -4471,7 +4494,20 @@ function Timesheet({ roster, setRoster, tsHours, setTsHours }) {
 
   return (
     <div>
-      <PH title="Employee Timesheet" sub="Daily timesheet · auto-fill weekends & holidays · verify before submit"/>
+      <PH title="Employee Timesheet" sub="Daily timesheet · auto-fill weekends & holidays · verify before submit">
+        <button className="btn bp" style={{fontSize:11}} onClick={runTimesheetAI} disabled={TimesheetAILoad}>{TimesheetAILoad?"⏳...":"🤖 Util Coach"}</button>
+      </PH>
+      {TimesheetAI && !TimesheetAI.error && (
+        <div style={{padding:"10px 16px",marginBottom:12,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#38bdf8"}}>🤖 Utilization Coach</div>
+          {[["Avg Util",TimesheetAI.avgUtil,"#34d399"],["Top Performer",TimesheetAI.topPerformer,"#a78bfa"],["Bench Risk",TimesheetAI.benchRisk,"#f87171"],["Rev Leakage",TimesheetAI.revenueLeakage,"#f59e0b"]].map(([l,v,col])=>
+            v&&<div key={l} style={{flex:"1 0 120px"}}><div style={{fontSize:8,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:11,color:col,fontWeight:600}}>{v}</div></div>
+          )}
+          {TimesheetAI.action&&<div style={{flex:"1 0 200px",fontSize:11,color:"#64748b"}}>→ {TimesheetAI.action}</div>}
+          <button className="btn bg" style={{fontSize:9}} onClick={()=>setTimesheetAI(null)}>✕</button>
+        </div>
+      )}
+
 
       {/* Consultant + Month selector */}
       <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:16,flexWrap:"wrap"}}>
@@ -7950,7 +7986,26 @@ function ADPPayroll({ roster, adpRuns, setAdpRuns }) {
     return { gross, taxes, benefits, fica, futa, suta, wc, health, ret, oth };
   };
 
-  const [confirmRun, setConfirmRun] = useState(null); // id of run to confirm
+  const [confirmRun, setConfirmRun] = useState(null);
+  const [ADPPayrollAI,     setADPPayrollAI]     = useState(null);
+  const [ADPPayrollAILoad, setADPPayrollAILoad] = useState(false);
+  const runADPPayrollAI = async () => {
+    setADPPayrollAILoad(true); setADPPayrollAI(null);
+    const totalPayroll = adpRuns.filter(r=>r.status==="processed").reduce((s,r)=>s+(+r.grossPay||0),0);
+    const avgPay = adpRuns.length>0?Math.round(totalPayroll/adpRuns.length):0;
+    const headcount = roster.filter(r=>r.type==="FTE").length;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are a payroll and compensation advisor for a WBE SAP consulting firm in Texas.",
+          messages:[{role:"user",content:`${headcount} FTEs. Total payroll: $${Math.round(totalPayroll/1000)}K. Avg run: $${Math.round(avgPay/1000)}K. Roles: ${[...new Set(roster.filter(r=>r.type==="FTE").map(r=>r.role||"SAP"))].join(", ")}.\nReturn ONLY JSON:\n{"payrollEfficiency":"payroll as % of revenue assessment","overtimeRisk":"any overtime exposure","taxOptimization":"Texas-specific payroll tax saving opportunity","compensationBenchmark":"are FTE salaries competitive for DFW SAP market","recommendation":"single best payroll optimization action"}`}]
+        })
+      });
+      const data = await resp.json();
+      setADPPayrollAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setADPPayrollAI({error:e.message}); }
+    setADPPayrollAILoad(false);
+  }; // id of run to confirm
 
   const processRun = id => {
     const run = adpRuns.find(r => r.id === id);
@@ -8311,6 +8366,24 @@ function FreshBooks({ clients, fbInvoices, setFbInvoices, tsHours, roster }) {
   const [showFormat, setShowFormat] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [form, setForm] = useState({ clientId:"", date:new Date().toISOString().slice(0,10), due:"", desc:"", amount:"", status:"draft" });
+  const [FreshBooksAI,     setFreshBooksAI]     = useState(null);
+  const [FreshBooksAILoad, setFreshBooksAILoad] = useState(false);
+  const runFreshBooksAI = async () => {
+    setFreshBooksAILoad(true); setFreshBooksAI(null);
+    const overdue = fbInvoices.filter(i=>i.status==="overdue");
+    const outstanding = fbInvoices.filter(i=>["sent","overdue"].includes(i.status)).reduce((s,i)=>s+(i.total||0),0);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are an AR collections advisor for a SAP consulting firm.",
+          messages:[{role:"user",content:`Outstanding: $${Math.round(outstanding/1000)}K. Overdue invoices: ${overdue.length}. Clients: ${overdue.map(i=>i.clientName||"client").slice(0,3).join(", ")}.\nReturn ONLY JSON:\n{"collectionPriority":"which invoice to chase first and why","dsoStatus":"days sales outstanding estimate","cashFlowRisk":"risk level + explanation","collectionScript":"2-sentence follow-up message for overdue client","recommendation":"top AR action this week"}`}]
+        })
+      });
+      const data = await resp.json();
+      setFreshBooksAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setFreshBooksAI({error:e.message}); }
+    setFreshBooksAILoad(false);
+  };
 
   const nextId = () => {
     const nums = fbInvoices.map(i=>parseInt(i.id.replace("FB-",""))||0);
@@ -21658,6 +21731,25 @@ function JobReqManager({ jobReqs, setJobReqs, candidates, setCandidates, crmDeal
   const [modal,   setModal]   = useState(false);
   const [matchModal, setMatchModal] = useState(null); // req id
   const [form,    setForm]    = useState({});
+  const [JobReqAI,     setJobReqAI]     = useState(null);
+  const [JobReqAILoad, setJobReqAILoad] = useState(false);
+  const [jdPrompt,     setJdPrompt]     = useState("");
+  const runJobReqAI = async (req) => {
+    if (!req && !jdPrompt.trim()) return;
+    setJobReqAILoad(true); setJobReqAI(null);
+    const role = req?.title || jdPrompt;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
+          system:"You are a technical recruiter for Ziksatech, a WBE/HUB certified SAP consulting firm in Plano TX. Write compelling, accurate job descriptions that attract top SAP talent.",
+          messages:[{role:"user",content:`Write a job description for: ${role}\nReturn ONLY JSON:\n{"title":"exact job title","summary":"2-sentence role summary","responsibilities":["resp1","resp2","resp3","resp4","resp5"],"requirements":["req1","req2","req3","req4"],"niceToHave":["nice1","nice2","nice3"],"salaryRange":"$XXXk-$XXXk","wbeBenefit":"how WBE certification benefits this hire"}`}]
+        })
+      });
+      const data = await resp.json();
+      setJobReqAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setJobReqAI({error:e.message}); }
+    setJobReqAILoad(false);
+  };
   const safeReqs    = jobReqs    || [];
   const safeCands   = candidates || [];
   const safeDeals   = crmDeals   || [];
@@ -21751,6 +21843,35 @@ function JobReqManager({ jobReqs, setJobReqs, candidates, setCandidates, crmDeal
 
   return (
     <div>
+      {/* AI JD Writer */}
+      <div className="card" style={{padding:"14px 18px",marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>🤖 AI Job Description Writer</div>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <input className="inp" style={{flex:1}} value={jdPrompt} onChange={e=>setJdPrompt(e.target.value)}
+            placeholder='e.g. "SAP BRIM Consultant", "IS-U Technical Lead", "SuccessFactors HCM Architect"'
+            onKeyDown={e=>e.key==="Enter"&&!JobReqAILoad&&runJobReqAI(null)}/>
+          <button className="btn bp" style={{fontSize:11,padding:"0 14px"}} onClick={()=>runJobReqAI(null)} disabled={JobReqAILoad}>
+            {JobReqAILoad?"⏳":"Generate JD"}
+          </button>
+        </div>
+        {JobReqAI && !JobReqAI.error && (
+          <div style={{background:"#040a14",borderRadius:6,border:"1px solid #1e3a5f",padding:"12px 14px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{JobReqAI.title}</div>
+              <div style={{display:"flex",gap:6}}>
+                <span style={{fontSize:10,color:"#34d399"}}>{JobReqAI.salaryRange}</span>
+                <button className="btn bg" style={{fontSize:9}} onClick={()=>navigator.clipboard?.writeText(`${JobReqAI.title}\n\n${JobReqAI.summary}\n\nResponsibilities:\n${(JobReqAI.responsibilities||[]).map((r,i)=>(i+1)+". "+r).join("\n")}\n\nRequirements:\n${(JobReqAI.requirements||[]).map((r,i)=>"• "+r).join("\n")}`)}>📋 Copy JD</button>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#94a3b8",marginBottom:8,lineHeight:1.5}}>{JobReqAI.summary}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Responsibilities</div>{(JobReqAI.responsibilities||[]).map((r,i)=><div key={i} style={{fontSize:10,color:"#e2e8f0",marginBottom:2}}>• {r}</div>)}</div>
+              <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Requirements</div>{(JobReqAI.requirements||[]).map((r,i)=><div key={i} style={{fontSize:10,color:"#38bdf8",marginBottom:2}}>✓ {r}</div>)}</div>
+            </div>
+            {JobReqAI.wbeBenefit&&<div style={{marginTop:8,padding:"5px 10px",background:"#0c2340",borderRadius:4,fontSize:10,color:"#a78bfa"}}>🏆 WBE: {JobReqAI.wbeBenefit}</div>}
+          </div>
+        )}
+      </div>
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div>
