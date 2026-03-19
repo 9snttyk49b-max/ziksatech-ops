@@ -1791,7 +1791,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.41 · 90 AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.44 · 91 AI modules</span>
         </div>
         {children}
       </div>
@@ -3462,7 +3462,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.41 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.44 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
@@ -13026,6 +13026,25 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
   const [actForm, setActForm]   = useState({type:"email",accountId:"",contactId:"",dealId:"",subject:"",notes:"",date:TODAY_STR,completed:false});
   const [aiCoach,   setAiCoach]   = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [winLossAI,     setWinLossAI]     = useState(null);
+  const [winLossLoad,   setWinLossLoad]   = useState(false);
+  const [winLossDeal,   setWinLossDeal]   = useState(null);
+  const runWinLossAI = async (deal) => {
+    setWinLossLoad(true); setWinLossAI(null); setWinLossDeal(deal);
+    const isWon = deal.stage === "closed-won";
+    const acct = crmAccounts.find(a=>a.id===deal.accountId)||{};
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a sales intelligence advisor for Ziksatech, a WBE SAP consulting firm. Analyze deal outcomes to build institutional memory.",
+          messages:[{role:"user",content:`Deal ${isWon?"WON":"LOST"}: ${deal.name}, ${acct.name||"client"} (${acct.industry||"?"}), Value: $${Math.round((deal.value||0)/1000)}K, Stage: ${deal.stage}\nNotes: ${deal.notes||"none"}\nReturn ONLY JSON:\n{"verdict":"${isWon?"WIN":"LOSS"} in one sentence","primaryReason":"#1 reason we ${isWon?"won":"lost"}","secondaryReasons":["reason2","reason3"],"lessonsLearned":["lesson1","lesson2"],"repeatStrategy":"how to replicate this ${isWon?"win":"avoid this loss"} next time","recommendedAction":"single action based on this outcome"}`}]
+        })
+      });
+      const data = await resp.json();
+      setWinLossAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setWinLossAI({error:e.message}); }
+    setWinLossLoad(false);
+  };
 
   const runDealCoach = async (d) => {
     if (!d) return;
@@ -13205,8 +13224,8 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
                 <button className="btn bs" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>advanceStage(selDeal.id)}>▶ Advance</button>}
             </div>
             <div style={{display:"flex",gap:8,marginTop:8}}>
-              <button className="btn bs" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>setCrmDeals(ds=>ds.map(d=>d.id===selDeal.id?{...d,stage:"closed-won",probability:100}:d))}>✓ Won</button>
-              <button className="btn br" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>setCrmDeals(ds=>ds.map(d=>d.id===selDeal.id?{...d,stage:"closed-lost",probability:0}:d))}>✗ Lost</button>
+              <button className="btn bs" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>{setCrmDeals(ds=>ds.map(d=>d.id===selDeal.id?{...d,stage:"closed-won",probability:100}:d));runWinLossAI({...selDeal,stage:"closed-won"});}}>✓ Won</button>
+              <button className="btn br" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>{setCrmDeals(ds=>ds.map(d=>d.id===selDeal.id?{...d,stage:"closed-lost",probability:0}:d));runWinLossAI({...selDeal,stage:"closed-lost"});}}>✗ Lost</button>
             </div>
             <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:11,marginTop:8}} onClick={()=>runDealCoach(selDeal)} disabled={aiLoading}>
               {aiLoading?"⏳ Coaching...":"🧠 AI Deal Coach"}
@@ -13341,7 +13360,6 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
   );
 }
 
-// ── Activities ────────────────────────────────────────────────────────────────
 function CRMActivities({ crmAccounts, crmContacts, crmDeals, crmActivities, setCrmActivities }) {
   const [filter, setFilter] = useState("open");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -47108,6 +47126,26 @@ function Client360Intelligence({ clients, finInvoices, finPayments, crmDeals, ro
   const [tab,       setTab]       = useState("overview");
   const [loading,   setLoading]   = useState({});
   const [intel,     setIntel]     = useState({});
+  const [expansionAI,     setExpansionAI]     = useState(null);
+  const [expansionAILoad, setExpansionAILoad] = useState(false);
+  const runExpansionAI = async (cl) => {
+    if (!cl) return;
+    setExpansionAILoad(true); setExpansionAI(null);
+    const consultants = roster?.filter(r=>r.client===cl.name)||[];
+    const deals = crmDeals?.filter(d=>d.accountId===cl.id)||[];
+    const activeValue = deals.filter(d=>!["closed-won","closed-lost"].includes(d.stage)).reduce((s,d)=>s+(d.value||0),0);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a client expansion advisor for Ziksatech, a WBE SAP consulting firm specializing in BRIM, IS-U, S/4HANA, SuccessFactors.",
+          messages:[{role:"user",content:`Client: ${cl.name}, Industry: ${cl.industry||"?"}, Engagement: ${cl.type||"project"}, Consultants: ${consultants.length}, Active pipeline: $${Math.round(activeValue/1000)}K.\nReturn ONLY JSON:\n{"expansionScore":75,"topOpportunity":"best upsell opportunity with specific module","expansionPitch":"2-sentence expansion pitch for this client","additionalRoles":["role1 they could use","role2"],"competitorRisk":"are they at risk of switching to a big SI","executiveSponsor":"who to target for expansion conversation"}`}]
+        })
+      });
+      const data = await resp.json();
+      setExpansionAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setExpansionAI({error:e.message}); }
+    setExpansionAILoad(false);
+  };
   const fmt  = n => "$"+Math.round(n||0).toLocaleString();
   const fmtK = n => (n||0)>=1000?"$"+Math.round((n||0)/1000)+"K":fmt(n);
   const TODAY = new Date().toISOString().split("T")[0];
@@ -47311,9 +47349,29 @@ ${schema}`}]
             ) : (
               <div className="card" style={{padding:"24px",textAlign:"center"}}>
                 <div style={{fontSize:12,color:"#3d5a7a",marginBottom:12}}>Get AI-powered intelligence for {cl.name}</div>
-                <button className="btn bp" style={{fontSize:12}} onClick={()=>runAI("overview")} disabled={loading[`${selClient}-overview`]}>
-                  {loading[`${selClient}-overview`]?"⏳ Analyzing...":"🤖 Generate Client Intelligence"}
-                </button>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <button className="btn bp" style={{fontSize:12}} onClick={()=>runAI("overview")} disabled={loading[`${selClient}-overview`]}>
+                    {loading[`${selClient}-overview`]?"⏳ Analyzing...":"🤖 Client Intelligence"}
+                  </button>
+                  <button className="btn bg" style={{fontSize:12}} onClick={()=>{const cl=clients.find(x=>x.id===selClient);if(cl)runExpansionAI(cl);}} disabled={expansionAILoad}>
+                    {expansionAILoad?"⏳...":"📈 Expansion Radar"}
+                  </button>
+                </div>
+                {expansionAI && !expansionAI.error && (
+                  <div style={{marginTop:12,padding:"12px 14px",background:"#060d1c",border:"1px solid #0369a144",borderRadius:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>📈 Expansion Radar — Score: <span style={{fontSize:16,fontFamily:"monospace",color:(expansionAI.expansionScore||0)>70?"#34d399":"#f59e0b"}}>{expansionAI.expansionScore}</span>/100</div>
+                      <button className="btn bg" style={{fontSize:9}} onClick={()=>setExpansionAI(null)}>✕</button>
+                    </div>
+                    {expansionAI.topOpportunity&&<div style={{fontSize:11,color:"#f59e0b",marginBottom:6,fontWeight:600}}>🎯 {expansionAI.topOpportunity}</div>}
+                    {expansionAI.expansionPitch&&<div style={{fontSize:11,color:"#e2e8f0",marginBottom:8,lineHeight:1.6,fontStyle:"italic"}}>"{expansionAI.expansionPitch}"</div>}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      {expansionAI.additionalRoles&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>Additional Roles</div>{expansionAI.additionalRoles.map((r,i)=><div key={i} style={{fontSize:10,color:"#a78bfa",marginBottom:2}}>+ {r}</div>)}</div>}
+                      {expansionAI.competitorRisk&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>Competitor Risk</div><div style={{fontSize:10,color:"#f87171"}}>{expansionAI.competitorRisk}</div></div>}
+                    </div>
+                    {expansionAI.executiveSponsor&&<div style={{marginTop:6,fontSize:10,color:"#38bdf8"}}>Executive target: {expansionAI.executiveSponsor}</div>}
+                  </div>
+                )}
               </div>
             )}
           </div>
