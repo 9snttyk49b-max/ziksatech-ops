@@ -24737,7 +24737,25 @@ function NotificationsHub({
     try { return JSON.parse(localStorage.getItem("zt-notif-history") || "[]"); } catch { return []; }
   });
   const [testResult, setTestResult] = useState(null);
-  const [tab,       setTabSel]   = useState("teams"); // teams | slack
+  const [tab,       setTabSel]   = useState("teams");
+  const [NotifsAI,     setNotifsAI]     = useState(null);
+  const [NotifsAILoad, setNotifsAILoad] = useState(false);
+  const runNotifsAI = async () => {
+    setNotifsAILoad(true); setNotifsAI(null);
+    const alertCount = history?.length||0;
+    const criticalTypes = ["visa_expiry","overdue_ar","stale_deal","bench_alert"];
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are an operations alert advisor for a SAP consulting firm. Prioritize business-critical notifications.",
+          messages:[{role:"user",content:`Notification hub active. Recent alerts: ${alertCount}. Critical categories: ${criticalTypes.join(", ")}.\nReturn ONLY JSON:\n{"priority1":"most urgent alert type to address today","priority2":"second most urgent","channelOptimization":"best channel routing recommendation (Teams vs Slack vs Email)","digestSuggestion":"optimal digest frequency for this business","topAction":"single notification system improvement"}`}]
+        })
+      });
+      const data = await resp.json();
+      setNotifsAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setNotifsAI({error:e.message}); }
+    setNotifsAILoad(false);
+  }; // teams | slack
 
   const saveSettings = (patch) => {
     const updated = { ...settings, ...patch };
@@ -25025,7 +25043,24 @@ function NotificationsHub({
 
   return (
     <div>
-      <PH title="Notifications Hub" sub="Teams & Slack webhooks · Daily digest · Alert routing · Send history"/>
+      <PH title="Notifications Hub" sub="Teams & Slack webhooks · Daily digest · Alert routing · Send history">
+        <button className="btn bp" style={{fontSize:11}} onClick={runNotifsAI} disabled={NotifsAILoad}>{NotifsAILoad?"⏳...":"🤖 AI Alert Priority"}</button>
+      </PH>
+      {NotifsAI && !NotifsAI.error && (
+        <div style={{padding:"10px 16px",marginBottom:12,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 Notification Intelligence</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setNotifsAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+            {[["🔴 Priority 1",NotifsAI.priority1,"#f87171"],["🟡 Priority 2",NotifsAI.priority2,"#f59e0b"],["📡 Channel Routing",NotifsAI.channelOptimization,"#38bdf8"],["📅 Digest Schedule",NotifsAI.digestSuggestion,"#a78bfa"]].map(([l,v,col])=>
+              v&&<div key={l} style={{padding:"6px 10px",background:"#040a14",borderRadius:5}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:11,color:col,lineHeight:1.3}}>{v}</div></div>
+            )}
+          </div>
+          {NotifsAI.topAction&&<div style={{marginTop:6,fontSize:11,color:"#64748b"}}>→ {NotifsAI.topAction}</div>}
+        </div>
+      )}
+
 
       {/* Status bar */}
       <div style={{display:"flex",gap:10,marginBottom:18}}>
@@ -35989,6 +36024,22 @@ function CampaignTrackingDashboard({ crmDeals, proposals, savedContent, calendar
   const [editCam, setEditCam]   = useState(null);
   const [linkModal, setLinkModal] = useState(false);
   const [camModal, setCamModal] = useState(false);
+  const [CampaignAI,     setCampaignAI]     = useState(null);
+  const [CampaignAILoad, setCampaignAILoad] = useState(false);
+  const runCampaignAI = async () => {
+    setCampaignAILoad(true); setCampaignAI(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are a B2B marketing advisor for a WBE SAP consulting firm targeting utilities, telecom, and healthcare companies.",
+          messages:[{role:"user",content:`SAP consulting firm UTM campaign analysis needed. Channels: LinkedIn, Email, Events. Target: C-suite IT buyers at utilities/telecom.\nReturn ONLY JSON:\n{"topChannel":"best performing channel for SAP consulting leads","messageAngle":"most effective message angle for current market","contentPriority":"highest ROI content type","campaignIdea":"specific campaign idea for next 30 days","cta":"best call-to-action for SAP consulting outreach"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCampaignAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCampaignAI({error:e.message}); }
+    setCampaignAILoad(false);
+  };
 
   const persist = (key, data) => localStorage.setItem(key, JSON.stringify(data));
   const uid = () => "utm-" + Date.now() + Math.random().toString(36).slice(2,5);
@@ -36060,7 +36111,24 @@ function CampaignTrackingDashboard({ crmDeals, proposals, savedContent, calendar
 
   return (
     <div>
-      <PH title="Campaign Tracking & UTM" sub="UTM link builder · Campaign ROI tracker · Attribution dashboard · Marketing scorecard"/>
+      <PH title="Campaign Tracking & UTM" sub="UTM link builder · Campaign ROI tracker · Attribution dashboard · Marketing scorecard">
+        <button className="btn bp" style={{fontSize:11}} onClick={runCampaignAI} disabled={CampaignAILoad}>{CampaignAILoad?"⏳...":"🤖 AI Campaign Intel"}</button>
+      </PH>
+      {CampaignAI && !CampaignAI.error && (
+        <div style={{padding:"12px 16px",marginBottom:12,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 Campaign Intelligence</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setCampaignAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+            {[["Top Channel",CampaignAI.topChannel,"#34d399"],["Message Angle",CampaignAI.messageAngle,"#38bdf8"],["Content Priority",CampaignAI.contentPriority,"#a78bfa"],["Best CTA",CampaignAI.cta,"#f59e0b"]].map(([l,v,col])=>
+              v&&<div key={l} style={{padding:"6px 10px",background:"#040a14",borderRadius:5}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:11,color:col,lineHeight:1.3}}>{v}</div></div>
+            )}
+          </div>
+          {CampaignAI.campaignIdea&&<div style={{marginTop:8,padding:"8px 12px",background:"#0c2340",borderRadius:5,fontSize:11,color:"#e2e8f0"}}>💡 30-Day Campaign: {CampaignAI.campaignIdea}</div>}
+        </div>
+      )}
+
 
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
