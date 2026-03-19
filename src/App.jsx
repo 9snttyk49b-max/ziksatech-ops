@@ -2095,6 +2095,7 @@ function FinanceControlSystem(props) {
   const { finInvoices, finPayments, apInvoices, vendors, adpRuns, roster, clients, addAudit, authProfile } = props;
 
   const [fcsTab,  setFcsTab]  = useState("dashboard");
+  const [fcsPeriod, setFcsPeriod] = useState("month"); // month | quarter | ytd
   const fmtK  = v => v==null?"—":Math.abs(v)>=1e6?`$${(v/1e6).toFixed(2)}M`:Math.abs(v)>=1e3?`$${(Math.round(v/100)*100/1e3).toFixed(0)}K`:`$${Math.round(v)}`;
   const fmtAmt = v => v==null?"—":v<0?`-$${Math.abs(v).toLocaleString()}`:`$${v.toLocaleString()}`;
   const fmtDate = d => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
@@ -2120,8 +2121,20 @@ function FinanceControlSystem(props) {
   });
 
   // ── Computed Metrics ───────────────────────────────────────────────────────
-  const txRevenue    = transactions.filter(t=>t.type==="credit"&&t.category!=="uncategorized").reduce((s,t)=>s+Math.abs(t.amount),0);
-  const txExpenses   = transactions.filter(t=>t.type==="debit"&&t.category!=="uncategorized").reduce((s,t)=>s+Math.abs(t.amount),0);
+  // Period filter
+  const now = new Date();
+  const periodFilter = (tx) => {
+    const d = new Date(tx.date);
+    if(fcsPeriod==="month") return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    if(fcsPeriod==="quarter") {
+      const q = Math.floor(now.getMonth()/3);
+      return Math.floor(d.getMonth()/3)===q&&d.getFullYear()===now.getFullYear();
+    }
+    return d.getFullYear()===now.getFullYear(); // ytd
+  };
+  const periodTx = transactions.filter(periodFilter);
+  const txRevenue    = periodTx.filter(t=>t.type==="credit"&&t.category!=="uncategorized").reduce((s,t)=>s+Math.abs(t.amount),0);
+  const txExpenses   = periodTx.filter(t=>t.type==="debit"&&t.category!=="uncategorized").reduce((s,t)=>s+Math.abs(t.amount),0);
   const netProfit    = txRevenue - txExpenses;
   const needsReview  = transactions.filter(t=>t.status==="needs-category"||t.status==="needs-review"||t.status==="needs-receipt").length;
   const uncat        = transactions.filter(t=>t.category==="uncategorized").length;
@@ -2287,7 +2300,12 @@ function FinanceControlSystem(props) {
         <button className="btn bg" style={{fontSize:11}} onClick={()=>setImportModal(true)}>📤 Import Statement</button>
         <button className="btn bg" style={{fontSize:11}} onClick={()=>setFcsTab("tax")}>🧾 Tax Planner</button>
         <button className="btn bg" style={{fontSize:11}} onClick={()=>setFcsTab("cpa-pack")}>📦 CPA Pack</button>
-        <div style={{marginLeft:"auto",fontSize:10,color:"#334155"}}>Last sync: {new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</div>
+        <div style={{display:"flex",gap:4,marginLeft:"auto",alignItems:"center"}}>
+          {[["month","This Month"],["quarter","This Quarter"],["ytd","YTD"]].map(([k,l])=>(
+            <button key={k} className={fcsPeriod===k?"btn bp":"btn bg"} style={{fontSize:10,padding:"3px 8px"}} onClick={()=>setFcsPeriod(k)}>{l}</button>
+          ))}
+          <div style={{fontSize:10,color:"#334155",marginLeft:4}}>Last sync: {new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
+        </div>
       </div>
 
       {/* Import Statement Modal */}
@@ -2308,7 +2326,7 @@ function FinanceControlSystem(props) {
       {/* KPI Row */}}
       <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:16}}>
         {[
-          {l:"Revenue",     v:fmtK(txRevenue),   sub:"Mar 2026",          color:"#34d399", trend:"+12%"},
+          {l:"Revenue",     v:fmtK(txRevenue),   sub:fcsPeriod==="month"?new Date().toLocaleDateString("en-US",{month:"short",year:"numeric"}):fcsPeriod==="quarter"?"Q"+Math.ceil((new Date().getMonth()+1)/3)+" "+new Date().getFullYear():"YTD "+new Date().getFullYear(),          color:"#34d399", trend:"+12%"},
           {l:"Expenses",    v:fmtK(txExpenses),  sub:"categorized",       color:"#f87171", trend:"-3%"},
           {l:"Net Profit",  v:fmtK(netProfit),   sub:`${Math.round(netProfit/Math.max(txRevenue,1)*100)}% margin`, color:netProfit>0?"#4ade80":"#f87171", trend:""},
           {l:"Est. Tax Q1", v:fmtK(currentQ1?.remaining||0), sub:`Due ${currentQ1?.dueDate||"Apr 15"}`, color:(currentQ1?.remaining||0)>0?"#f59e0b":"#34d399", trend:""},
@@ -2400,7 +2418,7 @@ function FinanceControlSystem(props) {
         <div className="section-hdr" style={{marginBottom:10}}>📊 Expense Breakdown — Mar 2026</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {FCS_CATEGORIES.filter(cat=>cat.group!=="Revenue"&&cat.group!=="Review").map(cat=>{
-            const amt = transactions.filter(t=>t.category===cat.id&&t.type==="debit").reduce((s,t)=>s+Math.abs(t.amount),0);
+            const amt = periodTx.filter(t=>t.category===cat.id&&t.type==="debit").reduce((s,t)=>s+Math.abs(t.amount),0);
             if(!amt) return null;
             const pct = Math.round(amt/Math.max(txExpenses,1)*100);
             return (
@@ -24813,9 +24831,9 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
   const allResults = [...moduleResults, ...dataResults];
   if (!q || q.length < 2) return null;
 
-  React.useEffect(() => { setActiveIdx(0); }, [q]);
+  useEffect(() => { setActiveIdx(0); }, [q]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handler = (e) => {
       if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx(i => Math.min(i+1, allResults.length-1)); }
       if (e.key === "ArrowUp")   { e.preventDefault(); setActiveIdx(i => Math.max(i-1, 0)); }
