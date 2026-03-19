@@ -1,20 +1,5 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "NODE_OPTIONS='--max-old-space-size=4096' npm run build",
   "framework": "vite",
-  "headers": [
-    {
-      "source": "/index.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Pragma", "value": "no-cache" },
-        { "key": "Expires", "value": "0" }
-      ]
-    }
-  ],
-  "rewrites": [{"source": "/((?!api/).*)", "destination": "/index.html"}],
-  "functions": {
-    "api/claude.js":   { "maxDuration": 60 },
-    "api/webhook.js":  { "maxDuration": 15 }
-  }
+  "outputDirectory": "dist"
 }
