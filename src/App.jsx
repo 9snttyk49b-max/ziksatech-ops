@@ -31062,6 +31062,34 @@ function ReportBuilder(shared) {
   const [draft,       setDraft]       = useState(null);
   const [sub,         setSub]         = useState("results"); // results | configure
   const [printMsg,    setPrintMsg]    = useState("");
+  const [aiAnalysis,  setAiAnalysis]  = useState(null);
+  const [aiLoading,   setAiLoading]   = useState(false);
+
+  const runAIAnalysis = async () => {
+    if (!activeReport || !source) return;
+    setAiLoading(true); setAiAnalysis(null);
+    const preview = rows.slice(0,20).map(r => activeReport.columns.map(col=>{
+      const field = source.fields.find(f=>f.id===col);
+      return `${field?.label||col}: ${r[col]??'—'}`;
+    }).join(', ')).join('\n');
+    const totalRows = rows.length;
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1500,
+          system:"You are a business analyst for Ziksatech, a SAP consulting firm. Analyze report data and provide executive-level insights.",
+          messages:[{role:"user",content:`Report: "${activeReport.name}" (${totalRows} rows)
+
+Sample data:
+${preview}
+
+Provide: 1) Key finding in one sentence, 2) Top 3 data insights with specific numbers, 3) One recommended action. Keep it concise and specific.`}]
+        })
+      });
+      const data = await resp.json();
+      setAiAnalysis(data.content?.[0]?.text || "No analysis available.");
+    } catch(e) { setAiAnalysis("Analysis error: " + e.message); }
+    setAiLoading(false);
+  };
 
   const activeReport = editMode ? draft : reports.find(r=>r.id===selReportId);
   const source       = sources.find(s=>s.id===activeReport?.sourceId);
@@ -31230,6 +31258,9 @@ function ReportBuilder(shared) {
                   {!editMode&&<>
                     <button className="btn bg" style={{fontSize:11}} onClick={startEdit}>✏ Configure</button>
                     <button className="btn bg" style={{fontSize:11}} onClick={exportCSV}>⬇ CSV</button>
+                    <button className="btn bp" style={{fontSize:11}} onClick={runAIAnalysis} disabled={aiLoading}>
+                      {aiLoading?"⏳ Analyzing...":"🤖 AI Insights"}
+                    </button>
                     <button className="btn bg" style={{fontSize:11}} onClick={printReport}>🖨 PDF</button>
                   </>}
                   {editMode&&<>
@@ -31525,6 +31556,20 @@ function ReportBuilder(shared) {
               )}
             </div>
           )}
+      {/* AI Report Analysis Panel */}
+      {aiAnalysis && (
+        <div style={{position:"fixed",bottom:0,left:210,right:0,zIndex:50,background:"#060d1c",borderTop:"2px solid #0369a1",padding:"14px 24px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",maxWidth:900}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>
+                🤖 AI Report Analysis
+              </div>
+              <div style={{fontSize:12,color:"#e2e8f0",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{aiAnalysis}</div>
+            </div>
+            <button className="btn bg" style={{fontSize:11,marginLeft:16,flexShrink:0}} onClick={()=>setAiAnalysis(null)}>✕ Close</button>
+          </div>
+        </div>
+      )}
         </div>
       </div>
     </div>
@@ -43849,11 +43894,30 @@ function AICOODashboard({ roster, clients, finInvoices, finPayments, crmDeals,
   tsHours, projects, proposals, benefits, candidates, finExpenses, authProfile }) {
 
   const [loading, setLoading] = useState(false);
-  const [insight,  setInsight]  = useState(null);
+  const [insight,  setInsight]  = useState(() => {
+    // Restore today's cached brief from localStorage
+    try {
+      const cached = JSON.parse(localStorage.getItem("zt-aicoo-cache") || "null");
+      if (cached && cached._date === new Date().toDateString()) return cached;
+    } catch {}
+    return null;
+  });
   const [lastRun,  setLastRun]  = useState(null);
   const [tab, setTab] = useState("decisions"); // decisions | signals | forecast
 
   // Build a compact data digest for the AI
+  // Auto-run AI COO on mount if no cached brief for today
+  useEffect(() => {
+    if (!insight && !loading) {
+      const cached = (() => { try { return JSON.parse(localStorage.getItem("zt-aicoo-cache")||"null"); } catch { return null; } })();
+      if (!cached || cached._date !== new Date().toDateString()) {
+        // Auto-run after 2 seconds (let data load first)
+        const t = setTimeout(runAICOO, 2000);
+        return () => clearTimeout(t);
+      }
+    }
+  }, []); // eslint-disable-line
+
   const buildDigest = () => {
     const today = new Date();
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -43956,8 +44020,11 @@ Respond ONLY with this exact JSON (no markdown, no backticks):
       const data = await resp.json();
       const text = data.content?.[0]?.text || "";
       const parsed = extractJSON(text);
-      setInsight({ ...parsed, digest, generatedAt: new Date().toLocaleTimeString() });
+      const insightData = { ...parsed, digest, generatedAt: new Date().toLocaleTimeString(), _date: new Date().toDateString() };
+      setInsight(insightData);
       setLastRun(new Date());
+      // Cache for today so it auto-loads on next visit
+      try { localStorage.setItem("zt-aicoo-cache", JSON.stringify(insightData)); } catch {}
     } catch(e) {
       setInsight({ error: "Failed to generate insights. " + e.message });
     }
