@@ -1803,7 +1803,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.51 · 93 AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.52 · 94 AI modules</span>
         </div>
         {children}
       </div>
@@ -4192,7 +4192,7 @@ export default function ZiksatechOps() {
     { id:"wbecert",      label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
     { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Tools"    },
     { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Tools"    },
-    { id:"fcs", label:"Finance Control 💰", icon:ICONS.chart, group:"Finance" },
+    { id:"fcs", label:"Finance Control 💰", icon:ICONS.chart, group:"Naxon OS" },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, jobReqs, setJobReqs, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -5173,7 +5173,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.50 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.52 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
