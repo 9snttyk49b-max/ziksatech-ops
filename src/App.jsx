@@ -12641,6 +12641,25 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
   const [selected, setSelected] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
 
+  const [CRMAccountsAI,     setCRMAccountsAI]     = useState(null);
+  const [CRMAccountsAILoad, setCRMAccountsAILoad] = useState(false);
+  const runCRMAccountsAI = async () => {
+    setCRMAccountsAILoad(true); setCRMAccountsAI(null);
+    const topAccts = crmAccounts.slice(0,8).map(a=>`${a.name}(${a.industry||"?"})`).join(", ");
+    const totalPipeline = crmDeals?.filter(d=>!["closed-won","closed-lost"].includes(d.stage)).reduce((s,d)=>s+(d.value||0),0)||0;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are a B2B account strategy advisor for a SAP consulting firm.",
+          messages:[{role:"user",content:`${crmAccounts.length} accounts. Top: ${topAccts}. Pipeline: $${Math.round(totalPipeline/1000)}K.\nReturn ONLY JSON:\n{"whaleAccount":"biggest strategic account to focus on this week","dormantRisk":"account going quiet that needs outreach","expansionTarget":"best account for upsell and what to pitch","industryInsight":"SAP trend relevant to the top account's industry","quickWin":"fastest path to a new deal from existing accounts"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCRMAccountsAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCRMAccountsAI({error:e.message}); }
+    setCRMAccountsAILoad(false);
+  };
+
   const emptyAcc = { name:"", industry:"", type:"prospect", website:"", phone:"", address:"", annualRevPotential:0, owner:"Manju", health:"green", notes:"" };
   const emptyCon = { accountId:"", name:"", title:"", email:"", phone:"", linkedIn:"", isPrimary:false, notes:"" };
 
@@ -12669,6 +12688,16 @@ function CRMAccounts({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts,
 
   return (
     <div style={{display:"grid",gridTemplateColumns:selAcc?"3fr 2fr":"1fr",gap:16}}>
+      {/* AI Account Intel Panel */}
+      {CRMAccountsAI && !CRMAccountsAI.error && (
+        <div style={{gridColumn:"1 / -1",padding:"10px 14px",marginBottom:10,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8,display:"flex",gap:10,flexWrap:"wrap"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",flexShrink:0}}>🤖 Account Intel</div>
+          {[["🐋 Whale",CRMAccountsAI.whaleAccount,"#34d399"],["⚠️ Dormant",CRMAccountsAI.dormantRisk,"#f87171"],["📈 Expand",CRMAccountsAI.expansionTarget,"#38bdf8"],["⚡ Quick Win",CRMAccountsAI.quickWin,"#f59e0b"]].map(([l,v,col])=>
+            v&&<div key={l} style={{flex:"1 0 120px"}}><div style={{fontSize:8,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:10,color:col}}>{v}</div></div>
+          )}
+          <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setCRMAccountsAI(null)}>✕</button>
+        </div>
+      )}
       <div>
         <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
           {["all","customer","prospect","partner","at-risk"].map(t=>(
