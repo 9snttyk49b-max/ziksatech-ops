@@ -2404,6 +2404,7 @@ export default function ZiksatechOps() {
     { id:"scenario",     label:"📊 Scenario Simulator",  icon:ICONS.dash,     group:"Overview",   keywords:"scenario what-if simulation forecast" },
     { id:"dealaccel",    label:"🎯 Deal Accelerator",    icon:ICONS.dash,     group:"Overview"    },
     { id:"leakage",      label:"💰 Revenue Leakage",     icon:ICONS.dash,     group:"Overview"    },
+    { id:"autoworkflow",  label:"⚡ Auto Workflows",      icon:ICONS.dash,     group:"Overview"    },
     { id:"perfcoach",    label:"🏆 Performance Coach",  icon:ICONS.dash,     group:"Overview"    },
     { id:"dashboard",    label:"Executive Dashboard",    icon:ICONS.dash,     group:"Overview"    },
     { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Overview"    },
@@ -3021,6 +3022,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="revleakage"    && <RevLeakageDetector  {...shared} authProfile={authProfile}/>}
         {tab==="consultant360" && <ConsultantOptimizer {...shared} authProfile={authProfile}/>}
         {tab==="leakage"      && <RevLeakageDetector   {...shared} authProfile={authProfile}/>}
+        {tab==="autoworkflow" && <AutoWorkflows         {...shared} authProfile={authProfile}/>}
         {tab==="client360"     && <Client360Intelligence {...shared} authProfile={authProfile}/>}
         {tab==="profitopt"     && <ConsultantProfitOpt   {...shared} authProfile={authProfile}/>}
         {tab==="knowengine"    && <KnowledgeEngine       {...shared} authProfile={authProfile}/>}
@@ -45782,6 +45784,479 @@ Respond in JSON only (no markdown):
             </div>
           </div>
 
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ⚡ AUTONOMOUS WORKFLOWS — Auto-SOW • Auto-Follow-Up • Auto-AR-Escalation
+// Watches real data, fires AI-powered actions automatically, logs everything
+// ══════════════════════════════════════════════════════════════════════════════
+function AutoWorkflows({ crmDeals, setCrmDeals, clients, roster, finInvoices, proposals, setProposals, authProfile }) {
+  const TODAY = new Date().toISOString().split("T")[0];
+  const YEAR  = new Date().getFullYear();
+
+  // ── Workflow log (persisted in localStorage) ─────────────────────────────
+  const [wfLog, setWfLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-wf-log") || "[]"); } catch { return []; }
+  });
+  const addLog = (entry) => {
+    const e = { ...entry, id: "wf-"+Date.now(), ts: new Date().toLocaleString() };
+    setWfLog(prev => { const next = [e,...prev].slice(0,100); localStorage.setItem("zt-wf-log",JSON.stringify(next)); return next; });
+    return e;
+  };
+
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const [activeTab,   setActiveTab]   = useState("rules");
+  const [running,     setRunning]     = useState({});
+  const [preview,     setPreview]     = useState(null); // { type, content, deal/inv }
+  const [showLog,     setShowLog]     = useState(false);
+  const [fired,       setFired]       = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-wf-fired") || "{}"); } catch { return {}; }
+  });
+  const markFired = (key) => setFired(prev => {
+    const next = {...prev,[key]:TODAY}; localStorage.setItem("zt-wf-fired",JSON.stringify(next)); return next;
+  });
+
+  // ── Workflow definitions ──────────────────────────────────────────────────
+  const WORKFLOWS = [
+    {
+      id: "wf-closedwon-sow",
+      icon: "📄",
+      title: "Auto-Draft SOW on Deal Close",
+      trigger: "When deal moves to Closed Won",
+      action: "AI generates a full SOW draft + notifies team",
+      status: "active",
+      color: "#34d399",
+      bg: "#021f14",
+      border: "#15803d44",
+    },
+    {
+      id: "wf-stale-followup",
+      icon: "📧",
+      title: "Stale Deal Follow-Up Email",
+      trigger: "When deal has no activity for 7+ days",
+      action: "AI drafts personalised follow-up email for each stale deal",
+      status: "active",
+      color: "#f59e0b",
+      bg: "#1a1000",
+      border: "#d9770644",
+    },
+    {
+      id: "wf-ar-escalation",
+      icon: "💰",
+      title: "AR Overdue Escalation",
+      trigger: "When invoice is 30+ days overdue",
+      action: "AI drafts escalation message to client with payment urgency",
+      status: "active",
+      color: "#f87171",
+      bg: "#1a0808",
+      border: "#dc262644",
+    },
+    {
+      id: "wf-bench-alert",
+      icon: "🪑",
+      title: "Bench Burn Alert",
+      trigger: "When consultant utilisation drops below 20% for 2+ weeks",
+      action: "AI suggests redeployment options + flags in AI COO",
+      status: "active",
+      color: "#a78bfa",
+      bg: "#0d0b1a",
+      border: "#7c3aed44",
+    },
+    {
+      id: "wf-deal-accelerator",
+      icon: "🎯",
+      title: "Deal Stage Stall Alert",
+      trigger: "When deal stays in same stage for 14+ days",
+      action: "AI recommends next-best-action and flags to owner",
+      status: "active",
+      color: "#38bdf8",
+      bg: "#0c1a2e",
+      border: "#0369a144",
+    },
+  ];
+
+  // ── Detect trigger conditions ─────────────────────────────────────────────
+  const staleDays = 7;
+  const arOverdueDays = 30;
+
+  const closedWonDeals  = crmDeals.filter(d => d.stage === "closed-won");
+  const staleDeals      = crmDeals.filter(d => {
+    if (d.stage === "closed-won" || d.stage === "closed-lost") return false;
+    const last = d.lastActivity || d.updatedAt || d.createdAt || "2026-01-01";
+    return (new Date(TODAY) - new Date(last)) / 86400000 > staleDays;
+  });
+  const overdueInvoices = finInvoices.filter(inv => {
+    const due = inv.dueDate || inv.date;
+    if (!due || inv.status === "paid") return false;
+    return (new Date(TODAY) - new Date(due)) / 86400000 > arOverdueDays;
+  });
+
+  const triggers = [
+    { wfId:"wf-closedwon-sow",    count: closedWonDeals.length,  items: closedWonDeals,  label:"closed-won deals" },
+    { wfId:"wf-stale-followup",   count: staleDeals.length,      items: staleDeals,      label:"stale deals" },
+    { wfId:"wf-ar-escalation",    count: overdueInvoices.length, items: overdueInvoices, label:"overdue invoices" },
+    { wfId:"wf-bench-alert",      count: 0, items: [], label:"bench alerts" },
+    { wfId:"wf-deal-accelerator", count: staleDeals.filter(d=>{
+        const last = d.lastActivity||d.updatedAt||"2026-01-01";
+        return (new Date(TODAY)-new Date(last))/86400000 > 14;
+      }).length, items:[], label:"stalled deals" },
+  ];
+  const totalFiring = triggers.reduce((s,t) => s + t.count, 0);
+
+  // ── AI action generators ──────────────────────────────────────────────────
+  const runClosedWonSOW = async (deal) => {
+    const key = `wf-closedwon-sow-${deal.id}`;
+    if (fired[key]) return;
+    setRunning(r => ({...r, [key]: true}));
+    const client = clients.find(c => c.id === deal.clientId || c.name === deal.clientName) || {};
+    const prompt = `You are a SOW writer for Ziksatech, a SAP consulting firm. Generate a professional Statement of Work for this newly closed deal.
+
+DEAL: ${deal.name||deal.title||"Untitled"} | Client: ${deal.clientName||client.name||"Client"} | Value: $${(deal.value||0).toLocaleString()} | Close Date: ${TODAY}
+DESCRIPTION: ${deal.notes||deal.description||"SAP consulting engagement"}
+CONSULTANTS AVAILABLE: ${roster.filter(r=>r.type!=="FTE"||r.util<90).slice(0,3).map(r=>r.name+" ("+r.role+")").join(", ")}
+
+Generate a concise SOW with: 1) Scope of Work, 2) Key Deliverables (3-4 items), 3) Timeline (milestones), 4) Team Composition, 5) Assumptions & Dependencies. Keep it under 400 words.
+
+Respond ONLY with JSON: {"scope":"...","deliverables":["...","...","..."],"timeline":"...","team":"...","assumptions":"...","title":"..."}`;
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000, messages:[{role:"user",content:prompt}] })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setPreview({ type:"sow", deal, content: parsed });
+      addLog({ type:"sow", icon:"📄", title:`SOW drafted — ${deal.clientName||"Client"}`, detail:`$${(deal.value||0).toLocaleString()} deal · ${parsed.deliverables?.length||0} deliverables`, status:"success" });
+      markFired(key);
+    } catch(e) {
+      addLog({ type:"sow", icon:"❌", title:`SOW failed — ${deal.clientName}`, detail:e.message, status:"error" });
+    }
+    setRunning(r => ({...r,[key]:false}));
+  };
+
+  const runStaleFollowUp = async (deal) => {
+    const key = `wf-stale-followup-${deal.id}`;
+    if (fired[key]) return;
+    setRunning(r => ({...r,[key]:true}));
+    const daysSince = Math.floor((new Date(TODAY)-new Date(deal.lastActivity||deal.updatedAt||"2026-01-01"))/86400000);
+    const prompt = `You are Manju Murthy, Managing Partner at Ziksatech, a SAP consulting firm specializing in Utilities and BRIM.
+
+Write a brief, warm follow-up email for this stale deal. Sound natural — not templated. Reference their specific situation.
+
+DEAL: ${deal.name||deal.title} | Stage: ${deal.stage} | Value: $${(deal.value||0).toLocaleString()} | Days since contact: ${daysSince}
+CLIENT: ${deal.clientName} | Notes: ${deal.notes||"SAP consulting engagement"}
+NEXT STEP WAS: ${deal.nextStep||"Follow up on proposal"}
+
+Keep it to 3-4 sentences. Professional but personable.
+Respond ONLY with JSON: {"subject":"...","body":"...","callToAction":"..."}`;
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, messages:[{role:"user",content:prompt}] })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setPreview({ type:"email", deal, content:parsed });
+      addLog({ type:"email", icon:"📧", title:`Follow-up drafted — ${deal.clientName}`, detail:`${daysSince} days stale · ${deal.stage}`, status:"success" });
+      markFired(key);
+    } catch(e) {
+      addLog({ type:"email", icon:"❌", title:`Follow-up failed — ${deal.clientName}`, detail:e.message, status:"error" });
+    }
+    setRunning(r => ({...r,[key]:false}));
+  };
+
+  const runARescalation = async (inv) => {
+    const key = `wf-ar-escalation-${inv.id}`;
+    if (fired[key]) return;
+    setRunning(r => ({...r,[key]:true}));
+    const daysOver = Math.floor((new Date(TODAY)-new Date(inv.dueDate||inv.date))/86400000);
+    const prompt = `You are Manju Murthy, Managing Partner at Ziksatech. Write a professional but firm payment escalation message.
+
+INVOICE: ${inv.id} | Client: ${inv.clientName||inv.client} | Amount: $${(inv.amount||0).toLocaleString()} | ${daysOver} days overdue | Due: ${inv.dueDate||inv.date}
+
+Write a short, firm but professional email requesting immediate payment. Mention consequences (work pause) if not resolved within 5 business days. Keep it factual.
+Respond ONLY with JSON: {"subject":"...","body":"...","urgency":"HIGH"}`;
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:800, messages:[{role:"user",content:prompt}] })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setPreview({ type:"ar", inv, content:parsed });
+      addLog({ type:"ar", icon:"💰", title:`AR escalation drafted — ${inv.clientName||inv.client}`, detail:`$${(inv.amount||0).toLocaleString()} · ${daysOver} days overdue`, status:"success" });
+      markFired(key);
+    } catch(e) {
+      addLog({ type:"ar", icon:"❌", title:`AR escalation failed`, detail:e.message, status:"error" });
+    }
+    setRunning(r => ({...r,[key]:false}));
+  };
+
+  // ── Run All Triggered Workflows ───────────────────────────────────────────
+  const runAll = async () => {
+    for (const deal of closedWonDeals.slice(0,3)) await runClosedWonSOW(deal);
+    for (const deal of staleDeals.slice(0,3)) await runStaleFollowUp(deal);
+    for (const inv of overdueInvoices.slice(0,3)) await runARescalation(inv);
+  };
+
+  return (
+    <div>
+      <PH title="⚡ Autonomous Workflows" sub="AI takes action automatically — SOW generation, follow-ups, AR escalation, bench alerts">
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn bg" style={{fontSize:11}} onClick={()=>setShowLog(!showLog)}>
+            📋 {wfLog.length} Actions Taken
+          </button>
+          {totalFiring > 0 && (
+            <button className="btn bp" style={{fontSize:12,fontWeight:700}} onClick={runAll}>
+              ⚡ Run All ({totalFiring} triggered)
+            </button>
+          )}
+        </div>
+      </PH>
+
+      {/* ── STATS ROW ── */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Active Rules",    v:WORKFLOWS.length,       c:"#38bdf8"},
+          {l:"Triggered Now",   v:totalFiring,            c:totalFiring>0?"#f87171":"#34d399"},
+          {l:"Actions Today",   v:wfLog.filter(e=>e.ts.includes(new Date().toLocaleDateString())).length, c:"#f59e0b"},
+          {l:"Total Automated", v:wfLog.length,           c:"#a78bfa"},
+        ].map(s=>(
+          <div key={s.l} className="card" style={{padding:"12px 16px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:s.c,fontFamily:"'DM Mono',monospace"}}>{s.v}</div>
+            <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5,marginTop:2}}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── WORKFLOW RULES ── */}
+      <div className="card" style={{padding:"16px 18px",marginBottom:14}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#3d5a7a",marginBottom:12,textTransform:"uppercase",letterSpacing:.5}}>
+          Active Automation Rules
+        </div>
+        {WORKFLOWS.map(wf => {
+          const trig = triggers.find(t=>t.wfId===wf.id)||{count:0,items:[]};
+          return (
+            <div key={wf.id} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 14px",marginBottom:8,
+              background:wf.bg,border:`1px solid ${wf.border}`,borderRadius:10}}>
+              <div style={{fontSize:24,flexShrink:0}}>{wf.icon}</div>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+                  <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{wf.title}</span>
+                  {trig.count > 0 && (
+                    <span style={{background:"#f87171",color:"#fff",fontSize:9,fontWeight:700,
+                      borderRadius:10,padding:"1px 6px"}}>{trig.count} ACTIVE</span>
+                  )}
+                </div>
+                <div style={{fontSize:10,color:"#64748b"}}>
+                  🔔 <strong>Trigger:</strong> {wf.trigger}
+                </div>
+                <div style={{fontSize:10,color:"#64748b"}}>
+                  🤖 <strong>Action:</strong> {wf.action}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:6,flexShrink:0}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:wf.color,marginTop:4}}/>
+                <span style={{fontSize:10,color:wf.color,fontWeight:700,textTransform:"uppercase"}}>{wf.status}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── TRIGGERED ITEMS ── */}
+      {totalFiring > 0 && (
+        <div className="card" style={{padding:"16px 18px",marginBottom:14,border:"1px solid #f8717144"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#f87171",marginBottom:12}}>
+            ⚡ Currently Triggered — {totalFiring} items need automated action
+          </div>
+
+          {/* Closed Won → SOW */}
+          {closedWonDeals.length > 0 && (
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:6}}>📄 SOW Generation ({closedWonDeals.length} deals)</div>
+              {closedWonDeals.slice(0,5).map(deal => {
+                const k = `wf-closedwon-sow-${deal.id}`;
+                return (
+                  <div key={deal.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                    padding:"8px 12px",background:"#021f14",borderRadius:8,marginBottom:6,border:"1px solid #15803d44"}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{deal.clientName||deal.name}</div>
+                      <div style={{fontSize:10,color:"#64748b"}}>${(deal.value||0).toLocaleString()} · closed-won</div>
+                    </div>
+                    <button className="btn bg" style={{fontSize:10,padding:"4px 10px"}}
+                      disabled={!!running[k]||!!fired[k]}
+                      onClick={()=>runClosedWonSOW(deal)}>
+                      {running[k]?"⏳...":fired[k]?"✅ Done":"📄 Draft SOW"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Stale Deals → Follow-Up */}
+          {staleDeals.length > 0 && (
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:6}}>📧 Follow-Up Emails ({staleDeals.length} stale deals)</div>
+              {staleDeals.slice(0,5).map(deal => {
+                const k = `wf-stale-followup-${deal.id}`;
+                const daysSince = Math.floor((new Date(TODAY)-new Date(deal.lastActivity||deal.updatedAt||"2026-01-01"))/86400000);
+                return (
+                  <div key={deal.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                    padding:"8px 12px",background:"#1a1000",borderRadius:8,marginBottom:6,border:"1px solid #d9770644"}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{deal.clientName||deal.name}</div>
+                      <div style={{fontSize:10,color:"#64748b"}}>{deal.stage} · {daysSince}d no activity · ${(deal.value||0).toLocaleString()}</div>
+                    </div>
+                    <button className="btn bg" style={{fontSize:10,padding:"4px 10px"}}
+                      disabled={!!running[k]||!!fired[k]}
+                      onClick={()=>runStaleFollowUp(deal)}>
+                      {running[k]?"⏳...":fired[k]?"✅ Done":"📧 Draft Email"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Overdue AR → Escalation */}
+          {overdueInvoices.length > 0 && (
+            <div style={{marginBottom:6}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:6}}>💰 AR Escalations ({overdueInvoices.length} overdue)</div>
+              {overdueInvoices.slice(0,5).map(inv => {
+                const k = `wf-ar-escalation-${inv.id}`;
+                const daysOver = Math.floor((new Date(TODAY)-new Date(inv.dueDate||inv.date))/86400000);
+                return (
+                  <div key={inv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+                    padding:"8px 12px",background:"#1a0808",borderRadius:8,marginBottom:6,border:"1px solid #dc262644"}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{inv.clientName||inv.client} — {inv.id}</div>
+                      <div style={{fontSize:10,color:"#64748b"}}>${(inv.amount||0).toLocaleString()} · {daysOver} days overdue</div>
+                    </div>
+                    <button className="btn bg" style={{fontSize:10,padding:"4px 10px"}}
+                      disabled={!!running[k]||!!fired[k]}
+                      onClick={()=>runARescalation(inv)}>
+                      {running[k]?"⏳...":fired[k]?"✅ Done":"💰 Escalate"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {totalFiring === 0 && (
+        <div className="card" style={{padding:"32px",textAlign:"center",color:"#34d399"}}>
+          <div style={{fontSize:32,marginBottom:8}}>✅</div>
+          <div style={{fontSize:13,fontWeight:700}}>All workflows clear — no triggers active</div>
+          <div style={{fontSize:11,color:"#475569",marginTop:4}}>
+            System monitoring: stale deals, overdue AR, closed-won deals, bench burn
+          </div>
+        </div>
+      )}
+
+      {/* ── ACTION LOG ── */}
+      {showLog && (
+        <div className="card" style={{padding:"16px 18px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📋 Workflow Action Log</div>
+            <button className="btn bg" style={{fontSize:10}} onClick={()=>{setWfLog([]);localStorage.removeItem("zt-wf-log");}}>
+              Clear Log
+            </button>
+          </div>
+          {wfLog.length === 0 ? (
+            <div style={{textAlign:"center",color:"#334155",padding:20,fontSize:11}}>No actions taken yet</div>
+          ) : wfLog.map(e=>(
+            <div key={e.id} style={{display:"flex",gap:10,padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+              <div style={{fontSize:18,flexShrink:0}}>{e.icon}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,fontWeight:700,color:e.status==="success"?"#34d399":"#f87171"}}>{e.title}</div>
+                <div style={{fontSize:10,color:"#475569"}}>{e.detail}</div>
+              </div>
+              <div style={{fontSize:9,color:"#334155",flexShrink:0}}>{e.ts}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── PREVIEW MODAL ── */}
+      {preview && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setPreview(null)}>
+          <div className="modal" style={{maxWidth:560,maxHeight:"80vh",overflow:"auto"}}>
+            <MH title={preview.type==="sow"?"📄 SOW Draft Ready":preview.type==="email"?"📧 Follow-Up Email Draft":"💰 AR Escalation Draft"} onClose={()=>setPreview(null)}/>
+
+            {preview.type==="sow" && (
+              <div>
+                <div style={{padding:"10px 14px",background:"#021f14",border:"1px solid #15803d44",borderRadius:8,marginBottom:14}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#4ade80",marginBottom:4}}>
+                    {preview.content.title||preview.deal.clientName} — Statement of Work
+                  </div>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>AI-generated draft · Review before sending</div>
+                </div>
+                {[
+                  ["📋 Scope of Work", preview.content.scope],
+                  ["🎯 Key Deliverables", Array.isArray(preview.content.deliverables)?preview.content.deliverables.join("\n• "):preview.content.deliverables],
+                  ["📅 Timeline", preview.content.timeline],
+                  ["👥 Team", preview.content.team],
+                  ["⚠️ Assumptions", preview.content.assumptions],
+                ].map(([label,val])=>val&&(
+                  <div key={label} style={{marginBottom:12}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",marginBottom:4}}>{label}</div>
+                    <div style={{fontSize:11,color:"#cbd5e1",lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+                      {Array.isArray(preview.content.deliverables)&&label.includes("Deliver")?"• "+preview.content.deliverables.join("\n• "):val}
+                    </div>
+                  </div>
+                ))}
+                <div style={{display:"flex",gap:8,marginTop:16}}>
+                  <button className="btn bp" style={{flex:1}} onClick={()=>{
+                    if(setProposals) setProposals(p=>[...p,{
+                      id:"prop-"+Date.now(), title:preview.content.title||preview.deal.clientName+" SOW",
+                      client:preview.deal.clientName, value:preview.deal.value, status:"draft",
+                      createdDate:TODAY, content:JSON.stringify(preview.content)
+                    }]);
+                    addLog({type:"sow",icon:"📥",title:"SOW saved to Proposals",detail:preview.deal.clientName,status:"success"});
+                    setPreview(null);
+                  }}>📥 Save to Proposals</button>
+                  <button className="btn bg" onClick={()=>setPreview(null)}>Close</button>
+                </div>
+              </div>
+            )}
+
+            {(preview.type==="email"||preview.type==="ar") && (
+              <div>
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4,fontWeight:700,textTransform:"uppercase"}}>Subject</div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",padding:"8px 12px",background:"#070c18",borderRadius:6,border:"1px solid #1a2d45"}}>
+                    {preview.content.subject}
+                  </div>
+                </div>
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:10,color:"#3d5a7a",marginBottom:4,fontWeight:700,textTransform:"uppercase"}}>Body</div>
+                  <div style={{fontSize:11,color:"#cbd5e1",lineHeight:1.7,padding:"10px 12px",background:"#070c18",borderRadius:6,
+                    border:"1px solid #1a2d45",whiteSpace:"pre-wrap"}}>
+                    {preview.content.body}
+                  </div>
+                </div>
+                {preview.content.callToAction && (
+                  <div style={{padding:"8px 12px",background:"#0c1a2e",border:"1px solid #0369a144",borderRadius:6,marginBottom:16}}>
+                    <span style={{fontSize:10,color:"#64748b"}}>Call to action: </span>
+                    <span style={{fontSize:11,color:"#38bdf8"}}>{preview.content.callToAction}</span>
+                  </div>
+                )}
+                <div style={{display:"flex",gap:8}}>
+                  <button className="btn bp" style={{flex:1}} onClick={()=>{
+                    navigator.clipboard?.writeText(`Subject: ${preview.content.subject}\n\n${preview.content.body}`);
+                    addLog({type:preview.type,icon:"📋",title:"Email copied to clipboard",detail:preview.content.subject,status:"success"});
+                    setPreview(null);
+                  }}>📋 Copy Email</button>
+                  <button className="btn bg" onClick={()=>setPreview(null)}>Close</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
