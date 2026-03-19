@@ -108,6 +108,7 @@ const RBAC = {
   pdfexport:    ["super_admin","admin","accounts"],
   // ── Overview AI modules (Phase 1-3) ────────────────────────────────────────
   autoworkflow: ["super_admin","admin"],
+  bdengine:     ["super_admin","admin"],
   perfcoach:    ["super_admin","admin"],
   scenario:     ["super_admin","admin","accounts"],
   knowengine:   ["super_admin","admin"],
@@ -2372,6 +2373,7 @@ export default function ZiksatechOps() {
     { id:"scenario",     label:"📊 Scenario Simulator",  icon:ICONS.dash,     group:"Overview",   keywords:"scenario what-if simulation forecast" },
     { id:"dealaccel",    label:"🎯 Deal Accelerator",    icon:ICONS.dash,     group:"Overview"    },
     { id:"leakage",      label:"💰 Revenue Leakage",     icon:ICONS.dash,     group:"Overview"    },
+    { id:"bdengine",      label:"🚀 BD Engine",           icon:ICONS.dash,     group:"Overview"    },
     { id:"autoworkflow",  label:"⚡ Auto Workflows",      icon:ICONS.dash,     group:"Overview"    },
     { id:"perfcoach",    label:"🏆 Performance Coach",  icon:ICONS.dash,     group:"Overview"    },
     { id:"dashboard",    label:"Executive Dashboard",    icon:ICONS.dash,     group:"Overview"    },
@@ -3008,6 +3010,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="revleakage"    && <RevLeakageDetector  {...shared} authProfile={authProfile}/>}
         {tab==="consultant360" && <ConsultantOptimizer {...shared} authProfile={authProfile}/>}
         {tab==="leakage"      && <RevLeakageDetector   {...shared} authProfile={authProfile}/>}
+        {tab==="bdengine"     && <BDEngine             {...shared} authProfile={authProfile}/>}
         {tab==="autoworkflow" && <AutoWorkflows         {...shared} authProfile={authProfile}/>}
         {tab==="client360"     && <Client360Intelligence {...shared} authProfile={authProfile}/>}
         {tab==="profitopt"     && <ConsultantProfitOpt   {...shared} authProfile={authProfile}/>}
@@ -47343,6 +47346,836 @@ Respond ONLY with JSON: {"subject":"...","body":"...","urgency":"HIGH"}`;
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 🚀 BD ENGINE — Revenue Machine
+// Pipeline Command Center · Target Accounts · Contact Coverage · Outreach
+// Opportunity Builder · Deal Momentum · Weekly AI Execution Plan
+// ══════════════════════════════════════════════════════════════════════════════
+
+const BD_ACCOUNTS_DEFAULT = [
+  // Tier 1 — Must Target First
+  { id:"bda1",  name:"Southern California Gas Company", industry:"Utilities",   tier:1, revenue:4200, sap:["IS-U","BRIM"],      wbe:"High",   vendors:["Accenture","IBM"],        relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda2",  name:"Pacific Gas & Electric",          industry:"Utilities",   tier:1, revenue:8100, sap:["IS-U","S/4HANA"],   wbe:"High",   vendors:["Deloitte","Accenture"],   relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda3",  name:"Duke Energy",                     industry:"Utilities",   tier:1, revenue:9100, sap:["IS-U","BRIM"],      wbe:"High",   vendors:["IBM","Capgemini"],        relScore:10, coverage:1, status:"Warm",   lastActivity:"2026-01-15" },
+  { id:"bda4",  name:"Exelon Corporation",              industry:"Utilities",   tier:1, revenue:6200, sap:["IS-U","S/4HANA"],   wbe:"High",   vendors:["Accenture","Deloitte"],   relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda5",  name:"NextEra Energy",                  industry:"Utilities",   tier:1, revenue:7300, sap:["BRIM","SuccFac"],   wbe:"Medium", vendors:["IBM"],                    relScore:20, coverage:2, status:"Warm",   lastActivity:"2026-02-20" },
+  { id:"bda6",  name:"Dominion Energy",                 industry:"Utilities",   tier:1, revenue:5800, sap:["IS-U","MDG"],       wbe:"High",   vendors:["Deloitte","Capgemini"],   relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda7",  name:"American Electric Power",         industry:"Utilities",   tier:1, revenue:5200, sap:["IS-U","BRIM"],      wbe:"High",   vendors:["Accenture"],              relScore:5,  coverage:1, status:"Cold",   lastActivity:"2025-12-10" },
+  { id:"bda8",  name:"Xcel Energy",                     industry:"Utilities",   tier:1, revenue:3900, sap:["IS-U","S/4HANA"],   wbe:"High",   vendors:["IBM","Wipro"],            relScore:30, coverage:3, status:"Active", lastActivity:"2026-03-01" },
+  { id:"bda9",  name:"Sempra Energy",                   industry:"Utilities",   tier:1, revenue:5500, sap:["IS-U","BRIM"],      wbe:"High",   vendors:["Deloitte"],               relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda10", name:"Entergy Corporation",             industry:"Utilities",   tier:1, revenue:4100, sap:["IS-U","MDG"],       wbe:"Medium", vendors:["Accenture","IBM"],        relScore:15, coverage:2, status:"Warm",   lastActivity:"2026-02-05" },
+  // Tier 2 — Strong Opportunities
+  { id:"bda11", name:"CenterPoint Energy",              industry:"Utilities",   tier:2, revenue:3200, sap:["IS-U","BRIM"],      wbe:"High",   vendors:["IBM"],                    relScore:25, coverage:2, status:"Active", lastActivity:"2026-03-10" },
+  { id:"bda12", name:"Con Edison",                      industry:"Utilities",   tier:2, revenue:4800, sap:["IS-U","S/4HANA"],   wbe:"High",   vendors:["Deloitte","Capgemini"],   relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda13", name:"Public Service Enterprise Group", industry:"Utilities",   tier:2, revenue:3600, sap:["IS-U","BRIM"],      wbe:"Medium", vendors:["Accenture"],              relScore:10, coverage:1, status:"Warm",   lastActivity:"2026-01-30" },
+  { id:"bda14", name:"Eversource Energy",               industry:"Utilities",   tier:2, revenue:2900, sap:["IS-U","SuccFac"],   wbe:"High",   vendors:["IBM","Wipro"],            relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda15", name:"National Grid",                   industry:"Utilities",   tier:2, revenue:3100, sap:["IS-U","MDG"],       wbe:"High",   vendors:["Capgemini","Deloitte"],   relScore:40, coverage:4, status:"Opportunity", lastActivity:"2026-03-14" },
+  { id:"bda16", name:"Avangrid",                        industry:"Utilities",   tier:2, revenue:2400, sap:["BRIM","S/4HANA"],   wbe:"High",   vendors:["IBM"],                    relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda17", name:"AES Corporation",                 industry:"Energy",      tier:2, revenue:3800, sap:["IS-U","BRIM"],      wbe:"Medium", vendors:["Deloitte"],               relScore:5,  coverage:1, status:"Cold",   lastActivity:"2025-11-20" },
+  { id:"bda18", name:"NRG Energy",                      industry:"Energy",      tier:2, revenue:2800, sap:["S/4HANA","MDG"],    wbe:"Medium", vendors:["Accenture","IBM"],        relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+  { id:"bda19", name:"FirstEnergy",                     industry:"Utilities",   tier:2, revenue:3400, sap:["IS-U","BRIM"],      wbe:"High",   vendors:["Capgemini"],              relScore:20, coverage:2, status:"Warm",   lastActivity:"2026-02-14" },
+  { id:"bda20", name:"Evergy",                          industry:"Utilities",   tier:2, revenue:2100, sap:["IS-U","SuccFac"],   wbe:"High",   vendors:["IBM","Wipro"],            relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
+];
+
+const BD_CONTACTS_DEFAULT = [
+  { id:"bdc1",  accountId:"bda8", name:"Sarah Mitchell",  title:"CIO",                     role:"decision",   influence:95, relStrength:60, lastTouch:"2026-03-01", engagement:75, email:"s.mitchell@xcel.com" },
+  { id:"bdc2",  accountId:"bda8", name:"James Horton",    title:"VP IT Applications",      role:"decision",   influence:80, relStrength:45, lastTouch:"2026-02-20", engagement:50, email:"j.horton@xcel.com" },
+  { id:"bdc3",  accountId:"bda8", name:"Priya Nair",      title:"Director SAP",            role:"influencer", influence:70, relStrength:70, lastTouch:"2026-03-10", engagement:85, email:"p.nair@xcel.com" },
+  { id:"bdc4",  accountId:"bda15", name:"Tom Wheeler",    title:"VP Digital Transformation", role:"decision", influence:90, relStrength:50, lastTouch:"2026-03-14", engagement:80, email:"t.wheeler@nationalgrid.com" },
+  { id:"bdc5",  accountId:"bda15", name:"Lisa Chen",      title:"Director BRIM",           role:"influencer", influence:75, relStrength:65, lastTouch:"2026-03-12", engagement:90, email:"l.chen@nationalgrid.com" },
+  { id:"bdc6",  accountId:"bda15", name:"Mark Davis",     title:"IT Procurement Manager",  role:"blocker",    influence:60, relStrength:20, lastTouch:"2026-02-28", engagement:30, email:"m.davis@nationalgrid.com" },
+  { id:"bdc7",  accountId:"bda15", name:"Anna Rodriguez", title:"Director Data Governance", role:"influencer", influence:65, relStrength:40, lastTouch:"2026-03-05", engagement:55, email:"a.rodriguez@nationalgrid.com" },
+  { id:"bdc8",  accountId:"bda11", name:"Kevin Park",     title:"CTO",                     role:"decision",   influence:92, relStrength:55, lastTouch:"2026-03-10", engagement:70, email:"k.park@centerpointenergy.com" },
+  { id:"bdc9",  accountId:"bda11", name:"Diane Torres",   title:"Head of SAP COE",         role:"influencer", influence:80, relStrength:75, lastTouch:"2026-03-08", engagement:88, email:"d.torres@centerpointenergy.com" },
+  { id:"bdc10", accountId:"bda5",  name:"Robert Kim",     title:"VP IT",                   role:"decision",   influence:85, relStrength:35, lastTouch:"2026-02-20", engagement:45, email:"r.kim@nextera.com" },
+  { id:"bdc11", accountId:"bda5",  name:"Paula Grant",    title:"SAP Program Director",    role:"influencer", influence:70, relStrength:40, lastTouch:"2026-02-18", engagement:50, email:"p.grant@nextera.com" },
+  { id:"bdc12", accountId:"bda3",  name:"Michael Zhang",  title:"CIO",                     role:"decision",   influence:95, relStrength:25, lastTouch:"2026-01-15", engagement:30, email:"m.zhang@duke-energy.com" },
+];
+
+const BD_OUTREACH_DEFAULT = [
+  { id:"bdo1",  contactId:"bdc3",  accountId:"bda8",  type:"LinkedIn Message", date:"2026-03-10", response:"Replied",       nextAction:"Schedule call", nextDate:"2026-03-20", status:"Engaged" },
+  { id:"bdo2",  contactId:"bdc1",  accountId:"bda8",  type:"Email",            date:"2026-03-01", response:"Opened",        nextAction:"Follow up",     nextDate:"2026-03-18", status:"No Response" },
+  { id:"bdo3",  contactId:"bdc4",  accountId:"bda15", type:"LinkedIn Message", date:"2026-03-14", response:"Replied",       nextAction:"Book demo",     nextDate:"2026-03-22", status:"Meeting" },
+  { id:"bdo4",  contactId:"bdc5",  accountId:"bda15", type:"Email",            date:"2026-03-12", response:"Replied",       nextAction:"Send proposal", nextDate:"2026-03-19", status:"Engaged" },
+  { id:"bdo5",  contactId:"bdc9",  accountId:"bda11", type:"Phone Call",       date:"2026-03-08", response:"Connected",     nextAction:"Send deck",     nextDate:"2026-03-18", status:"Engaged" },
+  { id:"bdo6",  contactId:"bdc10", accountId:"bda5",  type:"LinkedIn Message", date:"2026-02-20", response:"No Response",   nextAction:"Try email",     nextDate:"2026-03-20", status:"No Response" },
+  { id:"bdo7",  contactId:"bdc2",  accountId:"bda8",  type:"Email",            date:"2026-02-20", response:"No Response",   nextAction:"Call",          nextDate:"2026-03-19", status:"No Response" },
+  { id:"bdo8",  contactId:"bdc6",  accountId:"bda15", type:"Email",            date:"2026-02-28", response:"Bounced",       nextAction:"Get new email", nextDate:"2026-03-18", status:"No Response" },
+];
+
+const BD_MEETINGS_DEFAULT = [
+  { id:"bdm1", accountId:"bda8",  contactId:"bdc3", date:"2026-03-15", outcome:"Very interested in BRIM modernization",    opportunityCreated:true,  dealId:"", value:420000 },
+  { id:"bdm2", accountId:"bda15", contactId:"bdc4", date:"2026-03-18", outcome:"Wants proposal for IS-U optimization",     opportunityCreated:true,  dealId:"", value:350000 },
+  { id:"bdm3", accountId:"bda11", contactId:"bdc8", date:"2026-03-10", outcome:"Early conversation — scheduling follow-up", opportunityCreated:false, dealId:"", value:0 },
+];
+
+function BDEngine({ crmDeals, roster, clients, finInvoices, authProfile }) {
+  const TODAY = new Date().toISOString().split("T")[0];
+  const fmtK  = n => n>=1000000?"$"+Math.round(n/1000000*10)/10+"M":n>=1000?"$"+Math.round(n/1000)+"K":"$"+Math.round(n);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [section,    setSection]    = useState("pipeline");
+  const [accounts,   setAccounts]   = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-bd-accounts")||"null") || BD_ACCOUNTS_DEFAULT; } catch { return BD_ACCOUNTS_DEFAULT; }
+  });
+  const [contacts,   setContacts]   = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-bd-contacts")||"null") || BD_CONTACTS_DEFAULT; } catch { return BD_CONTACTS_DEFAULT; }
+  });
+  const [outreach,   setOutreach]   = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-bd-outreach")||"null") || BD_OUTREACH_DEFAULT; } catch { return BD_OUTREACH_DEFAULT; }
+  });
+  const [meetings,   setMeetings]   = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-bd-meetings")||"null") || BD_MEETINGS_DEFAULT; } catch { return BD_MEETINGS_DEFAULT; }
+  });
+
+  const save = (key, data) => { try { localStorage.setItem(key, JSON.stringify(data)); } catch {} };
+
+  const [selAccount, setSelAccount] = useState("bda15");
+  const [aiPlan,     setAiPlan]     = useState(null);
+  const [aiInsight,  setAiInsight]  = useState(null);
+  const [aiLoading,  setAiLoading]  = useState(false);
+  const [addModal,   setAddModal]   = useState(null); // "account" | "contact" | "outreach" | "meeting"
+  const [newForm,    setNewForm]    = useState({});
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [tierFilter,   setTierFilter]   = useState("all");
+
+  // ── Computed metrics ───────────────────────────────────────────────────────
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const pipelineVal = crmDeals.filter(d=>!["closed-won","closed_won","closed-lost","closed_lost"].includes(d.stage)).reduce((s,d)=>s+(d.value||0),0);
+  const pipelineTarget = 5000000; // $5M target
+  const mtgThisWeek = meetings.filter(m=>{
+    const d = new Date(m.date); const now = new Date();
+    const weekStart = new Date(now); weekStart.setDate(now.getDate()-now.getDay());
+    return d >= weekStart && d <= now;
+  }).length;
+  const wonDeals   = crmDeals.filter(d=>d.stage==="closed-won"||d.stage==="closed_won");
+  const closedAll  = crmDeals.filter(d=>["closed-won","closed_won","closed-lost","closed_lost"].includes(d.stage));
+  const winRate    = closedAll.length>0?Math.round(wonDeals.length/closedAll.length*100):0;
+  const avgDeal    = wonDeals.length>0?Math.round(wonDeals.reduce((s,d)=>s+(d.value||0),0)/wonDeals.length):0;
+  const oppsCreated = meetings.filter(m=>m.opportunityCreated).length;
+  const pipelineGap = pipelineTarget - pipelineVal;
+
+  // ── AI functions ───────────────────────────────────────────────────────────
+  const runWeeklyPlan = async () => {
+    setAiLoading(true); setAiPlan(null);
+    const hotAccts = accounts.filter(a=>["Active","Opportunity","Warm"].includes(a.status));
+    const overdueOutreach = outreach.filter(o=>o.nextDate && o.nextDate <= TODAY && o.status!=="Meeting");
+    const ctx = `Pipeline: ${fmtK(pipelineVal)} vs ${fmtK(pipelineTarget)} target. Gap: ${fmtK(Math.max(0,pipelineGap))}.
+Win Rate: ${winRate}%. Avg Deal: ${fmtK(avgDeal)}. Meetings this week: ${mtgThisWeek}.
+Hot accounts (${hotAccts.length}): ${hotAccts.slice(0,5).map(a=>a.name+" ("+a.status+")").join(", ")}.
+Overdue follow-ups: ${overdueOutreach.length}. Opportunities created this month: ${oppsCreated}.
+Top accounts by tier: Tier 1=${accounts.filter(a=>a.tier===1).length}, Tier 2=${accounts.filter(a=>a.tier===2).length}.
+Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero contacts.`;
+
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000,
+          system:"You are the BD Director for Ziksatech, a WBE SAP consulting firm specializing in Utilities, BRIM, IS-U, and SuccessFactors. Generate a precise, actionable weekly BD execution plan.",
+          messages:[{role:"user",content:`${ctx}\n\nGenerate this week's BD execution plan. Respond ONLY with JSON:\n{"insight":"pipeline status in one alarming/motivating sentence","topAccounts":[{"name":"...","action":"specific action","why":"..."},{"name":"...","action":"...","why":"..."},{"name":"...","action":"...","why":"..."},{"name":"...","action":"...","why":"..."},{"name":"...","action":"...","why":"..."}],"topContacts":[{"name":"...","account":"...","action":"..."},{"name":"...","account":"...","action":"..."},{"name":"...","account":"...","action":"..."},{"name":"...","account":"...","action":"..."},{"name":"...","account":"...","action":"..."}],"dealsToClose":["deal1","deal2","deal3"],"risksToFix":["risk1","risk2","risk3"],"weeklyTarget":"what winning this week looks like in one sentence"}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setAiPlan(parsed);
+      setAiInsight(parsed.insight);
+    } catch(e) { setAiPlan({error:e.message}); }
+    setAiLoading(false);
+  };
+
+  // ── Account actions ────────────────────────────────────────────────────────
+  const updateAccountStatus = (id, status) => {
+    const updated = accounts.map(a=>a.id===id?{...a,status,lastActivity:TODAY}:a);
+    setAccounts(updated); save("zt-bd-accounts", updated);
+  };
+
+  const addAccount = () => {
+    const a = { id:"bda"+Date.now(), ...newForm, tier:2, relScore:0, coverage:0, status:"Cold", lastActivity:null };
+    const updated = [...accounts, a]; setAccounts(updated); save("zt-bd-accounts",updated); setAddModal(null); setNewForm({});
+  };
+  const addContact = () => {
+    const cc = { id:"bdc"+Date.now(), ...newForm, lastTouch:TODAY, engagement:0 };
+    const updated = [...contacts, cc]; setContacts(updated); save("zt-bd-contacts",updated);
+    // update coverage count
+    const accUpdated = accounts.map(a=>a.id===newForm.accountId?{...a,coverage:(a.coverage||0)+1}:a);
+    setAccounts(accUpdated); save("zt-bd-accounts",accUpdated);
+    setAddModal(null); setNewForm({});
+  };
+  const addOutreach = () => {
+    const o = { id:"bdo"+Date.now(), ...newForm, date:TODAY, status:"No Response" };
+    const updated = [...outreach, o]; setOutreach(updated); save("zt-bd-outreach",updated); setAddModal(null); setNewForm({});
+  };
+  const addMeeting = () => {
+    const m = { id:"bdm"+Date.now(), ...newForm, opportunityCreated:newForm.opportunityCreated==="true" };
+    const updated = [...meetings, m]; setMeetings(updated); save("zt-bd-meetings",updated); setAddModal(null); setNewForm({});
+  };
+
+  const SECTIONS = [
+    {id:"pipeline", label:"📊 Pipeline"},
+    {id:"accounts", label:"🎯 Target Accounts"},
+    {id:"contacts", label:"👥 Coverage Map"},
+    {id:"outreach", label:"📞 Outreach"},
+    {id:"opportunities", label:"💼 Opportunities"},
+    {id:"momentum", label:"⚡ Deal Momentum"},
+    {id:"weekly", label:"🗓 Weekly Plan"},
+  ];
+
+  const statusColor = s => s==="Opportunity"?"#34d399":s==="Active"?"#38bdf8":s==="Warm"?"#f59e0b":"#475569";
+  const selAcc = accounts.find(a=>a.id===selAccount)||accounts[0];
+  const selContacts = contacts.filter(c=>c.accountId===selAccount);
+  const selOutreach = outreach.filter(o=>o.accountId===selAccount);
+  const filteredAccounts = accounts.filter(a=>{
+    if(statusFilter!=="all" && a.status!==statusFilter) return false;
+    if(tierFilter!=="all" && a.tier!==+tierFilter) return false;
+    return true;
+  }).sort((a,b)=>b.relScore-a.relScore);
+
+  return (
+    <div>
+      <PH title="🚀 BD Engine" sub="Revenue machine · target accounts · contact coverage · outreach engine · weekly AI execution">
+        <button className="btn bp" style={{fontSize:12}} onClick={runWeeklyPlan} disabled={aiLoading}>
+          {aiLoading?"⏳ Planning...":"🧠 Generate Weekly Plan"}
+        </button>
+      </PH>
+
+      {/* AI Insight Banner */}
+      {(aiInsight||!aiPlan) && (
+        <div style={{padding:"12px 18px",background:"#0c1a2e",border:"1px solid #0369a144",borderRadius:10,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>🧠 AI BD Insight</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#38bdf8",lineHeight:1.4}}>
+              {aiInsight || `Pipeline is ${pipelineGap>0?fmtK(pipelineGap)+" short of target — need "+(Math.ceil(pipelineGap/avgDeal)||"more")+" deals or 8+ meetings this week":"on track — keep closing."}`}
+            </div>
+          </div>
+          <div style={{fontSize:28,marginLeft:16}}>{pipelineGap>0?"⚠️":"✅"}</div>
+        </div>
+      )}
+
+      {/* Section tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:16,borderBottom:"1px solid #1a2d45",paddingBottom:0,overflowX:"auto"}}>
+        {SECTIONS.map(s=>(
+          <button key={s.id} onClick={()=>setSection(s.id)}
+            style={{padding:"7px 12px",borderRadius:"6px 6px 0 0",border:"none",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",
+              background:section===s.id?"#0c2340":"transparent",color:section===s.id?"#38bdf8":"#475569",
+              borderBottom:section===s.id?"2px solid #0ea5e9":"2px solid transparent"}}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── SECTION 1: PIPELINE COMMAND CENTER ── */}
+      {section==="pipeline" && (
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+            {[
+              {l:"Pipeline vs Target", v:fmtK(pipelineVal)+" / "+fmtK(pipelineTarget), sub:pipelineGap>0?"⚠️ Short by "+fmtK(pipelineGap):"✅ On target", c:pipelineGap>0?"#f87171":"#34d399"},
+              {l:"Win Rate", v:winRate+"%", sub:winRate>40?"Above avg":"Below 40% avg", c:winRate>40?"#34d399":"#f59e0b"},
+              {l:"Avg Deal Size", v:fmtK(avgDeal), sub:"per closed deal", c:"#38bdf8"},
+              {l:"Meetings This Week", v:mtgThisWeek, sub:"target: 5+/week", c:mtgThisWeek>=5?"#34d399":"#f59e0b"},
+              {l:"Active Accounts", v:accounts.filter(a=>a.status==="Active").length, sub:"being worked", c:"#38bdf8"},
+              {l:"Opportunities Created", v:oppsCreated, sub:"from meetings", c:"#a78bfa"},
+              {l:"Outreach Overdue", v:outreach.filter(o=>o.nextDate&&o.nextDate<=TODAY).length, sub:"need follow-up now", c:"#f87171"},
+              {l:"Total Coverage", v:contacts.length+" contacts", sub:accounts.filter(a=>a.coverage===0).length+" accts uncovered", c:"#f59e0b"},
+            ].map(k=>(
+              <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+                <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.4,marginBottom:3}}>{k.l}</div>
+                <div style={{fontSize:18,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+                <div style={{fontSize:9,color:"#475569",marginTop:2}}>{k.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pipeline bar */}
+          <div className="card" style={{padding:"14px 18px",marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>Pipeline Progress — {Math.round(pipelineVal/pipelineTarget*100)}%</div>
+              <div style={{fontSize:11,color:"#64748b"}}>{fmtK(pipelineVal)} of {fmtK(pipelineTarget)}</div>
+            </div>
+            <div style={{height:8,background:"#1a2d45",borderRadius:4}}>
+              <div style={{height:"100%",background:pipelineGap>0?"#f59e0b":"#34d399",borderRadius:4,width:`${Math.min(pipelineVal/pipelineTarget*100,100)}%`,transition:"width 0.5s"}}/>
+            </div>
+            {pipelineGap>0 && (
+              <div style={{fontSize:11,color:"#f59e0b",marginTop:6}}>
+                💡 Need {Math.ceil(pipelineGap/Math.max(avgDeal,1))} more deals or {Math.ceil(pipelineGap/150000)} more meetings to close the gap
+              </div>
+            )}
+          </div>
+
+          {/* Stage funnel */}
+          <div className="card" style={{padding:"14px 18px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>Sales Funnel</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,textAlign:"center"}}>
+              {["prospecting","qualified","proposal","negotiation","closed-won"].map(stage=>{
+                const n = crmDeals.filter(d=>d.stage===stage||d.stage===stage.replace("-","_")).length;
+                const val = crmDeals.filter(d=>d.stage===stage||d.stage===stage.replace("-","_")).reduce((s,d)=>s+(d.value||0),0);
+                const colors = {prospecting:"#475569",qualified:"#38bdf8",proposal:"#a78bfa",negotiation:"#f59e0b","closed-won":"#34d399"};
+                return (
+                  <div key={stage} style={{padding:"10px 6px",background:"#060d1c",borderRadius:6,border:`1px solid ${colors[stage]}44`}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.4,marginBottom:4}}>{stage}</div>
+                    <div style={{fontSize:20,fontWeight:800,color:colors[stage]}}>{n}</div>
+                    <div style={{fontSize:9,color:"#475569"}}>{fmtK(val)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 2: TARGET ACCOUNT ENGINE ── */}
+      {section==="accounts" && (
+        <div>
+          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:6}}>
+              {["all","Tier 1","Tier 2"].map(t=>(
+                <button key={t} onClick={()=>setTierFilter(t==="Tier 1"?"1":t==="Tier 2"?"2":"all")}
+                  style={{padding:"5px 10px",borderRadius:6,border:`1px solid ${tierFilter===(t==="Tier 1"?"1":t==="Tier 2"?"2":"all")?"#0ea5e9":"#1a2d45"}`,
+                    background:tierFilter===(t==="Tier 1"?"1":t==="Tier 2"?"2":"all")?"#0c2340":"transparent",
+                    color:tierFilter===(t==="Tier 1"?"1":t==="Tier 2"?"2":"all")?"#38bdf8":"#475569",fontSize:10,cursor:"pointer"}}>
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              {["all","Cold","Warm","Active","Opportunity"].map(s=>(
+                <button key={s} onClick={()=>setStatusFilter(s)}
+                  style={{padding:"5px 10px",borderRadius:6,border:`1px solid ${statusFilter===s?"#0ea5e9":"#1a2d45"}`,
+                    background:statusFilter===s?"#0c2340":"transparent",color:statusFilter===s?"#38bdf8":"#475569",fontSize:10,cursor:"pointer"}}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <button className="btn bp" style={{fontSize:10,marginLeft:"auto"}} onClick={()=>setAddModal("account")}>+ Add Account</button>
+          </div>
+
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:1000}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                  {["Account","Tier","SAP Landscape","WBE","Current Vendors","Rel. Score","Coverage","Last Activity","Status","Action"].map(h=>(
+                    <th key={h} className="th" style={{padding:"7px 10px",textAlign:"left",fontSize:9,whiteSpace:"nowrap"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAccounts.map(a=>(
+                  <tr key={a.id} style={{borderBottom:"1px solid #0a1626",cursor:"pointer",background:selAccount===a.id?"#0a1a2e":"transparent"}}
+                    onClick={()=>setSelAccount(a.id)}>
+                    <td style={{padding:"8px 10px"}}>
+                      <div style={{fontWeight:600,color:"#e2e8f0"}}>{a.name}</div>
+                      <div style={{fontSize:9,color:"#3d5a7a"}}>{a.industry}</div>
+                    </td>
+                    <td style={{padding:"8px 10px"}}>
+                      <span style={{background:a.tier===1?"#f59e0b22":"#0369a122",color:a.tier===1?"#f59e0b":"#38bdf8",
+                        padding:"2px 6px",borderRadius:4,fontSize:9,fontWeight:700}}>T{a.tier}</span>
+                    </td>
+                    <td style={{padding:"8px 10px",color:"#94a3b8",fontSize:10}}>{(a.sap||[]).join(", ")}</td>
+                    <td style={{padding:"8px 10px"}}>
+                      <span style={{color:a.wbe==="High"?"#34d399":a.wbe==="Medium"?"#f59e0b":"#475569",fontWeight:600}}>{a.wbe}</span>
+                    </td>
+                    <td style={{padding:"8px 10px",color:"#64748b",fontSize:10}}>{(a.vendors||[]).join(", ")}</td>
+                    <td style={{padding:"8px 10px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{flex:1,height:4,background:"#1a2d45",borderRadius:2,minWidth:40}}>
+                          <div style={{width:`${a.relScore}%`,height:"100%",background:a.relScore>60?"#34d399":a.relScore>30?"#f59e0b":"#f87171",borderRadius:2}}/>
+                        </div>
+                        <span style={{fontSize:9,color:"#64748b",minWidth:20}}>{a.relScore}</span>
+                      </div>
+                    </td>
+                    <td style={{padding:"8px 10px",textAlign:"center",color:a.coverage===0?"#f87171":"#34d399",fontWeight:700}}>{a.coverage}</td>
+                    <td style={{padding:"8px 10px",color:"#475569",fontSize:10}}>{a.lastActivity||"Never"}</td>
+                    <td style={{padding:"8px 10px"}}>
+                      <span style={{background:statusColor(a.status)+"22",color:statusColor(a.status),
+                        padding:"2px 8px",borderRadius:10,fontSize:9,fontWeight:700}}>{a.status}</span>
+                    </td>
+                    <td style={{padding:"8px 10px"}}>
+                      <div style={{display:"flex",gap:4}}>
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={(e)=>{e.stopPropagation();setSelAccount(a.id);setSection("contacts");}}>
+                          👥 Contacts
+                        </button>
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={(e)=>{e.stopPropagation();setAddModal("outreach");setNewForm({accountId:a.id});}}>
+                          📞 Outreach
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 3: CONTACT COVERAGE MAP ── */}
+      {section==="contacts" && (
+        <div>
+          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{selAcc?.name}</div>
+            <div style={{display:"flex",gap:6}}>
+              {accounts.filter(a=>a.coverage>0||a.status!=="Cold").map(a=>(
+                <button key={a.id} onClick={()=>setSelAccount(a.id)}
+                  style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${selAccount===a.id?"#0ea5e9":"#1a2d45"}`,
+                    background:selAccount===a.id?"#0c2340":"transparent",color:selAccount===a.id?"#38bdf8":"#475569",fontSize:10,cursor:"pointer"}}>
+                  {a.name.split(" ").slice(0,2).join(" ")}
+                </button>
+              ))}
+            </div>
+            <button className="btn bp" style={{fontSize:10,marginLeft:"auto"}} onClick={()=>setAddModal("contact")}>+ Add Contact</button>
+          </div>
+
+          {/* Coverage metrics */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+            {[
+              {l:"Total Contacts",    v:selContacts.length,                                              c:"#38bdf8"},
+              {l:"Decision Makers",  v:selContacts.filter(c=>c.role==="decision").length,                c:"#34d399"},
+              {l:"Avg Engagement",   v:selContacts.length>0?Math.round(selContacts.reduce((s,c)=>s+c.engagement,0)/selContacts.length)+"%":"—", c:"#a78bfa"},
+              {l:"Missing Roles",    v:(() => {
+                const roles = selContacts.map(c=>c.role);
+                const needed = ["decision","influencer","blocker"];
+                return needed.filter(r=>!roles.includes(r)).length;
+              })(), c:"#f87171"},
+            ].map(k=>(
+              <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+                <div style={{fontSize:16,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+                <div style={{fontSize:9,color:"#475569",marginTop:2}}>{k.l}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Org influence map visual */}
+          {selContacts.length > 0 && (
+            <div className="card" style={{padding:"14px 18px",marginBottom:12}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>
+                Influence Map — {selAcc?.name}
+              </div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                {selContacts.sort((a,b)=>b.influence-a.influence).map(ct=>{
+                  const roleColor = ct.role==="decision"?"#34d399":ct.role==="influencer"?"#38bdf8":"#f87171";
+                  const size = Math.max(70, Math.round(ct.influence*0.8));
+                  return (
+                    <div key={ct.id} style={{
+                      width:size,height:size,borderRadius:"50%",background:roleColor+"22",border:`2px solid ${roleColor}`,
+                      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                      textAlign:"center",padding:4,cursor:"default",position:"relative"
+                    }}>
+                      <div style={{fontSize:9,fontWeight:700,color:roleColor,lineHeight:1.2}}>{ct.name.split(" ")[0]}</div>
+                      <div style={{fontSize:8,color:"#3d5a7a",lineHeight:1.1}}>{ct.title.split(" ").slice(0,2).join(" ")}</div>
+                      <div style={{fontSize:8,color:roleColor,marginTop:1}}>{ct.engagement}%</div>
+                    </div>
+                  );
+                })}
+                {selContacts.filter(c=>c.role==="decision").length===0 && (
+                  <div style={{padding:"8px 12px",background:"#1a0808",border:"1px solid #f8717144",borderRadius:6,fontSize:11,color:"#f87171"}}>
+                    ⚠️ No decision makers covered — deal risk
+                  </div>
+                )}
+                {!selContacts.some(c=>c.role==="blocker") && (
+                  <div style={{padding:"8px 12px",background:"#1a1000",border:"1px solid #d9770644",borderRadius:6,fontSize:11,color:"#f59e0b"}}>
+                    ⚠️ Procurement not identified — blind spot
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Contacts table */}
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                  {["Name","Title","Role","Influence","Rel. Strength","Engagement","Last Touch","Action"].map(h=>(
+                    <th key={h} className="th" style={{padding:"6px 10px",textAlign:"left",fontSize:9}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {selContacts.length===0 ? (
+                  <tr><td colSpan={8} style={{padding:24,textAlign:"center",color:"#334155",fontSize:12}}>
+                    No contacts for this account yet — add contacts to track coverage
+                  </td></tr>
+                ) : selContacts.sort((a,b)=>b.influence-a.influence).map(ct=>{
+                  const roleColor = ct.role==="decision"?"#34d399":ct.role==="influencer"?"#38bdf8":"#f87171";
+                  return (
+                    <tr key={ct.id} style={{borderBottom:"1px solid #0a1626"}}>
+                      <td style={{padding:"8px 10px",fontWeight:600,color:"#e2e8f0"}}>{ct.name}</td>
+                      <td style={{padding:"8px 10px",color:"#94a3b8",fontSize:10}}>{ct.title}</td>
+                      <td style={{padding:"8px 10px"}}>
+                        <span style={{background:roleColor+"22",color:roleColor,padding:"2px 7px",borderRadius:10,fontSize:9,fontWeight:700,textTransform:"capitalize"}}>{ct.role}</span>
+                      </td>
+                      <td style={{padding:"8px 10px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>
+                          <div style={{width:40,height:4,background:"#1a2d45",borderRadius:2}}>
+                            <div style={{width:`${ct.influence}%`,height:"100%",background:"#a78bfa",borderRadius:2}}/>
+                          </div>
+                          <span style={{fontSize:10,color:"#64748b"}}>{ct.influence}</span>
+                        </div>
+                      </td>
+                      <td style={{padding:"8px 10px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>
+                          <div style={{width:40,height:4,background:"#1a2d45",borderRadius:2}}>
+                            <div style={{width:`${ct.relStrength}%`,height:"100%",background:"#38bdf8",borderRadius:2}}/>
+                          </div>
+                          <span style={{fontSize:10,color:"#64748b"}}>{ct.relStrength}</span>
+                        </div>
+                      </td>
+                      <td style={{padding:"8px 10px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>
+                          <div style={{width:40,height:4,background:"#1a2d45",borderRadius:2}}>
+                            <div style={{width:`${ct.engagement}%`,height:"100%",background:ct.engagement>60?"#34d399":"#f59e0b",borderRadius:2}}/>
+                          </div>
+                          <span style={{fontSize:10,color:"#64748b"}}>{ct.engagement}%</span>
+                        </div>
+                      </td>
+                      <td style={{padding:"8px 10px",color:"#475569",fontSize:10}}>{ct.lastTouch||"Never"}</td>
+                      <td style={{padding:"8px 10px"}}>
+                        <button className="btn bg" style={{fontSize:9,padding:"2px 8px"}}
+                          onClick={()=>setAddModal("outreach")&&setNewForm({contactId:ct.id,accountId:ct.accountId})}>
+                          📞 Reach Out
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 4: OUTREACH ENGINE ── */}
+      {section==="outreach" && (
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,flex:1}}>
+              {[
+                {l:"Total Touchpoints",  v:outreach.length,                                      c:"#38bdf8"},
+                {l:"Replies/Engaged",    v:outreach.filter(o=>o.response&&o.response!=="No Response"&&o.response!=="Bounced").length, c:"#34d399"},
+                {l:"Meetings Booked",    v:outreach.filter(o=>o.status==="Meeting").length,      c:"#a78bfa"},
+                {l:"Overdue Follow-up",  v:outreach.filter(o=>o.nextDate&&o.nextDate<=TODAY).length, c:"#f87171"},
+              ].map(k=>(
+                <div key={k.l} className="card" style={{padding:"8px 12px",textAlign:"center"}}>
+                  <div style={{fontSize:16,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+                  <div style={{fontSize:9,color:"#475569",marginTop:1}}>{k.l}</div>
+                </div>
+              ))}
+            </div>
+            <button className="btn bp" style={{fontSize:10,marginLeft:12}} onClick={()=>setAddModal("outreach")}>+ Log Outreach</button>
+          </div>
+
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:800}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                  {["Contact","Account","Type","Date","Response","Next Action","Due","Status"].map(h=>(
+                    <th key={h} className="th" style={{padding:"6px 10px",textAlign:"left",fontSize:9}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...outreach].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(o=>{
+                  const ct = contacts.find(c=>c.id===o.contactId)||{};
+                  const ac = accounts.find(a=>a.id===o.accountId)||{};
+                  const isOverdue = o.nextDate && o.nextDate <= TODAY;
+                  const statusClr = o.status==="Meeting"?"#34d399":o.status==="Engaged"?"#38bdf8":"#f87171";
+                  return (
+                    <tr key={o.id} style={{borderBottom:"1px solid #0a1626",background:isOverdue?"#1a080822":"transparent"}}>
+                      <td style={{padding:"7px 10px",fontWeight:600,color:"#e2e8f0"}}>{ct.name||"—"}</td>
+                      <td style={{padding:"7px 10px",color:"#94a3b8",fontSize:10}}>{ac.name?.split(" ").slice(0,2).join(" ")||"—"}</td>
+                      <td style={{padding:"7px 10px",color:"#64748b"}}>{o.type}</td>
+                      <td style={{padding:"7px 10px",color:"#64748b"}}>{o.date}</td>
+                      <td style={{padding:"7px 10px",color:o.response==="No Response"||o.response==="Bounced"?"#f87171":"#34d399"}}>{o.response||"—"}</td>
+                      <td style={{padding:"7px 10px",color:"#94a3b8"}}>{o.nextAction}</td>
+                      <td style={{padding:"7px 10px",color:isOverdue?"#f87171":"#64748b",fontWeight:isOverdue?700:400}}>{o.nextDate||"—"}</td>
+                      <td style={{padding:"7px 10px"}}>
+                        <span style={{background:statusClr+"22",color:statusClr,padding:"2px 7px",borderRadius:10,fontSize:9,fontWeight:700}}>{o.status}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 5: OPPORTUNITY BUILDER ── */}
+      {section==="opportunities" && (
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,flex:1}}>
+              {[
+                {l:"Meetings Total",        v:meetings.length,                                  c:"#38bdf8"},
+                {l:"Opportunities Created", v:meetings.filter(m=>m.opportunityCreated).length,  c:"#34d399"},
+                {l:"Pipeline from Meetings",v:fmtK(meetings.filter(m=>m.value>0).reduce((s,m)=>s+(m.value||0),0)), c:"#a78bfa"},
+              ].map(k=>(
+                <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+                  <div style={{fontSize:18,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+                  <div style={{fontSize:9,color:"#475569",marginTop:2}}>{k.l}</div>
+                </div>
+              ))}
+            </div>
+            <button className="btn bp" style={{fontSize:10,marginLeft:12}} onClick={()=>setAddModal("meeting")}>+ Log Meeting</button>
+          </div>
+
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+            <thead>
+              <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                {["Date","Account","Contact","Outcome","Opp Created","Value"].map(h=>(
+                  <th key={h} className="th" style={{padding:"6px 10px",textAlign:"left",fontSize:9}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...meetings].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(m=>{
+                const ct = contacts.find(c=>c.id===m.contactId)||{};
+                const ac = accounts.find(a=>a.id===m.accountId)||{};
+                return (
+                  <tr key={m.id} style={{borderBottom:"1px solid #0a1626"}}>
+                    <td style={{padding:"8px 10px",color:"#64748b"}}>{m.date}</td>
+                    <td style={{padding:"8px 10px",fontWeight:600,color:"#e2e8f0"}}>{ac.name?.split(" ").slice(0,2).join(" ")||"—"}</td>
+                    <td style={{padding:"8px 10px",color:"#94a3b8"}}>{ct.name||"—"}</td>
+                    <td style={{padding:"8px 10px",color:"#94a3b8",fontSize:10}}>{m.outcome}</td>
+                    <td style={{padding:"8px 10px",textAlign:"center"}}>
+                      <span style={{color:m.opportunityCreated?"#34d399":"#475569",fontWeight:700,fontSize:14}}>{m.opportunityCreated?"✅":"—"}</span>
+                    </td>
+                    <td style={{padding:"8px 10px",color:"#34d399",fontFamily:"monospace",fontWeight:700}}>{m.value>0?fmtK(m.value):"—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── SECTION 6: DEAL MOMENTUM ── */}
+      {section==="momentum" && (
+        <div>
+          <div style={{fontSize:11,color:"#3d5a7a",marginBottom:12}}>
+            Active deals with AI probability, risk, and momentum signals
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:900}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                  {["Deal","Stage","Value","AI Prob","Last Activity","Days Stale","Risk","Next Action"].map(h=>(
+                    <th key={h} className="th" style={{padding:"6px 10px",textAlign:"left",fontSize:9}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {crmDeals.filter(d=>!["closed-won","closed_won","closed-lost","closed_lost"].includes(d.stage))
+                  .sort((a,b)=>(b.value||0)-(a.value||0)).map(d=>{
+                  const daysStale = d.lastActivity||d.updatedAt ? Math.floor((new Date()-new Date(d.lastActivity||d.updatedAt))/86400000) : 99;
+                  const risk = daysStale > 21?"HIGH":daysStale>7?"MEDIUM":"LOW";
+                  const riskColor = risk==="HIGH"?"#f87171":risk==="MEDIUM"?"#f59e0b":"#34d399";
+                  const prob = d.probability||d.prob||0;
+                  return (
+                    <tr key={d.id} style={{borderBottom:"1px solid #0a1626",background:daysStale>14?"#1a080814":"transparent"}}>
+                      <td style={{padding:"8px 10px",fontWeight:600,color:"#e2e8f0"}}>{d.name||d.clientName||"Deal"}</td>
+                      <td style={{padding:"8px 10px",color:"#94a3b8"}}>{d.stage}</td>
+                      <td style={{padding:"8px 10px",color:"#38bdf8",fontFamily:"monospace",fontWeight:700}}>{fmtK(d.value||0)}</td>
+                      <td style={{padding:"8px 10px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:5}}>
+                          <div style={{width:40,height:4,background:"#1a2d45",borderRadius:2}}>
+                            <div style={{width:`${prob}%`,height:"100%",background:prob>60?"#34d399":prob>40?"#f59e0b":"#f87171",borderRadius:2}}/>
+                          </div>
+                          <span style={{fontSize:10,color:"#64748b"}}>{prob}%</span>
+                        </div>
+                      </td>
+                      <td style={{padding:"8px 10px",color:"#475569",fontSize:10}}>{d.lastActivity||d.updatedAt||"Unknown"}</td>
+                      <td style={{padding:"8px 10px",color:daysStale>14?"#f87171":"#64748b",fontWeight:daysStale>14?700:400}}>{daysStale}d</td>
+                      <td style={{padding:"8px 10px"}}>
+                        <span style={{background:riskColor+"22",color:riskColor,padding:"2px 7px",borderRadius:10,fontSize:9,fontWeight:700}}>{risk}</span>
+                      </td>
+                      <td style={{padding:"8px 10px",color:"#94a3b8",fontSize:10}}>{d.nextStep||"No next step set"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 7: WEEKLY EXECUTION PLAN ── */}
+      {section==="weekly" && (
+        <div>
+          {!aiPlan && !aiLoading && (
+            <div className="card" style={{padding:"40px",textAlign:"center"}}>
+              <div style={{fontSize:40,marginBottom:12}}>🗓</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>Generate Your Weekly Execution Plan</div>
+              <div style={{fontSize:12,color:"#475569",marginBottom:20,lineHeight:1.6}}>
+                AI analyzes your pipeline gap, overdue follow-ups, hottest accounts,<br/>
+                and deal momentum to give you a precise weekly BD playbook
+              </div>
+              <button className="btn bp" style={{fontSize:13,padding:"10px 28px"}} onClick={runWeeklyPlan}>
+                🧠 Generate This Week's Plan
+              </button>
+            </div>
+          )}
+          {aiLoading && <div className="card" style={{padding:32,textAlign:"center",color:"#475569",fontSize:12}}>🧠 Building your weekly BD execution plan...</div>}
+          {aiPlan && !aiPlan.error && (
+            <div>
+              {/* Weekly target */}
+              {aiPlan.weeklyTarget && (
+                <div style={{padding:"12px 18px",background:"#021f14",border:"1px solid #15803d44",borderRadius:10,marginBottom:14}}>
+                  <div style={{fontSize:10,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase",letterSpacing:.5}}>🎯 This Week's Victory Condition</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>{aiPlan.weeklyTarget}</div>
+                </div>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                {/* Top accounts */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>🎯 Top 5 Accounts to Focus</div>
+                  {(aiPlan.topAccounts||[]).map((a,i)=>(
+                    <div key={i} style={{marginBottom:10,padding:"10px 12px",background:"#040a14",borderRadius:6,border:"1px solid #1e3a5f"}}>
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3}}>
+                        <div style={{width:18,height:18,borderRadius:"50%",background:"#0ea5e9",color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+                        <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{a.name}</div>
+                      </div>
+                      <div style={{fontSize:10,color:"#38bdf8",marginLeft:26}}>→ {a.action}</div>
+                      <div style={{fontSize:9,color:"#64748b",marginLeft:26,marginTop:2}}>Why: {a.why}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Top contacts */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a78bfa",marginBottom:10}}>👥 Top 5 Contacts to Reach</div>
+                  {(aiPlan.topContacts||[]).map((ct,i)=>(
+                    <div key={i} style={{marginBottom:10,padding:"10px 12px",background:"#040a14",borderRadius:6,border:"1px solid #1e3a5f"}}>
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3}}>
+                        <div style={{width:18,height:18,borderRadius:"50%",background:"#7c3aed",color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+                        <div>
+                          <span style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{ct.name}</span>
+                          <span style={{fontSize:9,color:"#64748b",marginLeft:6}}>{ct.account}</span>
+                        </div>
+                      </div>
+                      <div style={{fontSize:10,color:"#a78bfa",marginLeft:26}}>→ {ct.action}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Deals to push */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:10}}>💼 Deals to Push This Week</div>
+                  {(aiPlan.dealsToClose||[]).map((d,i)=>(
+                    <div key={i} style={{padding:"8px 10px",background:"#021f14",border:"1px solid #15803d44",borderRadius:6,marginBottom:7,fontSize:11,color:"#4ade80"}}>
+                      {i+1}. {d}
+                    </div>
+                  ))}
+                </div>
+                {/* Risks to fix */}
+                <div className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:10}}>⚠️ Risks to Fix This Week</div>
+                  {(aiPlan.risksToFix||[]).map((r,i)=>(
+                    <div key={i} style={{padding:"8px 10px",background:"#1a0808",border:"1px solid #dc262644",borderRadius:6,marginBottom:7,fontSize:11,color:"#f87171"}}>
+                      {i+1}. {r}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{marginTop:12,textAlign:"right"}}>
+                <button className="btn bg" style={{fontSize:10}} onClick={()=>setAiPlan(null)}>↺ Regenerate</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ADD MODALS ── */}
+      {addModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setAddModal(null)}>
+          <div className="modal" style={{maxWidth:460}}>
+            <MH title={addModal==="account"?"+ Add Target Account":addModal==="contact"?"+ Add Contact":addModal==="outreach"?"+ Log Outreach":"+ Log Meeting"} onClose={()=>setAddModal(null)}/>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {addModal==="account" && <>
+                <div><div className="lbl">Company Name</div><input className="inp" value={newForm.name||""} onChange={e=>setNewForm(p=>({...p,name:e.target.value}))}/></div>
+                <div><div className="lbl">Industry</div><input className="inp" value={newForm.industry||""} onChange={e=>setNewForm(p=>({...p,industry:e.target.value}))}/></div>
+                <div><div className="lbl">SAP Modules (comma separated)</div><input className="inp" value={newForm.sap||""} onChange={e=>setNewForm(p=>({...p,sap:e.target.value.split(",").map(s=>s.trim())}))}/></div>
+                <div><div className="lbl">WBE Opportunity</div>
+                  <select className="inp" value={newForm.wbe||"Medium"} onChange={e=>setNewForm(p=>({...p,wbe:e.target.value}))}>
+                    <option>High</option><option>Medium</option><option>Low</option>
+                  </select>
+                </div>
+              </>}
+              {addModal==="contact" && <>
+                <div><div className="lbl">Account</div>
+                  <select className="inp" value={newForm.accountId||""} onChange={e=>setNewForm(p=>({...p,accountId:e.target.value}))}>
+                    <option value="">— Select account —</option>
+                    {accounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+                <div><div className="lbl">Full Name</div><input className="inp" value={newForm.name||""} onChange={e=>setNewForm(p=>({...p,name:e.target.value}))}/></div>
+                <div><div className="lbl">Title</div><input className="inp" value={newForm.title||""} onChange={e=>setNewForm(p=>({...p,title:e.target.value}))}/></div>
+                <div><div className="lbl">Role</div>
+                  <select className="inp" value={newForm.role||"influencer"} onChange={e=>setNewForm(p=>({...p,role:e.target.value}))}>
+                    <option value="decision">Decision Maker</option><option value="influencer">Influencer</option><option value="blocker">Blocker / Procurement</option>
+                  </select>
+                </div>
+                <div><div className="lbl">Email</div><input className="inp" type="email" value={newForm.email||""} onChange={e=>setNewForm(p=>({...p,email:e.target.value}))}/></div>
+                <div><div className="lbl">Influence Score (0-100)</div><input className="inp" type="number" min={0} max={100} value={newForm.influence||50} onChange={e=>setNewForm(p=>({...p,influence:+e.target.value}))}/></div>
+              </>}
+              {addModal==="outreach" && <>
+                <div><div className="lbl">Account</div>
+                  <select className="inp" value={newForm.accountId||""} onChange={e=>setNewForm(p=>({...p,accountId:e.target.value}))}>
+                    <option value="">— Select account —</option>
+                    {accounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+                <div><div className="lbl">Contact</div>
+                  <select className="inp" value={newForm.contactId||""} onChange={e=>setNewForm(p=>({...p,contactId:e.target.value}))}>
+                    <option value="">— Select contact —</option>
+                    {contacts.filter(c=>!newForm.accountId||c.accountId===newForm.accountId).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div><div className="lbl">Message Type</div>
+                  <select className="inp" value={newForm.type||"LinkedIn Message"} onChange={e=>setNewForm(p=>({...p,type:e.target.value}))}>
+                    <option>LinkedIn Message</option><option>Email</option><option>Phone Call</option><option>In-Person</option>
+                  </select>
+                </div>
+                <div><div className="lbl">Response</div>
+                  <select className="inp" value={newForm.response||"No Response"} onChange={e=>setNewForm(p=>({...p,response:e.target.value}))}>
+                    <option>No Response</option><option>Opened</option><option>Replied</option><option>Connected</option><option>Bounced</option>
+                  </select>
+                </div>
+                <div><div className="lbl">Next Action</div><input className="inp" value={newForm.nextAction||""} onChange={e=>setNewForm(p=>({...p,nextAction:e.target.value}))}/></div>
+                <div><div className="lbl">Next Action Date</div><input className="inp" type="date" value={newForm.nextDate||""} onChange={e=>setNewForm(p=>({...p,nextDate:e.target.value}))}/></div>
+              </>}
+              {addModal==="meeting" && <>
+                <div><div className="lbl">Account</div>
+                  <select className="inp" value={newForm.accountId||""} onChange={e=>setNewForm(p=>({...p,accountId:e.target.value}))}>
+                    <option value="">— Select account —</option>
+                    {accounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+                <div><div className="lbl">Contact</div>
+                  <select className="inp" value={newForm.contactId||""} onChange={e=>setNewForm(p=>({...p,contactId:e.target.value}))}>
+                    <option value="">— Select contact —</option>
+                    {contacts.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div><div className="lbl">Meeting Date</div><input className="inp" type="date" value={newForm.date||TODAY} onChange={e=>setNewForm(p=>({...p,date:e.target.value}))}/></div>
+                <div><div className="lbl">Outcome / Notes</div><input className="inp" value={newForm.outcome||""} onChange={e=>setNewForm(p=>({...p,outcome:e.target.value}))}/></div>
+                <div><div className="lbl">Opportunity Created?</div>
+                  <select className="inp" value={newForm.opportunityCreated||"false"} onChange={e=>setNewForm(p=>({...p,opportunityCreated:e.target.value}))}>
+                    <option value="false">No</option><option value="true">Yes</option>
+                  </select>
+                </div>
+                {newForm.opportunityCreated==="true" && (
+                  <div><div className="lbl">Estimated Deal Value ($)</div><input className="inp" type="number" value={newForm.value||0} onChange={e=>setNewForm(p=>({...p,value:+e.target.value}))}/></div>
+                )}
+              </>}
+              <button className="btn bp" style={{marginTop:4}} onClick={
+                addModal==="account"?addAccount:addModal==="contact"?addContact:addModal==="outreach"?addOutreach:addMeeting
+              }>
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}
