@@ -23489,20 +23489,20 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
   // ── 1. MODULE / FEATURE NAVIGATION ───────────────────────────────────────
   const ALL_MODULES = [
     // Overview
-    { tab:"dashboard",    label:"Executive Dashboard",          icon:"📊", group:"Overview",    keywords:"kpi revenue ebitda dashboard overview" },
-    { tab:"reports",      label:"Report Builder",               icon:"📈", group:"Overview",    keywords:"reports analytics charts export" },
-    { tab:"ideapad",      label:"IdeaPad",                      icon:"💡", group:"Overview",    keywords:"ideas suggestions revenue share" },
+    { tab:"dashboard",    label:"Executive Dashboard",          icon:"📊", group:"Overview",    keywords:"kpi revenue ebitda dashboard overview" , ai:true},
+    { tab:"reports",      label:"Report Builder",               icon:"📈", group:"Overview",    keywords:"reports analytics charts export" , ai:true},
+    { tab:"ideapad",      label:"IdeaPad",                      icon:"💡", group:"Overview",    keywords:"ideas suggestions revenue share" , ai:true},
     { tab:"minicalc",     label:"Mini Calculator",              icon:"🧮", group:"Overview",    keywords:"calculator billing margin math" },
     // Clients
     { tab:"clients",      label:"Client Portfolio",             icon:"🏢", group:"Clients",     keywords:"clients portfolio accounts revenue health" },
     { tab:"healthscore",  label:"Client Health Scorecard",      icon:"❤️", group:"Clients",     keywords:"client health scorecard nps satisfaction" , ai:true},
     { tab:"portal",       label:"Client Portal",                icon:"🌐", group:"Clients",     keywords:"portal timesheets invoices client view" , ai:true},
-    { tab:"ratequote",    label:"Rate Card & Quick Quote",       icon:"💰", group:"Clients",     keywords:"rate card quote billing hourly w2 c2c rates markup margin" },
-    { tab:"availmatrix",  label:"Availability Matrix",          icon:"👥", group:"Clients",     keywords:"availability consultants bench skills who available matrix staffing" },
+    { tab:"ratequote",    label:"Rate Card & Quick Quote",       icon:"💰", group:"Clients",     keywords:"rate card quote billing hourly w2 c2c rates markup margin" , ai:true},
+    { tab:"availmatrix",  label:"Availability Matrix",          icon:"👥", group:"Clients",     keywords:"availability consultants bench skills who available matrix staffing" , ai:true},
     { tab:"industrypitch",label:"Industry Pitch Templates",     icon:"🏭", group:"Clients",     keywords:"pitch industry templates automotive utilities healthcare defense tolling linkedin email" },
     { tab:"marketing",    label:"Marketing Hub",                icon:"📣", group:"Clients",     keywords:"marketing linkedin posts email campaign nurture UTM tracking" , ai:true},
-    { tab:"crm",          label:"Sales CRM",                    icon:"🎯", group:"Clients",     keywords:"crm deals pipeline sales leads accounts" },
-    { tab:"proposals",    label:"Proposals & Quotes",           icon:"📝", group:"Clients",     keywords:"proposals quotes RFP SOW" },
+    { tab:"crm",          label:"Sales CRM",                    icon:"🎯", group:"Clients",     keywords:"crm deals pipeline sales leads accounts" , ai:true},
+    { tab:"proposals",    label:"Proposals & Quotes",           icon:"📝", group:"Clients",     keywords:"proposals quotes RFP SOW" , ai:true},
     { tab:"proposalv2",   label:"AI Proposal Writer",           icon:"✍️", group:"Clients",     keywords:"proposal writer AI generate document" , ai:true},
     { tab:"rfpgen",       label:"RFP Generator",                icon:"📥", group:"Clients",     keywords:"rfp generator response bid" , ai:true},
     { tab:"sowgen",       label:"SOW Generator",                icon:"📃", group:"Clients",     keywords:"sow statement of work generator contract" , ai:true},
@@ -23511,19 +23511,19 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
     { tab:"contracts",    label:"Contracts & SOW",              icon:"📜", group:"Clients",     keywords:"contracts sow agreements legal" , ai:true},
     { tab:"renewals",     label:"Contract Renewals",            icon:"🔄", group:"Clients",     keywords:"renewals renewal tracker expiring contracts" , ai:true},
     // Finance
-    { tab:"finance",      label:"Finance Module",               icon:"💸", group:"Finance",     keywords:"finance invoices payments billing accounts receivable" },
-    { tab:"pl",           label:"P&L / Income Statement",       icon:"📊", group:"Finance",     keywords:"profit loss income statement monthly" },
-    { tab:"cashflow",     label:"Cash Flow",                    icon:"🏦", group:"Finance",     keywords:"cash flow forecast 13 week" },
+    { tab:"finance",      label:"Finance Module",               icon:"💸", group:"Finance",     keywords:"finance invoices payments billing accounts receivable" , ai:true},
+    { tab:"pl",           label:"P&L / Income Statement",       icon:"📊", group:"Finance",     keywords:"profit loss income statement monthly" , ai:true},
+    { tab:"cashflow",     label:"Cash Flow",                    icon:"🏦", group:"Finance",     keywords:"cash flow forecast 13 week" , ai:true},
     { tab:"vendors",      label:"Vendors & AP",                 icon:"📤", group:"Finance",     keywords:"vendors accounts payable ap bills" },
-    { tab:"adp",          label:"ADP Payroll",                  icon:"💳", group:"Finance",     keywords:"adp payroll payrun salary" },
+    { tab:"adp",          label:"ADP Payroll",                  icon:"💳", group:"Finance",     keywords:"adp payroll payrun salary" , ai:true},
     { tab:"adpstubs",     label:"ADP Pay Stubs",                icon:"🧾", group:"Finance",     keywords:"pay stubs salary deductions paystub" },
-    { tab:"reconcile",    label:"Reconciliation Report",        icon:"⚖️", group:"Finance",     keywords:"reconciliation report match bank" },
+    { tab:"reconcile",    label:"Reconciliation Report",        icon:"⚖️", group:"Finance",     keywords:"reconciliation report match bank" , ai:true},
     { tab:"budget",       label:"Budget vs Actual",             icon:"🎯", group:"Finance",     keywords:"budget actual variance tracking" , ai:true},
-    { tab:"ebitda",       label:"EBITDA Optimizer",             icon:"📉", group:"Finance",     keywords:"ebitda optimizer levers exit value" },
+    { tab:"ebitda",       label:"EBITDA Optimizer",             icon:"📉", group:"Finance",     keywords:"ebitda optimizer levers exit value" , ai:true},
     { tab:"profitability",label:"Profitability Analytics",      icon:"💹", group:"Finance",     keywords:"profitability margin client consultant ROI breakeven" },
     { tab:"freshbooks",   label:"FreshBooks",                   icon:"📗", group:"Finance",     keywords:"freshbooks invoices billing integration" , ai:true},
     // Team
-    { tab:"roster",       label:"Consultant Roster",            icon:"👤", group:"Team",        keywords:"roster consultants team employees staff" },
+    { tab:"roster",       label:"Consultant Roster",            icon:"👤", group:"Team",        keywords:"roster consultants team employees staff" , ai:true},
     { tab:"timesheet",    label:"Timesheet Approvals",          icon:"⏱", group:"Team",        keywords:"timesheet hours approval billing" , ai:true},
     { tab:"perfreviews",  label:"Performance Reviews",          icon:"⭐", group:"Team",        keywords:"performance review 360 goals compensation" },
     { tab:"pto",          label:"PTO / Time Off",               icon:"🏖", group:"Team",        keywords:"pto time off vacation leave requests" },
@@ -23531,18 +23531,18 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
     { tab:"capacity",     label:"Capacity Planner",             icon:"📅", group:"Team",        keywords:"capacity planning resource allocation" },
     { tab:"resourceplan", label:"Resource Planner AI",          icon:"🤖", group:"Team",        keywords:"resource planning AI staffing allocation" },
     // Hiring
-    { tab:"recruiting",   label:"Recruiting Module",              icon:"🎯", group:"Hiring",      keywords:"recruiting candidates hiring pipeline sourcing interviews offers" },
+    { tab:"recruiting",   label:"Recruiting Module",              icon:"🎯", group:"Hiring",      keywords:"recruiting candidates hiring pipeline sourcing interviews offers" , ai:true},
     { tab:"jobreqs",     label:"Job Requisition Manager",        icon:"📋", group:"Hiring",      keywords:"job requisitions open reqs hiring requirements staffing req pipeline" , ai:true},
     { tab:"resumemgr",   label:"Resume Manager",                 icon:"📄", group:"Hiring",      keywords:"resume upload parse candidate attach format client submission ATS" },
     { tab:"offerletter", label:"Offer Letter Generator",         icon:"📝", group:"Hiring",      keywords:"offer letter employment agreement consulting contract W2 C2C generate" },
     { tab:"lirecruiter",  label:"LinkedIn Recruiter",           icon:"🔗", group:"Hiring",      keywords:"linkedin recruiter sourcing import" },
     // Compliance
-    { tab:"compliance",   label:"Compliance",                   icon:"✅", group:"Compliance",  keywords:"compliance documents expiring alerts" },
+    { tab:"compliance",   label:"Compliance",                   icon:"✅", group:"Compliance",  keywords:"compliance documents expiring alerts" , ai:true},
     { tab:"paffiles",     label:"PAF Files",                    icon:"📁", group:"Compliance",  keywords:"paf personnel action forms documents" },
     { tab:"immigration",  label:"Immigration Calendar",         icon:"🛂", group:"Compliance",  keywords:"immigration h1b visa work authorization expiry" , ai:true},
     // Operations
     { tab:"projects",     label:"Project Tracker",              icon:"📋", group:"Operations",  keywords:"projects tracker milestones delivery" },
-    { tab:"onboarding",   label:"Onboarding",                   icon:"🎉", group:"Operations",  keywords:"onboarding new hire setup documents" },
+    { tab:"onboarding",   label:"Onboarding",                   icon:"🎉", group:"Operations",  keywords:"onboarding new hire setup documents" , ai:true},
     { tab:"doctemplates", label:"Doc Templates",                icon:"📄", group:"Operations",  keywords:"documents templates letters generate pdf" },
     { tab:"settings",     label:"Settings",                     icon:"⚙️", group:"Operations",  keywords:"settings configuration preferences account" },
     { tab:"help",         label:"Help Center & Training Guide",  icon:"📖", group:"Overview",    keywords:"help training guide documentation tutorial quick start shortcuts glossary" },
@@ -48478,7 +48478,50 @@ Respond ONLY with JSON (no markdown):
 
   return (
     <div>
-      <PH title="🏆 Performance Coach" sub="Behavioral analysis · pattern detection · coaching for sales, recruiters & delivery"/>
+      <PH title="🏆 Performance Coach" sub="Behavioral analysis · pattern detection · coaching for sales, recruiters & delivery">
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <select className="inp" style={{width:220,fontSize:11}} value={selMember}
+            onChange={e=>{setSelMember(e.target.value);if(e.target.value)runConsultantCoach(e.target.value);}}>
+            <option value="">🎓 Coach a consultant...</option>
+            {(roster||[]).filter(r=>r.type==="FTE"||r.type==="Contractor").map(r=>(
+              <option key={r.id} value={r.id}>{r.name} — {r.role||"SAP"} ({Math.round((r.util||0)*100)}%)</option>
+            ))}
+          </select>
+          {consultantCoachLoad&&<span style={{fontSize:11,color:"#38bdf8",animation:"pulse 1s infinite"}}>⏳ Coaching...</span>}
+        </div>
+      </PH>
+      {consultantCoach && !consultantCoach.error && selMember && (() => {
+        const member = (roster||[]).find(r=>r.id===selMember);
+        return (
+          <div style={{padding:"14px 16px",marginBottom:14,background:"#060d1c",border:`1px solid ${consultantCoach.performanceLevel==="TOP"?"#34d399":consultantCoach.performanceLevel==="NEEDS ATTENTION"?"#f87171":"#0369a1"}44`,borderRadius:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:800,color:"#e2e8f0"}}>{member?.name}</div>
+                <div style={{fontSize:10,color:consultantCoach.performanceLevel==="TOP"?"#34d399":consultantCoach.performanceLevel==="NEEDS ATTENTION"?"#f87171":"#38bdf8",fontWeight:700,marginTop:2}}>
+                  {consultantCoach.performanceLevel} · {member?.role||"SAP"} · ${member?.billRate||0}/hr · {Math.round((member?.util||0)*100)}% util
+                </div>
+              </div>
+              <button className="btn bg" style={{fontSize:9}} onClick={()=>setConsultantCoach(null)}>✕</button>
+            </div>
+            {consultantCoach.motivationalMessage&&<div style={{fontSize:12,color:"#f59e0b",marginBottom:10,fontStyle:"italic",padding:"6px 12px",background:"#1a0f00",borderRadius:6}}>"{consultantCoach.motivationalMessage}"</div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div style={{padding:"8px 12px",background:"#040a14",borderRadius:7}}>
+                <div style={{fontSize:9,color:"#15803d",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>Strengths</div>
+                {(consultantCoach.strengths||[]).map((s,i)=><div key={i} style={{fontSize:11,color:"#4ade80",marginBottom:3}}>✓ {s}</div>)}
+              </div>
+              <div style={{padding:"8px 12px",background:"#040a14",borderRadius:7}}>
+                <div style={{fontSize:9,color:"#991b1b",marginBottom:4,textTransform:"uppercase",fontWeight:700}}>Growth Focus</div>
+                <div style={{fontSize:11,color:"#f87171",marginBottom:6}}>{consultantCoach.improvementArea}</div>
+                <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>This Week</div>
+                <div style={{fontSize:11,color:"#38bdf8"}}>{consultantCoach.weeklyGoal}</div>
+              </div>
+            </div>
+            {consultantCoach.rateIncreaseCase&&<div style={{padding:"6px 12px",background:"#021f14",borderRadius:6,border:"1px solid #15803d33",fontSize:11,color:"#4ade80",marginBottom:6}}>💰 {consultantCoach.rateIncreaseCase}</div>}
+            {consultantCoach.careerAdvice&&<div style={{padding:"6px 12px",background:"#0c1a2e",borderRadius:6,border:"1px solid #0369a133",fontSize:11,color:"#a78bfa"}}>🚀 {consultantCoach.careerAdvice}</div>}
+          </div>
+        );
+      })()}
+
 
       {/* Role Selector */}
       {/* View toggle */}
@@ -49543,6 +49586,25 @@ function BDEngine({ crmDeals, setCrmDeals, crmAccounts, setCrmAccounts, crmConta
   const [newForm,    setNewForm]    = useState({});
   const [statusFilter, setStatusFilter] = useState("all");
   const [tierFilter,   setTierFilter]   = useState("all");
+  const [compIntelAI,     setCompIntelAI]     = useState(null);
+  const [compIntelLoad,   setCompIntelLoad]   = useState(false);
+  const [compTarget,      setCompTarget]      = useState("");
+  const runCompIntelAI = async (targetCompany) => {
+    setCompIntelLoad(true); setCompIntelAI(null);
+    const target = targetCompany || compTarget || "large utility company";
+    const myStrengths = "WBE/HUB certified SAP consulting firm, BRIM/IS-U specialists, 25+ years SAP experience, local DFW presence, NTTA tolling experience, direct owner involvement";
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
+          system:"You are a competitive intelligence advisor for Ziksatech, a WBE SAP consulting firm specializing in BRIM, IS-U, S/4HANA, utilities and tolling. You help position against large SIs.",
+          messages:[{role:"user",content:`Target company/vertical: ${target}. Ziksatech strengths: ${myStrengths}.\nReturn ONLY JSON:\n{"competitorsToWatch":["SI1 — weakness","SI2 — weakness","SI3 — weakness"],"ourAdvantages":["advantage1","advantage2","advantage3"],"winningPitch":"2-sentence pitch specifically vs large SIs for this vertical","riskFactors":["risk1","risk2"],"dealTactics":["tactic1","tactic2","tactic3"],"pricingStrategy":"how to price to beat SIs while protecting margin"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCompIntelAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCompIntelAI({error:e.message}); }
+    setCompIntelLoad(false);
+  };
 
   // ── Computed metrics ───────────────────────────────────────────────────────
   const thisMonth = new Date().toISOString().slice(0,7);
@@ -49647,6 +49709,7 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
     {id:"opportunities", label:"💼 Opportunities"},
     {id:"momentum", label:"⚡ Deal Momentum"},
     {id:"weekly", label:"🗓 Weekly Plan"},
+    {id:"competitive", label:"🔍 Competitive Intel"},
   ];
 
   const statusColor = s => s==="Opportunity"?"#34d399":s==="Active"?"#38bdf8":s==="Warm"?"#f59e0b":"#475569";
@@ -50381,6 +50444,76 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+
+      {/* ── SECTION 8: COMPETITIVE INTEL ── */}
+      {section==="competitive" && (
+        <div>
+          <div style={{display:"flex",gap:10,marginBottom:14,alignItems:"flex-end",flexWrap:"wrap"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>🔍 Competitive Intelligence</div>
+              <div style={{display:"flex",gap:8}}>
+                <input className="inp" style={{flex:1,fontSize:12}} placeholder="Enter target vertical or company (e.g. utilities, tolling, NTTA)..."
+                  value={compTarget} onChange={e=>setCompTarget(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&runCompIntelAI(compTarget)}
+                />
+                <button className="btn bp" style={{fontSize:12,whiteSpace:"nowrap"}} onClick={()=>runCompIntelAI(compTarget)} disabled={compIntelLoad}>
+                  {compIntelLoad?"⏳ Analyzing...":"🔍 Analyze Competitive Position"}
+                </button>
+              </div>
+              <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                {["Utilities / BRIM","Tolling / IS-U","S/4HANA Migration","SuccessFactors","DFW Enterprise"].map(preset=>(
+                  <button key={preset} className="btn bg" style={{fontSize:10}} onClick={()=>{setCompTarget(preset);runCompIntelAI(preset);}}>
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {compIntelAI && !compIntelAI.error && (
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div style={{padding:"14px 16px",background:"#060d1c",border:"1px solid #f8717133",borderRadius:10}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:10}}>⚔️ Competitors to Watch</div>
+                {(compIntelAI.competitorsToWatch||[]).map((s,i)=>(
+                  <div key={i} style={{fontSize:11,color:"#94a3b8",marginBottom:6,padding:"5px 8px",background:"#040a14",borderRadius:4}}>
+                    {i+1}. {s}
+                  </div>
+                ))}
+                <div style={{marginTop:10,fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Risk Factors</div>
+                {(compIntelAI.riskFactors||[]).map((r,i)=>(
+                  <div key={i} style={{fontSize:10,color:"#f59e0b",marginBottom:3}}>⚠ {r}</div>
+                ))}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{padding:"14px 16px",background:"#060d1c",border:"1px solid #34d39933",borderRadius:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:8}}>🏆 Our Advantages</div>
+                  {(compIntelAI.ourAdvantages||[]).map((a,i)=>(
+                    <div key={i} style={{fontSize:11,color:"#4ade80",marginBottom:4}}>✓ {a}</div>
+                  ))}
+                </div>
+                <div style={{padding:"14px 16px",background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:6}}>🎯 Winning Pitch</div>
+                  <div style={{fontSize:11,color:"#e2e8f0",lineHeight:1.7,fontStyle:"italic"}}>"{compIntelAI.winningPitch}"</div>
+                </div>
+                <div style={{padding:"14px 16px",background:"#060d1c",border:"1px solid #a78bfa33",borderRadius:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a78bfa",marginBottom:6}}>💰 Pricing Strategy</div>
+                  <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>{compIntelAI.pricingStrategy}</div>
+                </div>
+              </div>
+              {(compIntelAI.dealTactics||[]).length>0&&(
+                <div style={{gridColumn:"span 2",padding:"14px 16px",background:"#060d1c",border:"1px solid #f59e0b33",borderRadius:10}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8}}>⚡ Deal Tactics (to win against SIs)</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                    {compIntelAI.dealTactics.map((t,i)=>(
+                      <div key={i} style={{padding:"6px 10px",background:"#040a14",borderRadius:5,fontSize:11,color:"#e2e8f0"}}>{i+1}. {t}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
