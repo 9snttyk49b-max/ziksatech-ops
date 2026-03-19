@@ -8612,7 +8612,7 @@ function FinanceModule({ roster, clients, tsHours, finInvoices, setFinInvoices, 
       <PH title="Finance" sub="Phase 2 — Invoices · Payments · A/R Aging · Expenses · Margin Waterfall"/>
 
       {/* Sub-nav */}
-      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",overflowX:"auto",maxWidth:"100%"}}>
         {subTabs.map(t => (
           <button key={t.id} onClick={()=>setSub(t.id)}
             style={{padding:"7px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
@@ -10291,7 +10291,7 @@ function RecruitingModule({ candidates, setCandidates, submissions, setSubmissio
   return (
     <div>
       <PH title="Recruiting" sub="Candidates · Submissions · Interviews · Offers"/>
-      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",overflowX:"auto",maxWidth:"100%"}}>
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)}
             style={{padding:"7px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
@@ -11870,13 +11870,14 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
   const extProps = { ...props, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, roster, addAudit };
   return (
     <div>
-      <PH title="Sales CRM" sub="Leads · Accounts · Contacts · Deals · Tasks · Notes · Orders · Activities · Forecast · Import"/>
+      <PH title="Sales CRM" sub="Leads · Accounts · Contacts · Deals · Tasks · Notes · Orders · Activities · Forecast · 🚀 BD Engine"/>
       <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)}
-            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
-              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
-              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+            style={{padding:"7px 18px",borderRadius:8,border:t.id==="bdengine"&&sub!==t.id?"1px solid #0369a166":"none",
+              cursor:"pointer",fontSize:12,fontWeight:600,whiteSpace:"nowrap",
+              background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":t.id==="bdengine"?"#071428":"transparent",
+              color:sub===t.id?"#fff":t.id==="bdengine"?"#38bdf8":"#475569",transition:"all 0.15s"}}>
             {t.label}
           </button>
         ))}
@@ -11892,7 +11893,7 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
       {sub==="activities" && <CRMActivities {...props}/>}
       {sub==="forecast"   && <CRMForecast   {...props}/>}
       {sub==="import"     && <CRMImport setLeads={setCrmLeads} setCrmContacts={setCrmContacts} crmAccounts={crmAccounts} crmLeads={crmLeads} crmContacts={crmContacts} crmDeals={crmDeals} addAudit={addAudit}/>}
-      {sub==="bdengine"   && <BDEngine crmDeals={crmDeals} roster={roster} clients={crmAccounts?.length?crmAccounts:clients} finInvoices={[]}/>}
+      {sub==="bdengine"   && <BDEngine crmDeals={crmDeals} roster={roster} clients={crmAccounts?.length?crmAccounts:clients} finInvoices={[]} setCrmLeads={setCrmLeads} setCrmAccounts={setCrmAccounts}/>}
     </div>
   );
 }
@@ -12238,6 +12239,26 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
   const [viewMode, setViewMode] = useState("list"); // "list" | "kanban"
   const [actModal, setActModal] = useState(false);
   const [actForm, setActForm]   = useState({type:"email",accountId:"",contactId:"",dealId:"",subject:"",notes:"",date:TODAY_STR,completed:false});
+  const [aiCoach,   setAiCoach]   = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const runDealCoach = async (d) => {
+    if (!d) return;
+    setAiLoading(true); setAiCoach(null);
+    const acct = (crmAccounts||[]).find(a=>a.id===d.accountId)||{};
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1200,
+          system:"You are a senior SAP consulting sales coach for Ziksatech. Give specific, actionable deal coaching.",
+          messages:[{role:"user",content:`Deal: ${d.name}\nAccount: ${acct.name||d.accountId} (${acct.industry||""})\nStage: ${d.stage} | Value: $${(d.value||0).toLocaleString()} | Prob: ${d.probability||d.prob||0}%\nClose: ${d.closeDate||"not set"} | Notes: ${d.notes||"none"}\nNext step: ${d.nextStep||"none set"}\n\nReturn ONLY JSON: {"riskLevel":"HIGH/MEDIUM/LOW","topRisk":"single biggest risk","nextAction":"specific action this week","executiveSponsor":"covered Y/N + implication","closingMove":"tactic to accelerate","followUpSubject":"email subject line for next touch"}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setAiCoach(parsed);
+    } catch(e) { setAiCoach({error:e.message}); }
+    setAiLoading(false);
+  };
   const saveAct = () => { setCrmActivities(as=>[...as,{...actForm,id:"act"+uid(),completed:actForm.completed==="true"||actForm.completed===true}]); setActModal(false); };
   const { dragProps: _dp } = useDragSort(crmDeals, setCrmDeals);
   const filtered = stageFilter==="all" ? crmDeals : crmDeals.filter(d=>d.stage===stageFilter);
@@ -12393,6 +12414,36 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
               <button className="btn bs" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>setCrmDeals(ds=>ds.map(d=>d.id===selDeal.id?{...d,stage:"closed-won",probability:100}:d))}>✓ Won</button>
               <button className="btn br" style={{flex:1,justifyContent:"center",fontSize:11}} onClick={()=>setCrmDeals(ds=>ds.map(d=>d.id===selDeal.id?{...d,stage:"closed-lost",probability:0}:d))}>✗ Lost</button>
             </div>
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:11,marginTop:8}} onClick={()=>runDealCoach(selDeal)} disabled={aiLoading}>
+              {aiLoading?"⏳ Coaching...":"🧠 AI Deal Coach"}
+            </button>
+            {aiCoach && !aiCoach.error && (
+              <div style={{marginTop:10,background:"#040a14",borderRadius:8,border:"1px solid #0369a144",padding:"12px 14px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>🧠 AI Deal Coach</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                  <div style={{padding:"6px 10px",background:"#060d1c",borderRadius:6,border:`1px solid ${aiCoach.riskLevel==="HIGH"?"#f87171":aiCoach.riskLevel==="MEDIUM"?"#f59e0b":"#34d399"}44`}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>RISK LEVEL</div>
+                    <div style={{fontSize:12,fontWeight:700,color:aiCoach.riskLevel==="HIGH"?"#f87171":aiCoach.riskLevel==="MEDIUM"?"#f59e0b":"#34d399"}}>{aiCoach.riskLevel}</div>
+                  </div>
+                  <div style={{padding:"6px 10px",background:"#060d1c",borderRadius:6,border:"1px solid #1e3a5f"}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>EXEC SPONSOR</div>
+                    <div style={{fontSize:11,color:"#94a3b8"}}>{aiCoach.executiveSponsor}</div>
+                  </div>
+                </div>
+                {[["⚠️ Top Risk",aiCoach.topRisk,"#f87171"],["→ This Week",aiCoach.nextAction,"#38bdf8"],["⚡ Closing Move",aiCoach.closingMove,"#a78bfa"]].map(([l,v,col])=>
+                  v&&<div key={l} style={{marginBottom:6}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{l}</div>
+                    <div style={{fontSize:11,color:col,lineHeight:1.4}}>{v}</div>
+                  </div>
+                )}
+                {aiCoach.followUpSubject && (
+                  <div style={{marginTop:6,padding:"5px 10px",background:"#0c1a2e",borderRadius:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{fontSize:10,color:"#64748b"}}>📧 {aiCoach.followUpSubject}</div>
+                    <button className="btn bg" style={{fontSize:9,padding:"2px 8px"}} onClick={()=>navigator.clipboard?.writeText(aiCoach.followUpSubject)}>Copy</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Activity timeline */}
@@ -44127,7 +44178,8 @@ Respond ONLY with this exact JSON (no markdown, no backticks):
                   {(() => {
                     const a = (d.action||"").toLowerCase();
                     const t = a.includes("invoice")||a.includes("bill")||a.includes("ar")||a.includes("collect") ? "arinvoices"
-                      : a.includes("deal")||a.includes("pipeline")||a.includes("crm")||a.includes("proposal") ? "crm"
+                      : a.includes("prospect")||a.includes("outreach")||a.includes("target")||a.includes("cold") ? "crm"
+                      : a.includes("deal")||a.includes("pipeline")||a.includes("close")||a.includes("proposal") ? "crm"
                       : a.includes("consultant")||a.includes("bench")||a.includes("hire")||a.includes("util") ? "roster"
                       : a.includes("rate")||a.includes("leakage")||a.includes("underbill") ? "leakage"
                       : a.includes("workflow")||a.includes("follow")||a.includes("stale") ? "autoworkflow"
@@ -47743,9 +47795,27 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
                         {(a.status==="Opportunity"||a.status==="Active") && (
                           <button className="btn bp" style={{fontSize:9,padding:"2px 7px",background:"#34d39922",color:"#34d399",border:"1px solid #34d39944"}}
                             onClick={(e)=>{e.stopPropagation();
-                              // Update account status to show it's been promoted
+                              // Promote to CRM: add as CRM account + lead
+                              const newAccId = "acc"+Date.now();
+                              const newAcc = {
+                                id: newAccId, name: a.name, industry: a.industry,
+                                type: "prospect", website: "", phone: "",
+                                address: "", annualRevPotential: (a.revenue||0)*1000,
+                                owner: "Manju", health: "green",
+                                notes: `Promoted from BD Engine. SAP: ${(a.sap||[]).join(", ")}. WBE: ${a.wbe}. Prev vendors: ${(a.vendors||[]).join(", ")}.`
+                              };
+                              if(setCrmAccounts) setCrmAccounts(prev=>[...prev, newAcc]);
+                              const newLead = {
+                                id: "lead"+Date.now(), name: "TBD — "+a.name,
+                                company: a.name, title: "CIO/VP IT", email: "",
+                                phone: "", source: "BD Engine",
+                                status: "qualified", score: a.relScore||50,
+                                industry: a.industry, notes: `From BD Engine. Coverage: ${a.coverage} contacts. ${a.relScore} rel score.`,
+                                linkedIn: "", accountId: newAccId, createdAt: TODAY
+                              };
+                              if(setCrmLeads) setCrmLeads(prev=>[...prev, newLead]);
                               updateAccountStatus(a.id, "Converted");
-                              alert(`✅ ${a.name} promoted to CRM!\nA new Account + Lead has been created in Sales CRM → Leads & Accounts tabs.`);
+                              alert(`✅ ${a.name} promoted to Sales CRM!\n\n→ Added to CRM Accounts (type: prospect)\n→ Added to CRM Leads (status: qualified)\n\nGo to Sales CRM → Accounts or Leads to see it.`);
                             }}>
                             ✅ → CRM
                           </button>
@@ -47914,6 +47984,32 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
       {/* ── SECTION 4: OUTREACH ENGINE ── */}
       {section==="outreach" && (
         <div>
+          {/* Outreach Script Templates */}
+          <div className="card" style={{padding:"14px 18px",marginBottom:14,border:"1px solid #0369a144"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>📋 High-Conversion Outreach Scripts (SAP Utilities)</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+              {[
+                {n:"1. Connection",  color:"#38bdf8", bg:"#0c1a2e",
+                  msg:"Hi [Name], I've been working closely on SAP Utilities (IS-U / BRIM) transformations and noticed [Company] is actively investing in this space. Would love to connect and exchange insights."},
+                {n:"2. Value",       color:"#34d399", bg:"#021f14",
+                  msg:"Hi [Name], We recently helped utilities improve billing + customer processes using SAP IS-U + BRIM, reducing cycle time by ~20%. Curious — is this an area of focus for your team this year?"},
+                {n:"3. Hook",        color:"#f59e0b", bg:"#1a1000",
+                  msg:"Hi [Name], Many utilities we work with are struggling with: delayed billing cycles, fragmented customer data, and high operational cost. We built a quick assessment to identify gaps in 2–3 weeks. Open to a quick discussion?"},
+                {n:"4. Meeting Ask", color:"#a78bfa", bg:"#0d0b1a",
+                  msg:"Hi [Name], Would it make sense to do a short 20-min session? We can share what we're seeing across utilities and where companies are getting ROI quickly."},
+              ].map(s=>(
+                <div key={s.n} style={{padding:"10px 12px",background:s.bg,border:`1px solid ${s.color}33`,borderRadius:8}}>
+                  <div style={{fontSize:9,fontWeight:700,color:s.color,marginBottom:5,textTransform:"uppercase"}}>{s.n}</div>
+                  <div style={{fontSize:10,color:"#94a3b8",lineHeight:1.5,marginBottom:6}}>{s.msg}</div>
+                  <button className="btn bg" style={{fontSize:9,padding:"2px 8px"}}
+                    onClick={()=>navigator.clipboard?.writeText(s.msg)}>
+                    📋 Copy
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,flex:1}}>
               {[
