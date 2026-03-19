@@ -44182,7 +44182,7 @@ function DealAccelerator({ crmDeals, clients, roster, proposals, authProfile }) 
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:600,
+          model:"claude-sonnet-4-20250514", max_tokens:2000,
           system:"You are a B2B sales acceleration AI for a SAP consulting firm. Give sharp, specific next actions to close deals. Respond in JSON only — no markdown.",
           messages:[{ role:"user", content:
             `Deal: ${deal.company||deal.clientName||"Unknown"} | Stage: ${deal.stage} | Value: $${(deal.value||0).toLocaleString()} | Probability: ${deal.probability||0}% | Days since last activity: ${daysSince} | Risk score: ${risk}/100 | Contact: ${deal.contactName||"unknown"} | Notes: ${deal.notes||"none"}
@@ -44434,7 +44434,7 @@ function RevLeakageDetector({ roster, clients, finInvoices, finPayments, tsHours
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:400,
+          model:"claude-sonnet-4-20250514", max_tokens:2000,
           system:"You are a CFO-level AI advisor for a SAP consulting firm. Be direct and dollar-specific. JSON only.",
           messages:[{role:"user", content:
             `Revenue leakage analysis: Total detected monthly leakage: $${Math.round(totalLeakage).toLocaleString()}. 
@@ -44615,7 +44615,7 @@ function ConsultantOptimizer({ roster, clients, finInvoices, tsHours, crmDeals, 
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:800,
+          model:"claude-sonnet-4-20250514", max_tokens:2000,
           system:"You are a consultant portfolio optimization AI for a SAP consulting firm. Maximize margin and utilization.",
           messages:[{ role:"user", content:
             `Consultant Portfolio:\\n${JSON.stringify(snapshot, null, 2)}\\n\\n` +
@@ -44977,7 +44977,7 @@ function Client360Intelligence({ clients, finInvoices, finPayments, crmDeals, ro
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:800,
+          model:"claude-sonnet-4-20250514", max_tokens:2000,
           system:"You are a client intelligence AI for a SAP consulting firm. Give specific, actionable strategic insights about this client relationship.",
           messages:[{role:"user", content:
 `Client: ${cl.name} | Vertical: ${cl.vertical||"Unknown"} | Since: ${cl.clientSince||"2024"}
@@ -45183,7 +45183,7 @@ function KnowledgeEngine({ crmDeals, proposals, roster, clients, authProfile }) 
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:600,
+          model:"claude-sonnet-4-20250514", max_tokens:2000,
           system:`You are the institutional knowledge AI for Ziksatech, a WBE-certified SAP consulting firm specializing in Utilities (BRIM, IS-U), SuccessFactors, S/4HANA, MDG, and Data Governance in the DFW market. Answer questions based on the firm's actual deal data and consulting patterns. Be specific, practical, and quantified.`,
           messages:[{role:"user", content:`Firm data: ${digest}\n\nQuestion: ${qText}\n\nRespond with a direct, specific answer based on this firm's data. Format as: key insight + supporting evidence from the data + 1-2 actionable recommendations.`}]
         })
@@ -45332,7 +45332,7 @@ function ScenarioSimulator({ roster, clients, finInvoices, finPayments, crmDeals
       const resp = await fetch("/api/claude", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:400,
+          model:"claude-sonnet-4-20250514", max_tokens:2000,
           system:"You are a CFO-level scenario analysis AI for a SAP consulting firm.",
           messages:[{role:"user", content:
 `Base: Revenue ${fmtK(baseRevenue)}, Profit ${fmtK(baseProfit)}, Margin ${Math.round(baseMargin)}%
