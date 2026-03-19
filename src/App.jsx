@@ -4774,7 +4774,6 @@ function ContractRenewalTracker({ contracts, setContracts, clients, crmDeals, ro
   const TODAY      = new Date();
   const TODAY_STR  = TODAY.toISOString().slice(0,10);
 
-  const daysUntil  = dateStr => dateStr ? Math.ceil((new Date(dateStr) - TODAY) / 86400000) : null;
   const fmt        = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${v}`;
   const fmtDate    = d => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
   const ff         = (k,v) => setForm(p=>({...p,[k]:v}));
@@ -11695,7 +11694,6 @@ Return ONLY JSON:
   const TODAY = new Date();
   const TODAY_STR = TODAY.toISOString().slice(0,10);
 
-  const daysUntil = d => d ? Math.ceil((new Date(d) - TODAY) / 86400000) : null;
   const fmtDate   = d => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
 
   // ── Visa type config ──────────────────────────────────────────────────────
@@ -24477,7 +24475,6 @@ Return ONLY JSON:
 
   const safeRoster = roster || [];
   const TODAY = new Date();
-  const daysUntil = d => d ? Math.ceil((new Date(d) - TODAY) / 86400000) : null;
   const fmtDate   = d => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
 
   const save = (key, data) => localStorage.setItem(key, JSON.stringify(data));
@@ -24958,7 +24955,6 @@ function NotificationsHub({
 
   // ── Generate alerts (reuse existing logic) ─────────────────────────────────
   const today = new Date();
-  const daysUntil = d => d ? Math.ceil((new Date(d) - today) / 86400000) : null;
   const fmt       = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${Math.round(v).toLocaleString()}`;
 
   // Build a structured list of current alerts
@@ -33968,7 +33964,6 @@ function BenchManagement({ roster, clients, projects, crmDeals, crmAccounts, con
   const WORK_WK  = 40; // billable hours per week
   const WORK_YR  = 2000;
   const fmt      = v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}k` : `$${Math.round(v).toLocaleString()}`;
-  const daysUntil = d => d ? Math.ceil((new Date(d) - TODAY) / 86400000) : null;
   const pct       = (a,b) => b>0 ? Math.round(a/b*100) : 0;
 
   // ── Compute utilization for each consultant ───────────────────────────────
