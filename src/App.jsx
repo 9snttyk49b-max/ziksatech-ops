@@ -13248,6 +13248,24 @@ function CRMActivities({ crmAccounts, crmContacts, crmDeals, crmActivities, setC
   const [typeFilter, setTypeFilter] = useState("all");
   const [modal, setModal]   = useState(false);
   const [form, setForm]     = useState(null);
+  const [CRMActivitiesAI,     setCRMActivitiesAI]     = useState(null);
+  const [CRMActivitiesAILoad, setCRMActivitiesAILoad] = useState(false);
+  const runCRMActivitiesAI = async () => {
+    setCRMActivitiesAILoad(true); setCRMActivitiesAI(null);
+    const recent = (crmActivities||[]).slice(-10);
+    const overdue = (crmActivities||[]).filter(a=>a.dueDate&&new Date(a.dueDate)<new Date()&&!a.done);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,
+          system:"You are a sales activity coach for a SAP consulting firm.",
+          messages:[{role:"user",content:`${(crmActivities||[]).length} total activities. ${overdue.length} overdue. Recent: ${recent.map(a=>a.type||"activity").join(", ")}.\nReturn ONLY JSON:\n{"cadenceHealth":"GOOD/AT RISK/BEHIND","overdueAction":"what to do about overdue items","nextBestActivity":"highest-value activity to do today","weeklyTarget":"recommended activity count for this week"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCRMActivitiesAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCRMActivitiesAI({error:e.message}); }
+    setCRMActivitiesAILoad(false);
+  };
 
   const empty = { dealId:"", accountId:"", contactId:"", type:"email", date:new Date().toISOString().slice(0,10), subject:"", notes:"", completed:false };
   const save = () => { setCrmActivities(as=>[...as,{...form,id:"act"+uid()}]); setModal(false); };
@@ -13266,6 +13284,15 @@ function CRMActivities({ crmAccounts, crmContacts, crmDeals, crmActivities, setC
 
   return (
     <div>
+      <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
+        <button className="btn bp" style={{fontSize:11}} onClick={runCRMActivitiesAI} disabled={CRMActivitiesAILoad}>{CRMActivitiesAILoad?"⏳...":"🤖 Activity Coach"}</button>
+        {CRMActivitiesAI&&!CRMActivitiesAI.error&&<>
+          <span style={{fontSize:11,fontWeight:700,color:CRMActivitiesAI.cadenceHealth==="GOOD"?"#34d399":"#f87171"}}>{CRMActivitiesAI.cadenceHealth}</span>
+          {CRMActivitiesAI.nextBestActivity&&<span style={{fontSize:10,color:"#38bdf8"}}>→ {CRMActivitiesAI.nextBestActivity}</span>}
+          <button className="btn bg" style={{fontSize:9}} onClick={()=>setCRMActivitiesAI(null)}>✕</button>
+        </>}
+      </div>
+
       {/* Summary cards */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
         {[{l:"Overdue",v:overdue,c:"#f87171"},{l:"Due Today",v:today,c:"#f59e0b"},{l:"Upcoming",v:upcoming,c:"#38bdf8"},{l:"Completed",v:done,c:"#34d399"}].map(k=>(
@@ -14503,6 +14530,24 @@ function SOWView({ sows, setSows, crmAccounts, roster }) {
 
 function SOWBuilder({ sows, setSows, crmAccounts, crmDeals, contracts, roster }) {
   const [step, setStep]   = useState(1);
+  const [SOWBuilderAI,     setSOWBuilderAI]     = useState(null);
+  const [SOWBuilderAILoad, setSOWBuilderAILoad] = useState(false);
+  const runSOWBuilderAI = async () => {
+    setSOWBuilderAILoad(true); setSOWBuilderAI(null);
+    const deal = (crmDeals||[]).find(d=>d.id===draft?.dealId) || {};
+    const acct = (crmAccounts||[]).find(a=>a.id===deal.accountId) || {};
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a SOW advisor for Ziksatech, a WBE SAP consulting firm. Write winning SOW scope that protects margin and sets clear boundaries.",
+          messages:[{role:"user",content:`SOW for: ${acct.name||"client"}, ${deal.name||"SAP project"}, value $${Math.round((deal.value||0)/1000)}K.\nReturn ONLY JSON:\n{"scopeStatement":"2-sentence scope description","outOfScope":["out1","out2","out3"],"riskClause":"key risk clause to include","paymentTerms":"recommended payment milestone structure","protectiveLanguage":"legal phrase to protect against scope creep"}`}]
+        })
+      });
+      const data = await resp.json();
+      setSOWBuilderAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setSOWBuilderAI({error:e.message}); }
+    setSOWBuilderAILoad(false);
+  };
   const [draft, setDraft] = useState({
     accountId:"acc1", dealId:"deal1", name:"", description:"",
     consultants:[], startDate:"", endDate:"",
@@ -14543,6 +14588,29 @@ function SOWBuilder({ sows, setSows, crmAccounts, crmDeals, contracts, roster })
 
   return (
     <div>
+      {/* AI SOW Advisor */}
+      <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+        <button className="btn bp" style={{fontSize:11}} onClick={runSOWBuilderAI} disabled={SOWBuilderAILoad}>{SOWBuilderAILoad?"⏳...":"🤖 AI Scope Advisor"}</button>
+        {SOWBuilderAI && <span style={{fontSize:10,color:"#64748b"}}>AI suggestions loaded ↓</span>}
+      </div>
+      {SOWBuilderAI && !SOWBuilderAI.error && (
+        <div style={{padding:"12px 14px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 AI SOW Advisor</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setSOWBuilderAI(null)}>✕</button>
+          </div>
+          {SOWBuilderAI.scopeStatement&&<div style={{fontSize:11,color:"#e2e8f0",marginBottom:8,padding:"6px 10px",background:"#040a14",borderRadius:4,lineHeight:1.6}}>{SOWBuilderAI.scopeStatement}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {SOWBuilderAI.outOfScope?.length>0&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>OUT OF SCOPE</div>{SOWBuilderAI.outOfScope.map((s,i)=><div key={i} style={{fontSize:10,color:"#f87171",marginBottom:2}}>✗ {s}</div>)}</div>}
+            <div>
+              {SOWBuilderAI.paymentTerms&&<div style={{marginBottom:6}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>PAYMENT TERMS</div><div style={{fontSize:10,color:"#34d399"}}>{SOWBuilderAI.paymentTerms}</div></div>}
+              {SOWBuilderAI.riskClause&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>RISK CLAUSE</div><div style={{fontSize:10,color:"#f59e0b"}}>{SOWBuilderAI.riskClause}</div></div>}
+            </div>
+          </div>
+          {SOWBuilderAI.protectiveLanguage&&<div style={{marginTop:8,padding:"5px 10px",background:"#0c2340",borderRadius:4,fontSize:10,color:"#a78bfa",fontStyle:"italic"}}>"{SOWBuilderAI.protectiveLanguage}"</div>}
+        </div>
+      )}
+
       {/* Progress steps */}
       <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:28}}>
         {["Deal & Account","Scope & Team","Milestones","Review & Save"].map((s,i)=>(
@@ -44526,6 +44594,24 @@ function CRMTasks({ tasks, setTasks, crmAccounts, crmDeals, addAudit }) {
   const [form, setForm]     = useState(null);
   const [editing, setEditing]= useState(null);
   const [filter, setFilter] = useState("open");
+  const [CRMTasksAI,     setCRMTasksAI]     = useState(null);
+  const [CRMTasksAILoad, setCRMTasksAILoad] = useState(false);
+  const runCRMTasksAI = async () => {
+    setCRMTasksAILoad(true); setCRMTasksAI(null);
+    const overdue = (tasks||[]).filter(t=>t.dueDate&&new Date(t.dueDate)<new Date()&&!t.done);
+    const today = (tasks||[]).filter(t=>t.dueDate&&new Date(t.dueDate).toDateString()===new Date().toDateString());
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,
+          system:"You are a task priority advisor for a SAP consulting firm.",
+          messages:[{role:"user",content:`${(tasks||[]).length} total tasks. ${overdue.length} overdue. ${today.length} due today.\nReturn ONLY JSON:\n{"priorityFocus":"single most important task type to clear today","overdueRisk":"consequence of not addressing overdue tasks","completionTip":"quickest way to clear task backlog","delegationOpportunity":"tasks that should be delegated"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCRMTasksAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCRMTasksAI({error:e.message}); }
+    setCRMTasksAILoad(false);
+  };
 
   const empty = { title:"", accountId:"", dealId:"", dueDate:"", priority:"medium", status:"open", assignedTo:"Manju", notes:"" };
   const open = (t=null) => { setEditing(t?.id||null); setForm(t?{...t}:{...empty}); setModal(true); };
@@ -44544,6 +44630,15 @@ function CRMTasks({ tasks, setTasks, crmAccounts, crmDeals, addAudit }) {
 
   return (
     <div>
+      <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
+        <button className="btn bp" style={{fontSize:11}} onClick={runCRMTasksAI} disabled={CRMTasksAILoad}>{CRMTasksAILoad?"⏳...":"🤖 Task AI"}</button>
+        {CRMTasksAI&&!CRMTasksAI.error&&<>
+          {CRMTasksAI.priorityFocus&&<span style={{fontSize:10,color:"#38bdf8"}}>→ {CRMTasksAI.priorityFocus}</span>}
+          {CRMTasksAI.delegationOpportunity&&<span style={{fontSize:10,color:"#a78bfa"}}>📤 {CRMTasksAI.delegationOpportunity}</span>}
+          <button className="btn bg" style={{fontSize:9}} onClick={()=>setCRMTasksAI(null)}>✕</button>
+        </>}
+      </div>
+
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
         {[["Open",openCount,"#38bdf8"],["Overdue",overdueCount,"#f87171"],["Completed",tasks.filter(t=>t.status==="completed").length,"#34d399"]].map(([l,v,c])=>(
           <div key={l} className="card" style={{padding:"10px 14px",borderLeft:`3px solid ${c}`}}>
