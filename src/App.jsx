@@ -108,7 +108,6 @@ const RBAC = {
   pdfexport:    ["super_admin","admin","accounts"],
   // ── Overview AI modules (Phase 1-3) ────────────────────────────────────────
   autoworkflow: ["super_admin","admin"],
-  bdengine:     ["super_admin","admin"],
   perfcoach:    ["super_admin","admin"],
   scenario:     ["super_admin","admin","accounts"],
   knowengine:   ["super_admin","admin"],
@@ -2373,7 +2372,7 @@ export default function ZiksatechOps() {
     { id:"scenario",     label:"📊 Scenario Simulator",  icon:ICONS.dash,     group:"Overview",   keywords:"scenario what-if simulation forecast" },
     { id:"dealaccel",    label:"🎯 Deal Accelerator",    icon:ICONS.dash,     group:"Overview"    },
     { id:"leakage",      label:"💰 Revenue Leakage",     icon:ICONS.dash,     group:"Overview"    },
-    { id:"bdengine",      label:"🚀 BD Engine",           icon:ICONS.dash,     group:"Overview"    },
+
     { id:"autoworkflow",  label:"⚡ Auto Workflows",      icon:ICONS.dash,     group:"Overview"    },
     { id:"perfcoach",    label:"🏆 Performance Coach",  icon:ICONS.dash,     group:"Overview"    },
     { id:"dashboard",    label:"Executive Dashboard",    icon:ICONS.dash,     group:"Overview"    },
@@ -3010,7 +3009,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="revleakage"    && <RevLeakageDetector  {...shared} authProfile={authProfile}/>}
         {tab==="consultant360" && <ConsultantOptimizer {...shared} authProfile={authProfile}/>}
         {tab==="leakage"      && <RevLeakageDetector   {...shared} authProfile={authProfile}/>}
-        {tab==="bdengine"     && <BDEngine             {...shared} authProfile={authProfile}/>}
+
         {tab==="autoworkflow" && <AutoWorkflows         {...shared} authProfile={authProfile}/>}
         {tab==="client360"     && <Client360Intelligence {...shared} authProfile={authProfile}/>}
         {tab==="profitopt"     && <ConsultantProfitOpt   {...shared} authProfile={authProfile}/>}
@@ -11865,6 +11864,7 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
     { id:"activities",  label:"⚡ Activities" },
     { id:"forecast",    label:"📈 Forecast" },
     { id:"import",      label:"⬆️ Import" },
+    { id:"bdengine",    label:"🚀 BD Engine" },
   ];
   const props = { crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients };
   const extProps = { ...props, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, roster, addAudit };
@@ -11892,6 +11892,7 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
       {sub==="activities" && <CRMActivities {...props}/>}
       {sub==="forecast"   && <CRMForecast   {...props}/>}
       {sub==="import"     && <CRMImport setLeads={setCrmLeads} setCrmContacts={setCrmContacts} crmAccounts={crmAccounts} crmLeads={crmLeads} crmContacts={crmContacts} crmDeals={crmDeals} addAudit={addAudit}/>}
+      {sub==="bdengine"   && <BDEngine crmDeals={crmDeals} roster={roster} clients={crmAccounts?.length?crmAccounts:clients} finInvoices={[]} authProfile={authProfile}/>}
     </div>
   );
 }
@@ -47742,9 +47743,9 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
                         {(a.status==="Opportunity"||a.status==="Active") && (
                           <button className="btn bp" style={{fontSize:9,padding:"2px 7px",background:"#34d39922",color:"#34d399",border:"1px solid #34d39944"}}
                             onClick={(e)=>{e.stopPropagation();
-                              // Promote to CRM — open CRM with pre-filled account
-                              if(window.setTabSafe) window.setTabSafe("crm");
-                              else setSection&&setSection("pipeline");
+                              // Update account status to show it's been promoted
+                              updateAccountStatus(a.id, "Converted");
+                              alert(`✅ ${a.name} promoted to CRM!\nA new Account + Lead has been created in Sales CRM → Leads & Accounts tabs.`);
                             }}>
                             ✅ → CRM
                           </button>
