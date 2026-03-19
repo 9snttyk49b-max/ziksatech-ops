@@ -37772,7 +37772,7 @@ function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, se
   const [aiLoad,   setAiLoad]  = useState(false);
   const [aiResult, setAiRes]   = useState(null);
 
-  const EMPTY = { name:"", role:"", source:"LinkedIn", visa:"H-1B", phone:"", email:"", linkedIn:"", skills:"", stage:"sourced", billRate:"", payRate:"", notes:"", jobReqId:"", clientTarget:"", h1bStatus:"", i94Expiry:"", lca:"", petitionNum:"", priorityDate:"", onboardTasks:[] };
+  const EMPTY = { name:"", role:"", source:"LinkedIn", visa:"H-1B", phone:"", email:"", linkedIn:"", skills:"", stage:"sourced", billRate:"", payRate:"", notes:"", jobReqId:"", clientTarget:"", startDate:"", endDate:"", h1bStatus:"", i94Expiry:"", lca:"", petitionNum:"", priorityDate:"", onboardTasks:[] };
   const [form, setForm] = useState({...EMPTY});
   const [editing, setEditing] = useState(null);
 
@@ -37809,10 +37809,11 @@ function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, se
       type: cand.visa==="USC"||cand.visa==="Green Card" ? "FTE" : "FTE",
       client: cand.clientTarget || "",
       billRate: +cand.billRate || 0,
-      util: 0,
+      util: cand.startDate ? 1.0 : 0,
       baseSalary: 0,
       skills: cand.skills || "",
       projects: "",
+      startDate: cand.startDate || "",
       revShare: 0,
       fixedRate: +cand.payRate || 0,
       thirdPartySplit: 0,
@@ -38017,6 +38018,8 @@ function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, se
                 ["Bill Rate",sel.billRate?`$${sel.billRate}/hr`:"—"],
                 ["Pay Rate", sel.payRate?`$${sel.payRate}/hr`:"—"],
                 ["Client Target", sel.clientTarget||"—"],
+                ["Start Date", sel.startDate||"—"],
+                ["End Date",   sel.endDate||"—"],
               ].map(([k,v])=>(
                 <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
                   <span style={{color:"#475569"}}>{k}</span>
@@ -38142,7 +38145,7 @@ function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, se
               <button className="btn bg" onClick={()=>setModal(false)}>✕</button>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {[["Name","name","text"],["Role / Title","role","text"],["Email","email","email"],["Phone","phone","tel"],["LinkedIn URL","linkedIn","text"],["Bill Rate ($/hr)","billRate","number"],["Pay Rate ($/hr)","payRate","number"],["Client Target","clientTarget","text"]].map(([l,k,t])=>(
+              {[["Name","name","text"],["Role / Title","role","text"],["Email","email","email"],["Phone","phone","tel"],["LinkedIn URL","linkedIn","text"],["Bill Rate ($/hr)","billRate","number"],["Pay Rate ($/hr)","payRate","number"],["Client Target","clientTarget","text"],["Start Date","startDate","date"],["End Date","endDate","date"]].map(([l,k,t])=>(
                 <FF key={k} label={l}><input type={t} className="inp" value={form[k]||""} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={l}/></FF>
               ))}
               <FF label="Visa Type">
@@ -38189,6 +38192,340 @@ function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, se
   );
 }
 
+
+// ── Content Engine ─────────────────────────────────────────────────────
+function ContentEngine({ targets, roster, clients, addAudit }) {
+  const [contentType, setContentType] = useState("linkedin");
+  const [form, setForm] = useState({ topic:"", angle:"", industry:"Energy & Utilities", tone:"thought-leader", account:"" });
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(() => { try { return JSON.parse(localStorage.getItem("zt-mae-content")||"[]"); } catch { return []; } });
+  const [copied, setCopied] = useState("");
+
+  const copy = (text, k) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(k); setTimeout(()=>setCopied(""),2500); };
+  const persist = d => { setSaved(d); localStorage.setItem("zt-mae-content", JSON.stringify(d)); };
+
+  const TYPES = [
+    { id:"linkedin",    label:"LinkedIn Post",    icon:"🔗", chars:"≤1300 chars, hook + insight + CTA" },
+    { id:"email",       label:"Cold Email",       icon:"📧", chars:"≤150 words, subject + body + PS" },
+    { id:"followup",    label:"Follow-up Email",  icon:"🔄", chars:"≤80 words, reference prior touch" },
+    { id:"inmail",      label:"LinkedIn InMail",  icon:"✉️",  chars:"≤300 chars, personalized pitch" },
+    { id:"case_study",  label:"Mini Case Study",  icon:"📊", chars:"3-paragraph: challenge / solution / result" },
+    { id:"rfp_teaser",  label:"RFP Teaser",       icon:"📋", chars:"2-paragraph capability summary for procurement" },
+  ];
+
+  const INDUSTRIES = ["Energy & Utilities","Transportation/Tolling","Healthcare","Automotive/Mfg","Defense","Technology","Consumer Goods","Financial Services"];
+  const TONES = [
+    { id:"thought-leader", label:"Thought Leader — authoritative, data-driven" },
+    { id:"challenger",     label:"Challenger — provoke thinking, question status quo" },
+    { id:"story",          label:"Storyteller — lead with a client win or insight" },
+    { id:"direct",         label:"Direct — short, punchy, clear CTA" },
+    { id:"wbe-angle",      label:"WBE/Diversity — highlight certified diverse supplier angle" },
+  ];
+
+  const generate = async () => {
+    if (!form.topic.trim()) return alert("Enter a topic");
+    setLoading(true); setOutput("");
+    const typeInfo = TYPES.find(t=>t.id===contentType);
+    const account  = targets.find(t=>t.id===form.account);
+    const activeConsultants = (roster||[]).filter(r=>(r.util||0)>0).slice(0,3).map(r=>`${r.name} (${r.role}, ${r.client})`).join(", ");
+
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,
+          system:`You are the marketing voice of Ziksatech — a WBE-certified SAP consulting firm based in Plano, TX. Specialties: SAP BRIM, IS-U (utility billing), S/4HANA migration, SuccessFactors, ABAP. Founded by Manju Murthy with 25+ years SAP experience. Active clients include NTTA, Toyota, HPE, Freeman. Write in first person for Manju unless specified otherwise. Never use [BRACKET] placeholders — use specific real details. Format output ready-to-use.`,
+          messages:[{role:"user",content:`Create a ${typeInfo.label} (${typeInfo.chars}).
+Topic: ${form.topic}
+Industry focus: ${form.industry}
+Tone: ${TONES.find(t=>t.id===form.tone)?.label||form.tone}
+${form.angle ? "Specific angle: "+form.angle : ""}
+${account ? "Target account context: "+account.company+" — "+account.notes : ""}
+Active team context: ${activeConsultants||"SAP BRIM, IS-U, S/4HANA consultants deployed at enterprise clients"}
+
+Write the complete ${typeInfo.label} ready to copy-paste. No preamble, no explanation.`}]
+        })
+      });
+      const data = await resp.json();
+      const text = (data.content?.[0]?.text||"").trim();
+      setOutput(text);
+    } catch(e) { setOutput("Error: "+e.message); }
+    setLoading(false);
+  };
+
+  const saveContent = () => {
+    if (!output) return;
+    const rec = { id:"cnt-"+Date.now(), type:contentType, topic:form.topic, industry:form.industry, content:output, createdAt:new Date().toISOString() };
+    persist([rec,...saved]);
+    addAudit?.("MAE","Save Content","Marketing",form.topic);
+  };
+
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:16}}>
+      {/* Controls */}
+      <div>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",marginBottom:8,fontWeight:700}}>Content Type</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            {TYPES.map(t=>(
+              <button key={t.id} onClick={()=>setContentType(t.id)}
+                style={{padding:"8px 12px",borderRadius:7,border:`1px solid ${contentType===t.id?"#0369a1":"#1a2d45"}`,
+                  cursor:"pointer",textAlign:"left",background:contentType===t.id?"#0c2340":"#060d1c",
+                  display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:14}}>{t.icon}</span>
+                <div>
+                  <div style={{fontSize:11,fontWeight:600,color:contentType===t.id?"#38bdf8":"#94a3b8"}}>{t.label}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>{t.chars}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <FF label="Topic / Hook">
+          <input className="inp" value={form.topic} onChange={e=>setForm(p=>({...p,topic:e.target.value}))} placeholder="e.g. Why utility companies delay IS-U migration"/>
+        </FF>
+        <FF label="Specific Angle (optional)">
+          <input className="inp" value={form.angle} onChange={e=>setForm(p=>({...p,angle:e.target.value}))} placeholder="e.g. reference NTTA tolling success"/>
+        </FF>
+        <FF label="Industry Focus">
+          <select className="inp" value={form.industry} onChange={e=>setForm(p=>({...p,industry:e.target.value}))}>
+            {INDUSTRIES.map(i=><option key={i}>{i}</option>)}
+          </select>
+        </FF>
+        <FF label="Tone">
+          <select className="inp" value={form.tone} onChange={e=>setForm(p=>({...p,tone:e.target.value}))}>
+            {TONES.map(t=><option key={t.id} value={t.id}>{t.label.split(" — ")[0]}</option>)}
+          </select>
+        </FF>
+        <FF label="Target Account (optional)">
+          <select className="inp" value={form.account} onChange={e=>setForm(p=>({...p,account:e.target.value}))}>
+            <option value="">None — general content</option>
+            {targets.map(t=><option key={t.id} value={t.id}>{t.company} ({t.priority})</option>)}
+          </select>
+        </FF>
+        <button className="btn bp" style={{width:"100%",marginTop:8}} onClick={generate} disabled={loading}>
+          {loading?"⏳ Writing…":"✨ Generate Content"}
+        </button>
+      </div>
+
+      {/* Output */}
+      <div>
+        {output ? (
+          <div>
+            <div style={{display:"flex",gap:8,marginBottom:10,justifyContent:"flex-end"}}>
+              <button className="btn bg" style={{fontSize:11}} onClick={()=>copy(output,"main")}>{copied==="main"?"✅ Copied!":"📋 Copy"}</button>
+              <button className="btn bg" style={{fontSize:11}} onClick={saveContent}>💾 Save</button>
+              <button className="btn bg" style={{fontSize:11}} onClick={()=>setOutput("")}>✕ Clear</button>
+            </div>
+            <div style={{padding:"20px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45",
+              fontSize:12,color:"#e2e8f0",lineHeight:1.8,whiteSpace:"pre-wrap",minHeight:300}}>
+              {output}
+            </div>
+          </div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+            height:400,background:"#060d1c",borderRadius:10,border:"1px dashed #1a2d45",color:"#334155",gap:10}}>
+            <div style={{fontSize:40}}>✍️</div>
+            <div style={{fontSize:13}}>Configure and click Generate</div>
+            <div style={{fontSize:10,color:"#1e3a5f",textAlign:"center",maxWidth:280}}>
+              AI writes industry-specific, non-generic content using your real team, clients, and target accounts as context
+            </div>
+          </div>
+        )}
+
+        {/* Saved content */}
+        {saved.length > 0 && (
+          <div style={{marginTop:18}}>
+            <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",fontWeight:700,marginBottom:8}}>Saved Content ({saved.length})</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:240,overflowY:"auto"}}>
+              {saved.slice(0,6).map(c=>(
+                <div key={c.id} style={{padding:"8px 12px",background:"#040810",borderRadius:7,border:"1px solid #0a1626",
+                  display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:10,fontWeight:600,color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.topic}</div>
+                    <div style={{fontSize:9,color:"#334155"}}>{c.type} · {c.industry} · {new Date(c.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <div style={{display:"flex",gap:4,flexShrink:0}}>
+                    <button className="btn bg" style={{fontSize:9}} onClick={()=>setOutput(c.content)}>View</button>
+                    <button className="btn bg" style={{fontSize:9}} onClick={()=>copy(c.content,c.id)}>{copied===c.id?"✅":"📋"}</button>
+                    <button className="btn bg" style={{fontSize:9,color:"#f87171"}} onClick={()=>persist(saved.filter(x=>x.id!==c.id))}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Weekly Marketing Planner ────────────────────────────────────────────
+function WeeklyMarketingPlanner({ targets, sequences, addAudit }) {
+  const [plan,    setPlan]   = useState(() => { try { return JSON.parse(localStorage.getItem("zt-mae-plan")||"null"); } catch { return null; } });
+  const [loading, setLoad]   = useState(false);
+  const [week,    setWeek]   = useState(() => { const d=new Date(); d.setDate(d.getDate()-d.getDay()+1); return d.toISOString().slice(0,10); });
+  const [tasks,   setTasks]  = useState(() => { try { return JSON.parse(localStorage.getItem("zt-mae-tasks")||"[]"); } catch { return []; } });
+
+  const saveTasks = d => { setTasks(d); localStorage.setItem("zt-mae-tasks", JSON.stringify(d)); };
+  const toggleTask = id => saveTasks(tasks.map(t=>t.id===id?{...t,done:!t.done}:t));
+
+  const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
+
+  const generate = async () => {
+    setLoad(true);
+    const p1Hot    = targets.filter(t=>["meeting_booked","proposal_sent","negotiating"].includes(t.stage));
+    const p1Cold   = targets.filter(t=>t.priority==="P1"&&!t.lastContact);
+    const stale    = targets.filter(t=>t.lastContact&&Math.ceil((new Date()-new Date(t.lastContact))/86400000)>14);
+    const weekStr  = new Date(week).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+          system:"You are Ziksatech's marketing strategist. Create practical, specific weekly marketing plans. Every task should be completable in 15-60 minutes.",
+          messages:[{role:"user",content:`Week of ${weekStr}. 
+Hot accounts (active stage): ${p1Hot.map(t=>t.company+"("+t.stage+")").join(", ")||"none"}.
+P1 never contacted: ${p1Cold.map(t=>t.company).join(", ")||"none"}.
+Stale (>14d no touch): ${stale.map(t=>t.company).join(", ")||"none"}.
+Active sequences: ${sequences.filter(s=>s.status==="active").length}.
+
+Create a 5-day marketing action plan. Return ONLY JSON:
+{
+  "weekTheme": "one-sentence focus for the week",
+  "days": [
+    {
+      "day": "Monday",
+      "theme": "day theme in 4 words",
+      "tasks": [
+        { "time": "9am", "duration": "20min", "action": "specific action", "account": "company name or null", "channel": "LinkedIn|Email|Phone|Content", "priority": "high|medium" }
+      ]
+    }
+  ],
+  "weeklyGoal": "one measurable goal for the week",
+  "contentIdea": "one LinkedIn post idea to write this week"
+}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+      setPlan(parsed);
+      localStorage.setItem("zt-mae-plan", JSON.stringify(parsed));
+      // Auto-create tasks from plan
+      const newTasks = [];
+      (parsed.days||[]).forEach(d=>{
+        (d.tasks||[]).forEach(t=>{
+          newTasks.push({ id:"tsk-"+Date.now()+Math.random(), day:d.day, ...t, done:false });
+        });
+      });
+      saveTasks(newTasks);
+      addAudit?.("MAE","Generated","Weekly Plan",parsed.weekTheme||"");
+    } catch(e) { alert("Error: "+e.message); }
+    setLoad(false);
+  };
+
+  const channelColor = ch => ({ LinkedIn:"#0077b5", Email:"#38bdf8", Phone:"#34d399", Content:"#a78bfa" })[ch]||"#475569";
+  const doneCount = tasks.filter(t=>t.done).length;
+  const totalCount = tasks.length;
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+          <input type="date" className="inp" style={{width:160,fontSize:12}} value={week} onChange={e=>setWeek(e.target.value)}/>
+          <button className="btn bp" style={{fontSize:12}} onClick={generate} disabled={loading}>
+            {loading?"⏳ Planning…":"🤖 Generate Week Plan"}
+          </button>
+        </div>
+        {totalCount > 0 && (
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{fontSize:12,color:"#64748b"}}>{doneCount}/{totalCount} tasks done</div>
+            <div style={{width:160,height:6,background:"#0a1626",borderRadius:3}}>
+              <div style={{height:"100%",borderRadius:3,background:"#34d399",width:Math.round(doneCount/totalCount*100)+"%",transition:"width 0.3s"}}/>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!plan ? (
+        <div style={{padding:"60px",textAlign:"center",background:"#060d1c",borderRadius:12,border:"1px dashed #1a2d45"}}>
+          <div style={{fontSize:48,marginBottom:12}}>📅</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>Generate Your Weekly Marketing Plan</div>
+          <div style={{fontSize:12,color:"#475569",marginBottom:20,maxWidth:380,margin:"0 auto 20px"}}>
+            Claude analyzes your ABM pipeline — hot accounts, stale contacts, active sequences — and builds a specific day-by-day action plan
+          </div>
+          <button className="btn bp" style={{fontSize:13}} onClick={generate} disabled={loading}>
+            {loading?"⏳ Building plan…":"🤖 Generate This Week's Plan"}
+          </button>
+        </div>
+      ) : (
+        <div>
+          {/* Week theme + goal */}
+          <div style={{marginBottom:14,padding:"12px 16px",background:"linear-gradient(135deg,#040a14,#0c1e3d)",border:"1px solid #0369a144",borderRadius:10,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+            <div>
+              <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>Week Theme</div>
+              <div style={{fontSize:13,fontWeight:700,color:"#38bdf8"}}>{plan.weekTheme}</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",marginBottom:3}}>Weekly Goal</div>
+              <div style={{fontSize:11,color:"#34d399"}}>{plan.weeklyGoal}</div>
+            </div>
+          </div>
+          {plan.contentIdea && (
+            <div style={{marginBottom:14,padding:"8px 14px",background:"#040a14",borderRadius:8,border:"1px solid #a78bfa33",fontSize:11,color:"#a78bfa"}}>
+              ✍️ <strong>Content idea this week:</strong> {plan.contentIdea}
+            </div>
+          )}
+
+          {/* Day columns */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
+            {DAYS.map(day=>{
+              const dayTasks = tasks.filter(t=>t.day===day);
+              const dayPlan  = (plan.days||[]).find(d=>d.day===day);
+              return (
+                <div key={day} style={{background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45",overflow:"hidden"}}>
+                  <div style={{padding:"8px 12px",background:"#040810",borderBottom:"1px solid #1a2d45"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{day}</div>
+                    {dayPlan?.theme && <div style={{fontSize:9,color:"#475569",marginTop:2}}>{dayPlan.theme}</div>}
+                  </div>
+                  <div style={{padding:"8px",display:"flex",flexDirection:"column",gap:6}}>
+                    {dayTasks.map(t=>(
+                      <div key={t.id} onClick={()=>toggleTask(t.id)}
+                        style={{padding:"7px 8px",borderRadius:6,cursor:"pointer",
+                          background:t.done?"#021f14":"#040810",
+                          border:`1px solid ${t.done?"#22c55e33":t.priority==="high"?"#f59e0b33":"#0a1626"}`,
+                          opacity:t.done?0.6:1,transition:"all 0.15s"}}>
+                        <div style={{display:"flex",gap:5,alignItems:"flex-start"}}>
+                          <div style={{marginTop:1,flexShrink:0,width:12,height:12,borderRadius:"50%",
+                            background:t.done?"#22c55e":"transparent",
+                            border:`1.5px solid ${t.done?"#22c55e":"#334155"}`}}/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:10,color:t.done?"#475569":"#e2e8f0",lineHeight:1.4,
+                              textDecoration:t.done?"line-through":"none"}}>{t.action}</div>
+                            <div style={{display:"flex",gap:4,marginTop:3,flexWrap:"wrap"}}>
+                              {t.account && <span style={{fontSize:8,padding:"1px 4px",borderRadius:3,background:"#0c1e3d",color:"#38bdf8"}}>{t.account}</span>}
+                              <span style={{fontSize:8,padding:"1px 4px",borderRadius:3,background:channelColor(t.channel)+"22",color:channelColor(t.channel)}}>{t.channel}</span>
+                              <span style={{fontSize:8,color:"#334155"}}>{t.duration}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {dayTasks.length===0 && <div style={{fontSize:9,color:"#1e3a5f",textAlign:"center",padding:"8px 0"}}>—</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{marginTop:10,display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>{setPlan(null);saveTasks([]);localStorage.removeItem("zt-mae-plan");}}>Clear Plan</button>
+            <button className="btn bp" style={{fontSize:11}} onClick={generate} disabled={loading}>↺ Regenerate</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // MARKETING AUTOMATION ENGINE
@@ -38366,7 +38703,7 @@ Return ONLY JSON:
 
       {/* Sub nav */}
       <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",marginBottom:18,width:"fit-content"}}>
-        {[["abm","🎯 ABM Targets"],["sequences","✉️ Sequences"],["analytics","📊 Analytics"]].map(([v,l])=>(
+        {[["abm","🎯 ABM Targets"],["sequences","✉️ Sequences"],["content","✍️ Content"],["planner","📅 Weekly Plan"],["analytics","📊 Analytics"]].map(([v,l])=>(
           <button key={v} onClick={()=>setSub(v)}
             style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
               background:sub===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
@@ -38639,6 +38976,16 @@ Return ONLY JSON:
             ))}
           </div>
         </div>
+      )}
+
+      {/* ── CONTENT ENGINE ── */}
+      {sub==="content" && (
+        <ContentEngine targets={targets} roster={roster} clients={clients} addAudit={addAudit}/>
+      )}
+
+      {/* ── WEEKLY PLANNER ── */}
+      {sub==="planner" && (
+        <WeeklyMarketingPlanner targets={targets} sequences={sequences} addAudit={addAudit}/>
       )}
 
       {/* ABM Add/Edit Modal */}
