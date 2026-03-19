@@ -2088,7 +2088,9 @@ const FCS_DEFAULT_TAX_PERIODS = [
 ];
 
 // ── Finance Control System Component ─────────────────────────────────────────
-function FinanceControlSystem({ finInvoices, finPayments, apInvoices, vendors: propVendors, adpRuns, roster, clients, addAudit }) {
+function FinanceControlSystem(props) {
+  const { finInvoices, finPayments, apInvoices, vendors, adpRuns, roster, clients, addAudit, authProfile } = props;
+
   const [fcsTab,  setFcsTab]  = useState("dashboard");
   const fmtK  = v => v==null?"—":Math.abs(v)>=1e6?`$${(v/1e6).toFixed(2)}M`:Math.abs(v)>=1e3?`$${(Math.round(v/100)*100/1e3).toFixed(0)}K`:`$${Math.round(v)}`;
   const fmtAmt = v => v==null?"—":v<0?`-$${Math.abs(v).toLocaleString()}`:`$${v.toLocaleString()}`;
@@ -4157,7 +4159,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
         {tab==="bankanalyzer" && <BankAnalyzer authProfile={authProfile}/>}
-        {tab==="fcs" && <FinanceControlSystem finInvoices={finInvoices} finPayments={finPayments} apInvoices={apInvoices} vendors={vendors} adpRuns={adpRuns} roster={roster} clients={clients} addAudit={addAudit}/>}
+        {tab==="fcs" && <FinanceControlSystem {...shared} authProfile={authProfile}/>}
         {tab==="aicoo"      && <AICOODashboard    {...shared} authProfile={authProfile}/>}
         
         {tab==="revleakage"    && <RevLeakageDetector  {...shared} authProfile={authProfile}/>}
