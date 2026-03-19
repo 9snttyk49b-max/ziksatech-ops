@@ -4307,6 +4307,7 @@ export default function ZiksatechOps() {
     { id:"industrypitch",label:"Industry Pitches",      icon:ICONS.pl,       group:"Sales Tools"     },
     { id:"linkedin",    label:"LinkedIn Posts",        icon:ICONS.pl,       group:"Sales Tools"     },
     { id:"marketing",   label:"Marketing Hub",          icon:ICONS.pl,       group:"Sales Tools"     },
+    { id:"mktauto",     label:"Marketing Automation 🚀", icon:ICONS.pl,       group:"Sales Tools"     },
     { id:"resourceplan",label:"Resource Planner AI",  icon:ICONS.roster,   group:"Delivery"    },
     { id:"minicalc",    label:"Mini Calculator",       icon:ICONS.pl,       group:"Tools"    },
     { id:"paffiles",    label:"PAF Files",             icon:ICONS.dash,     group:"Compliance"  },
@@ -4933,6 +4934,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="availmatrix" && <AvailabilityMatrix roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="industrypitch"&& <IndustryPitchTemplates roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="marketing"  && <MarketingHub proposals={shared.proposals} clients={shared.clients} roster={shared.roster} crmDeals={shared.crmDeals} authProfile={authProfile} addAudit={shared.addAudit}/>}
+        {tab==="mktauto"    && <MarketingAutomation clients={shared.clients} roster={shared.roster} crmDeals={shared.crmDeals} crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} addAudit={shared.addAudit} authProfile={authProfile}/>}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
         {tab==="minicalc"   && <MiniCalculator />}
@@ -38179,6 +38181,532 @@ function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, se
             <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}>
               <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
               <button className="btn bp" onClick={submit}>{editing?"Update":"Add Candidate"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// MARKETING AUTOMATION ENGINE
+// ABM targeting · Outreach sequences · Campaign analytics · Content ops
+// ═══════════════════════════════════════════════════════════════════════
+
+const MAE_CHANNELS  = ["LinkedIn DM","Cold Email","Phone","Referral","Event","Other"];
+const MAE_STATUSES  = ["active","paused","completed","archived"];
+const MAE_TOUCH_TYPES = ["Email","LinkedIn DM","LinkedIn Comment","Phone Call","Follow-up Email","InMail"];
+
+const ABM_TARGETS_SEED = [
+  { id:"abm-1",  company:"NTTA",               industry:"Transportation/Tolling",   priority:"P1", contacts:2, lastContact:"2026-03-10", stage:"meeting_booked",  revenue:"$500M+", notes:"Live IS-U/BRIM project. Rajesh Kumar on-site." },
+  { id:"abm-2",  company:"Oncor Electric",     industry:"Energy & Utilities",       priority:"P1", contacts:1, lastContact:"2026-03-05", stage:"proposal_sent",   revenue:"$3B+",   notes:"IS-U to S/4 migration. Sent Phase 0 deck." },
+  { id:"abm-3",  company:"Vistra Energy",      industry:"Energy & Utilities",       priority:"P1", contacts:0, lastContact:null,         stage:"identified",      revenue:"$3B+",   notes:"ECC decom candidate. No contact yet." },
+  { id:"abm-4",  company:"Atmos Energy",       industry:"Energy & Utilities",       priority:"P1", contacts:1, lastContact:"2026-02-28", stage:"contacted",       revenue:"$3B+",   notes:"IS-U SAP team. Reached out via LinkedIn." },
+  { id:"abm-5",  company:"PepsiCo/Frito-Lay",  industry:"Food & Beverage/Mfg",     priority:"P1", contacts:0, lastContact:null,         stage:"identified",      revenue:"$80B+",  notes:"Plano HQ. SAP S/4HANA program active." },
+  { id:"abm-6",  company:"Toyota Connected",   industry:"Automotive/Tech",         priority:"P2", contacts:2, lastContact:"2026-03-01", stage:"meeting_booked",  revenue:"$200M+", notes:"Priya on-site. Expansion opportunity." },
+  { id:"abm-7",  company:"CHRISTUS Health",    industry:"Healthcare",              priority:"P2", contacts:0, lastContact:null,         stage:"identified",      revenue:"$5B+",   notes:"S/4HANA assessment RFP expected Q2 2026." },
+  { id:"abm-8",  company:"Lockheed Martin",    industry:"Defense",                 priority:"P2", contacts:0, lastContact:null,         stage:"identified",      revenue:"$60B+",  notes:"WBE/WOSB set-aside opportunity." },
+  { id:"abm-9",  company:"Flowserve",          industry:"Industrial/Manufacturing", priority:"P3", contacts:0, lastContact:null,         stage:"identified",      revenue:"$4B+",   notes:"Irving TX. S/4HANA active." },
+  { id:"abm-10", company:"Kimberly-Clark",     industry:"Consumer Goods/Mfg",      priority:"P3", contacts:0, lastContact:null,         stage:"identified",      revenue:"$19B+",  notes:"Irving TX. SAP S/4 rollout." },
+];
+
+const ABM_STAGES = [
+  { id:"identified",    label:"Identified",     color:"#475569" },
+  { id:"contacted",     label:"Contacted",      color:"#38bdf8" },
+  { id:"engaged",       label:"Engaged",        color:"#a78bfa" },
+  { id:"meeting_booked",label:"Meeting Booked", color:"#f59e0b" },
+  { id:"proposal_sent", label:"Proposal Sent",  color:"#34d399" },
+  { id:"negotiating",   label:"Negotiating",    color:"#4ade80" },
+  { id:"won",           label:"Won",            color:"#22c55e" },
+  { id:"nurturing",     label:"Nurturing",      color:"#64748b" },
+];
+
+function MarketingAutomation({ clients, roster, crmDeals, crmLeads, setCrmLeads, addAudit, authProfile }) {
+  const [sub, setSub] = useState("abm");
+
+  // ABM state
+  const [targets,    setTargets]   = useState(() => { try { return JSON.parse(localStorage.getItem("zt-mae-abm")||"null") || ABM_TARGETS_SEED; } catch { return ABM_TARGETS_SEED; } });
+  const [selTarget,  setSelTarget] = useState(null);
+  const [abmModal,   setAbmModal]  = useState(false);
+  const [abmForm,    setAbmForm]   = useState({});
+
+  // Sequence state
+  const [sequences,  setSeqs]      = useState(() => { try { return JSON.parse(localStorage.getItem("zt-mae-seqs")||"[]"); } catch { return []; } });
+  const [selSeq,     setSelSeq]    = useState(null);
+  const [seqModal,   setSeqModal]  = useState(false);
+  const [seqForm,    setSeqForm]   = useState({ name:"", persona:"", channel:"LinkedIn DM", touchCount:5, industry:"" });
+  const [seqLoading, setSeqLoad]   = useState(false);
+
+  // Analytics state
+  const [aiLoad,     setAiLoad]    = useState(false);
+  const [aiInsight,  setAiInsight] = useState(null);
+
+  const saveTargets = d => { setTargets(d); localStorage.setItem("zt-mae-abm", JSON.stringify(d)); };
+  const saveSeqs    = d => { setSeqs(d);    localStorage.setItem("zt-mae-seqs", JSON.stringify(d)); };
+  const uid = () => "mae-" + Date.now();
+
+  // ABM helpers
+  const stageColor = id => ABM_STAGES.find(s=>s.id===id)?.color || "#64748b";
+  const priBadge   = p => ({ P1:"#f87171", P2:"#f59e0b", P3:"#38bdf8" })[p] || "#64748b";
+
+  const updateTargetStage = (id, stage) => {
+    saveTargets(targets.map(t => t.id===id ? {...t, stage, lastContact: new Date().toISOString().slice(0,10)} : t));
+    addAudit?.("MAE","Stage Update","ABM", stage);
+  };
+
+  const saveTarget = () => {
+    const upd = abmForm.id
+      ? targets.map(t => t.id===abmForm.id ? {...abmForm} : t)
+      : [...targets, {...abmForm, id:uid(), lastContact:null, contacts:0, stage:"identified"}];
+    saveTargets(upd);
+    setAbmModal(false);
+    addAudit?.("MAE", abmForm.id?"Update":"Add", "ABM Target", abmForm.company);
+  };
+
+  // Sequence AI generator
+  const generateSequence = async () => {
+    if (!seqForm.name || !seqForm.persona) return alert("Fill in name and persona");
+    setSeqLoad(true);
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1200,
+          system:"You are a B2B outreach expert for Ziksatech, a WBE-certified SAP consulting firm based in Plano TX. Specialties: SAP BRIM, IS-U, S/4HANA, SuccessFactors. Write punchy, specific, non-generic messages.",
+          messages:[{ role:"user", content:`Create a ${seqForm.touchCount}-touch outreach sequence for:
+Persona: ${seqForm.persona}
+Industry: ${seqForm.industry || "Enterprise"}
+Primary channel: ${seqForm.channel}
+Sequence name: ${seqForm.name}
+
+Return ONLY JSON:
+{
+  "subject": "overall campaign angle in 5 words",
+  "touches": [
+    { "day": 1, "type": "LinkedIn DM", "subject": "subject if email", "body": "message body under 120 words. Be specific. No [COMPANY] placeholders — use industry-specific context.", "goal": "what this touch achieves" }
+  ]
+}` }]
+        })
+      });
+      const data = await resp.json();
+      const parsed = JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+      const newSeq = { id:uid(), ...seqForm, ...parsed, createdAt:new Date().toISOString(), status:"active", enrolled:0 };
+      const updated = [newSeq, ...sequences];
+      saveSeqs(updated);
+      setSelSeq(newSeq.id);
+      setSub("sequences");
+    } catch(e) { alert("Error: " + e.message); }
+    setSeqLoad(false);
+    setSeqModal(false);
+  };
+
+  // AI Marketing Insights
+  const runInsights = async () => {
+    setAiLoad(true);
+    try {
+      const p1 = targets.filter(t=>t.priority==="P1");
+      const engaged = targets.filter(t=>["meeting_booked","proposal_sent","negotiating"].includes(t.stage));
+      const noContact = targets.filter(t=>!t.lastContact).length;
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:700,
+          system:"You are Ziksatech's marketing strategist. Be specific and action-oriented.",
+          messages:[{ role:"user", content:`ABM pipeline: ${targets.length} accounts, ${p1.length} P1 targets, ${engaged.length} in active stages, ${noContact} never contacted.
+Active sequences: ${sequences.filter(s=>s.status==="active").length}.
+Top P1 accounts: ${p1.map(t=>t.company+"("+t.stage+")").join(", ")}.
+
+Return ONLY JSON:
+{"headline":"one bold insight","hotAccount":"single most important company to act on right now and why","weekPriority":"single most important marketing action this week","contentAngle":"best content topic to post this week to attract these buyers","gapAlert":"biggest gap in the current marketing approach","quickWin":"one 30-minute action that could unlock a deal"}` }]
+        })
+      });
+      const data = await resp.json();
+      setAiInsight(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+    } catch(e) { setAiInsight({headline:"Error: "+e.message}); }
+    setAiLoad(false);
+  };
+
+  // KPIs
+  const abmKpis = {
+    total:     targets.length,
+    p1:        targets.filter(t=>t.priority==="P1").length,
+    active:    targets.filter(t=>["contacted","engaged","meeting_booked","proposal_sent","negotiating"].includes(t.stage)).length,
+    meetings:  targets.filter(t=>t.stage==="meeting_booked").length,
+    proposals: targets.filter(t=>t.stage==="proposal_sent").length,
+    won:       targets.filter(t=>t.stage==="won").length,
+    cold:      targets.filter(t=>!t.lastContact).length,
+  };
+
+  const activeSeqs = sequences.filter(s=>s.status==="active");
+  const selSeqObj  = sequences.find(s=>s.id===selSeq);
+
+  return (
+    <div>
+      <PH title="Marketing Automation Engine" sub="ABM targeting · Outreach sequences · AI insights · Campaign analytics">
+        <button className="btn bp" style={{fontSize:11}} onClick={runInsights} disabled={aiLoad}>
+          {aiLoad?"⏳…":"🧠 AI Marketing Brief"}
+        </button>
+      </PH>
+
+      {/* AI Insights Banner */}
+      {aiInsight && !aiInsight.headline?.startsWith("Error") && (
+        <div style={{marginBottom:18,padding:"14px 18px",background:"linear-gradient(135deg,#040a14,#0c1e3d)",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#38bdf8"}}>🧠 {aiInsight.headline}</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setAiInsight(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+            {[["🔥 Hot Account",aiInsight.hotAccount,"#f59e0b"],["⚡ This Week",aiInsight.weekPriority,"#38bdf8"],["✍️ Content Angle",aiInsight.contentAngle,"#a78bfa"],["⚠️ Gap Alert",aiInsight.gapAlert,"#f87171"],["💡 Quick Win",aiInsight.quickWin,"#34d399"]].filter(([,v])=>v).map(([k,v,c])=>(
+              <div key={k} style={{padding:"8px 10px",background:"#040a14",borderRadius:7,border:"1px solid #0a1828"}}>
+                <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>{k}</div>
+                <div style={{fontSize:11,color:c,lineHeight:1.4}}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sub nav */}
+      <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",marginBottom:18,width:"fit-content"}}>
+        {[["abm","🎯 ABM Targets"],["sequences","✉️ Sequences"],["analytics","📊 Analytics"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setSub(v)}
+            style={{padding:"7px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:sub===v?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:sub===v?"#fff":"#475569",transition:"all 0.15s"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* ── ABM TARGET ACCOUNTS ── */}
+      {sub==="abm" && (
+        <div>
+          {/* KPI strip */}
+          <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+            {[["Total Accounts",abmKpis.total,"#94a3b8"],["P1 Targets",abmKpis.p1,"#f87171"],["Active",abmKpis.active,"#38bdf8"],["Meetings",abmKpis.meetings,"#f59e0b"],["Proposals",abmKpis.proposals,"#34d399"],["Won",abmKpis.won,"#4ade80"],["Never Contacted",abmKpis.cold,"#f87171"]].map(([l,v,c])=>(
+              <div key={l} style={{padding:"8px 14px",borderRadius:8,background:"#060d1c",border:"1px solid #1a2d45",minWidth:80,textAlign:"center"}}>
+                <div style={{fontSize:22,fontWeight:900,color:c,fontFamily:"monospace"}}>{v}</div>
+                <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.05em",marginTop:1}}>{l}</div>
+              </div>
+            ))}
+            <button className="btn bp" style={{fontSize:11,marginLeft:"auto",alignSelf:"center"}} onClick={()=>{setAbmForm({});setAbmModal(true);}}>+ Add Target</button>
+          </div>
+
+          {/* Stage pipeline bar */}
+          <div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+            {ABM_STAGES.map(stage=>{
+              const count = targets.filter(t=>t.stage===stage.id).length;
+              return (
+                <div key={stage.id} style={{flexShrink:0,padding:"6px 12px",borderRadius:7,background:"#060d1c",border:`1px solid ${count>0?stage.color+"44":"#1a2d45"}`,textAlign:"center",minWidth:90}}>
+                  <div style={{fontSize:18,fontWeight:800,color:count>0?stage.color:"#1e3a5f",fontFamily:"monospace"}}>{count}</div>
+                  <div style={{fontSize:9,color:count>0?stage.color:"#334155",textTransform:"uppercase",letterSpacing:"0.05em"}}>{stage.label}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Target table */}
+          <div style={{display:"grid",gridTemplateColumns:"1.8fr 1.2fr 70px 120px 100px 120px 80px",gap:6,padding:"6px 12px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+            <div>Company</div><div>Industry</div><div>Pri</div><div>Stage</div><div>Last Touch</div><div>Notes</div><div>Action</div>
+          </div>
+          {[...targets].sort((a,b)=>(a.priority>b.priority?1:-1)).map(t=>{
+            const daysSince = t.lastContact ? Math.ceil((new Date()-new Date(t.lastContact))/86400000) : null;
+            const stale = daysSince!==null && daysSince>14;
+            return (
+              <div key={t.id} onClick={()=>setSelTarget(selTarget===t.id?null:t.id)}
+                style={{display:"grid",gridTemplateColumns:"1.8fr 1.2fr 70px 120px 100px 120px 80px",gap:6,
+                  padding:"10px 12px",borderRadius:8,marginBottom:4,cursor:"pointer",
+                  background:selTarget===t.id?"#0c2340":"#060d1c",
+                  border:`1px solid ${selTarget===t.id?"#0369a1":stale&&t.lastContact?"#7f1d1d44":"#1a2d45"}`,
+                  transition:"background 0.15s"}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{t.company}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>{t.contacts} contacts</div>
+                </div>
+                <div style={{fontSize:10,color:"#64748b",alignSelf:"center"}}>{t.industry}</div>
+                <div style={{alignSelf:"center"}}>
+                  <span style={{fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:4,color:priBadge(t.priority),background:priBadge(t.priority)+"22"}}>{t.priority}</span>
+                </div>
+                <div style={{alignSelf:"center"}}>
+                  <span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:6,color:stageColor(t.stage),background:stageColor(t.stage)+"22",border:`1px solid ${stageColor(t.stage)}44`}}>
+                    {ABM_STAGES.find(s=>s.id===t.stage)?.label}
+                  </span>
+                </div>
+                <div style={{fontSize:10,color:stale?"#f87171":"#64748b",alignSelf:"center"}}>
+                  {t.lastContact ? `${daysSince}d ago` : <span style={{color:"#f87171"}}>Never</span>}
+                </div>
+                <div style={{fontSize:9,color:"#334155",alignSelf:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.notes}</div>
+                <div style={{display:"flex",gap:4,alignSelf:"center"}} onClick={e=>e.stopPropagation()}>
+                  <button className="btn bg" style={{fontSize:9,padding:"3px 7px"}} onClick={()=>{setAbmForm({...t});setAbmModal(true);}}>✏️</button>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Inline detail / stage mover */}
+          {selTarget && (() => {
+            const t = targets.find(x=>x.id===selTarget);
+            if (!t) return null;
+            return (
+              <div className="card" style={{marginTop:10,padding:"16px 18px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                  <div>
+                    <div style={{fontSize:15,fontWeight:800,color:"#e2e8f0"}}>{t.company}</div>
+                    <div style={{fontSize:11,color:"#64748b"}}>{t.industry} · {t.revenue}</div>
+                  </div>
+                  <button className="btn bg" style={{fontSize:10}} onClick={()=>setSelTarget(null)}>✕</button>
+                </div>
+                <div style={{fontSize:11,color:"#94a3b8",marginBottom:12,lineHeight:1.5}}>{t.notes}</div>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:6}}>Move Stage</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                    {ABM_STAGES.filter(s=>s.id!==t.stage).map(s=>(
+                      <button key={s.id} onClick={()=>updateTargetStage(t.id,s.id)}
+                        style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${s.color}44`,cursor:"pointer",background:s.color+"22",color:s.color,fontSize:9,fontWeight:700}}>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Attach sequence */}
+                {activeSeqs.length > 0 && (
+                  <div style={{fontSize:10,color:"#3d5a7a"}}>💡 Active sequences: {activeSeqs.map(s=>s.name).join(", ")}</div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ── OUTREACH SEQUENCES ── */}
+      {sub==="sequences" && (
+        <div style={{display:"grid",gridTemplateColumns:selSeqObj?"280px 1fr":"1fr",gap:14}}>
+          {/* Sequence list */}
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{sequences.length} Sequences</div>
+              <button className="btn bp" style={{fontSize:10}} onClick={()=>setSeqModal(true)}>+ Generate</button>
+            </div>
+            {sequences.length===0 && (
+              <div style={{padding:"30px",textAlign:"center",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:28,marginBottom:8}}>✉️</div>
+                <div style={{fontSize:12,color:"#334155",marginBottom:12}}>No sequences yet</div>
+                <button className="btn bp" style={{fontSize:11}} onClick={()=>setSeqModal(true)}>🤖 AI Generate First Sequence</button>
+              </div>
+            )}
+            {sequences.map(seq=>(
+              <div key={seq.id} onClick={()=>setSelSeq(selSeq===seq.id?null:seq.id)}
+                style={{padding:"12px 14px",borderRadius:8,marginBottom:6,cursor:"pointer",
+                  background:selSeq===seq.id?"#0c2340":"#060d1c",
+                  border:`1px solid ${selSeq===seq.id?"#0369a1":"#1a2d45"}`,transition:"all 0.15s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{seq.name}</div>
+                  <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,fontWeight:700,
+                    background:seq.status==="active"?"#021f14":"#040810",
+                    color:seq.status==="active"?"#34d399":"#475569"}}>
+                    {seq.status}
+                  </span>
+                </div>
+                <div style={{fontSize:10,color:"#475569",marginTop:2}}>{seq.persona} · {seq.channel}</div>
+                <div style={{fontSize:9,color:"#334155",marginTop:3}}>{(seq.touches||[]).length} touches · {seq.industry||"All industries"}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Sequence detail */}
+          {selSeqObj && (
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:800,color:"#e2e8f0"}}>{selSeqObj.name}</div>
+                  <div style={{fontSize:10,color:"#64748b"}}>{selSeqObj.persona} · {selSeqObj.channel} · {selSeqObj.industry}</div>
+                  {selSeqObj.subject && <div style={{fontSize:10,color:"#38bdf8",marginTop:3}}>Angle: {selSeqObj.subject}</div>}
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn bg" style={{fontSize:10}} onClick={()=>{
+                    const upd = sequences.map(s=>s.id===selSeqObj.id?{...s,status:s.status==="active"?"paused":"active"}:s);
+                    saveSeqs(upd);
+                  }}>{selSeqObj.status==="active"?"⏸ Pause":"▶ Activate"}</button>
+                  <button className="btn bg" style={{fontSize:10,color:"#f87171"}} onClick={()=>{
+                    if(!window.confirm("Delete this sequence?")) return;
+                    saveSeqs(sequences.filter(s=>s.id!==selSeqObj.id));
+                    setSelSeq(null);
+                  }}>🗑️ Delete</button>
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {(selSeqObj.touches||[]).map((touch,i)=>(
+                  <div key={i} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                    {/* Day/type badge */}
+                    <div style={{flexShrink:0,width:64,textAlign:"center"}}>
+                      <div style={{fontSize:16,fontWeight:900,color:"#38bdf8",fontFamily:"monospace"}}>D{touch.day}</div>
+                      <div style={{fontSize:8,color:"#334155",textTransform:"uppercase",letterSpacing:"0.05em",marginTop:1}}>{touch.type}</div>
+                    </div>
+                    {/* Connector line */}
+                    <div style={{flexShrink:0,width:2,background:i<(selSeqObj.touches.length-1)?"#1a2d45":"transparent",marginTop:8,height:"calc(100% + 10px)",alignSelf:"stretch"}}/>
+                    {/* Content */}
+                    <div style={{flex:1,padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+                      {touch.subject && <div style={{fontSize:10,fontWeight:700,color:"#f59e0b",marginBottom:6}}>📧 {touch.subject}</div>}
+                      <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{touch.body}</div>
+                      {touch.goal && <div style={{marginTop:8,fontSize:9,color:"#334155",fontStyle:"italic"}}>Goal: {touch.goal}</div>}
+                      <div style={{marginTop:8,display:"flex",gap:6}}>
+                        <button className="btn bg" style={{fontSize:9}} onClick={()=>navigator.clipboard?.writeText(touch.body).catch(()=>{})}>📋 Copy</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ANALYTICS ── */}
+      {sub==="analytics" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {/* Pipeline by stage */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>📊 ABM Pipeline by Stage</div>
+            {ABM_STAGES.map(stage=>{
+              const count = targets.filter(t=>t.stage===stage.id).length;
+              const pct   = Math.round((count/Math.max(targets.length,1))*100);
+              return (
+                <div key={stage.id} style={{marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:11}}>
+                    <span style={{color:count>0?stage.color:"#334155"}}>{stage.label}</span>
+                    <span style={{color:"#475569"}}>{count} accounts ({pct}%)</span>
+                  </div>
+                  <div style={{height:6,borderRadius:3,background:"#0a1626"}}>
+                    <div style={{height:"100%",borderRadius:3,background:stage.color,width:pct+"%",transition:"width 0.4s"}}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Priority breakdown */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🎯 Priority Breakdown</div>
+            {["P1","P2","P3"].map(p=>{
+              const pTargets = targets.filter(t=>t.priority===p);
+              const contacted = pTargets.filter(t=>t.lastContact).length;
+              return (
+                <div key={p} style={{marginBottom:14,padding:"10px 12px",background:"#040810",borderRadius:8,border:`1px solid ${priBadge(p)}33`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <span style={{fontSize:11,fontWeight:700,color:priBadge(p)}}>{p} — {pTargets.length} accounts</span>
+                    <span style={{fontSize:10,color:"#475569"}}>{contacted}/{pTargets.length} contacted</span>
+                  </div>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {pTargets.slice(0,5).map(t=>(
+                      <span key={t.id} style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:stageColor(t.stage)+"22",color:stageColor(t.stage),border:`1px solid ${stageColor(t.stage)}44`}}>
+                        {t.company}
+                      </span>
+                    ))}
+                    {pTargets.length>5 && <span style={{fontSize:9,color:"#334155"}}>+{pTargets.length-5} more</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Sequences performance */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>✉️ Sequence Performance</div>
+            {sequences.length===0 ? (
+              <div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"20px 0"}}>No sequences yet — generate one from the Sequences tab</div>
+            ) : sequences.map(s=>(
+              <div key={s.id} style={{padding:"8px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{color:"#e2e8f0",fontWeight:600}}>{s.name}</span>
+                  <span style={{color:s.status==="active"?"#34d399":"#475569"}}>{s.status}</span>
+                </div>
+                <div style={{color:"#475569",fontSize:10,marginTop:2}}>{s.persona} · {(s.touches||[]).length} touches · {s.channel}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Stale accounts alert */}
+          <div className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#f87171",marginBottom:14}}>⚠️ Needs Attention</div>
+            {targets.filter(t=>!t.lastContact || Math.ceil((new Date()-new Date(t.lastContact))/86400000)>14).slice(0,6).map(t=>(
+              <div key={t.id} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                <div>
+                  <span style={{color:"#e2e8f0",fontWeight:600}}>{t.company}</span>
+                  <span style={{color:"#475569",marginLeft:6,fontSize:9}}>{t.priority}</span>
+                </div>
+                <span style={{color:"#f87171",fontSize:10}}>
+                  {t.lastContact ? Math.ceil((new Date()-new Date(t.lastContact))/86400000)+"d since touch" : "Never contacted"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ABM Add/Edit Modal */}
+      {abmModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setAbmModal(false)}>
+          <div className="modal" style={{maxWidth:500}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+              <h2 style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>{abmForm.id?"Edit":"Add"} Target Account</h2>
+              <button className="btn bg" onClick={()=>setAbmModal(false)}>✕</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <FF label="Company"><input className="inp" value={abmForm.company||""} onChange={e=>setAbmForm(p=>({...p,company:e.target.value}))}/></FF>
+              <FF label="Industry"><input className="inp" value={abmForm.industry||""} onChange={e=>setAbmForm(p=>({...p,industry:e.target.value}))}/></FF>
+              <FF label="Revenue"><input className="inp" value={abmForm.revenue||""} onChange={e=>setAbmForm(p=>({...p,revenue:e.target.value}))} placeholder="$500M+"/></FF>
+              <FF label="Priority">
+                <select className="inp" value={abmForm.priority||"P3"} onChange={e=>setAbmForm(p=>({...p,priority:e.target.value}))}>
+                  <option value="P1">P1 — Must Win</option><option value="P2">P2 — Important</option><option value="P3">P3 — Nice to Have</option>
+                </select>
+              </FF>
+              <FF label="Stage">
+                <select className="inp" value={abmForm.stage||"identified"} onChange={e=>setAbmForm(p=>({...p,stage:e.target.value}))}>
+                  {ABM_STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </FF>
+              <FF label="Contacts"><input type="number" className="inp" value={abmForm.contacts||0} onChange={e=>setAbmForm(p=>({...p,contacts:+e.target.value}))}/></FF>
+            </div>
+            <FF label="Notes / Context"><textarea className="inp" rows={3} value={abmForm.notes||""} onChange={e=>setAbmForm(p=>({...p,notes:e.target.value}))} placeholder="Pain points, context, who to reach…"/></FF>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14}}>
+              <button className="btn bg" onClick={()=>setAbmModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={saveTarget}>{abmForm.id?"Update":"Add Account"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sequence Generator Modal */}
+      {seqModal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setSeqModal(false)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+              <h2 style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>🤖 Generate Outreach Sequence</h2>
+              <button className="btn bg" onClick={()=>setSeqModal(false)}>✕</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <FF label="Sequence Name"><input className="inp" value={seqForm.name} onChange={e=>setSeqForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Utility CIO Cold Outreach"/></FF>
+              <FF label="# of Touches">
+                <select className="inp" value={seqForm.touchCount} onChange={e=>setSeqForm(p=>({...p,touchCount:e.target.value}))}>
+                  {[3,4,5,6,7].map(n=><option key={n} value={n}>{n} touches</option>)}
+                </select>
+              </FF>
+              <FF label="Primary Channel">
+                <select className="inp" value={seqForm.channel} onChange={e=>setSeqForm(p=>({...p,channel:e.target.value}))}>
+                  {MAE_CHANNELS.map(c=><option key={c}>{c}</option>)}
+                </select>
+              </FF>
+              <FF label="Industry Focus"><input className="inp" value={seqForm.industry} onChange={e=>setSeqForm(p=>({...p,industry:e.target.value}))} placeholder="e.g. Energy & Utilities"/></FF>
+            </div>
+            <FF label="Target Persona">
+              <textarea className="inp" rows={2} value={seqForm.persona} onChange={e=>setSeqForm(p=>({...p,persona:e.target.value}))} placeholder="e.g. CIO at a utility company facing ECC end-of-life, needs SAP IS-U/BRIM expertise"/>
+            </FF>
+            <div style={{marginTop:14,padding:"8px 12px",background:"#040a14",borderRadius:7,border:"1px solid #1a2d45",fontSize:10,color:"#475569"}}>
+              💡 Claude will write industry-specific, non-generic messages optimized for SAP consulting outreach
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14}}>
+              <button className="btn bg" onClick={()=>setSeqModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={generateSequence} disabled={seqLoading}>
+                {seqLoading?"⏳ Generating…":"🤖 Generate Sequence"}
+              </button>
             </div>
           </div>
         </div>
