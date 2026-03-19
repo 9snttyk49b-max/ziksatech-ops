@@ -51847,7 +51847,7 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
                     ⚠️ No decision makers covered — deal risk
                   </div>
                 )}
-                {!selContacts.some(c=>c.role==="blocker") && (
+                {!(selContacts||[]).some(c=>c.role==="blocker") && (
                   <div style={{padding:"8px 12px",background:"#1a1000",border:"1px solid #d9770644",borderRadius:6,fontSize:11,color:"#f59e0b"}}>
                     ⚠️ Procurement not identified — blind spot
                   </div>
