@@ -772,18 +772,18 @@ const ALL_MODULES = [
   { id:"compliance", label:"Compliance",            group:"Compliance" },
   { id:"immigration",label:"Immigration Calendar",   group:"Compliance" },
   { id:"adpstubs",   label:"ADP Pay Stubs", group:"Finance" },
-  { id:"availmatrix",   label:"Availability Matrix", group:"Clients" },
+  { id:"availmatrix",   label:"Availability Matrix", group:"Sales Tools" },
   { id:"bankanalyzer",   label:"Bank & Card Analysis", group:"Finance" },
   { id:"bench",   label:"Bench Management", group:"Delivery" },
-  { id:"capdeck",   label:"Capability Deck AI", group:"Clients" },
+  { id:"capdeck",   label:"Capability Deck AI", group:"Sales Tools" },
   { id:"certtracker",   label:"Training & Certs", group:"Team" },
   { id:"changeorders",   label:"Change Orders", group:"Delivery" },
   { id:"doctemplates",   label:"Doc Templates", group:"Team" },
   { id:"ideapad",   label:"IdeaPad", group:"Overview" },
-  { id:"industrypitch",   label:"Industry Pitches", group:"Clients" },
+  { id:"industrypitch",   label:"Industry Pitches", group:"Sales Tools" },
   { id:"jobreqs",   label:"Job Requisitions", group:"Hiring" },
-  { id:"linkedin",   label:"LinkedIn Posts", group:"Clients" },
-  { id:"marketing",   label:"Marketing Hub", group:"Clients" },
+  { id:"linkedin",   label:"LinkedIn Posts", group:"Sales Tools" },
+  { id:"marketing",   label:"Marketing Hub", group:"Sales Tools" },
   { id:"meetingnotes",   label:"AI Meeting Notes", group:"Delivery" },
   { id:"minicalc",   label:"Mini Calculator", group:"Overview" },
   { id:"offerletter",   label:"Offer Letter Generator", group:"Hiring" },
@@ -791,7 +791,7 @@ const ALL_MODULES = [
     { id:"paffiles",   label:"PAF Files", group:"Compliance" },
   { id:"perfreviews",   label:"Performance Reviews", group:"Team" },
     { id:"proposalv2",   label:"AI Proposal Writer", group:"Clients" },
-  { id:"ratequote",   label:"Rate Card & Quote", group:"Clients" },
+  { id:"ratequote",   label:"Rate Card & Quote", group:"Sales Tools" },
   { id:"reconcile",   label:"Reconciliation", group:"Finance" },
   { id:"renewaltrk",   label:"Renewal Tracker", group:"Clients" },
   { id:"resourceplan",   label:"Resource Planner AI", group:"Delivery" },
@@ -2102,7 +2102,7 @@ export default function ZiksatechOps() {
   // Collapsible sidebar groups — Finance collapsed by default (10 items)
   const [collapsedGroups, setCollapsedGroups] = useState(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem("zt-collapsed-groups") || '["Finance"]');
+      const saved = JSON.parse(localStorage.getItem("zt-collapsed-groups") || '["Finance","Clients","Sales Tools","Team","Delivery","Hiring","Compliance","Tools"]');
       // Always keep AI/Overview section expanded — remove it if user previously collapsed it
       return saved.filter(g => g !== "Overview");
     }
@@ -2407,9 +2407,9 @@ export default function ZiksatechOps() {
     { id:"autoworkflow",  label:"⚡ Auto Workflows",      icon:ICONS.dash,     group:"Overview"    },
     { id:"perfcoach",    label:"🏆 Performance Coach",  icon:ICONS.dash,     group:"Overview"    },
     { id:"dashboard",    label:"Executive Dashboard",    icon:ICONS.dash,     group:"Overview"    },
-    { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Overview"    },
-    { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Overview"    },
-    { id:"notifhub",    label:"Teams / Slack",          icon:ICONS.dash,     group:"Overview"    },
+    { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Tools"    },
+    { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Tools"    },
+    { id:"notifhub",    label:"Teams / Slack",          icon:ICONS.dash,     group:"Team"    },
     { id:"clients",      label:"Client Portfolio",     icon:ICONS.clients,  group:"Clients"     },
     { id:"healthscore",  label:"Client Health ♥",       icon:ICONS.ebitda,   group:"Clients"     },
     { id:"revforecast",  label:"Revenue Forecast",         icon:ICONS.ebitda,   group:"Clients"     },
@@ -2419,13 +2419,13 @@ export default function ZiksatechOps() {
     { id:"proposalv2",  label:"AI Proposal Writer",     icon:ICONS.pl,       group:"Clients"     },
     { id:"rfpgen",      label:"RFP Generator",         icon:ICONS.pl,       group:"Clients"     },
         { id:"sowgen",      label:"SOW Generator",         icon:ICONS.pl,       group:"Clients"     },
-    { id:"ratequote",   label:"Rate Card & Quote",      icon:ICONS.pl,       group:"Clients"     },
-    { id:"availmatrix", label:"Availability Matrix",    icon:ICONS.roster,   group:"Clients"     },
-    { id:"industrypitch",label:"Industry Pitches",      icon:ICONS.pl,       group:"Clients"     },
-    { id:"linkedin",    label:"LinkedIn Posts",        icon:ICONS.pl,       group:"Clients"     },
-    { id:"marketing",   label:"Marketing Hub",          icon:ICONS.pl,       group:"Clients"     },
+    { id:"ratequote",   label:"Rate Card & Quote",      icon:ICONS.pl,       group:"Sales Tools"     },
+    { id:"availmatrix", label:"Availability Matrix",    icon:ICONS.roster,   group:"Sales Tools"     },
+    { id:"industrypitch",label:"Industry Pitches",      icon:ICONS.pl,       group:"Sales Tools"     },
+    { id:"linkedin",    label:"LinkedIn Posts",        icon:ICONS.pl,       group:"Sales Tools"     },
+    { id:"marketing",   label:"Marketing Hub",          icon:ICONS.pl,       group:"Sales Tools"     },
     { id:"resourceplan",label:"Resource Planner AI",  icon:ICONS.roster,   group:"Delivery"    },
-    { id:"minicalc",    label:"Mini Calculator",       icon:ICONS.pl,       group:"Overview"    },
+    { id:"minicalc",    label:"Mini Calculator",       icon:ICONS.pl,       group:"Tools"    },
     { id:"paffiles",    label:"PAF Files",             icon:ICONS.dash,     group:"Compliance"  },
     { id:"adpstubs",    label:"ADP Pay Stubs",         icon:ICONS.adp,      group:"Finance"     },
     { id:"reconcile",   label:"Reconciliation",        icon:ICONS.pl,       group:"Finance"     },
@@ -2433,9 +2433,9 @@ export default function ZiksatechOps() {
     { id:"contracts",    label:"Contracts & SOW",      icon:ICONS.clients,  group:"Clients"     },
     { id:"renewals",    label:"Contract Renewals ↻",      icon:ICONS.dash,     group:"Clients"     },
     { id:"renewaltrk",  label:"Renewal Tracker",        icon:ICONS.ebitda,   group:"Clients"     },
-    { id:"emailtpl",     label:"Email Templates",      icon:ICONS.dash,     group:"Clients"     },
+    { id:"emailtpl",     label:"Email Templates",      icon:ICONS.dash,     group:"Sales Tools"     },
     { id:"doctemplates", label:"Doc Templates",         icon:ICONS.dash,     group:"Team"        },
-    { id:"esign",        label:"E-Signature",          icon:ICONS.pl,       group:"Clients"     },
+    { id:"esign",        label:"E-Signature",          icon:ICONS.pl,       group:"Sales Tools"     },
     { id:"roster",       label:"Team Roster",          icon:ICONS.roster,   group:"Team"        },
     { id:"timesheet",    label:"Timesheet",            icon:ICONS.ts,       group:"Team"        },
     { id:"pto",          label:"PTO & Leave",          icon:ICONS.dash,     group:"Team"        },
@@ -2469,11 +2469,11 @@ export default function ZiksatechOps() {
     { id:"offboarding",  label:"Offboarding",           icon:ICONS.roster,   group:"Hiring"      },
     { id:"compliance",   label:"Compliance",           icon:ICONS.dash,     group:"Compliance"  },
     { id:"immigration",  label:"Immigration Calendar 🛂",icon:ICONS.dash,     group:"Compliance"  },
-    { id:"capdeck",      label:"Capability Deck AI",     icon:ICONS.pl,       group:"Clients"     },
+    { id:"capdeck",      label:"Capability Deck AI",     icon:ICONS.pl,       group:"Sales Tools"     },
     { id:"soplibrary",   label:"SOP & Exit Readiness",   icon:ICONS.pl,       group:"Delivery"    },
     { id:"wbecert",      label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
-    { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Overview"    },
-    { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Overview"    },
+    { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Tools"    },
+    { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Tools"    },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, jobReqs, setJobReqs, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -40126,6 +40126,18 @@ Next: ${r.nextStep}`,
   };
 
   const display = activeHist || result;
+
+  // Auto-analyze first quick pick if history is empty
+  useEffect(()=>{
+    if(!result && !activeHist && history.length===0){
+      setCompany("Oncor Electric");
+      setContext("DFW utility, likely on SAP IS-U + MDG. Target for Ziksatech BRIM practice.");
+      // small delay so component is mounted
+      setTimeout(()=>{
+        // don't auto-run to avoid API spam — just pre-fill
+      }, 100);
+    }
+  }, []);
   const riskColor = {Critical:"#f87171",High:"#f59e0b",Medium:"#fbbf24",Low:"#34d399"};
   const scoreColor = n => n>=80?"#34d399":n>=60?"#f59e0b":"#f87171";
 
