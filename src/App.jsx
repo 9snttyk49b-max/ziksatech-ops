@@ -2764,22 +2764,22 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             </div>
           </button>
         </div>
-        {/* ── Recently Used ── */}
-        {recentTabs && recentTabs.length > 0 && (
-          <div style={{marginBottom:6}}>
-            <div style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,padding:"4px 14px 2px"}}>Recent</div>
-            {recentTabs.slice(0,4).map(tabId => {
-              const item = nav.find(n=>n.id===tabId);
-              if (!item || !canAccess(tabId, authProfile?.role)) return null;
-              return (
-                <button key={tabId} className={`navi${tab===tabId?" on":""}`} onClick={()=>setTabSafe(tabId, authProfile?.role)} style={{opacity:0.85}}>
-                  <I d={item.icon||ICONS.dash} s={12}/><span style={{fontSize:11}}>{item.label}</span>
-                </button>
-              );
-            })}
-            <div style={{height:1,background:"#0a1a2e",margin:"4px 10px 4px"}}/>
-          </div>
-        )}
+        {/* ── Recently Used (read from localStorage) ── */}
+        {(()=>{
+          let rt=[];try{rt=JSON.parse(localStorage.getItem("zt-recent-tabs")||"[]");}catch{}
+          if(!rt.length) return null;
+          return (
+            <div style={{marginBottom:6}}>
+              <div style={{fontSize:9,color:"#334155",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700,padding:"4px 14px 2px"}}>Recent</div>
+              {rt.slice(0,4).map(rtId=>{
+                const item=nav.find(n=>n.id===rtId);
+                if(!item||!canAccess(rtId,authProfile?.role)) return null;
+                return(<button key={rtId} className={`navi${tab===rtId?" on":""}`} onClick={()=>setTabSafe(rtId,authProfile?.role)} style={{opacity:0.85}}><I d={item.icon||ICONS.dash} s={12}/><span style={{fontSize:11}}>{item.label}</span></button>);
+              })}
+              <div style={{height:1,background:"#0a1a2e",margin:"4px 10px 4px"}}/>
+            </div>
+          );
+        })()}
         {["Overview","Clients","Sales Tools","Team","Delivery","Finance","Hiring","Compliance","Tools"].filter(group => {
           // In CRM view, only show Clients + Overview
           if (portalView === "crm") return ["Clients","Overview"].includes(group);
@@ -3440,7 +3440,7 @@ Give today's executive brief. Return ONLY JSON:
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:12}}>
         {[
           { label:"Annual Revenue",   value:fmt(clientRevTotal), sub:"portfolio total",              color:"#38bdf8", spark:MONTHLY_REV.map(m=>m.rev), tab:"clients" },
-          { label:"Billed (Finance)", value:fmt(finBilled),      sub:"from Finance module",          color:"#7dd3fc", spark:MONTHLY_REV.slice(6).map(m=>Math.round(m.rev*0.9)), tab:"finance" },
+          { label:"Billed (Finance)", value:fmt(finBilled),      sub:"from Finance module",          color:"#7dd3fc", spark:MONTHLY_REV.slice(6).map(m=>Math.round(m.rev*0.9)), tab:"finance" , ai:true},
           { label:"Collected",        value:fmt(finCollected),   sub:`A/R: ${fmt(finAR)} open`,     color:"#34d399", spark:MONTHLY_REV.slice(6).map(m=>Math.round(m.rev*0.78)), tab:"finance" },
           { label:"Overdue A/R",      value:fmt(finOverdue),     sub:"requires follow-up",           color:"#f87171", spark:arTrend, tab:"finance" },
         ].map(k=>(
@@ -3463,10 +3463,10 @@ Give today's executive brief. Return ONLY JSON:
       {/* Row 2 — Operations KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
         {[
-          { label:"Gross Margin",       value:pct(totalRev>0?(totalRev-totalCost)/totalRev:0), sub:"bill − cost / bill", color:"#a78bfa", spark:[38,40,41,43,42,44], tab:"ebitda" },
-          { label:"Utilization",        value:`${billable}/${rData.length}`, sub:`${bench} on bench`, color:bench>1?"#f59e0b":"#34d399", spark:utilTrend, tab:"roster" },
-          { label:"Compliance Alerts",  value:compAlerts, sub:"expiring ≤60d", color:compAlerts>0?"#f87171":"#34d399", spark:null, tab:"compliance" },
-          { label:"Pipeline (weighted)",value:fmt((crmDeals||[]).filter(d=>!["closed-won","closed-lost"].includes(d.stage)).reduce((s,d)=>s+d.value*(d.prob||d.probability||50)/100,0)), sub:"open deals", color:"#f59e0b", spark:pipeTrend, tab:"crm" },
+          { label:"Gross Margin",       value:pct(totalRev>0?(totalRev-totalCost)/totalRev:0), sub:"bill − cost / bill", color:"#a78bfa", spark:[38,40,41,43,42,44], tab:"ebitda" , ai:true},
+          { label:"Utilization",        value:`${billable}/${rData.length}`, sub:`${bench} on bench`, color:bench>1?"#f59e0b":"#34d399", spark:utilTrend, tab:"roster" , ai:true},
+          { label:"Compliance Alerts",  value:compAlerts, sub:"expiring ≤60d", color:compAlerts>0?"#f87171":"#34d399", spark:null, tab:"compliance" , ai:true},
+          { label:"Pipeline (weighted)",value:fmt((crmDeals||[]).filter(d=>!["closed-won","closed-lost"].includes(d.stage)).reduce((s,d)=>s+d.value*(d.prob||d.probability||50)/100,0)), sub:"open deals", color:"#f59e0b", spark:pipeTrend, tab:"crm" , ai:true},
         ].map(k=>(
           <div key={k.label} className="card" style={{padding:"14px 18px",cursor:k.tab?"pointer":"default",transition:"border 0.15s",border:`1px solid ${k.tab?"#1a3a5c":"#1a2d45"}`}}
             onClick={()=>k.tab&&setTab(k.tab)}
@@ -21976,29 +21976,29 @@ function CommandPalette({ cmdOpen, setCmdOpen, cmdQuery, setCmdQuery, setTab }) 
 
   const COMMANDS = [
     // Navigation
-    { type:"nav", label:"Dashboard",           icon:"🏠", tab:"dashboard",    keys:["dash","home","overview"] },
+    { type:"nav", label:"Dashboard",           icon:"🏠", tab:"dashboard",    keys:["dash","home","overview"] , ai:true},
     { type:"nav", label:"Sales CRM",           icon:"🎯", tab:"crm",          keys:["crm","sales","deals","pipeline"] },
     { type:"nav", label:"Project Tracker",     icon:"📋", tab:"projects",     keys:["proj","tasks","tracker"] },
     { type:"nav", label:"Roster",              icon:"👥", tab:"roster",       keys:["roster","team","staff","people"] },
     { type:"nav", label:"Finance",             icon:"💰", tab:"finance",      keys:["finance","invoice","ar","billing"] },
-    { type:"nav", label:"Cash Flow",           icon:"📈", tab:"cashflow",     keys:["cash","flow","runway","forecast"] },
-    { type:"nav", label:"ADP Payroll",         icon:"💼", tab:"adp",          keys:["adp","payroll","salary","pay"] },
+    { type:"nav", label:"Cash Flow",           icon:"📈", tab:"cashflow",     keys:["cash","flow","runway","forecast"] , ai:true},
+    { type:"nav", label:"ADP Payroll",         icon:"💼", tab:"adp",          keys:["adp","payroll","salary","pay"] , ai:true},
     { type:"nav", label:"Vendor / AP",         icon:"🏦", tab:"vendors",      keys:["vendor","ap","bills","payables"] },
-    { type:"nav", label:"Recruiting",          icon:"🔍", tab:"recruiting",   keys:["recruit","hire","candidate","jobs"] },
+    { type:"nav", label:"Recruiting",          icon:"🔍", tab:"recruiting",   keys:["recruit","hire","candidate","jobs"] , ai:true},
     { type:"nav", label:"Compliance",          icon:"⚖️",  tab:"compliance",  keys:["compliance","visa","work","auth"] },
     { type:"nav", label:"PTO Manager",         icon:"🌴", tab:"pto",          keys:["pto","vacation","leave","time off"] },
-    { type:"nav", label:"Benefits",            icon:"❤️",  tab:"benefits",    keys:["benefits","health","401k","insurance"] },
+    { type:"nav", label:"Benefits",            icon:"❤️",  tab:"benefits",    keys:["benefits","health","401k","insurance"] , ai:true},
     { type:"nav", label:"Client Portfolio",    icon:"🤝", tab:"clients",      keys:["client","portfolio","account"] },
     { type:"nav", label:"EBITDA Model",        icon:"📊", tab:"ebitda",       keys:["ebitda","model","valuation"] },
-    { type:"nav", label:"P&L Statement",       icon:"📉", tab:"pl",           keys:["pl","profit","loss","income"] },
-    { type:"nav", label:"Tax Calendar",        icon:"🗓", tab:"taxcal",       keys:["tax","irs","deadline","quarterly"] },
-    { type:"nav", label:"Proposals",           icon:"📝", tab:"proposals",    keys:["proposal","rfp","quote","sow"] },
+    { type:"nav", label:"P&L Statement",       icon:"📉", tab:"pl",           keys:["pl","profit","loss","income"] , ai:true},
+    { type:"nav", label:"Tax Calendar",        icon:"🗓", tab:"taxcal",       keys:["tax","irs","deadline","quarterly"] , ai:true},
+    { type:"nav", label:"Proposals",           icon:"📝", tab:"proposals",    keys:["proposal","rfp","quote","sow"] , ai:true},
     { type:"nav", label:"E-Signature",         icon:"✍️",  tab:"esign",       keys:["sign","esign","docusign","contract"] },
-    { type:"nav", label:"Onboarding",          icon:"🚀", tab:"onboarding",   keys:["onboard","new hire","setup"] },
+    { type:"nav", label:"Onboarding",          icon:"🚀", tab:"onboarding",   keys:["onboard","new hire","setup"] , ai:true},
     { type:"nav", label:"Settings",            icon:"⚙️",  tab:"settings",    keys:["settings","config","preferences"] },
     { type:"nav", label:"Audit Log",           icon:"📜", tab:"auditlog",     keys:["audit","log","history","activity"] },
     { type:"nav", label:"Notifications",       icon:"🔔", tab:"notifications",keys:["alert","notification","warning"] },
-    { type:"nav", label:"Report Builder",      icon:"📑", tab:"reports",      keys:["report","export","analytics"] },
+    { type:"nav", label:"Report Builder",      icon:"📑", tab:"reports",      keys:["report","export","analytics"] , ai:true},
     { type:"nav", label:"GL Export",           icon:"🏛",  tab:"glexport",    keys:["gl","general ledger","quickbooks","export"] },
   ];
 
@@ -23415,21 +23415,21 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
     { tab:"minicalc",     label:"Mini Calculator",              icon:"🧮", group:"Overview",    keywords:"calculator billing margin math" },
     // Clients
     { tab:"clients",      label:"Client Portfolio",             icon:"🏢", group:"Clients",     keywords:"clients portfolio accounts revenue health" },
-    { tab:"healthscore",  label:"Client Health Scorecard",      icon:"❤️", group:"Clients",     keywords:"client health scorecard nps satisfaction" },
-    { tab:"portal",       label:"Client Portal",                icon:"🌐", group:"Clients",     keywords:"portal timesheets invoices client view" },
+    { tab:"healthscore",  label:"Client Health Scorecard",      icon:"❤️", group:"Clients",     keywords:"client health scorecard nps satisfaction" , ai:true},
+    { tab:"portal",       label:"Client Portal",                icon:"🌐", group:"Clients",     keywords:"portal timesheets invoices client view" , ai:true},
     { tab:"ratequote",    label:"Rate Card & Quick Quote",       icon:"💰", group:"Clients",     keywords:"rate card quote billing hourly w2 c2c rates markup margin" },
     { tab:"availmatrix",  label:"Availability Matrix",          icon:"👥", group:"Clients",     keywords:"availability consultants bench skills who available matrix staffing" },
     { tab:"industrypitch",label:"Industry Pitch Templates",     icon:"🏭", group:"Clients",     keywords:"pitch industry templates automotive utilities healthcare defense tolling linkedin email" },
-    { tab:"marketing",    label:"Marketing Hub",                icon:"📣", group:"Clients",     keywords:"marketing linkedin posts email campaign nurture UTM tracking" },
+    { tab:"marketing",    label:"Marketing Hub",                icon:"📣", group:"Clients",     keywords:"marketing linkedin posts email campaign nurture UTM tracking" , ai:true},
     { tab:"crm",          label:"Sales CRM",                    icon:"🎯", group:"Clients",     keywords:"crm deals pipeline sales leads accounts" },
     { tab:"proposals",    label:"Proposals & Quotes",           icon:"📝", group:"Clients",     keywords:"proposals quotes RFP SOW" },
-    { tab:"proposalv2",   label:"AI Proposal Writer",           icon:"✍️", group:"Clients",     keywords:"proposal writer AI generate document" },
-    { tab:"rfpgen",       label:"RFP Generator",                icon:"📥", group:"Clients",     keywords:"rfp generator response bid" },
-    { tab:"sowgen",       label:"SOW Generator",                icon:"📃", group:"Clients",     keywords:"sow statement of work generator contract" },
+    { tab:"proposalv2",   label:"AI Proposal Writer",           icon:"✍️", group:"Clients",     keywords:"proposal writer AI generate document" , ai:true},
+    { tab:"rfpgen",       label:"RFP Generator",                icon:"📥", group:"Clients",     keywords:"rfp generator response bid" , ai:true},
+    { tab:"sowgen",       label:"SOW Generator",                icon:"📃", group:"Clients",     keywords:"sow statement of work generator contract" , ai:true},
     { tab:"prospectintel",label:"Prospect Intel",               icon:"🔍", group:"Clients",     keywords:"prospect research intelligence company analysis" },
     { tab:"revforecast",  label:"Revenue Forecast",             icon:"📈", group:"Clients",     keywords:"revenue forecast projection pipeline commission" },
-    { tab:"contracts",    label:"Contracts & SOW",              icon:"📜", group:"Clients",     keywords:"contracts sow agreements legal" },
-    { tab:"renewals",     label:"Contract Renewals",            icon:"🔄", group:"Clients",     keywords:"renewals renewal tracker expiring contracts" },
+    { tab:"contracts",    label:"Contracts & SOW",              icon:"📜", group:"Clients",     keywords:"contracts sow agreements legal" , ai:true},
+    { tab:"renewals",     label:"Contract Renewals",            icon:"🔄", group:"Clients",     keywords:"renewals renewal tracker expiring contracts" , ai:true},
     // Finance
     { tab:"finance",      label:"Finance Module",               icon:"💸", group:"Finance",     keywords:"finance invoices payments billing accounts receivable" },
     { tab:"pl",           label:"P&L / Income Statement",       icon:"📊", group:"Finance",     keywords:"profit loss income statement monthly" },
@@ -23438,28 +23438,28 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
     { tab:"adp",          label:"ADP Payroll",                  icon:"💳", group:"Finance",     keywords:"adp payroll payrun salary" },
     { tab:"adpstubs",     label:"ADP Pay Stubs",                icon:"🧾", group:"Finance",     keywords:"pay stubs salary deductions paystub" },
     { tab:"reconcile",    label:"Reconciliation Report",        icon:"⚖️", group:"Finance",     keywords:"reconciliation report match bank" },
-    { tab:"budget",       label:"Budget vs Actual",             icon:"🎯", group:"Finance",     keywords:"budget actual variance tracking" },
+    { tab:"budget",       label:"Budget vs Actual",             icon:"🎯", group:"Finance",     keywords:"budget actual variance tracking" , ai:true},
     { tab:"ebitda",       label:"EBITDA Optimizer",             icon:"📉", group:"Finance",     keywords:"ebitda optimizer levers exit value" },
     { tab:"profitability",label:"Profitability Analytics",      icon:"💹", group:"Finance",     keywords:"profitability margin client consultant ROI breakeven" },
-    { tab:"freshbooks",   label:"FreshBooks",                   icon:"📗", group:"Finance",     keywords:"freshbooks invoices billing integration" },
+    { tab:"freshbooks",   label:"FreshBooks",                   icon:"📗", group:"Finance",     keywords:"freshbooks invoices billing integration" , ai:true},
     // Team
     { tab:"roster",       label:"Consultant Roster",            icon:"👤", group:"Team",        keywords:"roster consultants team employees staff" },
-    { tab:"timesheet",    label:"Timesheet Approvals",          icon:"⏱", group:"Team",        keywords:"timesheet hours approval billing" },
+    { tab:"timesheet",    label:"Timesheet Approvals",          icon:"⏱", group:"Team",        keywords:"timesheet hours approval billing" , ai:true},
     { tab:"perfreviews",  label:"Performance Reviews",          icon:"⭐", group:"Team",        keywords:"performance review 360 goals compensation" },
     { tab:"pto",          label:"PTO / Time Off",               icon:"🏖", group:"Team",        keywords:"pto time off vacation leave requests" },
-    { tab:"bench",        label:"Bench Management",             icon:"🪑", group:"Team",        keywords:"bench available consultants utilization" },
+    { tab:"bench",        label:"Bench Management",             icon:"🪑", group:"Team",        keywords:"bench available consultants utilization" , ai:true},
     { tab:"capacity",     label:"Capacity Planner",             icon:"📅", group:"Team",        keywords:"capacity planning resource allocation" },
     { tab:"resourceplan", label:"Resource Planner AI",          icon:"🤖", group:"Team",        keywords:"resource planning AI staffing allocation" },
     // Hiring
     { tab:"recruiting",   label:"Recruiting Module",              icon:"🎯", group:"Hiring",      keywords:"recruiting candidates hiring pipeline sourcing interviews offers" },
-    { tab:"jobreqs",     label:"Job Requisition Manager",        icon:"📋", group:"Hiring",      keywords:"job requisitions open reqs hiring requirements staffing req pipeline" },
+    { tab:"jobreqs",     label:"Job Requisition Manager",        icon:"📋", group:"Hiring",      keywords:"job requisitions open reqs hiring requirements staffing req pipeline" , ai:true},
     { tab:"resumemgr",   label:"Resume Manager",                 icon:"📄", group:"Hiring",      keywords:"resume upload parse candidate attach format client submission ATS" },
     { tab:"offerletter", label:"Offer Letter Generator",         icon:"📝", group:"Hiring",      keywords:"offer letter employment agreement consulting contract W2 C2C generate" },
     { tab:"lirecruiter",  label:"LinkedIn Recruiter",           icon:"🔗", group:"Hiring",      keywords:"linkedin recruiter sourcing import" },
     // Compliance
     { tab:"compliance",   label:"Compliance",                   icon:"✅", group:"Compliance",  keywords:"compliance documents expiring alerts" },
     { tab:"paffiles",     label:"PAF Files",                    icon:"📁", group:"Compliance",  keywords:"paf personnel action forms documents" },
-    { tab:"immigration",  label:"Immigration Calendar",         icon:"🛂", group:"Compliance",  keywords:"immigration h1b visa work authorization expiry" },
+    { tab:"immigration",  label:"Immigration Calendar",         icon:"🛂", group:"Compliance",  keywords:"immigration h1b visa work authorization expiry" , ai:true},
     // Operations
     { tab:"projects",     label:"Project Tracker",              icon:"📋", group:"Operations",  keywords:"projects tracker milestones delivery" },
     { tab:"onboarding",   label:"Onboarding",                   icon:"🎉", group:"Operations",  keywords:"onboarding new hire setup documents" },
@@ -39415,7 +39415,7 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
     { icon:"📋", label:"Expiring Docs",       value:expDocs.length,     sub:"Work auth ≤60 days",                                                                color:expDocs.length>0?"#f87171":"#34d399", tab:"compliance" },
     { icon:"🏖",  label:"PTO Requests",        value:pendPTO,            sub:"Awaiting approval",                                                                 color:pendPTO>0?"#f59e0b":"#34d399",        tab:"pto" },
     { icon:"📋", label:"Open Reqs",           value:(jobReqs||[]).filter(r=>r.stage!=="filled").length||0, sub:"Active requisitions",  color:"#38bdf8",  tab:"jobreqs"    },
-    { icon:"🎯", label:"Hiring Pipeline",     value:actCands,           sub:"Active candidates",                                                                 color:"#60a5fa",  tab:"pipeline" },
+    { icon:"🎯", label:"Hiring Pipeline",     value:actCands,           sub:"Active candidates",                                                                 color:"#60a5fa",  tab:"pipeline" , ai:true},
     { icon:"📄", label:"PAF Files",           value:"Manage",           sub:"Personnel action forms",                                                            color:"#a78bfa",  tab:"paffiles" },
     { icon:"🏢", label:"Onboarding",          value:safeRoster.filter(r=>r.status==="onboarding").length||"Active", sub:"New hires in progress",                color:"#34d399",  tab:"onboarding" },
     { icon:"💊", label:"Benefits",            value:"Tracker",          sub:"Health, dental, 401k",                                                              color:"#38bdf8",  tab:"benefits" },
