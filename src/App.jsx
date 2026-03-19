@@ -41691,6 +41691,22 @@ function SOPLibrary({ roster, finInvoices, finPayments, apInvoices, crmDeals, cr
   const [sops, setSops]           = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-sops")||"{}");}catch{return {};}});
   const [exitChecks, setExitChks] = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-exit-checks")||"{}");}catch{return {};}});
   const [catFilter, setCatFilter] = useState("All");
+  const [SOPLibraryAI, setSOPLibraryAI] = useState(null);
+  const [SOPLibraryAILoad, setSOPLibraryAILoad] = useState(false);
+  const runSOPLibraryAI = async () => {
+    setSOPLibraryAILoad(true); setSOPLibraryAI(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are an M&A readiness advisor for a WBE SAP consulting firm targeting 2027-2028 exit.",
+          messages:[{role:"user",content:`SOP and documentation review needed for exit readiness.\nReturn ONLY JSON:\n{"documentationScore":72,"biggestGap":"most critical missing doc for acquirer due diligence","exitReadyItems":["ready item1","ready item2"],"urgentAction":"single doc task to complete this week","acquirerConcern":"what a buyer will ask for first"}`}]
+        })
+      });
+      const data = await resp.json();
+      setSOPLibraryAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setSOPLibraryAI({error:e.message}); }
+    setSOPLibraryAILoad(false);
+  };
 
   const saveSops = s  => { setSops(s);       localStorage.setItem("zt-sops",JSON.stringify(s)); };
   const saveExit = e  => { setExitChks(e);   localStorage.setItem("zt-exit-checks",JSON.stringify(e)); };
@@ -41712,7 +41728,23 @@ function SOPLibrary({ roster, finInvoices, finPayments, apInvoices, crmDeals, cr
 
   return (
     <div>
-      <PH title="SOP Library & Exit Readiness" sub="Operating procedures · Exit valuation score · M&A preparation"/>
+      <PH title="SOP Library & Exit Readiness" sub="Operating procedures · Exit valuation score · M&A preparation">
+        <button className="btn bp" style={{fontSize:11}} onClick={runSOPLibraryAI} disabled={SOPLibraryAILoad}>{SOPLibraryAILoad?"⏳...":"🤖 Exit Readiness"}</button>
+      </PH>
+      {SOPLibraryAI && !SOPLibraryAI.error && (
+        <div style={{padding:"10px 14px",marginBottom:12,background:"#060d1c",border:"1px solid #0369a144",borderRadius:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 Exit Readiness Score: <span style={{fontSize:18,fontFamily:"monospace",color:(SOPLibraryAI.documentationScore||0)>70?"#34d399":"#f59e0b"}}>{SOPLibraryAI.documentationScore}</span>/100</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setSOPLibraryAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {SOPLibraryAI.biggestGap&&<div style={{padding:"6px 10px",background:"#040a14",borderRadius:5,border:"1px solid #f8717122"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>Biggest Gap</div><div style={{fontSize:11,color:"#f87171"}}>{SOPLibraryAI.biggestGap}</div></div>}
+            {SOPLibraryAI.urgentAction&&<div style={{padding:"6px 10px",background:"#040a14",borderRadius:5,border:"1px solid #34d39922"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>This Week</div><div style={{fontSize:11,color:"#34d399"}}>{SOPLibraryAI.urgentAction}</div></div>}
+            {SOPLibraryAI.acquirerConcern&&<div style={{padding:"6px 10px",background:"#040a14",borderRadius:5,border:"1px solid #a78bfa22",gridColumn:"span 2"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>Acquirer Will Ask For</div><div style={{fontSize:11,color:"#a78bfa"}}>{SOPLibraryAI.acquirerConcern}</div></div>}
+          </div>
+        </div>
+      )}
+
       <div style={{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}}>
         <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
           const rows=SOP_CHECKLIST.map(s=>[(sops[s.id]||{}).documented?"✓":"",(sops[s.id]||{}).reviewed?"✓":"",s.title,s.cat,s.impact,s.desc]);
