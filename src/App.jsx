@@ -47739,6 +47739,16 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
                         <button className="btn bg" style={{fontSize:9,padding:"2px 7px"}} onClick={(e)=>{e.stopPropagation();setAddModal("outreach");setNewForm({accountId:a.id});}}>
                           📞 Outreach
                         </button>
+                        {(a.status==="Opportunity"||a.status==="Active") && (
+                          <button className="btn bp" style={{fontSize:9,padding:"2px 7px",background:"#34d39922",color:"#34d399",border:"1px solid #34d39944"}}
+                            onClick={(e)=>{e.stopPropagation();
+                              // Promote to CRM — open CRM with pre-filled account
+                              if(window.setTabSafe) window.setTabSafe("crm");
+                              else setSection&&setSection("pipeline");
+                            }}>
+                            ✅ → CRM
+                          </button>
+                        )}
                         {setCrmAccounts && !crmAccounts?.some(ca=>ca.name===a.name) && (
                           <button className="btn bg" style={{fontSize:9,padding:"2px 7px",color:"#34d399"}} onClick={(e)=>{
                             e.stopPropagation();
