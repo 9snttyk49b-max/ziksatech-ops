@@ -1802,7 +1802,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.44 · 91 AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.47 · 92 AI modules</span>
         </div>
         {children}
       </div>
@@ -2137,6 +2137,17 @@ function FinanceControlSystem(props) {
   const [cfoInput, setCfoInput] = useState("");
   const [cfoMsgLoad, setCfoMsgLoad] = useState(false);
 
+  // Auto-run CFO brief on first visit each day
+  React.useEffect(() => {
+    const lastRun = localStorage.getItem('zt-fcs-brief-date');
+    if (lastRun !== new Date().toDateString()) {
+      setTimeout(() => {
+        runCfoBrief();
+        localStorage.setItem('zt-fcs-brief-date', new Date().toDateString());
+      }, 1500);
+    }
+  }, []);
+
   const runCfoBrief = async () => {
     setCfoLoading(true); setCfoBrief(null);
     try {
@@ -2337,6 +2348,16 @@ function FinanceControlSystem(props) {
     </div>
   );
 
+  // Monthly trend chart data (for dashboard sparklines)
+  const MONTHLY_TREND = [
+    {m:"Oct",rev:95000,exp:78000},
+    {m:"Nov",rev:102000,exp:84000},
+    {m:"Dec",rev:118000,exp:97000},
+    {m:"Jan",rev:88000,exp:81000},
+    {m:"Feb",rev:105000,exp:94000},
+    {m:"Mar",rev:txRevenue,exp:txExpenses},
+  ];
+
   // ═══════════════════════════════════════════
   // SCREEN 2: REVIEW QUEUE
   // ═══════════════════════════════════════════
@@ -2407,6 +2428,8 @@ function FinanceControlSystem(props) {
   const [txSearch, setTxSearch] = useState("");
   const [txFilter, setTxFilter] = useState("all");
   const [txSelId, setTxSelId] = useState(null);
+  const [addTxModal, setAddTxModal] = useState(false);
+  const [addTxForm, setAddTxForm]   = useState({date:new Date().toISOString().slice(0,10),account:"Amex Business",merchant:"",memo:"",amount:"",type:"debit",category:"uncategorized",biz:"business",receipt:"missing"});
 
   const renderTransactions = () => {
     const selTx = transactions.find(t=>t.id===txSelId);
@@ -2431,7 +2454,32 @@ function FinanceControlSystem(props) {
               <option value="personal">Personal</option>
             </select>
             <div style={{fontSize:10,color:"#475569"}}>{filtered.length} records</div>
+            <button className="btn bp" style={{fontSize:11}} onClick={()=>setAddTxModal(true)}>+ Add</button>
           </div>
+          {addTxModal&&(
+            <div style={{padding:"14px 16px",marginBottom:12,background:"#040a14",border:"1px solid #0369a144",borderRadius:8}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>+ Add Transaction</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:8}}>
+                <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Date</div><input className="inp" type="date" style={{width:"100%",fontSize:11}} value={addTxForm.date} onChange={e=>setAddTxForm({...addTxForm,date:e.target.value})}/></div>
+                <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Merchant</div><input className="inp" style={{width:"100%",fontSize:11}} placeholder="Merchant name" value={addTxForm.merchant} onChange={e=>setAddTxForm({...addTxForm,merchant:e.target.value})}/></div>
+                <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Amount ($)</div><input className="inp" type="number" style={{width:"100%",fontSize:11}} placeholder="0.00" value={addTxForm.amount} onChange={e=>setAddTxForm({...addTxForm,amount:e.target.value})}/></div>
+                <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Account</div><select className="inp" style={{width:"100%",fontSize:11}} value={addTxForm.account} onChange={e=>setAddTxForm({...addTxForm,account:e.target.value})}><option>Chase Business</option><option>Amex Business</option><option>Chase Personal</option></select></div>
+                <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Type</div><select className="inp" style={{width:"100%",fontSize:11}} value={addTxForm.type} onChange={e=>setAddTxForm({...addTxForm,type:e.target.value})}><option value="debit">Expense (Debit)</option><option value="credit">Revenue (Credit)</option></select></div>
+                <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Category</div><select className="inp" style={{width:"100%",fontSize:11}} value={addTxForm.category} onChange={e=>setAddTxForm({...addTxForm,category:e.target.value})}>{FCS_CATEGORIES.map(cat=><option key={cat.id} value={cat.id}>{cat.name}</option>)}</select></div>
+              </div>
+              <input className="inp" style={{width:"100%",fontSize:11,marginBottom:8}} placeholder="Memo / description..." value={addTxForm.memo} onChange={e=>setAddTxForm({...addTxForm,memo:e.target.value})}/>
+              <div style={{display:"flex",gap:6}}>
+                <button className="btn bp" style={{fontSize:11}} onClick={()=>{
+                  if(!addTxForm.merchant||!addTxForm.amount) return;
+                  const newTx={...addTxForm,id:"tx"+Date.now(),amount:addTxForm.type==="debit"?-Math.abs(+addTxForm.amount):Math.abs(+addTxForm.amount),deductible:FCS_CATEGORIES.find(c=>c.id===addTxForm.category)?.deductible||0,confidence:85,status:addTxForm.category==="uncategorized"?"needs-category":"reviewed"};
+                  saveTx([...transactions,newTx]);
+                  setAddTxModal(false);
+                  setAddTxForm({date:new Date().toISOString().slice(0,10),account:"Amex Business",merchant:"",memo:"",amount:"",type:"debit",category:"uncategorized",biz:"business",receipt:"missing"});
+                }}>Save Transaction</button>
+                <button className="btn bg" style={{fontSize:11}} onClick={()=>setAddTxModal(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
           {/* Table header */}
           <div style={{display:"grid",gridTemplateColumns:"80px 1fr 80px 90px 80px 60px",gap:4,padding:"5px 8px",fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:700}}>
             <span>Date</span><span>Merchant / Memo</span><span>Amount</span><span>Category</span><span>Receipt</span><span>Status</span>
@@ -3008,6 +3056,37 @@ function FinanceControlSystem(props) {
             <button key={q} className="btn bg" style={{fontSize:10,width:"100%",textAlign:"left",marginBottom:4}}
               onClick={()=>{setCfoInput(q);}}>→ {q}</button>
           ))}
+        </div>
+      </div>
+      {/* 6-Month Revenue Trend */}
+      <div className="card" style={{padding:"16px",marginTop:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
+          <div className="section-hdr">📈 6-Month Trend</div>
+          <div style={{display:"flex",gap:10,fontSize:9,color:"#475569"}}>
+            <span><span style={{color:"#34d399"}}>▬</span> Revenue</span>
+            <span><span style={{color:"#f87171"}}>▬</span> Expenses</span>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"flex-end",height:70}}>
+          {MONTHLY_TREND.map((mo,i)=>{
+            const maxVal=Math.max(...MONTHLY_TREND.map(x=>Math.max(x.rev,x.exp)));
+            const revH=Math.round(mo.rev/maxVal*60);
+            const expH=Math.round(mo.exp/maxVal*60);
+            const cur=i===MONTHLY_TREND.length-1;
+            return(
+              <div key={mo.m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                <div style={{display:"flex",gap:1,alignItems:"flex-end",height:62}}>
+                  <div style={{width:9,height:revH,background:cur?"#34d399":"#15803d",borderRadius:"2px 2px 0 0",minHeight:2}}/>
+                  <div style={{width:9,height:expH,background:cur?"#f87171":"#7f1d1d",borderRadius:"2px 2px 0 0",minHeight:2}}/>
+                </div>
+                <div style={{fontSize:8,color:cur?"#e2e8f0":"#475569",fontWeight:cur?700:400}}>{mo.m}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{marginTop:6,fontSize:9,color:"#3d5a7a",display:"flex",gap:16}}>
+          <span>Avg Revenue: {fmtK(Math.round(MONTHLY_TREND.reduce((s,m)=>s+m.rev,0)/MONTHLY_TREND.length))}/mo</span>
+          <span style={{color:MONTHLY_TREND.reduce((s,m)=>s+(m.rev-m.exp),0)>0?"#34d399":"#f87171"}}>6-mo net: {fmtK(MONTHLY_TREND.reduce((s,m)=>s+(m.rev-m.exp),0))}</span>
         </div>
       </div>
     </div>
