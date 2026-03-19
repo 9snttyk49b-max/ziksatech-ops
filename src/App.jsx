@@ -134,6 +134,68 @@ const ROLE_HUB_TILES = {
   contractor:     [],
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// ERROR BOUNDARY — catches render crashes in any tab/component and shows
+// a friendly recovery UI instead of a black screen.
+// React requires class components for error boundaries.
+// ═══════════════════════════════════════════════════════════════════════
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('[ZT ErrorBoundary]', error, errorInfo);
+    this.setState({ errorInfo });
+  }
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    const label = this.props.label || 'this section';
+    return (
+      <div style={{
+        margin:'24px auto', maxWidth:560, padding:'32px 28px',
+        background:'#0a0f1a', border:'1px solid #7f1d1d',
+        borderRadius:14, textAlign:'center', fontFamily:"'DM Sans',sans-serif"
+      }}>
+        <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
+        <div style={{fontSize:16,fontWeight:700,color:'#fca5a5',marginBottom:8}}>
+          Something went wrong in {label}
+        </div>
+        <div style={{fontSize:12,color:'#475569',marginBottom:20,lineHeight:1.6}}>
+          A rendering error was caught and isolated so the rest of the app keeps working.
+          {this.state.error && (
+            <div style={{marginTop:10,padding:'8px 12px',background:'#050e1c',borderRadius:8,
+              fontFamily:'monospace',fontSize:11,color:'#f87171',textAlign:'left',wordBreak:'break-all'}}>
+              {String(this.state.error)}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => this.setState({ hasError:false, error:null, errorInfo:null })}
+          style={{padding:'9px 24px',borderRadius:8,border:'none',cursor:'pointer',
+            background:'linear-gradient(135deg,#0369a1,#0284c7)',color:'#fff',
+            fontSize:13,fontWeight:600,marginRight:10}}>
+          ↺ Try again
+        </button>
+        <button
+          onClick={() => window.location.reload()}
+          style={{padding:'9px 24px',borderRadius:8,border:'1px solid #1a2d45',cursor:'pointer',
+            background:'transparent',color:'#64748b',fontSize:13,fontWeight:600}}>
+          ⟳ Reload page
+        </button>
+      </div>
+    );
+  }
+}
+
+// Convenience functional wrapper for tab content
+function TabBoundary({ label, children }) {
+  return <ErrorBoundary label={label}>{children}</ErrorBoundary>;
+}
+
 function canAccess(tab, role) {
   if (!role) return false;
   if (role === "super_admin" || role === "admin") return true;
@@ -4321,7 +4383,7 @@ export default function ZiksatechOps() {
 
   // ── Portal Hub intercept ────────────────────────────────────────────────
   if (portalView === "hub") {
-    return <PortalHub
+    return <TabBoundary label="Portal Hub"><PortalHub
       goToOps={()=>goToView("ops")}
       goCRM={()=>goToView("crm")}
       authProfile={authProfile}
@@ -4332,7 +4394,7 @@ export default function ZiksatechOps() {
       crmDeals={shared.crmDeals}
       compliance={shared.compliance}
       onSignOut={async()=>{ if(supaAuth){await supaAuth.signOut(authSession?.access_token);supaAuth.clearSession();} setAuthSession(null);setAuthProfile(null); }}
-    />;
+    /></TabBoundary>;
   }
 
     return (
@@ -4832,6 +4894,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
       </nav>
 
       <main className="main-content" style={{flex:1,overflowY:"auto",padding:isMobile?"68px 14px 72px":"28px 32px",minWidth:0}}>
+        <TabBoundary label={`the "${tab}" tab`}>
         {/* Demo mode banner */}
         {(window.location.hostname.includes("demo") || window.location.hostname.includes("benchos")) && (
           <div style={{background:"linear-gradient(90deg,#0c2340,#0D1B2A)",border:"1px solid #C9A84C44",
@@ -4950,6 +5013,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="immigration" && <ImmigrationCalendar workAuth={shared.workAuth} setWorkAuth={shared.setWorkAuth} roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="compliance"  && <ComplianceModule {...shared}/>}
         {tab==="freshbooks" && <FreshBooks {...shared}/>}
+        </TabBoundary>
       </main>
     </div>
   );
