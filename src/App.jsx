@@ -44290,34 +44290,81 @@ Respond ONLY with this JSON:
               <div style={{fontSize:13,color:"#475569"}}>⏳ Analyzing deal...</div>
             </div>
           )}
-          {selDeal && advice[selDeal] && (
-            <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"18px 20px"}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#3d5a7a",marginBottom:14,textTransform:"uppercase",letterSpacing:.5}}>
-                AI Deal Coach
+          {selDeal && advice[selDeal] && (() => {
+            const adv = advice[selDeal];
+            const prob = adv.probability30d||0;
+            const probColor = prob>=70?"#34d399":prob>=40?"#f59e0b":"#f87171";
+            const dealObj = displayed.find(d=>d.id===selDeal)||{};
+            return (
+              <div style={{background:"#060d1c",border:"1px solid #1e3a5f",borderRadius:10,padding:"16px 18px",display:"flex",flexDirection:"column",gap:10}}>
+                {/* Header + prob */}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5}}>AI Deal Coach</div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginTop:2}}>{dealObj.clientName||dealObj.company||"Deal"}</div>
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:28,fontWeight:800,color:probColor,fontFamily:"'DM Mono',monospace",lineHeight:1}}>{prob}%</div>
+                    <div style={{fontSize:9,color:"#475569"}}>30-day close</div>
+                    <div style={{width:56,height:4,background:"#1a2d45",borderRadius:2,marginTop:4}}>
+                      <div style={{width:`${Math.min(prob,100)}%`,height:"100%",background:probColor,borderRadius:2}}/>
+                    </div>
+                  </div>
+                </div>
+                {/* Probability reason */}
+                {adv.probabilityReason&&<div style={{padding:"7px 10px",background:"#040a14",borderRadius:6,fontSize:10,color:"#94a3b8",lineHeight:1.5,fontStyle:"italic"}}>{adv.probabilityReason}</div>}
+                {/* 3 next actions */}
+                {(adv.nextActions||[]).length>0&&(
+                  <div>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>🎯 Next Actions</div>
+                    {(adv.nextActions||[]).map(a=>(
+                      <div key={a.priority} style={{display:"flex",gap:7,alignItems:"flex-start",marginBottom:5,padding:"7px 9px",background:"#040a14",borderRadius:6,border:`1px solid ${a.priority===1?"#0369a144":"#1a2d45"}`}}>
+                        <div style={{width:17,height:17,borderRadius:"50%",background:a.priority===1?"#0ea5e9":a.priority===2?"#7c3aed":"#1e3a5f",color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{a.priority}</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:11,color:"#e2e8f0",lineHeight:1.4}}>{a.action}</div>
+                          <div style={{fontSize:9,color:"#475569",marginTop:1}}>{a.owner} · {a.deadline}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Buying committee */}
+                {adv.buyingCommittee&&(
+                  <div>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>👥 Buying Committee</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+                      {[["🏆 Champion",adv.buyingCommittee.champion,"#34d399"],["💰 Economic Buyer",adv.buyingCommittee.economicBuyer,"#38bdf8"],["⚠️ Missing",adv.buyingCommittee.missing,"#f59e0b"],["🚫 Blocker",adv.buyingCommittee.blocker,"#f87171"]].map(([l,v,col])=>(
+                        <div key={l} style={{padding:"5px 7px",background:"#040a14",borderRadius:5}}>
+                          <div style={{fontSize:8,color:"#3d5a7a",marginBottom:1}}>{l}</div>
+                          <div style={{fontSize:9,color:col,lineHeight:1.3}}>{v||"Unknown"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Closing move + risk */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+                  <div style={{padding:"7px 9px",background:"#021f14",border:"1px solid #15803d44",borderRadius:6}}>
+                    <div style={{fontSize:8,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>🏆 Closing Move</div>
+                    <div style={{fontSize:10,color:"#34d399",lineHeight:1.4}}>{adv.closingMove||"—"}</div>
+                  </div>
+                  <div style={{padding:"7px 9px",background:"#1a0808",border:"1px solid #dc262644",borderRadius:6}}>
+                    <div style={{fontSize:8,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>⚠️ Key Risk</div>
+                    <div style={{fontSize:10,color:"#f87171",lineHeight:1.4}}>{adv.riskFlag||"—"}</div>
+                  </div>
+                </div>
+                {/* Competitive risk */}
+                {adv.competitiveRisk&&<div style={{padding:"7px 9px",background:"#0d0b1a",border:"1px solid #7c3aed44",borderRadius:6}}><div style={{fontSize:8,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>🥊 Competitive Risk</div><div style={{fontSize:10,color:"#a78bfa",lineHeight:1.4}}>{adv.competitiveRisk}</div></div>}
+                {/* Email draft */}
+                {adv.emailDraft&&(
+                  <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:11}}
+                    onClick={()=>{navigator.clipboard?.writeText(`Subject: ${adv.emailSubject||"Following up"}\n\n${adv.emailDraft}`);alert("📋 Email copied!");}}>
+                    📧 Copy Follow-Up Email
+                  </button>
+                )}
               </div>
-              {[
-                ["🎯 Next Action (This Week)", advice[selDeal].nextAction, "#38bdf8"],
-                ["💡 Why",                     advice[selDeal].why,        "#94a3b8"],
-                ["👥 Stakeholder Gap",         advice[selDeal].stakeholderGap, "#f59e0b"],
-                ["🏆 Closing Move",            advice[selDeal].closingMove, "#34d399"],
-                ["⚠️ Key Risk",               advice[selDeal].riskFlag,   "#f87171"],
-              ].map(([l,v,col])=>(
-                <div key={l} style={{marginBottom:12,padding:"10px 12px",background:"#040a14",borderRadius:8}}>
-                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>{l}</div>
-                  <div style={{fontSize:12,color:col,lineHeight:1.5}}>{v||"—"}</div>
-                </div>
-              ))}
-              {advice[selDeal].probability30d !== undefined && (
-                <div style={{marginTop:12,padding:"10px 14px",background:"#021f14",border:"1px solid #34d39944",
-                  borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:11,color:"#64748b"}}>30-Day Close Probability</span>
-                  <span style={{fontSize:18,fontWeight:800,color:"#34d399",fontFamily:"'DM Mono',monospace"}}>
-                    {advice[selDeal].probability30d}%
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>
