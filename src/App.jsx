@@ -193,7 +193,7 @@ function useDragSort(items, setItems) {
   return { dragProps };
 }
 
-// ─── Global date utilities (v4.4.47c) (used across multiple components) ─────────────────
+// ─── Global date utilities (used across multiple components) ─────────────────
 function urgencyLevel(days) {
   if (days === null || days === undefined) return { label: "Unknown", color: "#64748b", bg: "#0a0a0a" };
   if (days <= 0)   return { label: "Expired",  color: "#ef4444", bg: "#1a0808" };
@@ -4561,7 +4561,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.44 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.47 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
