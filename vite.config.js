@@ -4,13 +4,37 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   define: {
-    // Inject ANTHROPIC_API_KEY from Vercel env at build time → available as window.__ANTHROPIC_KEY__
     'window.__ANTHROPIC_KEY__': JSON.stringify(process.env.ANTHROPIC_API_KEY || ''),
+    'import.meta.env.VITE_ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY || ''),
   },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/yucvxkugtwlsvhqzpoqe\.supabase\.co\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-cache',
+              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+              networkTimeoutSeconds: 5,
+            },
+          },
+          {
+            urlPattern: /^https:\/\/api\.anthropic\.com\/.*/i,
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: { cacheName: 'google-fonts', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
+          },
+        ],
+      },
       includeAssets: ['icons/*.png', 'icons/*.svg'],
       manifest: {
         name: 'Ziksatech Ops Center',
@@ -34,41 +58,14 @@ export default defineConfig({
         ],
         categories: ['business', 'productivity'],
         shortcuts: [
-          { name: 'Dashboard',    short_name: 'Dashboard', url: '/#ops?tab=dashboard',  icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }] },
-          { name: 'Timesheets',   short_name: 'Timesheets',url: '/#ops?tab=timesheet',  icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }] },
-          { name: 'Invoices',     short_name: 'Invoices',  url: '/#ops?tab=arinvoices', icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }] },
-          { name: 'Team Roster',  short_name: 'Roster',    url: '/#ops?tab=roster',     icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }] },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/yucvxkugtwlsvhqzpoqe\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-              networkTimeoutSeconds: 5,
-            },
-          },
-          {
-            urlPattern: /^https:\/\/api\.anthropic\.com\/.*/i,
-            handler: 'NetworkOnly',
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
-          },
+          { name: 'Dashboard',   short_name: 'Dashboard', url: '/#ops?tab=dashboard', icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }] },
+          { name: 'Timesheets',  short_name: 'Timesheets',url: '/#ops?tab=timesheet', icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }] },
+          { name: 'Invoices',    short_name: 'Invoices',  url: '/#ops?tab=arinvoices',icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }] },
+          { name: 'Team Roster', short_name: 'Roster',    url: '/#ops?tab=roster',    icons: [{ src: 'icons/icon-96x96.png', sizes: '96x96' }] },
         ],
       },
     }),
   ],
-  // Expose ANTHROPIC_API_KEY (set in Vercel without VITE_ prefix) to the client bundle
-  define: {
-    'import.meta.env.VITE_ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY || ''),
-  },
   build: {
     rollupOptions: {
       output: {

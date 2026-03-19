@@ -8873,7 +8873,7 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
             const od   = daysOverdue(inv);
             return (
               <div key={inv.id} className="tr" {..._dp(_i_)}
-                style={{cursor:"grab",gridTemplateColumns:"28px 110px 1fr 120px 110px 90px 90px 100px 100px",minWidth:900,cursor:"pointer",background:selAR.has(inv.id)?"#0a1a2e":selected===inv.id?"#061526":undefined}}
+                style={{gridTemplateColumns:"28px 110px 1fr 120px 110px 90px 90px 100px 100px",minWidth:900,cursor:"pointer",background:selAR.has(inv.id)?"#0a1a2e":selected===inv.id?"#061526":undefined}}
                 onClick={()=>setSelected(selected===inv.id?null:inv.id)}>
                 <input type="checkbox" checked={selAR.has(inv.id)} onChange={()=>toggleAR(inv.id)} onClick={e=>e.stopPropagation()} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
                 <span className="mono" style={{fontSize:11,color:"#3d5a7a"}}>{inv.id}</span>
@@ -10535,7 +10535,7 @@ function RecCandidates({ candidates, setCandidates, submissions, interviews, off
             const cSubs = submissions.filter(s=>s.candidateId===c.id).length;
             const cInts = interviews.filter(i=>i.candidateId===c.id).length;
             return (
-              <div key={c.id} className="tr" {..._dp(_i_)} style={{cursor:"grab",gridTemplateColumns:"28px 1.4fr 1fr 80px 90px 80px 90px",minWidth:720,cursor:"pointer",background:selCands.has(c.id)?"#0a1a2e":selected===c.id?"#061526":undefined}} onClick={()=>setSelected(selected===c.id?null:c.id)}>
+              <div key={c.id} className="tr" {..._dp(_i_)} style={{gridTemplateColumns:"28px 1.4fr 1fr 80px 90px 80px 90px",minWidth:720,cursor:"pointer",background:selCands.has(c.id)?"#0a1a2e":selected===c.id?"#061526":undefined}} onClick={()=>setSelected(selected===c.id?null:c.id)}>
                 <input type="checkbox" checked={selCands.has(c.id)} onChange={()=>toggleCandRow(c.id)} onClick={e=>e.stopPropagation()} style={{accentColor:"#0369a1",cursor:"pointer"}}/>
                 <div>
                   <div style={{fontSize:13,fontWeight:600,color:"#cbd5e1"}}>{c.name}</div>
@@ -11434,7 +11434,7 @@ function ImmigrationCalendar({ workAuth, setWorkAuth, roster, addAudit }) {
                           <div style={{fontSize:10,color:"#475569"}}>{w.rosterMember?.role||w.employer||"—"}</div>
                         </div>
                         <span style={{fontSize:10,padding:"2px 8px",borderRadius:8,background:VC(w.type).color+"22",color:VC(w.type).color,border:`1px solid ${VC(w.type).color}44`,fontWeight:700,textAlign:"center"}}>{w.type}</span>
-                        <div style={{fontSize:11,color:"#94a3b8",fontFamily:"monospace",fontSize:10}}>{fmtDate(w.expiryDate)}</div>
+                        <div style={{fontSize:11,color:"#94a3b8",fontFamily:"monospace"}}>{fmtDate(w.expiryDate)}</div>
                         <StatusBadge w={w}/>
                         <div style={{fontSize:10,color:"#475569",fontFamily:"monospace"}}>{w.petitionNo||"—"}</div>
                         <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
@@ -12296,7 +12296,7 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
             const acc = crmAccounts.find(a=>a.id===d.accountId);
             return (
               <div key={d.id} className="tr" {..._dp(_i_)}
-                style={{cursor:"grab",gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",cursor:"pointer",
+                style={{gridTemplateColumns:"2fr 1.2fr 80px 100px 90px 90px 100px",cursor:"pointer",
                   background:selected===d.id?"#0a1a2e":undefined}}
                 onClick={()=>setSelected(selected===d.id?null:d.id)}>
                 <div>
@@ -13415,7 +13415,7 @@ function ContractsList({ contracts, setContracts, crmAccounts, crmDeals }) {
             const daysLeft = Math.floor((new Date(c.endDate+"T00:00:00")-new Date("2026-03-11T00:00:00"))/86400000);
             return (
               <div key={c.id} className="tr" {..._dp(_i_)}
-                style={{cursor:"grab",gridTemplateColumns:"2fr 80px 90px 100px 100px 80px 70px",cursor:"pointer",
+                style={{gridTemplateColumns:"2fr 80px 90px 100px 100px 80px 70px",cursor:"pointer",
                   background:selected===c.id?"#0a1a2e":undefined}}
                 onClick={()=>setSelected(selected===c.id?null:c.id)}>
                 <div>
@@ -13911,7 +13911,7 @@ function ProjOverview({ projects, setProjects, tasks, risks, roster, crmAccounts
             const openT = pTasks.filter(t=>t.status!=="done").length;
             const highT = pTasks.filter(t=>t.priority==="high"&&t.status!=="done").length;
             return (
-              <div key={p.id} className="card" {..._dp(_i_)} style={{cursor:"grab",padding:"16px 20px",cursor:"pointer",
+              <div key={p.id} className="card" {..._dp(_i_)} style={{padding:"16px 20px",cursor:"pointer",
                 border:selected===p.id?"1px solid #0284c7":"1px solid #1a2d45"}}
                 onClick={()=>setSelected(selected===p.id?null:p.id)}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
@@ -23727,7 +23727,7 @@ function NotificationsHub({
     slackEnabled:   false,
     digestTime:     "08:00",
     digestEnabled:  false,
-    channels:       DEFAULT_CHANNELS,
+    // channels default handled by deep merge below
     ...saved,
     // Deep merge channels so saved routing persists but new categories still appear
     channels: { ...DEFAULT_CHANNELS, ...(saved.channels || {}) },
@@ -26495,7 +26495,7 @@ Return JSON: {
     ws2["!cols"] = [{wch:6},{wch:40},{wch:20},{wch:18},{wch:20}];
     // Bold header row (row index 3)
     ["A4","B4","C4","D4","E4"].forEach(cell => {
-      if (ws2[cell]) ws2[cell].s = {font:{bold:true},fill:{fgColor:{rgb:"0D1B2A"}},font:{color:{rgb:"FFFFFF"}}};
+      if (ws2[cell]) ws2[cell].s = {font:{bold:true,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"0D1B2A"}}};
     });
     XLSX2.utils.book_append_sheet(wb, ws2, "Scope & Pricing");
 
@@ -27276,7 +27276,7 @@ function ProposalList({ proposals, setProposals, roster, winRate, totalValue, ac
               const isSelected = selId===prop.id;
               const daysLeft = prop.validUntil ? daysUntil(prop.validUntil) : null;
               return (
-                <div key={prop.id} className="tr" {..._dp(_i_)} style={{cursor:"grab"}}
+                <div key={prop.id} className="tr" {..._dp(_i_)}
                   style={{gridTemplateColumns:"40px 1.8fr 90px 80px 80px 80px 80px",cursor:"pointer",
                     background:isSelected?"#0a1a2e":undefined,
                     borderLeft:`3px solid ${PROP_STATUS_COLOR[prop.status]||"#1a2d45"}`}}
@@ -28716,13 +28716,13 @@ Write the complete document ready to send. Include: letterhead with company info
     expectedBehavior:"Expected Behavior/Improvement Plan", reviewDate:"Review Date",
     partyName:"Other Party Name", partyTitle:"Other Party Title",
     partyCompany:"Other Party Company", purposeOfDisclosure:"Purpose of Disclosure",
-    duration:"Agreement Duration", state:"Governing State",
-    clientName:"Client Name", clientCompany:"Client Company",
+    ndaDuration:"Agreement Duration", state:"Governing State",
+    ndaClientName:"Client Name", clientCompany:"Client Company",
     clientAddress:"Client Address", paymentTerms:"Payment Terms",
     contractorName:"Contractor Name", contractorEmail:"Contractor Email",
     projectName:"Project Name", billRate:"Bill Rate ($/hr)",
-    endDate:"End Date", clientName:"Client/Employer Name",
-    duration:"Non-Compete Duration", territory:"Territory",
+    contractEndDate:"End Date", employerName:"Client/Employer Name",
+    nonCompeteDuration:"Non-Compete Duration", territory:"Territory",
     contractorAddress:"Contractor Address", taxYear:"Tax Year",
     totalPaid:"Total Paid ($)", tin:"TIN (last 4 only)",
     clientContact:"Client Contact Name", invoiceNo:"Invoice Number",
