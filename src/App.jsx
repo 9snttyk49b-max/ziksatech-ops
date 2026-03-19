@@ -44405,10 +44405,35 @@ function RevLeakageDetector({ roster, clients, finInvoices, finPayments, tsHours
   const [loading, setLoading]   = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [tab, setTab]           = useState("leaks");
+  const [fixDraft, setFixDraft]   = useState(null); // {leak, email}
+  const [fixLoading, setFixLoading] = useState(null); // leak index being fixed
 
   const TODAY = new Date();
   const CUR_MONTH = TODAY.getMonth();
   const CUR_YEAR  = TODAY.getFullYear();
+
+  const generateFix = async (leak, idx) => {
+    setFixLoading(idx);
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:800,
+          system:"You are Manju Murthy, Managing Partner at Ziksatech. Write a brief, direct rate renegotiation or fix email.",
+          messages:[{role:"user",content:`Draft a professional email to address this revenue leakage:
+Issue: ${leak.type} — ${leak.name}
+Detail: ${leak.detail}
+Fix: ${leak.fix}
+Monthly impact: $${Math.round(leak.monthly)}
+
+Write a 3-sentence email. Be direct and specific. Reference the numbers.
+Respond ONLY with JSON: {"subject":"...","body":"...","cta":"..."}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setFixDraft({leak, ...parsed});
+    } catch(e) { alert("Error: "+e.message); }
+    setFixLoading(null);
+  };
 
   const runLeakageDetect = async () => {
     setLoading(true);
@@ -44623,11 +44648,45 @@ Respond ONLY with JSON:
                 </div>
                 <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0",marginBottom:4}}>{leak.name}</div>
                 <div style={{fontSize:11,color:"#64748b",marginBottom:8}}>{leak.detail}</div>
-                <div style={{fontSize:11,color:"#94a3b8",padding:"6px 10px",background:"#0a1626",borderRadius:6}}>
+                <div style={{fontSize:11,color:"#94a3b8",padding:"6px 10px",background:"#0a1626",borderRadius:6,marginBottom:8}}>
                   <span style={{color:"#3d5a7a"}}>Fix: </span>{leak.fix}
                 </div>
+                <button className="btn bg" style={{fontSize:9,padding:"3px 10px"}}
+                  disabled={fixLoading===i}
+                  onClick={()=>generateFix(leak,i)}>
+                  {fixLoading===i?"⏳...":"📧 Draft Fix Email"}
+                </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Fix Email Modal */}
+      {fixDraft && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setFixDraft(null)}>
+          <div className="modal" style={{maxWidth:480}}>
+            <MH title="📧 Fix Email Draft" onClose={()=>setFixDraft(null)}/>
+            <div style={{marginBottom:12,padding:"8px 12px",background:"#1a0808",border:"1px solid #f8717144",borderRadius:8}}>
+              <div style={{fontSize:10,color:"#f87171",fontWeight:700}}>{fixDraft.leak?.name}</div>
+              <div style={{fontSize:10,color:"#64748b"}}>-${Math.round(fixDraft.leak?.monthly||0).toLocaleString()}/mo leakage</div>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:10,color:"#3d5a7a",marginBottom:3,fontWeight:700,textTransform:"uppercase"}}>Subject</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",padding:"8px 12px",background:"#070c18",borderRadius:6,border:"1px solid #1a2d45"}}>{fixDraft.subject}</div>
+            </div>
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,color:"#3d5a7a",marginBottom:3,fontWeight:700,textTransform:"uppercase"}}>Body</div>
+              <div style={{fontSize:11,color:"#cbd5e1",lineHeight:1.7,padding:"10px 12px",background:"#070c18",borderRadius:6,border:"1px solid #1a2d45",whiteSpace:"pre-wrap"}}>{fixDraft.body}</div>
+            </div>
+            {fixDraft.cta&&<div style={{padding:"7px 10px",background:"#0c1a2e",border:"1px solid #0369a144",borderRadius:6,marginBottom:14}}>
+              <span style={{fontSize:10,color:"#64748b"}}>CTA: </span>
+              <span style={{fontSize:11,color:"#38bdf8"}}>{fixDraft.cta}</span>
+            </div>}
+            <div style={{display:"flex",gap:8}}>
+              <button className="btn bp" style={{flex:1}} onClick={()=>{navigator.clipboard?.writeText(`Subject: ${fixDraft.subject}\n\n${fixDraft.body}`);setFixDraft(null);alert("📋 Copied!");}}>📋 Copy Email</button>
+              <button className="btn bg" onClick={()=>setFixDraft(null)}>Close</button>
+            </div>
           </div>
         </div>
       )}
@@ -45908,6 +45967,9 @@ function PerformanceCoach({ roster, clients, crmDeals, proposals, tsSubmissions,
   const [loading,   setLoading]   = useState(false);
   const [insight,   setInsight]   = useState(null);
   const [selMember, setSelMember] = useState("");
+  const [view,      setView]      = useState("coach"); // coach | leaderboard
+  const [lbLoading, setLbLoading] = useState(false);
+  const [leaderboard, setLeaderboard] = useState(null);
 
   const ROLES = [
     { id:"sales",     label:"🎯 Sales",         icon:"🎯" },
@@ -46027,6 +46089,57 @@ Respond in JSON only (no markdown):
     setLoading(false);
   };
 
+  const runLeaderboard = async () => {
+    setLbLoading(true); setLeaderboard(null);
+    // Build per-consultant performance metrics
+    const consultants = (roster||[]).filter(r=>r.type==="FTE"||r.type==="Contractor").slice(0,12);
+    const metrics = consultants.map(r => {
+      const util = Math.round((r.util||0)*100);
+      const revenue = Math.round((r.billRate||0)*(r.util||0)*1920);
+      const cost = getEmployeeCost(r);
+      const margin = revenue>0?Math.round((revenue-cost)/revenue*100):0;
+      // Recent timesheet submissions
+      const tsCount = (tsSubmissions||[]).filter(s=>s.consultantId===r.id||s.memberName===r.name).length;
+      return { name:r.name, role:r.role, type:r.type, util, revenue, cost, margin, billRate:r.billRate||0, tsCount };
+    }).sort((a,b)=>b.revenue-a.revenue);
+
+    const totalRevenue = metrics.reduce((s,m)=>s+m.revenue,0);
+    const avgUtil = metrics.length?Math.round(metrics.reduce((s,m)=>s+m.util,0)/metrics.length):0;
+    const avgMargin = metrics.length?Math.round(metrics.reduce((s,m)=>s+m.margin,0)/metrics.length):0;
+    
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000,
+          system:"You are a performance analytics AI for Ziksatech, a SAP consulting firm. Analyze team performance and identify top performers, at-risk consultants, and coaching opportunities.",
+          messages:[{role:"user",content:`You are analyzing the Ziksatech team for the ${role} role.
+
+Team performance data:
+${JSON.stringify(metrics,null,2)}
+
+Team averages: Util ${avgUtil}%, Margin ${avgMargin}%, Total annual revenue $${Math.round(totalRevenue/1000)}K
+
+TOP PERFORMERS (sorted by utilisation):
+${[...roster].sort((a,b)=>(b.util||0)-(a.util||0)).slice(0,3).map((r,i)=>
+  `${i+1}. ${r.name} (${r.role}) — ${Math.round((r.util||0)*100)}% util, $${r.billRate}/hr, ${r.type}`
+).join("\n")}
+
+BENCH / LOW PERFORMERS:
+${[...roster].filter(r=>(r.util||0)<0.3).map(r=>
+  `${r.name} (${r.role}) — ${Math.round((r.util||0)*100)}% util`
+).join("\n") || "None currently on bench"}
+
+Respond ONLY with JSON (no markdown):
+{"headline":"one punchy insight sentence","score":1-10,"scoreLabel":"Strong|Good|Needs Work|Critical","strengths":["specific strength 1","specific strength 2"],"gaps":["gap 1","gap 2","gap 3"],"patterns":["behavioral pattern 1","behavioral pattern 2"],"topAction":"THE single most impactful action this week","quickWins":["quick win 1","quick win 2","quick win 3"],"benchmark":"How Ziksatech team compares to top SAP consulting firms (be specific: mention typical utilisation rates, bill rates, margins)","forecast":"What happens in 30 days if current patterns continue (be specific with $)","topPerformerBehaviors":["what top performers do that others don't 1","behavior 2","behavior 3"],"coachingPlan":{"week1":"specific action","week2":"specific action","week3":"specific action","week4":"specific action"}}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setLeaderboard({ ...parsed, metrics, totalRevenue, avgUtil, avgMargin });
+    } catch(e) { setLeaderboard({error:e.message}); }
+    setLbLoading(false);
+  };
+
+
   const data = role==="sales"?salesData():role==="recruiter"?recruiterData():
     role==="delivery"?deliveryData():execData();
 
@@ -46037,7 +46150,19 @@ Respond in JSON only (no markdown):
       <PH title="🏆 Performance Coach" sub="Behavioral analysis · pattern detection · coaching for sales, recruiters & delivery"/>
 
       {/* Role Selector */}
-      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+      {/* View toggle */}
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {[["coach","🎯 Coach Mode"],["leaderboard","🏆 Leaderboard"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)}
+            style={{padding:"7px 16px",borderRadius:6,border:`1px solid ${view===v?"#0ea5e9":"#1a2d45"}`,
+              background:view===v?"#0c2340":"transparent",color:view===v?"#38bdf8":"#475569",
+              fontSize:11,fontWeight:600,cursor:"pointer"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {view==="coach" && <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
         {ROLES.map(r=>(
           <button key={r.id} className={role===r.id?"btn bp":"btn bg"}
             style={{fontSize:12,padding:"8px 18px",fontWeight:role===r.id?700:400}}
@@ -46049,7 +46174,7 @@ Respond in JSON only (no markdown):
           onClick={analyze} disabled={loading}>
           {loading?"⏳ Analyzing...":"🔍 Run Analysis"}
         </button>
-      </div>
+      </div>}
 
       {/* Live KPI Snapshot */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
@@ -46121,6 +46246,75 @@ Respond in JSON only (no markdown):
           <div style={{fontSize:13,color:"#38bdf8"}}>⏳ Analyzing performance patterns...</div>
         </div>
       )}
+
+      {/* ── TEAM LEADERBOARD ── */}
+      <div className="card" style={{padding:"16px 18px",marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>
+          🏆 Team Performance Leaderboard
+        </div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+            <thead>
+              <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                {["#","Consultant","Role","Util %","Bill Rate","Est Revenue","Cost","Margin"].map(h=>(
+                  <th key={h} className="th" style={{padding:"6px 10px",textAlign:h==="#"||h==="Consultant"||h==="Role"?"left":"right",fontSize:9}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...roster].sort((a,b)=>(b.util||0)-(a.util||0)).slice(0,10).map((r,i)=>{
+                const util = Math.round((r.util||0)*100);
+                const estRev = (r.util||0)*160*12*(r.billRate||0);
+                const cost = getEmployeeCost(r);
+                const margin = estRev > 0 ? Math.round((estRev-cost)/estRev*100) : 0;
+                const utilColor = util>=80?"#34d399":util>=50?"#f59e0b":"#f87171";
+                const marginColor = margin>=30?"#34d399":margin>=10?"#f59e0b":"#f87171";
+                return (
+                  <tr key={r.id} style={{borderBottom:"1px solid #0a1626",background:i===0?"#021f1420":""}}>
+                    <td style={{padding:"7px 10px",color:i===0?"#f59e0b":"#3d5a7a",fontWeight:i===0?700:400}}>
+                      {i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)}
+                    </td>
+                    <td style={{padding:"7px 10px",color:"#e2e8f0",fontWeight:600}}>{r.name}</td>
+                    <td style={{padding:"7px 10px",color:"#64748b",fontSize:10}}>{r.role}</td>
+                    <td style={{padding:"7px 10px",textAlign:"right",color:utilColor,fontWeight:700}}>{util}%</td>
+                    <td style={{padding:"7px 10px",textAlign:"right",color:"#94a3b8"}}>${r.billRate||0}/hr</td>
+                    <td style={{padding:"7px 10px",textAlign:"right",color:"#38bdf8",fontFamily:"monospace"}}>
+                      ${Math.round(estRev/1000)}K
+                    </td>
+                    <td style={{padding:"7px 10px",textAlign:"right",color:"#475569",fontFamily:"monospace"}}>
+                      ${Math.round(cost/1000)}K
+                    </td>
+                    <td style={{padding:"7px 10px",textAlign:"right",color:marginColor,fontWeight:700}}>
+                      {margin}%
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {/* Top performer badge */}
+        {roster.length > 0 && (() => {
+          const top = [...roster].sort((a,b)=>(b.util||0)-(a.util||0))[0];
+          const low = [...roster].sort((a,b)=>(a.util||0)-(b.util||0))[0];
+          return (
+            <div style={{display:"flex",gap:10,marginTop:12,flexWrap:"wrap"}}>
+              <div style={{padding:"6px 12px",background:"#021f14",border:"1px solid #15803d44",borderRadius:6,fontSize:10}}>
+                <span style={{color:"#64748b"}}>🏆 Top performer: </span>
+                <span style={{color:"#34d399",fontWeight:700}}>{top.name}</span>
+                <span style={{color:"#475569"}}> ({Math.round((top.util||0)*100)}% util)</span>
+              </div>
+              {low.util < 0.3 && (
+                <div style={{padding:"6px 12px",background:"#1a0808",border:"1px solid #f8717144",borderRadius:6,fontSize:10}}>
+                  <span style={{color:"#64748b"}}>⚠️ Needs attention: </span>
+                  <span style={{color:"#f87171",fontWeight:700}}>{low.name}</span>
+                  <span style={{color:"#475569"}}> ({Math.round((low.util||0)*100)}% util — bench risk)</span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
 
       {/* AI Coaching Results */}
       {insight && (
@@ -46230,6 +46424,168 @@ Respond in JSON only (no markdown):
             </div>
           </div>
 
+          {/* Top Performer Behaviors */}
+          {(insight.topPerformerBehaviors||[]).length > 0 && (
+            <div className="card" style={{padding:"18px 20px",gridColumn:"1/-1",border:"1px solid #f59e0b44"}}>
+              <div style={{fontSize:10,color:"#f59e0b",textTransform:"uppercase",letterSpacing:.5,marginBottom:10,fontWeight:700}}>
+                🌟 What Top Performers Do Differently
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                {insight.topPerformerBehaviors.map((b,i)=>(
+                  <div key={i} style={{padding:"10px 12px",background:"#1a1000",border:"1px solid #d9770644",borderRadius:8}}>
+                    <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,marginBottom:4}}>Behavior {i+1}</div>
+                    <div style={{fontSize:11,color:"#fcd34d",lineHeight:1.4}}>{b}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4-Week Coaching Plan */}
+          {insight.coachingPlan && (
+            <div className="card" style={{padding:"18px 20px",gridColumn:"1/-1",background:"#070c18",border:"1px solid #0369a144"}}>
+              <div style={{fontSize:10,color:"#38bdf8",textTransform:"uppercase",letterSpacing:.5,marginBottom:12,fontWeight:700}}>
+                📅 4-Week Coaching Plan
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                {Object.entries(insight.coachingPlan).map(([week,action])=>(
+                  <div key={week} style={{padding:"10px 12px",background:"#060d1c",borderRadius:8,border:"1px solid #1e3a5f"}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>{week}</div>
+                    <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.4}}>{action}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ── LEADERBOARD VIEW ── */}
+      {view==="leaderboard" && (
+        <div>
+          {!leaderboard && !lbLoading && (
+            <div className="card" style={{padding:"32px",textAlign:"center"}}>
+              <div style={{fontSize:32,marginBottom:10}}>🏆</div>
+              <div style={{fontSize:13,color:"#94a3b8",marginBottom:16}}>
+                AI ranks your team, identifies top performers, at-risk consultants, and coaching opportunities
+              </div>
+              <button className="btn bp" style={{fontSize:13,padding:"10px 28px"}} onClick={runLeaderboard}>
+                🏆 Generate Team Leaderboard
+              </button>
+            </div>
+          )}
+          {lbLoading && <div className="card" style={{padding:24,textAlign:"center",color:"#475569",fontSize:12}}>🏆 Ranking team performance...</div>}
+          {leaderboard && !leaderboard.error && (() => {
+            const lb = leaderboard;
+            return (
+              <div>
+                {/* Team summary */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+                  {[
+                    {l:"Team Size",        v:lb.metrics?.length||0,                      c:"#38bdf8"},
+                    {l:"Avg Utilisation",  v:(lb.avgUtil||0)+"%",                         c:lb.avgUtil>75?"#34d399":lb.avgUtil>50?"#f59e0b":"#f87171"},
+                    {l:"Avg Margin",       v:(lb.avgMargin||0)+"%",                       c:lb.avgMargin>40?"#34d399":lb.avgMargin>25?"#f59e0b":"#f87171"},
+                    {l:"Team Revenue/yr",  v:"$"+Math.round((lb.totalRevenue||0)/1000)+"K", c:"#a78bfa"},
+                  ].map(s=>(
+                    <div key={s.l} className="card" style={{padding:"10px 14px",textAlign:"center"}}>
+                      <div style={{fontSize:20,fontWeight:800,color:s.c,fontFamily:"'DM Mono',monospace"}}>{s.v}</div>
+                      <div style={{fontSize:9,color:"#475569",marginTop:2,textTransform:"uppercase",letterSpacing:.5}}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* AI team insight */}
+                <div style={{padding:"12px 16px",background:"#0c1a2e",border:"1px solid #0369a144",borderRadius:10,marginBottom:14}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>💡 Team Assessment</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#38bdf8",marginBottom:4}}>{lb.teamInsight}</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>{lb.benchmarkVsMarket}</div>
+                </div>
+
+                {/* Consultant ranking table */}
+                <div className="card" style={{padding:"14px 16px",marginBottom:12,overflowX:"auto"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#3d5a7a",marginBottom:10,textTransform:"uppercase",letterSpacing:.5}}>
+                    👥 Consultant Rankings
+                  </div>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                    <thead>
+                      <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                        {["#","Consultant","Role","Util","Bill Rate","Revenue/yr","Margin","Type"].map(h=>(
+                          <th key={h} className="th" style={{padding:"6px 10px",textAlign:h==="#"||h==="Util"||h==="Bill Rate"||h==="Revenue/yr"||h==="Margin"?"center":"left"}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(lb.metrics||[]).map((m,i)=>{
+                        const isTop = (lb.topPerformers||[]).some(t=>t.name===m.name);
+                        const isRisk = (lb.atRisk||[]).some(r=>r.name===m.name);
+                        return (
+                          <tr key={m.name} style={{borderBottom:"1px solid #0a1626",background:isTop?"#021f1488":isRisk?"#1a080888":""}}>
+                            <td style={{padding:"7px 10px",textAlign:"center",color:"#334155",fontWeight:700}}>{i+1}</td>
+                            <td style={{padding:"7px 10px"}}>
+                              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                {isTop&&<span style={{fontSize:10}}>⭐</span>}
+                                {isRisk&&<span style={{fontSize:10}}>⚠️</span>}
+                                <span style={{color:"#e2e8f0",fontWeight:600}}>{m.name}</span>
+                              </div>
+                            </td>
+                            <td style={{padding:"7px 10px",color:"#64748b",fontSize:10}}>{m.role}</td>
+                            <td style={{padding:"7px 10px",textAlign:"center",color:m.util>75?"#34d399":m.util>50?"#f59e0b":"#f87171",fontWeight:700}}>{m.util}%</td>
+                            <td style={{padding:"7px 10px",textAlign:"center",color:"#38bdf8",fontFamily:"monospace"}}>${m.billRate}/hr</td>
+                            <td style={{padding:"7px 10px",textAlign:"center",color:"#a78bfa",fontFamily:"monospace",fontWeight:700}}>${Math.round(m.revenue/1000)}K</td>
+                            <td style={{padding:"7px 10px",textAlign:"center",color:m.margin>40?"#34d399":m.margin>25?"#f59e0b":"#f87171"}}>{m.margin}%</td>
+                            <td style={{padding:"7px 10px",fontSize:9,color:"#475569"}}>{m.type}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Top performers + At Risk side by side */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                  <div className="card" style={{padding:"14px 16px"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#34d399",marginBottom:10}}>⭐ Top Performers</div>
+                    {(lb.topPerformers||[]).map((t,i)=>(
+                      <div key={i} style={{marginBottom:10,padding:"10px 12px",background:"#021f14",border:"1px solid #15803d44",borderRadius:8}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                          <span style={{fontSize:12,fontWeight:700,color:"#4ade80"}}>{t.name}</span>
+                          <span style={{fontSize:11,fontWeight:800,color:"#34d399",fontFamily:"monospace"}}>{t.score}/100</span>
+                        </div>
+                        <div style={{fontSize:10,color:"#64748b"}}>{t.why}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="card" style={{padding:"14px 16px"}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:10}}>⚠️ At Risk / Needs Coaching</div>
+                    {(lb.atRisk||[]).map((r,i)=>(
+                      <div key={i} style={{marginBottom:10,padding:"10px 12px",background:"#1a0808",border:"1px solid #dc262644",borderRadius:8}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#f87171",marginBottom:3}}>{r.name}</div>
+                        <div style={{fontSize:10,color:"#f87171",marginBottom:3}}>{r.risk}</div>
+                        <div style={{fontSize:10,color:"#34d399"}}>→ {r.action}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick win + revenue opportunity */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <div style={{padding:"10px 14px",background:"#021f14",border:"1px solid #15803d44",borderRadius:8}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase"}}>⚡ Quick Win This Week</div>
+                    <div style={{fontSize:11,color:"#34d399",lineHeight:1.5}}>{lb.quickWin}</div>
+                  </div>
+                  <div style={{padding:"10px 14px",background:"#0d0b1a",border:"1px solid #7c3aed44",borderRadius:8}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase"}}>💰 Revenue Opportunity</div>
+                    <div style={{fontSize:11,color:"#a78bfa",lineHeight:1.5}}>{lb.revenueOpportunity}</div>
+                  </div>
+                </div>
+
+                <button className="btn bg" style={{fontSize:10,marginTop:12}} onClick={()=>setLeaderboard(null)}>
+                  ↺ Re-run Analysis
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
