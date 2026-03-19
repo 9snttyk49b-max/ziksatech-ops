@@ -7512,6 +7512,24 @@ function Pipeline({ pipeline, setPipeline }) {
   const [view, setView]     = useState("kanban"); // kanban | list
   const [dragId, setDragId] = useState(null);
   const [dragOver, setDragOver] = useState(null);
+  const [PipelineAI,     setPipelineAI]     = useState(null);
+  const [PipelineAILoad, setPipelineAILoad] = useState(false);
+  const runPipelineAI = async () => {
+    setPipelineAILoad(true); setPipelineAI(null);
+    const active = (candidates||[]).filter(c=>c.stage&&c.stage!=="rejected");
+    const openReqs = (jobReqs||[]).filter(j=>j.status==="open");
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are a recruiting advisor for a SAP consulting firm.",
+          messages:[{role:"user",content:`${active.length} active candidates, ${openReqs.length} open reqs. Roles needed: ${openReqs.map(j=>j.title||"SAP").slice(0,4).join(", ")}.\nReturn ONLY JSON:\n{"pipelineHealth":"STRONG/ADEQUATE/THIN","urgentHire":"most critical role to fill right now","sourcingTip":"best channel to find SAP talent in DFW","interviewTip":"key question to filter for Ziksatech fit","offerStrategy":"how to compete on compensation without just paying more"}`}]
+        })
+      });
+      const data = await resp.json();
+      setPipelineAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setPipelineAI({error:e.message}); }
+    setPipelineAILoad(false);
+  };
 
   const STAGES = ["Screening","Interviewing","Reference Check","Offer Pending","Hired","On Bench","Declined"];
   const STAGE_COLORS = {
@@ -7545,7 +7563,19 @@ function Pipeline({ pipeline, setPipeline }) {
 
   return (
     <div>
-      <PH title="Hiring Pipeline" sub="Track candidates from screening to hire"/>
+      <PH title="Hiring Pipeline" sub="Track candidates from screening to hire">
+        <button className="btn bp" style={{fontSize:11}} onClick={runPipelineAI} disabled={PipelineAILoad}>{PipelineAILoad?"⏳...":"🤖 Recruiting AI"}</button>
+      </PH>
+      <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
+        <button className="btn bp" style={{fontSize:11}} onClick={runPipelineAI} disabled={PipelineAILoad}>{PipelineAILoad?"⏳...":"🤖 Recruiting AI"}</button>
+        {PipelineAI&&!PipelineAI.error&&<>
+          <span style={{fontSize:11,fontWeight:700,color:PipelineAI.pipelineHealth==="STRONG"?"#34d399":PipelineAI.pipelineHealth==="THIN"?"#f87171":"#f59e0b"}}>{PipelineAI.pipelineHealth}</span>
+          {PipelineAI.urgentHire&&<span style={{fontSize:10,color:"#f87171"}}>⚡ {PipelineAI.urgentHire}</span>}
+          {PipelineAI.sourcingTip&&<span style={{fontSize:10,color:"#38bdf8"}}>→ {PipelineAI.sourcingTip}</span>}
+          <button className="btn bg" style={{fontSize:9}} onClick={()=>setPipelineAI(null)}>✕</button>
+        </>}
+      </div>
+
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div style={{display:"flex",gap:8}}>
           {STAGES.map(s=>{
@@ -33077,6 +33107,24 @@ function ESignature({ esignRequests, setEsignRequests, contracts, sows, roster }
   });
 
   const [newForm, setNewForm] = useState(blankReq());
+  const [ESignatureAI,     setESignatureAI]     = useState(null);
+  const [ESignatureAILoad, setESignatureAILoad] = useState(false);
+  const runESignatureAI = async () => {
+    setESignatureAILoad(true); setESignatureAI(null);
+    const pending = (esignRequests||[]).filter(r=>r.status==="pending");
+    const overdue = pending.filter(r=>r.deadline&&new Date(r.deadline)<new Date());
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are a contract execution advisor for a SAP consulting firm.",
+          messages:[{role:"user",content:`${pending.length} pending signatures. ${overdue.length} overdue. Documents: ${pending.map(r=>r.title||"doc").slice(0,4).join(", ")}.\nReturn ONLY JSON:\n{"urgencyLevel":"HIGH/MEDIUM/LOW","topPriority":"which document to chase first and why","followUpScript":"2-sentence follow-up for overdue signature","riskOfDelay":"business impact if signatures delayed","recommendation":"single best action to clear the queue"}`}]
+        })
+      });
+      const data = await resp.json();
+      setESignatureAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setESignatureAI({error:e.message}); }
+    setESignatureAILoad(false);
+  };
 
   const saveNew = () => {
     setEsignRequests(rs=>[...rs,{...newForm}]);
@@ -33150,7 +33198,24 @@ function ESignature({ esignRequests, setEsignRequests, contracts, sows, roster }
 
   return (
     <div>
-      <PH title="E-Signature" sub="Contract and document signature workflow — track, sign, and archive executed agreements"/>
+      <PH title="E-Signature" sub="Contract and document signature workflow — track, sign, and archive executed agreements">
+        <button className="btn bp" style={{fontSize:11}} onClick={runESignatureAI} disabled={ESignatureAILoad}>{ESignatureAILoad?"⏳...":"🤖 Signature AI"}</button>
+      </PH>
+      {ESignatureAI&&!ESignatureAI.error&&(
+        <div style={{padding:"10px 14px",marginBottom:12,background:"#060d1c",border:`1px solid ${ESignatureAI.urgencyLevel==="HIGH"?"#f87171":"#0369a1"}44`,borderRadius:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:ESignatureAI.urgencyLevel==="HIGH"?"#f87171":"#38bdf8"}}>🤖 Signature Intelligence — {ESignatureAI.urgencyLevel}</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setESignatureAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:6}}>
+            {[["Top Priority",ESignatureAI.topPriority,"#f59e0b"],["Risk of Delay",ESignatureAI.riskOfDelay,"#f87171"],["Recommendation",ESignatureAI.recommendation,"#34d399"]].map(([l,v,col])=>
+              v&&<div key={l} style={{padding:"6px 8px",background:"#040a14",borderRadius:4}}><div style={{fontSize:8,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:10,color:col}}>{v}</div></div>
+            )}
+          </div>
+          {ESignatureAI.followUpScript&&<div style={{padding:"5px 10px",background:"#0c1a2e",borderRadius:4,fontSize:10,color:"#94a3b8",fontStyle:"italic"}}>📧 "{ESignatureAI.followUpScript}"</div>}
+        </div>
+      )}
+
 
       {/* KPI row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
