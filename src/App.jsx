@@ -193,7 +193,7 @@ function useDragSort(items, setItems) {
   return { dragProps };
 }
 
-// ─── Global date utilities (used across multiple components) ─────────────────
+// ─── Global date utilities (v4.4.47c) (used across multiple components) ─────────────────
 function urgencyLevel(days) {
   if (days === null || days === undefined) return { label: "Unknown", color: "#64748b", bg: "#0a0a0a" };
   if (days <= 0)   return { label: "Expired",  color: "#ef4444", bg: "#1a0808" };
