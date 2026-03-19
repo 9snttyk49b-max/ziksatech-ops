@@ -194,7 +194,7 @@ function useDragSort(items, setItems) {
 }
 
 // ─── Global date utilities (used across multiple components) ─────────────────
-const urgencyLevel = (days) => {
+function urgencyLevel(days) {
   if (days === null || days === undefined) return { label: "Unknown", color: "#64748b", bg: "#0a0a0a" };
   if (days <= 0)   return { label: "Expired",  color: "#ef4444", bg: "#1a0808" };
   if (days <= 7)   return { label: "Critical", color: "#ef4444", bg: "#1a0808" };
@@ -202,17 +202,17 @@ const urgencyLevel = (days) => {
   if (days <= 60)  return { label: "Medium",   color: "#eab308", bg: "#1a1400" };
   if (days <= 90)  return { label: "Watch",    color: "#60a5fa", bg: "#060d1c" };
   return { label: "OK", color: "#34d399", bg: "#021f14" };
-};
+}
 
 
-const daysUntil = (dateStr) => {
+function daysUntil(dateStr) {
   if (!dateStr) return null;
   return Math.ceil((new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00')) - new Date()) / 86400000);
-};
-const daysSince = (dateStr) => {
+}
+function daysSince(dateStr) {
   if (!dateStr) return null;
   return Math.floor((new Date() - new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00'))) / 86400000);
-};
+}
 
 function DragHandle() {
   return <span title="Drag to reorder" style={{cursor:"grab",color:"#1e3a5f",fontSize:15,padding:"0 6px 0 0",userSelect:"none",flexShrink:0}}>⋮⋮</span>;
