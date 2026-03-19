@@ -11892,7 +11892,7 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
       {sub==="activities" && <CRMActivities {...props}/>}
       {sub==="forecast"   && <CRMForecast   {...props}/>}
       {sub==="import"     && <CRMImport setLeads={setCrmLeads} setCrmContacts={setCrmContacts} crmAccounts={crmAccounts} crmLeads={crmLeads} crmContacts={crmContacts} crmDeals={crmDeals} addAudit={addAudit}/>}
-      {sub==="bdengine"   && <BDEngine crmDeals={crmDeals} roster={roster} clients={crmAccounts?.length?crmAccounts:clients} finInvoices={[]} authProfile={authProfile}/>}
+      {sub==="bdengine"   && <BDEngine crmDeals={crmDeals} roster={roster} clients={crmAccounts?.length?crmAccounts:clients} finInvoices={[]}/>}
     </div>
   );
 }
