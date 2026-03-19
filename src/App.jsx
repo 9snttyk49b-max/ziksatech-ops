@@ -1802,7 +1802,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.47 · 92 AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.50 · 92 AI modules</span>
         </div>
         {children}
       </div>
@@ -2169,7 +2169,7 @@ function FinanceControlSystem(props) {
     try {
       const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
-          system:"You are an AI CFO advisor for Ziksatech, a WBE SAP consulting firm in Plano TX. Provide grounded, numbers-driven finance insights.",
+          system:"You are the AI CFO for Ziksatech (Plano TX) — a WBE/HUB-certified SAP consulting firm specializing in BRIM, IS-U, and S/4HANA. Ziksatech has $2.2M+ annual revenue, 7-10% margin, 6 FTEs + contractors. Provide specific, numbers-driven finance insights. Always mention the exact dollar amounts and dates from the context provided. Never give generic advice.",
           messages:[{role:"user",content:`Finance status: Revenue $${Math.round(txRevenue/1000)}K, Expenses $${Math.round(txExpenses/1000)}K, Net profit $${Math.round(netProfit/1000)}K. Uncategorized: ${uncat} transactions. Missing receipts: ${missingRcpt}. Q1 estimated tax due: $${Math.round((currentQ1?.remaining||0)/1000)}K by ${currentQ1?.dueDate||"Apr 15"}. Monthly subscriptions: $${Math.round(subsMonthly)}. Unused subscription waste: $${Math.round(unusedSubs*12)}/yr.\nReturn ONLY JSON:\n{"headline":"single bold headline about finance health","bookScore":82,"taxStatus":"ON TRACK/WATCH/AT RISK","risks":["risk1","risk2","risk3"],"actions":["action1 today","action2 this week","action3 this month"],"insight":"single sharp financial insight","cashAlert":"cash position concern if any"}`}]
         })
       });
@@ -3100,7 +3100,7 @@ function FinanceControlSystem(props) {
             <div style={{textAlign:"center",padding:"30px 20px"}}>
               <div style={{fontSize:24,marginBottom:8}}>🤖</div>
               <div style={{fontSize:12,color:"#475569",marginBottom:12}}>Ask your AI CFO anything about your books</div>
-              {["How much tax do I owe this quarter?","Which expenses are still uncategorized?","Where am I leaking money?","What should I do before sending to my CPA?","Which subscriptions should I cancel?"].map(prompt=>(
+              {["How much tax do I owe this quarter?","Which expenses are uncategorized?","Am I profitable this month?","Which subscriptions should I cancel?","What are my top 3 expense categories?","Am I on track to pay Q1 tax?"].map(prompt=>(
                 <button key={prompt} className="btn bg" style={{fontSize:10,margin:"3px",display:"inline-block"}}
                   onClick={()=>{setCfoInput(prompt);}}>{prompt}</button>
               ))}
@@ -3188,9 +3188,10 @@ function FinanceControlSystem(props) {
   return (
     <div>
       <PH title="💰 Finance Control System" sub="Tax readiness · Expense control · Reconciliation · CPA-ready books · AI CFO">
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <span style={{fontSize:10,color:catPct>90?"#34d399":catPct>70?"#f59e0b":"#f87171"}}>Book Score: {catPct}%</span>
-          {needsReview>0&&<span style={{fontSize:10,color:"#f87171",background:"#1a0808",border:"1px solid #f8717133",borderRadius:10,padding:"1px 6px"}}>{needsReview} need review</span>}
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:10,color:catPct>90?"#34d399":catPct>70?"#f59e0b":"#f87171",fontWeight:700}}>📊 {catPct}% clean</span>
+          {needsReview>0&&<span style={{fontSize:10,color:"#f87171",background:"#1a0808",border:"1px solid #f8717133",borderRadius:10,padding:"1px 6px",fontWeight:600}}>{needsReview} need review</span>}
+          {(currentQ1?.remaining||0)>0&&<span style={{fontSize:10,color:"#f59e0b",background:"#1a0f00",border:"1px solid #f59e0b33",borderRadius:10,padding:"1px 6px",fontWeight:600}}>⚡ Q1 Tax: ${ Math.round((currentQ1?.remaining||0)/1000)}K due {currentQ1?.dueDate?.slice(5)}</span>}
         </div>
       </PH>
 
@@ -3751,7 +3752,7 @@ export default function ZiksatechOps() {
     { id:"wbecert",      label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
     { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Tools"    },
     { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Tools"    },
-    { id:"fcs", label:"Finance Control", icon:ICONS.chart, group:"Finance" },
+    { id:"fcs", label:"Finance Control 💰", icon:ICONS.chart, group:"Finance" },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, jobReqs, setJobReqs, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -4730,7 +4731,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.47 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.50 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
