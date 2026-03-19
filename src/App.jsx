@@ -10543,6 +10543,25 @@ function RecCandidates({ candidates, setCandidates, submissions, interviews, off
   const [filter, setFilter]   = useState("all");
   const [selected, setSelected] = useState(null);
   const [selCands, setSelCands] = useState(new Set());
+  const [aiScreen,    setAiScreen]    = useState(null);
+  const [aiScreenLoad,setAiScreenLoad]= useState(null); // candidateId being screened
+
+  const screenCandidate = async (cand) => {
+    if(!cand) return;
+    setAiScreenLoad(cand.id);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,
+          system:"You are a senior recruiter at Ziksatech, an SAP staffing firm. Screen candidates specifically for SAP consulting roles.",
+          messages:[{role:"user",content:`Candidate: ${cand.name}\nRole Applied: ${cand.role||cand.jobTitle||"SAP Consultant"}\nVisa: ${cand.visaType||"Not specified"} | Location: ${cand.location||"Unknown"}\nSkills: ${cand.skills||"Not listed"}\nExperience: ${cand.experience||"Not listed"}\nExpected Rate: $${cand.expectedRate||"??"}/hr\nNotes: ${cand.notes||""}\n\nReturn ONLY JSON:\n{"fitScore":85,"recommendation":"PROCEED/HOLD/REJECT","topStrength":"best qualification","topConcern":"biggest red flag","suggestedRole":"best fit title","visaRisk":"HIGH/MEDIUM/LOW/NONE","salaryAssessment":"COMPETITIVE/HIGH/LOW","interviewFocus":"what to probe in interview"}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setAiScreen(prev=>({...prev,[cand.id]:parsed}));
+    } catch(e) { setAiScreen(prev=>({...prev,[cand.id]:{error:e.message}})); }
+    setAiScreenLoad(null);
+  };
 
   const toggleCandRow = (id) => setSelCands(s => { const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
   const bulkDeleteCands = () => {
@@ -10630,7 +10649,12 @@ function RecCandidates({ candidates, setCandidates, submissions, interviews, off
         <div className="card" style={{padding:0,height:"fit-content",position:"sticky",top:0}}>
           <div style={{padding:"14px 18px",borderBottom:"1px solid #111d2d",display:"flex",justifyContent:"space-between"}}>
             <div><div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{selCand.name}</div><div style={{fontSize:11,color:"#3d5a7a"}}>{selCand.role}</div></div>
-            <button className="btn bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setSelected(null)}>✕</button>
+            <div style={{display:"flex",gap:6}}>
+              <button className="btn bp" style={{padding:"4px 8px",fontSize:11}} onClick={()=>screenCandidate(selCand)} disabled={aiScreenLoad===selCand?.id}>
+                {aiScreenLoad===selCand?.id?"⏳":"🤖 Screen"}
+              </button>
+              <button className="btn bg" style={{padding:"4px 8px",fontSize:11}} onClick={()=>setSelected(null)}>✕</button>
+            </div>
           </div>
           <div style={{padding:"16px 18px"}}>
             {[["Email",selCand.email],["Phone",selCand.phone],["Source",selCand.source],["Visa",selCand.visa]].map(([l,v])=>(
@@ -10654,6 +10678,26 @@ function RecCandidates({ candidates, setCandidates, submissions, interviews, off
                 </a>
               </div>
             )}
+            {/* AI Screen Result */}
+            {aiScreen?.[selCand?.id] && !aiScreen[selCand.id].error && (() => {
+              const sc = aiScreen[selCand.id];
+              const recColor = sc.recommendation==="PROCEED"?"#34d399":sc.recommendation==="HOLD"?"#f59e0b":"#f87171";
+              return (
+                <div style={{marginTop:10,padding:"10px 12px",background:"#040a14",borderRadius:8,border:`1px solid ${recColor}44`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <div style={{fontSize:10,fontWeight:700,color:"#38bdf8"}}>🤖 AI Screening Result</div>
+                    <span style={{background:recColor+"22",color:recColor,padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:700}}>{sc.recommendation} · {sc.fitScore}%</span>
+                  </div>
+                  <div style={{height:4,background:"#1a2d45",borderRadius:2,marginBottom:6}}>
+                    <div style={{width:`${sc.fitScore||0}%`,height:"100%",background:"linear-gradient(90deg,#0369a1,#34d399)",borderRadius:2}}/>
+                  </div>
+                  {[["✅ Strength",sc.topStrength,"#34d399"],["⚠️ Concern",sc.topConcern,"#f87171"],["🎯 Interview Focus",sc.interviewFocus,"#94a3b8"]].map(([l,v,col])=>
+                    v&&<div key={l} style={{fontSize:10,marginBottom:3}}><span style={{color:"#3d5a7a"}}>{l}: </span><span style={{color:col}}>{v}</span></div>
+                  )}
+                  {sc.visaRisk&&sc.visaRisk!=="NONE"&&<div style={{fontSize:10,color:"#f59e0b",marginTop:3}}>🛂 Visa risk: {sc.visaRisk} | Salary: {sc.salaryAssessment}</div>}
+                </div>
+              );
+            })()}
             <div style={{display:"flex",gap:8,marginTop:12}}>
               <button className="btn bg" style={{flex:1,justifyContent:"center",fontSize:12}} onClick={()=>open(selCand)}>Edit</button>
               <select className="inp" style={{flex:1,fontSize:12}} value={selCand.status} onChange={e=>{ setCandidates(cs=>cs.map(c=>c.id===selCand.id?{...c,status:e.target.value}:c)); }}>
@@ -10988,60 +11032,156 @@ function RecOffers({ candidates, clients, offers, setOffers }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 function ComplianceModule({ workAuth, setWorkAuth, compDocs, setCompDocs, roster, addAudit }) {
   const [sub, setSub] = useState("dashboard");
+  const [aiRisk, setAiRisk]   = useState(null);
+  const [aiLoad, setAiLoad]   = useState(false);
+  const TODAY = new Date();
+
   const tabs = [
-    { id:"dashboard", label:"Compliance Dashboard" },
-    { id:"workauth",  label:"Work Authorization" },
-    { id:"documents", label:"Documents" },
+    { id:"dashboard", label:"🛡 Dashboard" },
+    { id:"workauth",  label:"🗂 Work Auth" },
+    { id:"documents", label:"📄 Documents" },
   ];
   const props = { workAuth, setWorkAuth, compDocs, setCompDocs, roster };
+
+  const expiring90  = (workAuth||[]).filter(w=>{ const d=new Date((w.expiryDate||w.i94Expiry||"2099-12-31")+"T12:00:00"); const days=(d-TODAY)/86400000; return days>=0&&days<90; });
+  const expired     = (workAuth||[]).filter(w=>{ const d=new Date((w.expiryDate||w.i94Expiry||"2099-12-31")+"T12:00:00"); return d<TODAY; });
+  const docExpiring = (compDocs||[]).filter(d=>{ const ex=new Date((d.expiryDate||"2099-12-31")+"T12:00:00"); const days=(ex-TODAY)/86400000; return days>=0&&days<90; });
+  const h1bCount    = (workAuth||[]).filter(w=>(w.visaType||w.type||"").includes("H1B")||((w.visaType||w.type||"").includes("H-1B"))).length;
+  const riskScore   = expired.length>0?"HIGH":expiring90.length>2?"HIGH":expiring90.length>0?"MEDIUM":"LOW";
+
+  const runAIRisk = async () => {
+    setAiLoad(true); setAiRisk(null);
+    const ctx = `Work authorization: ${(workAuth||[]).length} records. Expired: ${expired.length}. Expiring <90d: ${expiring90.length}. H1B: ${h1bCount}. Documents expiring: ${docExpiring.length}.
+Expired details: ${expired.map(w=>`${w.name||"?"} (${w.visaType||"?"})`).join(", ")||"none"}.
+Expiring soon: ${expiring90.map(w=>`${w.name||"?"} ${w.expiryDate||w.i94Expiry||"?"}`).join(", ")||"none"}.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are an HR compliance advisor for an IT staffing firm with H1B consultants. Give specific, urgent compliance advice.",
+          messages:[{role:"user",content:`${ctx}
+
+Return ONLY JSON:
+{"riskLevel":"HIGH/MEDIUM/LOW","immediateActions":["action1","action2"],"h1bRenewalDeadlines":["person and date"],"documentActions":["action1"],"legalRisk":"specific legal risk if any","recommendation":"single most important action right now"}`}]
+        })
+      });
+      const data = await resp.json();
+      setAiRisk(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setAiRisk({error:e.message}); }
+    setAiLoad(false);
+  };
+
   return (
     <div>
-      <PH title="Compliance" sub="Work Auth · Visa Tracking · Document Expiry Alerts"/>
-      <div style={{display:"flex",gap:8,marginBottom:8,justifyContent:"flex-end"}}>
-        <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
-          const rows=(workAuth||[]).map(r=>[r.name||"",r.type||"",r.status||"",r.expiryDate||"",r.employer||""]);
-          await exportTableToXLSX(rows,["Name","Work Auth Type","Status","Expiry Date","Employer"],"Compliance",`Ziksatech-Compliance-${TODAY_STR}.xlsx`);
-        }}>📋 XLSX</button>
-        <button className="btn bg" style={{fontSize:11,color:"#f87171"}} onClick={async()=>{
-          const rows=(workAuth||[]).map(r=>[r.name||"",r.type||"",r.status||"",r.expiryDate||""]);
-          await generateReportPDF("Compliance Report",[
-            {type:"heading",text:"Work Authorization Status"},
-            {type:"table",headers:["Consultant","Auth Type","Status","Expiry"],rows},
-          ],`Ziksatech-Compliance-${TODAY_STR}.pdf`);
-        }}>📄 PDF</button>
+      <PH title="Compliance" sub="Work Auth · Visa Tracking · Document Expiry · I-9 · LCA">
+        <button className="btn bp" style={{fontSize:11}} onClick={runAIRisk} disabled={aiLoad}>
+          {aiLoad?"⏳ Assessing...":"🛡 AI Risk Check"}
+        </button>
+      </PH>
+
+      {/* KPI strip */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14}}>
+        {[
+          {l:"Work Auth Records", v:(workAuth||[]).length, c:"#38bdf8"},
+          {l:"H1B Count",         v:h1bCount,              c:"#a78bfa"},
+          {l:"Expired",           v:expired.length,        c:expired.length>0?"#f87171":"#34d399"},
+          {l:"Expiring <90d",     v:expiring90.length,     c:expiring90.length>0?"#f59e0b":"#34d399"},
+          {l:"Overall Risk",      v:riskScore,             c:riskScore==="HIGH"?"#f87171":riskScore==="MEDIUM"?"#f59e0b":"#34d399"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"10px 14px",textAlign:"center",borderLeft:`3px solid ${k.c}`}}>
+            <div style={{fontSize:18,fontWeight:800,color:k.c,fontFamily:"'DM Mono',monospace"}}>{k.v}</div>
+            <div style={{fontSize:9,color:"#475569",marginTop:2}}>{k.l}</div>
+          </div>
+        ))}
       </div>
-      <div style={{display:"flex",gap:4,marginBottom:22,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+
+      {/* AI Risk Panel */}
+      {aiRisk && !aiRisk.error && (
+        <div style={{padding:"14px 18px",marginBottom:14,background:aiRisk.riskLevel==="HIGH"?"#1a0808":"#060d1c",border:`1px solid ${aiRisk.riskLevel==="HIGH"?"#f87171":"#f59e0b"}44`,borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:12,fontWeight:700,color:aiRisk.riskLevel==="HIGH"?"#f87171":"#f59e0b"}}>
+              🛡 AI Compliance Assessment — Risk: {aiRisk.riskLevel}
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setAiRisk(null)}>✕</button>
+          </div>
+          {aiRisk.recommendation&&<div style={{fontSize:12,color:"#38bdf8",marginBottom:10,padding:"8px 12px",background:"#0c1a2e",borderRadius:6}}>★ {aiRisk.recommendation}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:5,textTransform:"uppercase",letterSpacing:.4}}>Immediate Actions</div>
+              {(aiRisk.immediateActions||[]).map((a,i)=><div key={i} style={{fontSize:11,color:"#f87171",marginBottom:4}}>⚡ {a}</div>)}
+            </div>
+            <div>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:5,textTransform:"uppercase",letterSpacing:.4}}>H1B Renewal Deadlines</div>
+              {(aiRisk.h1bRenewalDeadlines||[]).map((a,i)=><div key={i} style={{fontSize:11,color:"#f59e0b",marginBottom:4}}>📅 {a}</div>)}
+              {aiRisk.legalRisk&&<div style={{fontSize:10,color:"#f87171",marginTop:6}}>⚠️ {aiRisk.legalRisk}</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expiry alerts */}
+      {(expired.length > 0 || expiring90.length > 0) && (
+        <div className="card" style={{padding:"12px 18px",marginBottom:14,border:"1px solid #f8717144"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:8}}>⚠️ Requires Immediate Attention</div>
+          {expired.map(w=>(
+            <div key={w.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
+              <span style={{fontSize:11,color:"#e2e8f0"}}>{w.name}</span>
+              <span style={{fontSize:10,color:"#f87171",fontWeight:700}}>EXPIRED — {w.visaType||w.type}</span>
+            </div>
+          ))}
+          {expiring90.map(w=>(
+            <div key={w.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #0a1626"}}>
+              <span style={{fontSize:11,color:"#e2e8f0"}}>{w.name}</span>
+              <span style={{fontSize:10,color:"#f59e0b",fontWeight:700}}>Expires {w.expiryDate||w.i94Expiry} — {w.visaType||w.type}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tab nav */}
+      <div style={{display:"flex",gap:4,marginBottom:12}}>
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)}
-            style={{padding:"7px 16px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+            style={{padding:"6px 14px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:600,
               background:sub===t.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
-              color:sub===t.id?"#fff":"#475569",transition:"all 0.15s"}}>
+              color:sub===t.id?"#fff":"#475569"}}>
             {t.label}
           </button>
         ))}
       </div>
-      {sub==="dashboard" && <CompDashboard {...props}/>}
-      {sub==="workauth"  && <CompWorkAuth  {...props}/>}
-      {sub==="documents" && <CompDocuments {...props}/>}
+
+      {sub==="dashboard" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div className="card" style={{padding:"14px 18px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>Visa Distribution</div>
+            {Object.entries((workAuth||[]).reduce((acc,w)=>{const t=w.visaType||w.type||"Other";acc[t]=(acc[t]||0)+1;return acc;},{})).map(([type,cnt])=>(
+              <div key={type} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                <span style={{fontSize:11,color:"#94a3b8"}}>{type}</span>
+                <span style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>{cnt}</span>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{padding:"14px 18px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>Document Status</div>
+            {(compDocs||[]).slice(0,6).map(d=>{
+              const ex=new Date((d.expiryDate||"2099-12-31")+"T12:00:00");
+              const days=Math.floor((ex-TODAY)/86400000);
+              const col = days<0?"#f87171":days<90?"#f59e0b":"#34d399";
+              return (
+                <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                  <span style={{fontSize:11,color:"#94a3b8"}}>{d.type||d.name}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:col}}>{days<0?"EXPIRED":days<90?"⚠️ "+days+"d":"✓ OK"}</span>
+                </div>
+              );
+            })}
+            {(!compDocs||compDocs.length===0)&&<div style={{fontSize:11,color:"#334155"}}>No documents tracked yet</div>}
+          </div>
+        </div>
+      )}
+      {sub==="workauth"  && <WorkAuthorizationModule   {...props} addAudit={addAudit}/>}
+      {sub==="documents" && <ComplianceDocumentsModule {...props} addAudit={addAudit}/>}
     </div>
   );
 }
-
-const daysUntil = (dateStr) => {
-  if (!dateStr) return null;
-  const d = new Date(dateStr + "T00:00:00");
-  if (isNaN(d.getTime())) return null;
-  const today = new Date(); today.setHours(0,0,0,0);
-  return Math.floor((d - today) / 86400000);
-};
-const urgencyLevel = (days) => {
-  if (days === null || days === undefined) return { label:"N/A", color:"#334155", bg:"#0a1120" };
-  if (days < 0)   return { label:"EXPIRED",  color:"#dc2626", bg:"#180404" };
-  if (days <= 30) return { label:"URGENT",   color:"#f87171", bg:"#1a0808" };
-  if (days <= 60) return { label:"WARNING",  color:"#f59e0b", bg:"#1a1005" };
-  if (days <= 90) return { label:"EXPIRING", color:"#fb923c", bg:"#1a0d05" };
-  return              { label:"CURRENT",  color:"#34d399", bg:"#021f14" };
-};
 
 function CompDashboard({ workAuth, compDocs, roster }) {
   const today = new Date();
@@ -21993,6 +22133,25 @@ Requirements:
 
 function HelpCenter({ authProfile }) {
   const [activeSection, setActiveSection] = useState("guide");
+  const [helpQ,     setHelpQ]     = useState("");
+  const [helpAns,   setHelpAns]   = useState(null);
+  const [helpLoad,  setHelpLoad]  = useState(false);
+
+  const askHelper = async () => {
+    if (!helpQ.trim()) return;
+    setHelpLoad(true); setHelpAns(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are the help assistant for Ziksatech Ops Center, an internal operations platform for a SAP consulting firm. Answer questions about using the platform, navigating modules, and business processes. Be concise and practical.",
+          messages:[{role:"user",content:helpQ}]
+        })
+      });
+      const data = await resp.json();
+      setHelpAns(data.content?.[0]?.text||"No answer available.");
+    } catch(e) { setHelpAns("Error: "+e.message); }
+    setHelpLoad(false);
+  };
   const role = authProfile?.role || "";
   const isAdmin    = ["super_admin","admin"].includes(role);
   const isAccounts = role === "accounts";
@@ -22157,6 +22316,30 @@ function HelpCenter({ authProfile }) {
   return (
     <div>
       <PH title="Help Center & Training" sub="Role-based quick-start guides · Keyboard shortcuts · Full training guide download"/>
+
+      {/* AI Ask Assistant */}
+      <div className="card" style={{padding:"16px 18px",marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>🤖 Ask AI — Platform Assistant</div>
+        <div style={{display:"flex",gap:8}}>
+          <input className="inp" style={{flex:1}} placeholder="Ask anything about the platform... e.g. 'How do I add a timesheet?', 'Where is immigration tracking?'"
+            value={helpQ} onChange={e=>setHelpQ(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&askHelper()}/>
+          <button className="btn bp" style={{fontSize:11,padding:"0 14px"}} onClick={askHelper} disabled={helpLoad}>
+            {helpLoad?"⏳":"Ask"}
+          </button>
+        </div>
+        {helpAns && (
+          <div style={{marginTop:10,padding:"10px 14px",background:"#040a14",borderRadius:6,border:"1px solid #0369a144",fontSize:12,color:"#e2e8f0",lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+            {helpAns}
+            <button className="btn bg" style={{fontSize:9,marginTop:6,display:"block"}} onClick={()=>{setHelpAns(null);setHelpQ("");}}>Clear</button>
+          </div>
+        )}
+        <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+          {["How do I add a consultant?","Where is the immigration tracker?","How to generate a SOW?","What is the BD Engine?"].map(q=>(
+            <button key={q} className="btn bg" style={{fontSize:9,padding:"3px 8px"}} onClick={()=>{setHelpQ(q);}}>{q}</button>
+          ))}
+        </div>
+      </div>
 
       {/* Header card */}
       <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,alignItems:"center",padding:"18px 24px",
@@ -23538,6 +23721,40 @@ function CertificationTracker({ roster, addAudit }) {
   const [form,        setForm]       = useState({});
   const [reimbModal,  setReimbModal] = useState(false);
   const [reimbForm,   setReimbForm]  = useState({});
+  const [certAI,    setCertAI]    = useState(null);
+  const [certAILoad,setCertAILoad]= useState(false);
+
+  const runCertAI = async () => {
+    setCertAILoad(true); setCertAI(null);
+    const allCerts = Object.values(certData).flat();
+    const expiring = allCerts.filter(cert => {
+      if(!cert.expiryDate) return false;
+      const d = new Date(cert.expiryDate+"T12:00:00");
+      return (d - new Date()) / 86400000 < 90;
+    });
+    const expired = allCerts.filter(cert => {
+      if(!cert.expiryDate) return false;
+      return new Date(cert.expiryDate+"T12:00:00") < new Date();
+    });
+    const ctx = `Total certifications tracked: ${allCerts.length}.
+Expired: ${expired.length} — ${expired.map(c=>c.name||c.certName||"cert").slice(0,3).join(", ")}.
+Expiring <90 days: ${expiring.length} — ${expiring.map(c=>c.name||c.certName||"cert").slice(0,3).join(", ")}.
+Roster size: ${(roster||[]).length} consultants.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are an HR compliance advisor for an IT staffing firm. Be specific and urgent about certification requirements.",
+          messages:[{role:"user",content:`${ctx}
+
+Return ONLY JSON:
+{"urgentCount":2,"expiredList":["cert1"],"expiringList":["cert2","cert3"],"recommendedActions":["action1","action2"],"complianceRisk":"HIGH/MEDIUM/LOW","estimatedCost":"$XXK for renewals"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCertAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCertAI({error:e.message}); }
+    setCertAILoad(false);
+  };
 
   const safeRoster = roster || [];
   const TODAY = new Date();
@@ -23613,7 +23830,40 @@ function CertificationTracker({ roster, addAudit }) {
 
   return (
     <div>
-      <PH title="Training & Certification Tracker" sub="Required certs per role · Budget tracking · Expiry alerts · Reimbursement workflow"/>
+      {certAI && !certAI.error && (
+        <div style={{padding:"12px 18px",marginBottom:12,background:certAI.complianceRisk==="HIGH"?"#1a0808":"#060d1c",border:`1px solid ${certAI.complianceRisk==="HIGH"?"#f87171":"#f59e0b"}44`,borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:certAI.complianceRisk==="HIGH"?"#f87171":"#f59e0b"}}>
+              📜 Cert Risk: {certAI.complianceRisk} · {certAI.urgentCount||0} urgent · Est cost: {certAI.estimatedCost||"—"}
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setCertAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div>{(certAI.expiringList||[]).map((a,i)=><div key={i} style={{fontSize:11,color:"#f59e0b",marginBottom:3}}>⏰ {a}</div>)}</div>
+            <div>{(certAI.recommendedActions||[]).map((a,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:3}}>→ {a}</div>)}</div>
+          </div>
+        </div>
+      )}
+      <PH title="Training & Certification Tracker" sub="Required certs per role · Budget tracking · Expiry alerts · Reimbursement workflow">
+        <button className="btn bp" style={{fontSize:11}} onClick={runCertAI} disabled={certAILoad}>
+          {certAILoad?"⏳ Analyzing...":"📜 AI Cert Check"}
+        </button>
+      </PH>
+
+      {certAI && !certAI.error && (
+        <div style={{padding:"12px 18px",marginBottom:12,background:certAI.complianceRisk==="HIGH"?"#1a0808":"#060d1c",border:`1px solid ${certAI.complianceRisk==="HIGH"?"#f87171":"#f59e0b"}44`,borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:certAI.complianceRisk==="HIGH"?"#f87171":"#f59e0b"}}>
+              📜 Cert Risk: {certAI.complianceRisk} · {certAI.urgentCount||0} urgent · Est cost: {certAI.estimatedCost||"—"}
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setCertAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div>{(certAI.expiringList||[]).map((a,i)=><div key={i} style={{fontSize:11,color:"#f59e0b",marginBottom:3}}>⏰ {a}</div>)}</div>
+            <div>{(certAI.recommendedActions||[]).map((a,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:3}}>→ {a}</div>)}</div>
+          </div>
+        </div>
+      )}
 
       {/* Expiry alerts */}
       {expiring.length > 0 && (
@@ -32238,6 +32488,34 @@ function ClientPortal({ clients, finInvoices, finPayments, projects, sows, chang
   // Change request state
   const [reqForm, setReqForm] = useState({type:"change_order",desc:"",priority:"medium"});
   const [reqSent, setReqSent] = useState(false);
+  const [cpAI,     setCpAI]     = useState({});
+  const [cpAILoad, setCpAILoad] = useState(false);
+
+  const runClientAI = async () => {
+    if (!client) return;
+    setCpAILoad(true);
+    const inv = clientInvoices.reduce((s,i)=>s+(i.amount||0),0);
+    const paid = (finPayments||[]).filter(p=>clientInvoices.some(i=>i.id===p.invoiceId)).reduce((s,p)=>s+(p.amount||0),0);
+    const ctx = `Client: ${client.name} (${client.industry})
+AR Outstanding: $${Math.round((inv-paid)/1000)}K | Total Billed: $${Math.round(inv/1000)}K
+Active projects: ${clientProjects.filter(p=>p.status==="active").length} | Team on site: ${clientRoster.length} consultants
+SOWs: ${clientSOWs.length} | Change orders: ${clientCOs.length}`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a client success manager at Ziksatech. Provide relationship intelligence and expansion opportunities.",
+          messages:[{role:"user",content:`${ctx}
+
+Provide client intelligence. Return ONLY JSON:
+{"healthScore":85,"riskLevel":"LOW","topOpportunity":"specific expansion play","relationshipRisk":"specific risk","nextAction":"action this month","expansionPitch":"one-line pitch for upsell","renewalRisk":"LOW/MEDIUM/HIGH"}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      setCpAI(prev=>({...prev,[client.id]:parsed}));
+    } catch(e) { setCpAI(prev=>({...prev,[client.id]:{error:e.message}})); }
+    setCpAILoad(false);
+  };
   const descRef = useRef(null); // uncontrolled — avoids focus loss on re-render
   const submitRequest = () => {
     const desc = descRef.current?.value || reqForm.desc;
@@ -32271,7 +32549,27 @@ function ClientPortal({ clients, finInvoices, finPayments, projects, sows, chang
     <div>
       <PH title="Client Portal" sub="Shareable read-only view for each client — invoices, project status, SOW milestones, team"/>
 
-      {/* Client selector + share controls */}
+            {/* AI Client Intelligence */}
+      {cpAI[selClientId] && !cpAI[selClientId].error && (() => {
+        const ai = cpAI[selClientId];
+        const riskCol = ai.riskLevel==="LOW"?"#34d399":ai.riskLevel==="MEDIUM"?"#f59e0b":"#f87171";
+        return (
+          <div style={{padding:"10px 18px",marginBottom:12,background:"#060d1c",border:`1px solid ${riskCol}44`,borderRadius:10,display:"flex",gap:16}}>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:6}}>
+                <div><div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase"}}>Health Score</div><div style={{fontSize:18,fontWeight:800,color:riskCol}}>{ai.healthScore}</div></div>
+                <div><div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase"}}>Risk</div><div style={{fontSize:18,fontWeight:800,color:riskCol}}>{ai.riskLevel}</div></div>
+                <div><div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase"}}>Renewal Risk</div><div style={{fontSize:18,fontWeight:800,color:ai.renewalRisk==="LOW"?"#34d399":ai.renewalRisk==="MEDIUM"?"#f59e0b":"#f87171"}}>{ai.renewalRisk}</div></div>
+              </div>
+              {ai.topOpportunity&&<div style={{fontSize:11,color:"#34d399",marginBottom:3}}>🚀 {ai.topOpportunity}</div>}
+              {ai.expansionPitch&&<div style={{fontSize:11,color:"#38bdf8",marginBottom:3}}>💡 {ai.expansionPitch}</div>}
+              {ai.nextAction&&<div style={{fontSize:11,color:"#f59e0b"}}>→ {ai.nextAction}</div>}
+            </div>
+            <button className="btn bg" style={{fontSize:9,flexShrink:0,alignSelf:"flex-start"}} onClick={()=>setCpAI(p=>({...p,[selClientId]:undefined}))}>✕</button>
+          </div>
+        );
+      })()}
+{/* Client selector + share controls */}
       <div style={{display:"flex",gap:12,marginBottom:18,flexWrap:"wrap",alignItems:"flex-end"}}>
         <div>
           <div className="lbl" style={{marginBottom:4}}>Select Client</div>
@@ -32788,6 +33086,30 @@ function BenchManagement({ roster, clients, projects, crmDeals, crmAccounts, con
   const [sub,        setSub]      = useState("bench");    // bench | utilization | matches
   const [alertDays,  setAlertDays] = useState(14);
   const [selId,      setSel]       = useState(null);
+  const [benchAI,   setBenchAI]   = useState(null);
+  const [benchAILoad,setBenchAILoad] = useState(false);
+
+  const runBenchAI = async () => {
+    setBenchAILoad(true); setBenchAI(null);
+    const benchList = safeRoster.filter(r=>(r.util||0)<0.5);
+    const openDeals = crmDeals?.filter(d=>!["closed-won","closed-lost"].includes(d.stage))||[];
+    const ctx = `Bench consultants (${benchList.length}): ${benchList.map(r=>`${r.name} (${r.role||"SAP"}, $${r.billRate||0}/hr, util=${Math.round((r.util||0)*100)}%)`).join("; ")}
+Open pipeline deals (${openDeals.length}): ${openDeals.slice(0,5).map(d=>`${d.name||"Deal"} ${d.stage} $${Math.round((d.value||0)/1000)}K`).join("; ")}`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
+          system:"You are a staffing strategist for Ziksatech, a SAP consulting firm. Match bench consultants to open pipeline deals.",
+          messages:[{role:"user",content:`${ctx}
+
+Return ONLY JSON:
+{"weeklyBenchCost":"$XXk","totalAtRisk":3,"placements":[{"consultant":"Name","role":"title","matchedDeal":"deal name","fitReason":"why","urgency":"HIGH/MEDIUM/LOW"}],"topAction":"single most important action this week","marketingTip":"one skill to promote on LinkedIn this week"}`}]
+        })
+      });
+      const data = await resp.json();
+      setBenchAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setBenchAI({error:e.message}); }
+    setBenchAILoad(false);
+  };
 
   const safeRoster   = roster    || [];
   const safeClients  = clients   || [];
@@ -32963,7 +33285,39 @@ function BenchManagement({ roster, clients, projects, crmDeals, crmAccounts, con
 
   return (
     <div>
-      <PH title="Bench Management & Utilization Optimizer" sub="Real-time bench report · Cost of bench · Auto-match to open deals · Utilization trends"/>
+      <PH title="Bench Management & Utilization Optimizer" sub="Real-time bench report · Cost of bench · Auto-match to open deals · Utilization trends">
+        <button className="btn bp" style={{fontSize:11}} onClick={runBenchAI} disabled={benchAILoad}>
+          {benchAILoad?"⏳ Matching...":"🎯 AI Placement Match"}
+        </button>
+      </PH>
+
+      {/* AI Placement Recommendations */}
+      {benchAI && !benchAI.error && (
+        <div style={{padding:"14px 18px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🎯 AI Placement Recommendations</div>
+            <div style={{display:"flex",gap:16,fontSize:11,color:"#64748b"}}>
+              <span>Weekly bench cost: <span style={{color:"#f87171",fontWeight:700}}>{benchAI.weeklyBenchCost}</span></span>
+              <span>At risk: <span style={{color:"#f59e0b",fontWeight:700}}>{benchAI.totalAtRisk}</span> consultants</span>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:10}}>
+            {(benchAI.placements||[]).map((p,i)=>(
+              <div key={i} style={{padding:"10px 12px",background:"#040a14",borderRadius:6,border:`1px solid ${p.urgency==="HIGH"?"#f87171":p.urgency==="MEDIUM"?"#f59e0b":"#34d399"}44`}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{p.consultant}</div>
+                  <span style={{fontSize:9,fontWeight:700,color:p.urgency==="HIGH"?"#f87171":p.urgency==="MEDIUM"?"#f59e0b":"#34d399",background:p.urgency==="HIGH"?"#f8717122":"#f59e0b22",padding:"1px 6px",borderRadius:10}}>{p.urgency}</span>
+                </div>
+                <div style={{fontSize:10,color:"#38bdf8",marginBottom:2}}>→ {p.matchedDeal}</div>
+                <div style={{fontSize:9,color:"#475569"}}>{p.fitReason}</div>
+              </div>
+            ))}
+          </div>
+          {benchAI.topAction&&<div style={{fontSize:11,color:"#f59e0b",marginBottom:4}}>→ This week: {benchAI.topAction}</div>}
+          {benchAI.marketingTip&&<div style={{fontSize:11,color:"#a78bfa"}}>📢 Promote: {benchAI.marketingTip}</div>}
+          <button className="btn bg" style={{fontSize:9,marginTop:8}} onClick={()=>setBenchAI(null)}>✕ Dismiss</button>
+        </div>
+      )}
 
       {/* Alerts */}
       {(onBench.length > 0 || goingBench.length > 0) && (
@@ -33926,7 +34280,26 @@ function OnboardingModule({ roster, onboardings, setOnboardings, addAudit }) {
 
   return (
     <div>
-      <PH title="Onboarding" sub="New hire & contractor onboarding checklists — track every step from day 0 to 30-day check-in"/>
+      <PH title="Onboarding" sub="New hire & contractor onboarding checklists — track every step from day 0 to 30-day check-in">
+        <button className="btn bp" style={{fontSize:11}} onClick={async()=>{
+          if(!selPerson) return;
+          const r = (roster||[]).find(p=>p.id===selPerson||p.name===selPerson)||{};
+          try {
+            const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+                system:"Generate a concise onboarding checklist for an IT consulting firm.",
+                messages:[{role:"user",content:`New hire: ${r.name||"Consultant"}, Role: ${r.role||"SAP Consultant"}, Type: ${r.type||"W2"}, Client: ${r.client||"TBD"}.
+Return ONLY JSON: {"items":["task1","task2","task3","task4","task5","task6","task7","task8"],"firstWeekPriority":"most important first week task","clientReadyBy":"estimated days to be client-ready"}`}]
+              })
+            });
+            const data = await resp.json();
+            const parsed = extractJSON(data.content?.[0]?.text||"{}");
+            if(parsed.items) alert("🤖 AI Onboarding Plan:\n\n"+parsed.items.map((t,i)=>`${i+1}. ${t}`).join("\n")+`\n\n⭐ First week priority: ${parsed.firstWeekPriority}\n📅 Client-ready by: ${parsed.clientReadyBy}`);
+          } catch(e) { alert("Error: "+e.message); }
+        }}>
+          🤖 AI Checklist
+        </button>
+      </PH>
 
       <div style={{display:"grid", gridTemplateColumns:"260px 1fr", gap:16, alignItems:"start"}}>
         {/* Sidebar — person list */}
