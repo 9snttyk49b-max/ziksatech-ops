@@ -47,7 +47,6 @@ const RBAC = {
   certtracker:  ["super_admin","admin","hr_immigration"],
   sowgen:       ["super_admin","admin"],
   aicoo:        ["super_admin","admin"],
-  dealaccel:    ["super_admin","admin","accounts"],
   revleakage:   ["super_admin","admin","accounts"],
   ratequote:    ["super_admin","admin","accounts"],
   availmatrix:  ["super_admin","admin","accounts"],
@@ -724,7 +723,7 @@ const ALL_MODULES = [
   { id:"client360",    label:"🏢 Client 360",          group:"Overview"    },
   { id:"knowledge",    label:"🧠 Knowledge Engine",    group:"Overview"    },
   { id:"scenario",     label:"📊 Scenario Sim",        group:"Overview"    },
-  { id:"dealaccel",  label:"🎯 Deal Accelerator",   group:"Overview"    },
+  
   { id:"leakage",    label:"💰 Revenue Leakage",     group:"Overview"    },
   { id:"profitopt",  label:"📈 Profit Optimizer",    group:"Overview"    },
   { id:"client360",  label:"🏢 Client 360",          group:"Overview"    },
@@ -3005,7 +3004,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
         {tab==="bankanalyzer" && <BankAnalyzer authProfile={authProfile}/>}
         {tab==="aicoo"      && <AICOODashboard    {...shared} authProfile={authProfile}/>}
-        {tab==="dealaccel"  && <DealAccelerator   {...shared} authProfile={authProfile}/>}
+        
         {tab==="revleakage"    && <RevLeakageDetector  {...shared} authProfile={authProfile}/>}
         {tab==="consultant360" && <ConsultantOptimizer {...shared} authProfile={authProfile}/>}
         {tab==="leakage"      && <RevLeakageDetector   {...shared} authProfile={authProfile}/>}
@@ -12603,7 +12602,7 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
       const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1200,
           system:"You are a senior SAP consulting sales coach for Ziksatech. Give specific, actionable deal coaching.",
-          messages:[{role:"user",content:`Deal: ${d.name}\nAccount: ${acct.name||d.accountId} (${acct.industry||""})\nStage: ${d.stage} | Value: $${(d.value||0).toLocaleString()} | Prob: ${d.probability||d.prob||0}%\nClose: ${d.closeDate||"not set"} | Notes: ${d.notes||"none"}\nNext step: ${d.nextStep||"none set"}\n\nReturn ONLY JSON: {"riskLevel":"HIGH/MEDIUM/LOW","topRisk":"single biggest risk","nextAction":"specific action this week","executiveSponsor":"covered Y/N + implication","closingMove":"tactic to accelerate","followUpSubject":"email subject line for next touch"}`}]
+          messages:[{role:"user",content:`Deal: ${d.name}\nAccount: ${acct.name||d.accountId} (${acct.industry||""})\nStage: ${d.stage} | Value: $${(d.value||0).toLocaleString()} | Prob: ${d.probability||d.prob||0}%\nClose: ${d.closeDate||"not set"} | Notes: ${d.notes||"none"}\nNext step: ${d.nextStep||"none set"}\nDays since last activity: ${d.lastActivity?Math.floor((Date.now()-new Date(d.lastActivity))/86400000):"unknown"}\n\nReturn ONLY JSON:\n{"riskLevel":"HIGH/MEDIUM/LOW","topRisk":"single biggest deal risk","nextActions":["action1 this week","action2","action3"],"executiveSponsor":"covered Y/N + implication","closingMove":"one tactic to accelerate close","stakeholderGap":"who is missing from buying committee","probability30d":65,"competitiveRisk":"specific competitor or procurement risk","followUpSubject":"email subject line for next touch"}`}]
         })
       });
       const data = await resp.json();
@@ -12783,10 +12782,28 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
                     <div style={{fontSize:11,color:"#94a3b8"}}>{aiCoach.executiveSponsor}</div>
                   </div>
                 </div>
-                {[["⚠️ Top Risk",aiCoach.topRisk,"#f87171"],["→ This Week",aiCoach.nextAction,"#38bdf8"],["⚡ Closing Move",aiCoach.closingMove,"#a78bfa"]].map(([l,v,col])=>
+                {[["⚠️ Top Risk",aiCoach.topRisk,"#f87171"],["⚡ Closing Move",aiCoach.closingMove,"#a78bfa"],["👥 Stakeholder Gap",aiCoach.stakeholderGap,"#f59e0b"],["🏆 Competitive Risk",aiCoach.competitiveRisk,"#f87171"]].map(([l,v,col])=>
                   v&&<div key={l} style={{marginBottom:6}}>
                     <div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{l}</div>
                     <div style={{fontSize:11,color:col,lineHeight:1.4}}>{v}</div>
+                  </div>
+                )}
+                {/* 3 Next Actions */}
+                {(aiCoach.nextActions||[aiCoach.nextAction]).filter(Boolean).length>0&&(
+                  <div style={{marginBottom:6}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4}}>→ THIS WEEK</div>
+                    {(aiCoach.nextActions||[aiCoach.nextAction]).filter(Boolean).map((a,i)=>(
+                      <div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:3,padding:"3px 8px",background:"#040a14",borderRadius:4}}>
+                        {i+1}. {a}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* 30-day probability */}
+                {aiCoach.probability30d&&(
+                  <div style={{padding:"6px 10px",background:"#060d1c",borderRadius:6,border:"1px solid #1e3a5f",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:9,color:"#3d5a7a"}}>30-Day Close Probability</span>
+                    <span style={{fontSize:14,fontWeight:800,color:aiCoach.probability30d>60?"#34d399":aiCoach.probability30d>40?"#f59e0b":"#f87171",fontFamily:"monospace"}}>{aiCoach.probability30d}%</span>
                   </div>
                 )}
                 {aiCoach.followUpSubject && (
