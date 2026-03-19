@@ -3665,8 +3665,8 @@ function ZiksatechTalent({ roster, jobReqs, addAudit, authProfile }) {
 // NAXON OS COMMAND CENTER
 // Phase-0 Pipeline · SI Partnerships · FCS · Talent · GTM
 function NaxonOSCommand({ addAudit, authProfile }) {
-  const [aiLoad, setAiLoad] = React.useState ? React.useState(false) : useState(false);
-  const [aiPlan, setAiPlan] = React.useState ? React.useState(null) : useState(null);
+  const [aiLoad, setAiLoad] = useState(false);
+  const [aiPlan, setAiPlan] = useState(null);
 
   // Safe localStorage reads with empty array fallbacks
   const siPartners    = (() => { try { return JSON.parse(localStorage.getItem("zt-si-partners")||"null") || []; } catch { return []; } })();
@@ -4596,7 +4596,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
             </div>
           );
         })()}
-        {["Overview","Clients","Sales Tools","Team","Delivery","Finance","Hiring","Compliance","Tools"].filter(group => {
+        {["Overview","Clients","Sales Tools","Team","Delivery","Finance","Hiring","Compliance","Tools","Naxon OS"].filter(group => {
           // In CRM view, only show Clients + Overview
           if (portalView === "crm") return ["Clients","Overview"].includes(group);
           return true;
@@ -51380,7 +51380,7 @@ const BD_MEETINGS_DEFAULT = [
   { id:"bdm3", accountId:"bda11", contactId:"bdc8", date:"2026-03-10", outcome:"Early conversation — scheduling follow-up", opportunityCreated:false, dealId:"", value:0 },
 ];
 
-function BDEngine({ crmDeals, setCrmDeals, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, roster, clients, finInvoices, authProfile }) {
+function BDEngine({ crmDeals, setCrmDeals, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, roster, clients, finInvoices, authProfile , setTab}) {
   const TODAY = new Date().toISOString().split("T")[0];
   const fmtK  = n => n>=1000000?"$"+Math.round(n/1000000*10)/10+"M":n>=1000?"$"+Math.round(n/1000)+"K":"$"+Math.round(n);
 
@@ -51568,7 +51568,7 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
           <strong style={{color:"#34d399"}}> Sales CRM</strong> = Mid/bottom-funnel (manage active deals, tasks, activities, close).
           BD contacts &amp; opportunities auto-sync to CRM.
         </div>
-        <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}} onClick={()=>setTabSafe("crm", authProfile?.role)}>
+        <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}} onClick={()=>setTab("crm", authProfile?.role)}>
           → Open CRM
         </button>
       </div>
