@@ -6690,7 +6690,28 @@ function ClientHealthScorecard({ clients, setClients, finInvoices, finPayments, 
   const [npsForm,    setNpsForm]   = useState({ score:"", feedback:"", respondent:"" });
   const [view,       setView]      = useState("grid"); // grid | list
   const [filterH,    setFilterH]   = useState("all");
-  const [achModal,   setAchModal]  = useState(null); // invoice to send ACH for
+  const [achModal,   setAchModal]  = useState(null);
+  const [ClientHealthScorecardAI, setClientHealthScorecardAI] = useState(null);
+  const [ClientHealthScorecardAILoad, setClientHealthScorecardAILoad] = useState(false);
+  const runClientHealthScorecardAI = async () => {
+    setClientHealthScorecardAILoad(true); setClientHealthScorecardAI(null);
+    const atRisk = (clients||[]).filter(cl=>cl.health==="red"||cl.health==="amber");
+    const healthy = (clients||[]).filter(cl=>cl.health==="green");
+    const ctx = `${(clients||[]).length} clients total. Health: ${healthy.length} green, ${atRisk.length} at-risk.
+At-risk clients: ${atRisk.map(cl=>`${cl.name} (${cl.health})`).join(", ")||"none"}.
+Revenue at risk: $${Math.round(atRisk.reduce((s,cl)=>s+(cl.annualRevPotential||0),0)/1000)}K annually.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a client success advisor for Ziksatech, a SAP consulting firm.",
+          messages:[{role:"user",content:`${ctx}\nReturn ONLY JSON:\n{"churnRisk":"HIGH/MEDIUM/LOW","atRiskRevenue":"$XXXk","topRisk":"biggest churn risk in one sentence","retention":["action1","action2","action3"],"upsellTarget":"best expansion opportunity","npsAction":"how to improve NPS this quarter"}`}]
+        })
+      });
+      const data = await resp.json();
+      setClientHealthScorecardAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setClientHealthScorecardAI({error:e.message}); }
+    setClientHealthScorecardAILoad(false);
+  }; // invoice to send ACH for
 
   const safeInv  = finInvoices  || [];
   const safePay  = finPayments  || [];
@@ -6771,7 +6792,31 @@ function ClientHealthScorecard({ clients, setClients, finInvoices, finPayments, 
 
   return (
     <div>
-      <PH title="Client Health Scorecard" sub="Auto-scored · NPS tracking · Renewal alerts · ACH payment requests"/>
+      <PH title="Client Health Scorecard" sub="Auto-scored · NPS tracking · Renewal alerts · ACH payment requests">
+        <button className="btn bp" style={{fontSize:11}} onClick={runClientHealthScorecardAI} disabled={ClientHealthScorecardAILoad}>{ClientHealthScorecardAILoad?"⏳...":"🧠 AI Churn Prediction"}</button>
+      </PH>
+      {ClientHealthScorecardAI && !ClientHealthScorecardAI.error && (
+        <div style={{padding:"12px 18px",marginBottom:14,background:"#060d1c",border:`1px solid ${ClientHealthScorecardAI.churnRisk==="HIGH"?"#f87171":"#0369a1"}44`,borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{display:"flex",gap:16,alignItems:"center"}}>
+              <div style={{fontSize:11,fontWeight:700,color:ClientHealthScorecardAI.churnRisk==="HIGH"?"#f87171":ClientHealthScorecardAI.churnRisk==="MEDIUM"?"#f59e0b":"#34d399"}}>
+                🧠 Churn Risk: {ClientHealthScorecardAI.churnRisk}
+              </div>
+              <div style={{fontSize:11,color:"#64748b"}}>Revenue at risk: <span style={{color:"#f87171",fontWeight:700}}>{ClientHealthScorecardAI.atRiskRevenue}</span></div>
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setClientHealthScorecardAI(null)}>✕</button>
+          </div>
+          {ClientHealthScorecardAI.topRisk&&<div style={{fontSize:11,color:"#f59e0b",marginBottom:8}}>⚠️ {ClientHealthScorecardAI.topRisk}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Retention Actions</div>{(ClientHealthScorecardAI.retention||[]).map((r,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:2}}>→ {r}</div>)}</div>
+            <div>
+              {ClientHealthScorecardAI.upsellTarget&&<div style={{marginBottom:6}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>Best Upsell</div><div style={{fontSize:11,color:"#34d399"}}>{ClientHealthScorecardAI.upsellTarget}</div></div>}
+              {ClientHealthScorecardAI.npsAction&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>NPS Action</div><div style={{fontSize:11,color:"#a78bfa"}}>{ClientHealthScorecardAI.npsAction}</div></div>}
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Top stats */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
@@ -13486,6 +13531,29 @@ function ContractRenewal({ contracts, setContracts, sows, clients, roster, addAu
   const [filterSt,   setFilterSt]   = useState("all");
   const [noteModal,  setNoteModal]  = useState(null);
   const [noteText,   setNoteText]   = useState("");
+  const [ContractRenewalAI, setContractRenewalAI] = useState(null);
+  const [ContractRenewalAILoad, setContractRenewalAILoad] = useState(false);
+  const runContractRenewalAI = async () => {
+    setContractRenewalAILoad(true); setContractRenewalAI(null);
+    const expiring = (contracts||[]).filter(c=>{
+      if(!c.endDate) return false;
+      const days = (new Date(c.endDate+"T00:00:00")-new Date())/86400000;
+      return days>0 && days<90;
+    });
+    const ctx = `${(contracts||[]).length} total contracts. Expiring within 90 days: ${expiring.length}.
+Expiring: ${expiring.map(c=>`${c.name||c.counterparty} ($${Math.round((c.value||0)/1000)}K, ${c.endDate})`).join("; ")||"none"}.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a contracts advisor for Ziksatech, a SAP consulting firm. Be specific and actionable.",
+          messages:[{role:"user",content:`${ctx}\nReturn ONLY JSON:\n{"urgentCount":${expiring.length},"totalAtRisk":"$XXXk","topPriority":"most important contract to renew and why","renewalPlaybook":["step1","step2","step3"],"rateIncreaseOpportunity":"which contract can absorb a rate increase","riskIfLapsed":"business impact of losing the top expiring contract"}`}]
+        })
+      });
+      const data = await resp.json();
+      setContractRenewalAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setContractRenewalAI({error:e.message}); }
+    setContractRenewalAILoad(false);
+  };
 
   const safeCons  = contracts || [];
   const safeSows  = sows      || [];
@@ -13612,7 +13680,26 @@ function ContractRenewal({ contracts, setContracts, sows, clients, roster, addAu
 
   return (
     <div>
-      <PH title="Contract Renewal Tracker" sub="Countdown timers · Renewal alerts · ARR at risk · One-click renewal"/>
+      <PH title="Contract Renewal Tracker" sub="Countdown timers · Renewal alerts · ARR at risk · One-click renewal">
+        <button className="btn bp" style={{fontSize:11}} onClick={runContractRenewalAI} disabled={ContractRenewalAILoad}>{ContractRenewalAILoad?"⏳...":"🤖 AI Renewal Strategy"}</button>
+      </PH>
+      {ContractRenewalAI && !ContractRenewalAI.error && (
+        <div style={{padding:"12px 18px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 Renewal Intelligence — {ContractRenewalAI.urgentCount} contracts expiring soon · {ContractRenewalAI.totalAtRisk} at risk</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setContractRenewalAI(null)}>✕</button>
+          </div>
+          {ContractRenewalAI.topPriority&&<div style={{fontSize:11,color:"#f59e0b",marginBottom:8}}>🎯 Top Priority: {ContractRenewalAI.topPriority}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Renewal Playbook</div>{(ContractRenewalAI.renewalPlaybook||[]).map((s,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:2}}>{i+1}. {s}</div>)}</div>
+            <div>
+              {ContractRenewalAI.rateIncreaseOpportunity&&<div style={{marginBottom:6}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>Rate Increase Opportunity</div><div style={{fontSize:11,color:"#34d399"}}>{ContractRenewalAI.rateIncreaseOpportunity}</div></div>}
+              {ContractRenewalAI.riskIfLapsed&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2,textTransform:"uppercase"}}>Risk If Lapsed</div><div style={{fontSize:11,color:"#f87171"}}>{ContractRenewalAI.riskIfLapsed}</div></div>}
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* KPI strip */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
@@ -23616,6 +23703,24 @@ function SkillsGapAnalyzer({ roster, crmDeals, crmAccounts, workAuth, addAudit }
   const [aiLoading, setAiLoad]    = useState(false);
   const [aiResult,  setAiResult]  = useState(null);
   const [selConsultant, setSelCon] = useState(null);
+  const [SkillsGapAI,     setSkillsGapAI]     = useState(null);
+  const [SkillsGapAILoad, setSkillsGapAILoad] = useState(false);
+  const runSkillsGapAI = async () => {
+    setSkillsGapAILoad(true); setSkillsGapAI(null);
+    const skills = [...new Set((roster||[]).flatMap(r=>(r.skills||[r.role||"SAP"])))];;
+    const ctx = `Team skills: ${skills.slice(0,15).join(", ")}. Team size: ${(roster||[]).length}. Roles: ${[...new Set((roster||[]).map(r=>r.role||"SAP"))].join(", ")}.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a skills strategist for a SAP consulting firm targeting utilities, telecom, healthcare.",
+          messages:[{role:"user",content:`${ctx}\nReturn ONLY JSON:\n{"criticalGap":"most critical missing skill for 2026 growth","marketDemand":["top 3 skills clients are paying premium for"],"trainingPlan":["quick win skill to add in 30 days","medium-term cert to pursue","strategic capability for 2027"],"hirePriority":"next hire skill set that unlocks most revenue","rateOpportunity":"skill that commands highest market rate"}`}]
+        })
+      });
+      const data = await resp.json();
+      setSkillsGapAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setSkillsGapAI({error:e.message}); }
+    setSkillsGapAILoad(false);
+  };
 
   const safeRoster = roster    || [];
   const safeDeals  = crmDeals  || [];
@@ -23704,7 +23809,33 @@ Return JSON: { "fitScore": 0-100, "fitSummary": "2 sentences", "strengths": ["..
 
   return (
     <div>
-      <PH title="Skills Gap Analyzer" sub="Map consultant skills to open opportunities · Identify training investments · Maximize deal capture"/>
+      <PH title="Skills Gap Analyzer" sub="Map consultant skills to open opportunities · Identify training investments · Maximize deal capture">
+        <button className="btn bp" style={{fontSize:11}} onClick={runSkillsGapAI} disabled={SkillsGapAILoad}>{SkillsGapAILoad?"⏳...":"🤖 AI Skills Intelligence"}</button>
+      </PH>
+      {SkillsGapAI && !SkillsGapAI.error && (
+        <div style={{padding:"12px 18px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 Skills Intelligence</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setSkillsGapAI(null)}>✕</button>
+          </div>
+          {SkillsGapAI.criticalGap&&<div style={{fontSize:11,color:"#f87171",marginBottom:8}}>⚠️ Critical Gap: {SkillsGapAI.criticalGap}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
+            <div>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Market Demand (Premium Skills)</div>
+              {(SkillsGapAI.marketDemand||[]).map((s,i)=><div key={i} style={{fontSize:11,color:"#34d399",marginBottom:2}}>💰 {s}</div>)}
+            </div>
+            <div>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Training Plan</div>
+              {(SkillsGapAI.trainingPlan||[]).map((s,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:2}}>{i===0?"30d":i===1?"3mo":"2026"}: {s}</div>)}
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {SkillsGapAI.hirePriority&&<div style={{padding:"7px 10px",background:"#040a14",borderRadius:5,border:"1px solid #a78bfa22"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>Next Hire</div><div style={{fontSize:11,color:"#a78bfa"}}>{SkillsGapAI.hirePriority}</div></div>}
+            {SkillsGapAI.rateOpportunity&&<div style={{padding:"7px 10px",background:"#040a14",borderRadius:5,border:"1px solid #34d39922"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>Rate Opportunity</div><div style={{fontSize:11,color:"#34d399"}}>{SkillsGapAI.rateOpportunity}</div></div>}
+          </div>
+        </div>
+      )}
+
 
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
@@ -29814,7 +29945,25 @@ function EmailTemplates({ roster, finInvoices, proposals, crmContacts, clients }
   const [search,     setSearch]     = useState("");
   const [fieldVals,  setFieldVals]  = useState({});
   const [copied,     setCopied]     = useState(null); // "subject"|"body"|"all"
-  const [view,       setView]       = useState("edit"); // "edit"|"preview"
+  const [view,       setView]       = useState("edit");
+  const [EmailTemplatesAI, setEmailTemplatesAI] = useState(null);
+  const [EmailTemplatesAILoad, setEmailTemplatesAILoad] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const runEmailTemplatesAI = async () => {
+    if (!aiPrompt.trim()) return;
+    setEmailTemplatesAILoad(true); setEmailTemplatesAI(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,
+          system:"You are an expert email writer for Ziksatech, a WBE/HUB certified SAP consulting firm in Plano TX. Write professional, concise B2B emails. Tone: confident, warm, specific.",
+          messages:[{role:"user",content:`Write an email for: ${aiPrompt}\nReturn ONLY JSON:\n{"subject":"email subject","body":"email body with [Name] placeholders where appropriate","tone":"Professional","wordCount":150}`}]
+        })
+      });
+      const data = await resp.json();
+      setEmailTemplatesAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setEmailTemplatesAI({error:e.message}); }
+    setEmailTemplatesAILoad(false);
+  }; // "edit"|"preview"
 
   const template = EMAIL_TEMPLATES.find(t=>t.id===selId);
 
@@ -29887,6 +30036,28 @@ function EmailTemplates({ roster, finInvoices, proposals, crmContacts, clients }
   return (
     <div>
       <PH title="Email Templates" sub="Professional email templates for invoicing, proposals, compliance, recruiting, and client relations"/>
+      {/* AI Email Writer */}
+      <div className="card" style={{padding:"14px 18px",marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>✍️ AI Email Writer</div>
+        <div style={{display:"flex",gap:8}}>
+          <input className="inp" style={{flex:1}} placeholder='e.g. "Follow-up after SAP demo with AT&T VP" or "Proposal follow-up for CHRISTUS Health"'
+            value={aiPrompt} onChange={e=>setAiPrompt(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&!EmailTemplatesAILoad&&runEmailTemplatesAI()}/>
+          <button className="btn bp" style={{fontSize:11,padding:"0 14px"}} onClick={runEmailTemplatesAI} disabled={EmailTemplatesAILoad}>
+            {EmailTemplatesAILoad?"⏳":"Write"}
+          </button>
+        </div>
+        {EmailTemplatesAI && !EmailTemplatesAI.error && (
+          <div style={{marginTop:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#64748b"}}>Subject: <span style={{color:"#e2e8f0"}}>{EmailTemplatesAI.subject}</span></div>
+              <button className="btn bg" style={{fontSize:9}} onClick={()=>navigator.clipboard?.writeText(`Subject: ${EmailTemplatesAI.subject}\n\n${EmailTemplatesAI.body}`)}>📋 Copy</button>
+            </div>
+            <div style={{padding:"10px 14px",background:"#040a14",borderRadius:6,border:"1px solid #1e3a5f",fontSize:12,color:"#e2e8f0",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{EmailTemplatesAI.body}</div>
+          </div>
+        )}
+      </div>
+
 
       <div style={{display:"grid",gridTemplateColumns:"260px 1fr",gap:16,height:"calc(100vh - 200px)",minHeight:600}}>
 
@@ -30186,6 +30357,23 @@ function TaxCalendar({ adpRuns, roster, vendors, apInvoices }) {
   const [notes,     setNotes]     = useState({});          // id → string
   const [checked,   setChecked]   = useState({});          // id → bool
   const [editNote,  setEditNote]  = useState(null);
+  const [TaxCalendarAI,     setTaxCalendarAI]     = useState(null);
+  const [TaxCalendarAILoad, setTaxCalendarAILoad] = useState(false);
+  const runTaxCalendarAI = async () => {
+    setTaxCalendarAILoad(true); setTaxCalendarAI(null);
+    const qtr = Math.ceil((new Date().getMonth()+1)/3);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are a tax advisor for a small SAP consulting firm in Plano TX.",
+          messages:[{role:"user",content:`Small IT consulting LLC/S-Corp in Plano TX, Q${qtr} ${new Date().getFullYear()}.\nReturn ONLY JSON:\n{"nextDeadline":"next critical IRS deadline","estimatedPayment":"estimated quarterly tax range","texasSpecific":"Texas franchise tax note","deductions":["key deduction for IT firms","equipment/software deduction","home office note"],"topAction":"most important tax action this week"}`}]
+        })
+      });
+      const data = await resp.json();
+      setTaxCalendarAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setTaxCalendarAI({error:e.message}); }
+    setTaxCalendarAILoad(false);
+  };
 
   const quarters = {
     Q1: { label:"Q1 2026", months:[0,1,2],   start:"2026-01-01", end:"2026-03-31" },
@@ -30226,7 +30414,28 @@ function TaxCalendar({ adpRuns, roster, vendors, apInvoices }) {
 
   return (
     <div>
-      <PH title="Tax Calendar" sub="Federal & Texas tax deadlines — payroll deposits, estimated taxes, information returns, annual filings"/>
+      <PH title="Tax Calendar" sub="Federal & Texas tax deadlines — payroll deposits, estimated taxes, information returns, annual filings">
+        <button className="btn bp" style={{fontSize:11}} onClick={runTaxCalendarAI} disabled={TaxCalendarAILoad}>{TaxCalendarAILoad?"⏳...":"🤖 AI Tax Advisor"}</button>
+      </PH>
+      {TaxCalendarAI && !TaxCalendarAI.error && (
+        <div style={{padding:"12px 18px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 AI Tax Intelligence</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setTaxCalendarAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:8}}>
+            {[["Next Deadline",TaxCalendarAI.nextDeadline,"#f87171"],["Est. Payment",TaxCalendarAI.estimatedPayment,"#f59e0b"],["Texas Note",TaxCalendarAI.texasSpecific,"#38bdf8"],["Top Action",TaxCalendarAI.topAction,"#34d399"]].map(([l,v,col])=>
+              v&&<div key={l} style={{padding:"7px 10px",background:"#040a14",borderRadius:5,border:`1px solid ${col}22`}}>
+                <div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{l}</div>
+                <div style={{fontSize:11,color:col,lineHeight:1.4}}>{v}</div>
+              </div>
+            )}
+          </div>
+          <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase"}}>Key Deductions</div>
+          {(TaxCalendarAI.deductions||[]).map((d,i)=><div key={i} style={{fontSize:11,color:"#a78bfa",marginBottom:2}}>• {d}</div>)}
+        </div>
+      )}
+
 
       {/* KPI row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
