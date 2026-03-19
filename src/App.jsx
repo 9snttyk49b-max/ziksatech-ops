@@ -2044,6 +2044,9 @@ const FCS_DEFAULT_TRANSACTIONS = [
   { id:"t13", date:"2026-03-01", account:"Amex Business",    merchant:"ZOOM VIDEO COMM",        memo:"Zoom Business x5",                    amount:-200,   type:"debit",  category:"exp-saas",       deductible:100, biz:"business", receipt:"matched", confidence:98, status:"reviewed" },
   { id:"t14", date:"2026-03-03", account:"Amex Business",    merchant:"LINKEDIN CORP",          memo:"LinkedIn Recruiter seats x2",         amount:-1620,  type:"debit",  category:"exp-recruiting", deductible:100, biz:"business", receipt:"matched", confidence:95, status:"reviewed" },
   { id:"t15", date:"2026-03-15", account:"Amex Business",    merchant:"QUICKBOOKS INTUIT",      memo:"QuickBooks Online subscription",      amount:-85,    type:"debit",  category:"exp-accounting", deductible:100, biz:"business", receipt:"matched", confidence:98, status:"reviewed" },
+  // Additional March revenue
+  { id:"t22", date:"2026-03-20", account:"Chase Business",   merchant:"Toyota Financial",        memo:"Invoice INV-2026-034 - SF Support Q1",amount:18000, type:"credit",  category:"rev-staffing",   deductible:0,   biz:"business", receipt:"na",      confidence:98, status:"reviewed" },
+  { id:"t23", date:"2026-03-22", account:"Chase Business",   merchant:"HPE Aruba",               memo:"Invoice INV-2026-035 - SuccessFactors", amount:12500, type:"credit",  category:"rev-staffing",   deductible:0,   biz:"business", receipt:"na",      confidence:98, status:"reviewed" },
   // Needs review / uncategorized
   { id:"t16", date:"2026-03-12", account:"Amex Business",    merchant:"COSTCO WHOLESALE",       memo:"COSTCO #0456 purchase",               amount:-847,   type:"debit",  category:"uncategorized",  deductible:0,   biz:"unknown",  receipt:"missing", confidence:25, status:"needs-category" },
   { id:"t17", date:"2026-03-14", account:"Chase Business",   merchant:"AMAZON.COM",             memo:"AMAZON MARKETPLACE",                  amount:-234,   type:"debit",  category:"uncategorized",  deductible:0,   biz:"unknown",  receipt:"missing", confidence:30, status:"needs-category" },
@@ -2185,7 +2188,56 @@ function FinanceControlSystem(props) {
 
   // ── Save helpers ───────────────────────────────────────────────────────────
   const saveTx = (txs) => { setTransactions(txs); try{localStorage.setItem("zt-fcs-transactions",JSON.stringify(txs));}catch{} };
+  const exportToCSV = (rows, filename) => {
+    if(!rows.length) return;
+    const headers = Object.keys(rows[0]);
+    const csv = [headers.join(","), ...rows.map(r=>headers.map(h=>JSON.stringify(r[h]||"")).join(","))].join("\n");
+    const a = document.createElement("a");
+    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+    a.download = filename;
+    a.click();
+  };
   const acceptTx = (id, updates={}) => saveTx(transactions.map(t=>t.id===id?{...t,...updates,status:"reviewed"}:t));
+  const [importModal, setImportModal] = useState(false);
+  const [importText,  setImportText]  = useState("");
+  const importCSV = () => {
+    if(!importText.trim()) return;
+    const lines = importText.trim().split("\n").filter(l=>l.trim());
+    const newTxs = [];
+    // Try to parse common bank statement CSV formats
+    lines.forEach((line, idx) => {
+      if(idx===0 && (line.toLowerCase().includes("date")||line.toLowerCase().includes("amount"))) return; // skip header
+      const parts = line.split(",").map(p=>p.replace(/"/g,"").trim());
+      if(parts.length < 3) return;
+      // Try Date, Description, Amount format
+      const dateStr = parts[0]; const desc = parts[1]||parts[2]; const amtStr = parts[parts.length-1];
+      const amt = parseFloat(amtStr.replace(/[$,]/g,""));
+      if(isNaN(amt)||!dateStr) return;
+      // Auto-apply rules
+      const matchedRule = rules.find(r=>r.enabled && desc.toUpperCase().includes(r.pattern.toUpperCase()));
+      newTxs.push({
+        id:"import-"+Date.now()+"-"+idx,
+        date: dateStr.includes("/") ? dateStr.split("/").reduce((s,p,i)=>i===2?p+"-"+(s.split("/")[0]||"01")+"-"+(s.split("/")[1]||"01"):s,dateStr) : dateStr,
+        account:"Imported",
+        merchant: desc.split(" ").slice(0,4).join(" "),
+        memo: desc,
+        amount: amt,
+        type: amt > 0 ? "credit" : "debit",
+        category: matchedRule?.category || "uncategorized",
+        deductible: matchedRule?.deductible || 0,
+        biz: matchedRule?.type || "unknown",
+        receipt: "missing",
+        confidence: matchedRule ? 90 : 25,
+        status: matchedRule ? "reviewed" : "needs-category",
+      });
+    });
+    if(newTxs.length > 0) {
+      saveTx([...transactions, ...newTxs]);
+      setImportText("");
+      setImportModal(false);
+      alert("Imported "+newTxs.length+" transactions. "+newTxs.filter(t=>t.status==="needs-category").length+" need categorization.");
+    }
+  };
 
   const FCS_TABS = [
     {id:"dashboard",   label:"📊 Dashboard",       color:"#38bdf8"},
@@ -2232,12 +2284,28 @@ function FinanceControlSystem(props) {
       <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
         <button className="btn bp" style={{fontSize:11}} onClick={runCfoBrief} disabled={cfoLoading}>{cfoLoading?"⏳ Analyzing...":"🤖 AI CFO Brief"}</button>
         <button className="btn bg" style={{fontSize:11}} onClick={()=>setFcsTab("review")}>📥 Review Queue ({needsReview})</button>
+        <button className="btn bg" style={{fontSize:11}} onClick={()=>setImportModal(true)}>📤 Import Statement</button>
         <button className="btn bg" style={{fontSize:11}} onClick={()=>setFcsTab("tax")}>🧾 Tax Planner</button>
         <button className="btn bg" style={{fontSize:11}} onClick={()=>setFcsTab("cpa-pack")}>📦 CPA Pack</button>
         <div style={{marginLeft:"auto",fontSize:10,color:"#334155"}}>Last sync: {new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</div>
       </div>
 
-      {/* KPI Row */}
+      {/* Import Statement Modal */}
+      {importModal && (
+        <div style={{padding:"14px 16px",marginBottom:12,background:"#040a14",border:"1px solid #0369a144",borderRadius:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>📤 Import Bank Statement (CSV)</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>{setImportModal(false);setImportText("");}}>✕</button>
+          </div>
+          <div style={{fontSize:9,color:"#475569",marginBottom:6}}>Paste CSV rows: Date, Description, Amount (one per line). Rules auto-apply.</div>
+          <textarea className="inp" rows={6} style={{width:"100%",fontSize:10,fontFamily:"monospace",marginBottom:6}} placeholder={"2026-03-15,AMAZON WEB SERVICES,-1840\n2026-03-18,CLIENT PAYMENT,28500\n2026-03-20,ADOBE CC,-84"} value={importText} onChange={e=>setImportText(e.target.value)}/>
+          <div style={{display:"flex",gap:6}}>
+            <button className="btn bp" style={{fontSize:11}} onClick={importCSV}>Import {importText.trim().split("\n").filter(l=>l.trim()&&!l.toLowerCase().includes("date")).length} Rows</button>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>{setImportModal(false);setImportText("");}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {/* KPI Row */}}
       <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Revenue",     v:fmtK(txRevenue),   sub:"Mar 2026",          color:"#34d399", trend:"+12%"},
@@ -2454,6 +2522,7 @@ function FinanceControlSystem(props) {
               <option value="personal">Personal</option>
             </select>
             <div style={{fontSize:10,color:"#475569"}}>{filtered.length} records</div>
+            <button className="btn bg" style={{fontSize:11}} onClick={()=>exportToCSV(filtered.map(t=>({date:t.date,merchant:t.merchant,memo:t.memo,amount:t.amount,category:FCS_CATEGORIES.find(c=>c.id===t.category)?.name||t.category,type:t.type,account:t.account,deductible:t.deductible,biz:t.biz,receipt:t.receipt,status:t.status})),"ziksatech-transactions.csv")}>📥 Export CSV</button>
             <button className="btn bp" style={{fontSize:11}} onClick={()=>setAddTxModal(true)}>+ Add</button>
           </div>
           {addTxModal&&(
@@ -2939,8 +3008,11 @@ function FinanceControlSystem(props) {
                 ))}
               </div>
               <div style={{display:"flex",gap:6}}>
-                <button className="btn bp" style={{flex:1,fontSize:11}}>📄 Export PDF</button>
-                <button className="btn bg" style={{flex:1,fontSize:11}}>📊 Export Excel</button>
+                <button className="btn bp" style={{flex:1,fontSize:11}} onClick={()=>exportToCSV(transactions,"ziksatech-transactions-cpa.csv")}>📊 Export Transactions</button>
+                <button className="btn bg" style={{flex:1,fontSize:11}} onClick={()=>{
+                  const summary = [{item:"Revenue YTD",amount:txRevenue},{item:"Total Expenses",amount:-txExpenses},{item:"Net Profit",amount:netProfit},{item:"Q1 Tax Estimated",amount:-(currentQ1?.estimatedTax||0)},{item:"Q1 Tax Paid",amount:-(currentQ1?.paid||0)},{item:"Q1 Tax Remaining",amount:-(currentQ1?.remaining||0)},{item:"Deductible Expenses",amount:-transactions.filter(t=>t.deductible>0&&t.type==="debit").reduce((s,t)=>s+Math.abs(t.amount),0)}];
+                  exportToCSV(summary,"ziksatech-tax-summary.csv");
+                }}>🧾 Export Tax Summary</button>
               </div>
               <button className="btn bg" style={{width:"100%",marginTop:6,fontSize:11,color:"#38bdf8"}}>📧 Send Summary to CPA</button>
             </div>
