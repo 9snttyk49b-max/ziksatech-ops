@@ -788,8 +788,7 @@ const ALL_MODULES = [
   { id:"minicalc",   label:"Mini Calculator", group:"Overview" },
   { id:"offerletter",   label:"Offer Letter Generator", group:"Hiring" },
   { id:"org",   label:"Org & Access", group:"Team" },
-  { id:"outreachtrk",   label:"Outreach Tracker", group:"Clients" },
-  { id:"paffiles",   label:"PAF Files", group:"Compliance" },
+    { id:"paffiles",   label:"PAF Files", group:"Compliance" },
   { id:"perfreviews",   label:"Performance Reviews", group:"Team" },
     { id:"proposalv2",   label:"AI Proposal Writer", group:"Clients" },
   { id:"ratequote",   label:"Rate Card & Quote", group:"Clients" },
@@ -899,6 +898,23 @@ function OffboardingModule({ orgMembers, setOrgMembers, roster, setRoster, vendo
   const [form, setForm] = useState({memberId:"", endDate:"", reason:"resignation", notes:""});
   const [activeId, setActiveId] = useState(null);
   const [checks, setChecks] = useState({});
+  const [offAI,     setOffAI]     = useState(null);
+  const [offAILoad, setOffAILoad] = useState(false);
+  const runOffAI = async (record) => {
+    if (!record) return;
+    setOffAILoad(true); setOffAI(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are an HR advisor for Ziksatech, a SAP consulting firm. Give specific offboarding guidance.",
+          messages:[{role:"user",content:`Offboarding: ${record.employeeName||"Employee"}, ${record.role||"SAP Consultant"}, last day: ${record.lastDay||"TBD"}, reason: ${record.reason||"voluntary"}, visa: ${record.visaType||"unknown"}.\nReturn ONLY JSON:\n{"riskLevel":"HIGH/MEDIUM/LOW","visaRisk":"immigration implication of departure","knowledgeTransfer":["item1","item2","item3"],"clientImpact":"impact on active engagements","replacementUrgency":"how urgently to replace","checklist":["task1","task2","task3"]}`}]
+        })
+      });
+      const data = await resp.json();
+      setOffAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setOffAI({error:e.message}); }
+    setOffAILoad(false);
+  };
 
   // Load from localStorage
   useEffect(()=>{
@@ -961,7 +977,26 @@ function OffboardingModule({ orgMembers, setOrgMembers, roster, setRoster, vendo
 
   return (
     <div>
-      <PH title="Offboarding" sub="Exit management · End date · Checklist for FTE & Contractors"/>
+      <PH title="Offboarding" sub="Exit management · End date · Checklist for FTE & Contractors">
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>{const r=records[0];if(r)runOffAI(r);}} disabled={offAILoad}>{offAILoad?"⏳...":"🤖 AI Offboarding Coach"}</button>
+      </PH>
+      {offAI&&!offAI.error&&(
+        <div style={{padding:"14px 18px",marginBottom:14,background:offAI.riskLevel==="HIGH"?"#1a0808":"#060d1c",border:`1px solid ${offAI.riskLevel==="HIGH"?"#f87171":"#0369a1"}44`,borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:offAI.riskLevel==="HIGH"?"#f87171":"#38bdf8"}}>🤖 Offboarding Risk: {offAI.riskLevel}</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setOffAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase"}}>Visa Risk</div><div style={{fontSize:11,color:"#f59e0b"}}>{offAI.visaRisk}</div></div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:3,textTransform:"uppercase"}}>Client Impact</div><div style={{fontSize:11,color:"#f87171"}}>{offAI.clientImpact}</div></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Knowledge Transfer</div>{(offAI.knowledgeTransfer||[]).map((k,i)=><div key={i} style={{fontSize:11,color:"#94a3b8",marginBottom:2}}>• {k}</div>)}</div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>AI Checklist</div>{(offAI.checklist||[]).map((k,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:2}}>☐ {k}</div>)}</div>
+          </div>
+        </div>
+      )}
+
 
       <div style={{display:"grid",gridTemplateColumns:activeRecord?"1fr 360px":"1fr",gap:16}}>
         {/* Left: records list + new */}
@@ -2435,9 +2470,8 @@ export default function ZiksatechOps() {
     { id:"compliance",   label:"Compliance",           icon:ICONS.dash,     group:"Compliance"  },
     { id:"immigration",  label:"Immigration Calendar 🛂",icon:ICONS.dash,     group:"Compliance"  },
     { id:"capdeck",      label:"Capability Deck AI",     icon:ICONS.pl,       group:"Clients"     },
-    { id:"outreachtrk",  label:"Outreach Tracker",       icon:ICONS.pipeline, group:"Clients"     },
     { id:"soplibrary",   label:"SOP & Exit Readiness",   icon:ICONS.pl,       group:"Delivery"    },
-    { id:"certtracker",  label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
+    { id:"wbecert",      label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
     { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Overview"    },
     { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Overview"    },
   ];
@@ -2983,10 +3017,9 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="rfpgen"     && <RFPGenerator   {...shared} />}
                 {tab==="soplibrary"   && <SOPLibrary roster={shared.roster} finInvoices={shared.finInvoices} finPayments={shared.finPayments} apInvoices={shared.apInvoices} crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
         {tab==="capdeck"      && <CapabilityDeck clients={shared.clients} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} roster={shared.roster} addAudit={shared.addAudit}/>}
-        {tab==="certtracker"  && <CertTracker addAudit={shared.addAudit}/>}
+        {tab==="wbecert"      && <CertTracker addAudit={shared.addAudit}/>}
         {tab==="ideapad"      && <IdeaPad authProfile={authProfile} addAudit={shared.addAudit}/>}
-        {tab==="outreachtrk"  && <OutreachTracker crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
-        {tab==="sowgen"     && <SOWGenerator   {...shared} />}
+                {tab==="sowgen"     && <SOWGenerator   {...shared} />}
         {tab==="ratequote"   && <RateCardQuote   roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} proposals={shared.proposals} setProposals={shared.setProposals} addAudit={shared.addAudit}/>}
         {tab==="availmatrix" && <AvailabilityMatrix roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="industrypitch"&& <IndustryPitchTemplates roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
@@ -12212,7 +12245,8 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
     { id:"forecast",    label:"📈 Forecast" },
     { id:"import",      label:"⬆️ Import" },
     { id:"bdengine",    label:"🚀 BD Engine" },
-    { id:"prospectintel", label:"🔍 Prospect Intel" },
+    { id:"prospectintel",  label:"🔍 Prospect Intel" },
+    { id:"outreachtrk",  label:"📞 Outreach Tracker" },
   ];
   const props = { crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, clients };
   const extProps = { ...props, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, roster, addAudit };
@@ -30589,6 +30623,24 @@ function BenefitsTracker({ benefits, setBenefits, roster }) {
   const [dentalPlans, setDentalPlans] = useState(DENTAL_PLANS_DEFAULT);
   const [visionPlans, setVisionPlans] = useState(VISION_PLANS_DEFAULT);
   const [editPlan,    setEditPlan]  = useState(null);
+  const [benAI,     setBenAI]     = useState(null);
+  const [benAILoad, setBenAILoad] = useState(false);
+  const runBenAI = async () => {
+    setBenAILoad(true); setBenAI(null);
+    const workers = roster.filter(r=>r.type==="FTE");
+    const ctx = `${workers.length} FTE employees. Benefits enrollment data available.\nRoles: ${[...new Set(workers.map(r=>r.role||"SAP"))].slice(0,5).join(", ")}.\nLocations: ${[...new Set(workers.map(r=>r.state||"TX"))].join(", ")}.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are an HR benefits advisor for a small SAP consulting firm in Texas.",
+          messages:[{role:"user",content:`${ctx}\nReturn ONLY JSON:\n{"costOptimization":"biggest savings opportunity","riskAlert":"most urgent benefits compliance risk","recommendation":"top action for open enrollment","texasSpecific":"Texas-specific benefit consideration"}`}]
+        })
+      });
+      const data = await resp.json();
+      setBenAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setBenAI({error:e.message}); }
+    setBenAILoad(false);
+  };
 
   // ── Sync plan state → global aliases used by cost functions ──────────────
   useEffect(() => { HEALTH_PLANS = healthPlans; }, [healthPlans]);
