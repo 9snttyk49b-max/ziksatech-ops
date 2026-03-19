@@ -3702,6 +3702,30 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
   const [sortDir, setSortDir] = useState("asc");
   const [dragId,  setDragId]  = useState(null);
   const [dragOver,setDragOver]= useState(null);
+  const [RosterAI,     setRosterAI]     = useState(null);
+  const [RosterAILoad, setRosterAILoad] = useState(false);
+  const runRosterAI = async () => {
+    setRosterAILoad(true); setRosterAI(null);
+    const bench = roster.filter(r=>(r.util||0)<0.3);
+    const ctx = `Team: ${roster.length} total, ${roster.filter(r=>r.type==="FTE").length} FTE, ${bench.length} on bench.
+Avg bill: $${Math.round(roster.reduce((s,r)=>s+(r.billRate||0),0)/Math.max(roster.length,1))}/hr.
+Top earners: ${[...roster].sort((a,b)=>(b.billRate||0)-(a.billRate||0)).slice(0,3).map(r=>r.name+" $"+(r.billRate||0)+"/hr").join(", ")}.
+Bench: ${bench.map(r=>r.name+" ("+( r.role||"SAP")+")").join(", ")||"none"}.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a staffing advisor for Ziksatech, a SAP consulting firm. Be specific.",
+          messages:[{role:"user",content:`${ctx}
+
+Return ONLY JSON:
+{"healthScore":85,"insight":"team health in one sentence","riskFlags":["risk1","risk2"],"recommendations":["action1","action2","action3"],"hiringPriority":"next hire role + why","rateOpportunity":"who can command higher rate + how much"}`}]
+        })
+      });
+      const data = await resp.json();
+      setRosterAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setRosterAI({error:e.message}); }
+    setRosterAILoad(false);
+  };
 
   // Sort + drag logic
   const displayRoster = (() => {
@@ -3809,6 +3833,34 @@ function Roster({ roster, setRoster, addAudit, clients=[] }) {
           <div style={{display:"flex",gap:4,alignItems:"center",padding:"3px 8px",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:8}}>
             <span style={{fontSize:10,color:"#3d5a7a",fontWeight:600,marginRight:2}}>SORT:</span>
             <SortBtn field="name"    label="Name" />
+      {/* Roster AI Panel */}
+      {RosterAI && !RosterAI.error && (
+        <div style={{padding:"14px 18px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>🤖 Staffing Intelligence</div>
+              <div style={{fontSize:22,fontWeight:800,color:RosterAI.healthScore>70?"#34d399":RosterAI.healthScore>50?"#f59e0b":"#f87171",fontFamily:"monospace"}}>{RosterAI.healthScore}<span style={{fontSize:11}}>/100</span></div>
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setRosterAI(null)}>✕</button>
+          </div>
+          {RosterAI.insight&&<div style={{fontSize:12,color:"#94a3b8",marginBottom:10,fontStyle:"italic"}}>{RosterAI.insight}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:5,textTransform:"uppercase"}}>⚠️ Risk Flags</div>
+              {(RosterAI.riskFlags||[]).map((r,i)=><div key={i} style={{fontSize:11,color:"#f59e0b",marginBottom:3}}>• {r}</div>)}
+            </div>
+            <div>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:5,textTransform:"uppercase"}}>✅ Recommendations</div>
+              {(RosterAI.recommendations||[]).map((r,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:3}}>→ {r}</div>)}
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:8}}>
+            {RosterAI.hiringPriority&&<div style={{padding:"8px 12px",background:"#040a14",borderRadius:6,border:"1px solid #a78bfa44"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Next Hire</div><div style={{fontSize:11,color:"#a78bfa"}}>{RosterAI.hiringPriority}</div></div>}
+            {RosterAI.rateOpportunity&&<div style={{padding:"8px 12px",background:"#040a14",borderRadius:6,border:"1px solid #34d39944"}}><div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Rate Opportunity</div><div style={{fontSize:11,color:"#34d399"}}>{RosterAI.rateOpportunity}</div></div>}
+          </div>
+        </div>
+      )}
+
       <div style={{display:"flex",gap:8,marginBottom:8,justifyContent:"flex-end"}}>
         <button className="btn bg" style={{fontSize:11,color:"#7dd3fc"}} onClick={async()=>{
           const rows=(roster||[]).map(r=>[r.name||"",r.type||"",r.client||"",`$${r.billRate||0}/hr`,`${((r.util||0)*100).toFixed(0)}%`,r.role||""]);
@@ -6074,6 +6126,32 @@ function RevenueForecast({ clients, roster, finInvoices, finPayments, crmDeals, 
   const [sub, setSub] = useState("forecast"); // forecast | commission | milestone
   const [commEdit, setCommEdit] = useState({}); // overrides for commission rates
   const [bonusMonth, setBonusMonth] = useState(new Date().getMonth());
+  const [rfAI,     setRfAI]     = useState(null);
+  const [rfAILoad, setRfAILoad] = useState(false);
+  const runRfAI = async () => {
+    setRfAILoad(true); setRfAI(null);
+    const monthRev = MONTHS.map((mo,mi)=>{
+      const rev = roster.reduce((s,r)=>s+(r.billRate||0)*(tsHours?.[r.id]?.[mi]||0),0);
+      return `${mo}: $${Math.round(rev/1000)}K`;
+    }).join(", ");
+    const openPipeline = (crmDeals||[]).filter(d=>!["closed-won","closed-lost"].includes(d.stage))
+      .reduce((s,d)=>s+(d.value||0),0);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a revenue forecasting analyst for Ziksatech, a SAP consulting firm.",
+          messages:[{role:"user",content:`Monthly billed: ${monthRev}
+Open pipeline: $${Math.round(openPipeline/1000)}K
+
+Return ONLY JSON:
+{"q2Forecast":"$XXXk","growthRate":"X%","bestMonth":"month name","riskMonth":"month at risk","revenueGap":"gap vs $2.5M annual target","topRecommendation":"single action to hit annual target"}`}]
+        })
+      });
+      const data = await resp.json();
+      setRfAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setRfAI({error:e.message}); }
+    setRfAILoad(false);
+  };
 
   const safeInv    = finInvoices  || [];
   const safePay    = finPayments  || [];
@@ -6165,7 +6243,21 @@ function RevenueForecast({ clients, roster, finInvoices, finPayments, crmDeals, 
 
   return (
     <div>
-      <PH title="Revenue Forecasting & Commission Tracker" sub="Rolling forecast · Pipeline revenue · Consultant contribution · $25M roadmap"/>
+      <PH title="Revenue Forecasting & Commission Tracker" sub="Rolling forecast · Pipeline revenue · Consultant contribution · $25M roadmap">
+        <button className="btn bp" style={{fontSize:11}} onClick={runRfAI} disabled={rfAILoad}>{rfAILoad?"⏳...":"🤖 AI Revenue Forecast"}</button>
+      </PH>
+      {rfAI&&!rfAI.error&&(
+        <div style={{display:"flex",gap:16,padding:"12px 18px",background:"#060d1c",border:"1px solid #0369a144",borderRadius:10,marginBottom:14,alignItems:"flex-start"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,flex:1}}>
+            {[["Q2 Forecast",rfAI.q2Forecast,"#38bdf8"],["Growth Rate",rfAI.growthRate,"#34d399"],["Revenue Gap",rfAI.revenueGap,"#f87171"]].map(([l,v,col])=>(
+              <div key={l}><div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:2}}>{l}</div><div style={{fontSize:14,fontWeight:800,color:col,fontFamily:"monospace"}}>{v||"—"}</div></div>
+            ))}
+            {rfAI.topRecommendation&&<div style={{gridColumn:"span 3",fontSize:11,color:"#f59e0b"}}>→ {rfAI.topRecommendation}</div>}
+          </div>
+          <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setRfAI(null)}>✕</button>
+        </div>
+      )}
+
 
       {/* Tab bar */}
       <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
@@ -20033,6 +20125,32 @@ function ProjectProfitability({ projects, roster, tsHours, changeOrders, finInvo
   const [sub, setSub] = useState("clients");
   const [selClient, setSelClient] = useState(null);
   const [selConsultant, setSelCon] = useState(null);
+  const [ppAI,     setPpAI]     = useState(null);
+  const [ppAILoad, setPpAILoad] = useState(false);
+  const runPpAI = async () => {
+    setPpAILoad(true); setPpAI(null);
+    const clientMetrics = clients.map(cl=>{
+      const consultants = roster.filter(r=>r.client===cl.name);
+      const rev = consultants.reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0);
+      const cost = consultants.reduce((s,r)=>s+getEmployeeCost(r)/12,0);
+      const margin = rev>0?Math.round((rev-cost)/rev*100):0;
+      return `${cl.name}: $${Math.round(rev/1000)}K/mo, margin=${margin}%`;
+    }).join("; ");
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a profitability analyst for Ziksatech, a SAP consulting firm. Be data-driven and specific.",
+          messages:[{role:"user",content:`Client profitability: ${clientMetrics||"no data"}
+
+Return ONLY JSON:
+{"topClient":"most profitable client","bottomClient":"lowest margin client","avgMargin":"XX%","marginRisk":"biggest margin risk in one sentence","rateAction":"specific rate increase recommendation","expandAction":"best client to expand headcount"}`}]
+        })
+      });
+      const data = await resp.json();
+      setPpAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setPpAI({error:e.message}); }
+    setPpAILoad(false);
+  };
 
   const safeRoster   = roster    || [];
   const safeClients  = clients   || [];
@@ -20114,7 +20232,20 @@ function ProjectProfitability({ projects, roster, tsHours, changeOrders, finInvo
 
   return (
     <div>
-      <PH title="Profitability Analytics" sub="Gross margin per client · Consultant ROI · Break-even analysis · True profitability ranking"/>
+      <PH title="Profitability Analytics" sub="Gross margin per client · Consultant ROI · Break-even analysis · True profitability ranking">
+        <button className="btn bp" style={{fontSize:11}} onClick={runPpAI} disabled={ppAILoad}>{ppAILoad?"⏳...":"🤖 AI Margin Analysis"}</button>
+      </PH>
+      {ppAI&&!ppAI.error&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14,padding:"12px 18px",background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+          {[["Top Client",ppAI.topClient,"#34d399"],["Needs Attention",ppAI.bottomClient,"#f87171"],["Avg Margin",ppAI.avgMargin,"#38bdf8"]].map(([l,v,col])=>(
+            <div key={l}><div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:2}}>{l}</div><div style={{fontSize:13,fontWeight:700,color:col}}>{v||"—"}</div></div>
+          ))}
+          {ppAI.marginRisk&&<div style={{gridColumn:"span 2",fontSize:11,color:"#f59e0b",padding:"6px 10px",background:"#0a0a00",borderRadius:4}}>⚠️ {ppAI.marginRisk}</div>}
+          {ppAI.rateAction&&<div style={{fontSize:11,color:"#38bdf8",padding:"6px 10px",background:"#040a14",borderRadius:4}}>→ Rate: {ppAI.rateAction}</div>}
+          <button className="btn bg" style={{gridColumn:"span 3",fontSize:9}} onClick={()=>setPpAI(null)}>✕ Dismiss</button>
+        </div>
+      )}
+
 
       {/* Summary KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:10, marginBottom:18 }}>
