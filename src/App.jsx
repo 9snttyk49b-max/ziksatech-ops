@@ -194,6 +194,17 @@ function useDragSort(items, setItems) {
 }
 
 // ─── Global date utilities (used across multiple components) ─────────────────
+const urgencyLevel = (days) => {
+  if (days === null || days === undefined) return { label: "Unknown", color: "#64748b", bg: "#0a0a0a" };
+  if (days <= 0)   return { label: "Expired",  color: "#ef4444", bg: "#1a0808" };
+  if (days <= 7)   return { label: "Critical", color: "#ef4444", bg: "#1a0808" };
+  if (days <= 30)  return { label: "High",     color: "#f97316", bg: "#1a0d00" };
+  if (days <= 60)  return { label: "Medium",   color: "#eab308", bg: "#1a1400" };
+  if (days <= 90)  return { label: "Watch",    color: "#60a5fa", bg: "#060d1c" };
+  return { label: "OK", color: "#34d399", bg: "#021f14" };
+};
+
+
 const daysUntil = (dateStr) => {
   if (!dateStr) return null;
   return Math.ceil((new Date(dateStr + (dateStr.includes('T') ? '' : 'T12:00:00')) - new Date()) / 86400000);
@@ -48269,6 +48280,27 @@ function PerformanceCoach({ roster, clients, crmDeals, proposals, tsSubmissions,
   const [view,      setView]      = useState("coach"); // coach | leaderboard
   const [lbLoading, setLbLoading] = useState(false);
   const [leaderboard, setLeaderboard] = useState(null);
+  const [consultantCoach,     setConsultantCoach]     = useState(null);
+  const [consultantCoachLoad, setConsultantCoachLoad] = useState(false);
+  const runConsultantCoach = async (member) => {
+    if (!member) return;
+    setConsultantCoachLoad(true); setConsultantCoach(null);
+    const r = (roster||[]).find(x=>x.id===member||x.name===member);
+    if (!r) { setConsultantCoachLoad(false); return; }
+    const util = Math.round((r.util||0)*100);
+    const annualRev = Math.round((r.billRate||0)*(r.util||0)*1920);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are an executive coach for SAP consultants at Ziksatech, a WBE consulting firm. Be direct, specific, and motivating.",
+          messages:[{role:"user",content:`Consultant: ${r.name}, Role: ${r.role||"SAP Consultant"}, Bill Rate: $${r.billRate||0}/hr, Utilization: ${util}%, Annual Revenue: $${Math.round(annualRev/1000)}K, Type: ${r.type||"FTE"}.\nReturn ONLY JSON:\n{"performanceLevel":"TOP/SOLID/NEEDS ATTENTION","strengths":["strength1","strength2"],"improvementArea":"single most important growth area","careerAdvice":"specific next career step advice","rateIncreaseCase":"can they command a higher rate? make the case","weeklyGoal":"single concrete goal for this week","motivationalMessage":"personalized 1-sentence motivation"}`}]
+        })
+      });
+      const data = await resp.json();
+      setConsultantCoach(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setConsultantCoach({error:e.message}); }
+    setConsultantCoachLoad(false);
+  };
 
   const ROLES = [
     { id:"sales",     label:"🎯 Sales",         icon:"🎯" },
