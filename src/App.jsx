@@ -12544,9 +12544,38 @@ function CRMOverview({ crmAccounts, crmDeals, crmActivities, setCrmActivities })
     .sort((a,b)=>a.date.localeCompare(b.date));
 
   const toggleDone = id => setCrmActivities(as=>as.map(a=>a.id===id?{...a,completed:!a.completed}:a));
+  const [CRMOverviewAI,     setCRMOverviewAI]     = useState(null);
+  const [CRMOverviewAILoad, setCRMOverviewAILoad] = useState(false);
+  const runCRMOverviewAI = async () => {
+    setCRMOverviewAILoad(true); setCRMOverviewAI(null);
+    const openDeals = crmDeals.filter(d=>!["closed-won","closed-lost"].includes(d.stage));
+    const stale = openDeals.filter(d=>(Date.now()-new Date(d.lastActivity||"2026-01-01"))/86400000>7);
+    const pipeline = openDeals.reduce((s,d)=>s+(d.value||0),0);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are a sales advisor for Ziksatech, a SAP consulting firm.",
+          messages:[{role:"user",content:`Pipeline: $${Math.round(pipeline/1000)}K open, ${stale.length} stale deals (7d no activity).\nReturn ONLY JSON:\n{"pipelineHealth":"STRONG/MODERATE/WEAK","urgentAction":"single most critical sales action today","staleAlert":"${stale.length} deals at risk — what to do","topDeal":"biggest deal to push this week"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCRMOverviewAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCRMOverviewAI({error:e.message}); }
+    setCRMOverviewAILoad(false);
+  };
 
   return (
     <div>
+      <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
+        <button className="btn bp" style={{fontSize:11}} onClick={runCRMOverviewAI} disabled={CRMOverviewAILoad}>{CRMOverviewAILoad?"⏳...":"🤖 Pipeline Snapshot"}</button>
+        {CRMOverviewAI && !CRMOverviewAI.error && (
+          <>
+            <span style={{fontSize:11,fontWeight:700,color:CRMOverviewAI.pipelineHealth==="STRONG"?"#34d399":CRMOverviewAI.pipelineHealth==="WEAK"?"#f87171":"#f59e0b"}}>{CRMOverviewAI.pipelineHealth}</span>
+            {CRMOverviewAI.urgentAction&&<span style={{fontSize:10,color:"#38bdf8"}}>→ {CRMOverviewAI.urgentAction}</span>}
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setCRMOverviewAI(null)}>✕</button>
+          </>
+        )}
+      </div>
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
@@ -16862,6 +16891,24 @@ function TSConsultant({ roster, tsSubmissions, setTsSubmissions, tsHours, setTsH
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerDay,     setTimerDay]     = useState("Mon");
+  const [TSConsultantAI,     setTSConsultantAI]     = useState(null);
+  const [TSConsultantAILoad, setTSConsultantAILoad] = useState(false);
+  const runTSConsultantAI = async () => {
+    setTSConsultantAILoad(true); setTSConsultantAI(null);
+    const totalHrs = Object.values(dayHours||{}).reduce((s,h)=>s+(+h||0),0);
+    const me = (roster||[]).find(r=>r.id===consultantId);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,
+          system:"You are a timesheet advisor for a SAP consultant.",
+          messages:[{role:"user",content:`Week hours logged: ${totalHrs}. Role: ${me?.role||"SAP Consultant"}. Bill rate: $${me?.billRate||0}/hr.\nReturn ONLY JSON:\n{"weekStatus":"on track/under/over","utilization":"XX%","billableValue":"$XXXk","tip":"single tip to maximize billability this week","submitNote":"reminder if hours look unusual"}`}]
+        })
+      });
+      const data = await resp.json();
+      setTSConsultantAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setTSConsultantAI({error:e.message}); }
+    setTSConsultantAILoad(false);
+  };
   const timerRef = useRef(null);
 
   const startTimer = (day) => {
@@ -16992,6 +17039,18 @@ function TSConsultant({ roster, tsSubmissions, setTsSubmissions, tsHours, setTsH
 
   return (
     <div>
+      {/* AI Timesheet Coach */}
+      <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+        <button className="btn bp" style={{fontSize:11}} onClick={runTSConsultantAI} disabled={TSConsultantAILoad}>{TSConsultantAILoad?"⏳...":"🤖 Week Coach"}</button>
+        {TSConsultantAI && !TSConsultantAI.error && (
+          <>
+            <span style={{fontSize:11,color:TSConsultantAI.weekStatus?.includes("under")?"#f87171":"#34d399",fontWeight:600}}>{TSConsultantAI.weekStatus} · {TSConsultantAI.utilization}</span>
+            <span style={{fontSize:11,color:"#38bdf8"}}>{TSConsultantAI.billableValue}</span>
+            <span style={{fontSize:10,color:"#64748b"}}>{TSConsultantAI.tip}</span>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setTSConsultantAI(null)}>✕</button>
+          </>
+        )}
+      </div>
       <div style={{display:"flex",gap:8,marginBottom:18,alignItems:"center",flexWrap:"wrap"}}>
         <div style={{display:"flex",gap:4,background:"#060d1c",borderRadius:8,padding:3,border:"1px solid #1a2d45"}}>
           {[["entry","Log Hours"],["history","My Submissions"]].map(([v,l])=>(
@@ -25755,6 +25814,26 @@ function AuditLog({ auditLog, setAuditLog, roster }) {
 
   // Clear log with confirmation
   const [confirmClear, setConfirmClear] = useState(false);
+  const [AuditLogAI,     setAuditLogAI]     = useState(null);
+  const [AuditLogAILoad, setAuditLogAILoad] = useState(false);
+  const runAuditLogAI = async () => {
+    setAuditLogAILoad(true); setAuditLogAI(null);
+    const recent = (auditLog||[]).slice(-20);
+    const mods = [...new Set(recent.map(e=>e.module||"?"))];
+    const users = [...new Set(recent.map(e=>e.user||"?"))];
+    const ctx = `${(auditLog||[]).length} total audit entries. Recent modules: ${mods.join(", ")}. Active users: ${users.join(", ")}.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are a compliance and security analyst for a SAP consulting firm.",
+          messages:[{role:"user",content:`${ctx}\nReturn ONLY JSON:\n{"anomalyRisk":"LOW/MEDIUM/HIGH","suspiciousPattern":"any unusual access pattern (or none)","complianceNote":"key compliance observation","recommendation":"single most important audit action"}`}]
+        })
+      });
+      const data = await resp.json();
+      setAuditLogAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setAuditLogAI({error:e.message}); }
+    setAuditLogAILoad(false);
+  };
 
   // Derived filters
   const modules = [...new Set(auditLog.map(e=>e.module))].sort();
@@ -25794,7 +25873,19 @@ function AuditLog({ auditLog, setAuditLog, roster }) {
 
   return (
     <div>
-      <PH title="Audit Log" sub="Complete record of all actions across every module — who did what, when"/>
+      <PH title="Audit Log" sub="Complete record of all actions across every module — who did what, when">
+        <button className="btn bp" style={{fontSize:11}} onClick={runAuditLogAI} disabled={AuditLogAILoad}>{AuditLogAILoad?"⏳...":"🤖 AI Anomaly Scan"}</button>
+      </PH>
+      {AuditLogAI && !AuditLogAI.error && (
+        <div style={{padding:"10px 14px",marginBottom:12,background:"#060d1c",border:`1px solid ${AuditLogAI.anomalyRisk==="HIGH"?"#f87171":"#0369a1"}44`,borderRadius:8,display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-start"}}>
+          <div style={{fontSize:10,fontWeight:700,color:AuditLogAI.anomalyRisk==="HIGH"?"#f87171":"#38bdf8",flexShrink:0}}>🔍 Risk: {AuditLogAI.anomalyRisk}</div>
+          {[["Pattern",AuditLogAI.suspiciousPattern,"#f59e0b"],["Compliance",AuditLogAI.complianceNote,"#38bdf8"],["Action",AuditLogAI.recommendation,"#34d399"]].map(([l,v,col])=>
+            v&&<div key={l} style={{flex:"1 0 150px"}}><div style={{fontSize:8,color:"#3d5a7a",marginBottom:1}}>{l}</div><div style={{fontSize:10,color:col}}>{v}</div></div>
+          )}
+          <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setAuditLogAI(null)}>✕</button>
+        </div>
+      )}
+
 
       {/* KPI row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
