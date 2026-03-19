@@ -3226,6 +3226,210 @@ function FinanceControlSystem(props) {
   );
 }
 
+// ══════════════════════════════════════════════════════
+// SI SUB-CONTRACTING TRACKER
+// Track relationships with Wipro, HCL, LTIMindtree etc
+// ══════════════════════════════════════════════════════
+const SI_DEFAULT_PARTNERS = [
+  { id:"si1",  name:"Wipro Limited",       tier:"Tier-1 SI", status:"Targeting", contact:"", contactRole:"", strength:"SAP BRIM, S/4HANA",   deals:[], notes:"Key SAP partnership. DFW office. BRIM + utilities focus.", logo:"W" },
+  { id:"si2",  name:"HCL Technologies",    tier:"Tier-1 SI", status:"Targeting", contact:"", contactRole:"", strength:"SAP IS-U, SuccessFactors",deals:[], notes:"Strong IS-U practice. Sub-con opportunity on utilities projects.", logo:"H" },
+  { id:"si3",  name:"LTIMindtree",         tier:"Tier-1 SI", status:"Active",    contact:"Ravi K", contactRole:"Delivery Head SAP", strength:"SAP S/4HANA, BRIM", deals:[], notes:"Active conversation. BRIM sub-con interest confirmed.", logo:"L" },
+  { id:"si4",  name:"Mersol & Associates", tier:"Boutique",  status:"Active",    contact:"Juuhi M", contactRole:"Program Director", strength:"SAP ECC Decommission",deals:[{name:"CAS/ACS ECC Decommission",value:5200000,role:"Sub-contractor",status:"Active"}], notes:"Prime on CAS/ACS. We provide 35 consultants, 31 roles.", logo:"M" },
+  { id:"si5",  name:"Infosys BPM",         tier:"Tier-1 SI", status:"Targeting", contact:"", contactRole:"", strength:"SAP SuccessFactors",  deals:[], notes:"SF practice strong. Target their overflow projects.", logo:"I" },
+  { id:"si6",  name:"Accenture",           tier:"Tier-1 SI", status:"Research",  contact:"", contactRole:"", strength:"SAP all modules",     deals:[], notes:"Hard to penetrate but WBE cert is an angle.", logo:"A" },
+  { id:"si7",  name:"Deloitte",            tier:"Tier-1 SI", status:"Research",  contact:"", contactRole:"", strength:"SAP Utilities",       deals:[], notes:"DFW strong. Oncor + Vistra. WBE angle for diversity spend.", logo:"D" },
+];
+
+const SI_STATUS_COLORS = {
+  "Active":"#34d399","Targeting":"#38bdf8","Research":"#f59e0b","Paused":"#64748b","Won":"#4ade80","Lost":"#f87171"
+};
+
+function SISubConTracker({ addAudit, authProfile }) {
+  const [partners, setPartners] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-si-partners")||"null") || SI_DEFAULT_PARTNERS; } catch { return SI_DEFAULT_PARTNERS; }
+  });
+  const [selId, setSelId] = useState("si4"); // Mersol selected by default (active)
+  const [aiLoad, setAiLoad] = useState(false);
+  const [aiInsight, setAiInsight] = useState(null);
+  const [addDeal, setAddDeal] = useState(false);
+  const [dealForm, setDealForm] = useState({name:"",value:"",role:"Sub-contractor",status:"Targeting"});
+
+  const save = (ps) => { setPartners(ps); try{localStorage.setItem("zt-si-partners",JSON.stringify(ps));}catch{} };
+  const sel = partners.find(p=>p.id===selId) || partners[0];
+
+  const runAI = async (partner) => {
+    setAiLoad(true); setAiInsight(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are a business development advisor for Ziksatech/Naxon — a WBE-certified SAP consulting firm specializing in BRIM, IS-U, and S/4HANA. Help build sub-contracting relationships with large SIs.",
+          messages:[{role:"user",content:`SI Partner: ${partner.name} (${partner.tier}). Their SAP strengths: ${partner.strength}. Our status: ${partner.status}. Notes: ${partner.notes}. Active deals: ${JSON.stringify(partner.deals)}.
+
+Return ONLY JSON:
+{"outreachAngle":"best angle to pitch partnership to this SI","ourValue":"what Ziksatech/Naxon uniquely offers them","firstMeetingAsk":"specific ask for first meeting","keyContacts":"who to target (role/dept) at this SI","riskFactors":["risk1","risk2"],"timeline":"realistic timeline to first sub-contract deal","winningMessage":"2-sentence pitch email opening"}`}]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text||"{}";
+      setAiInsight(JSON.parse(text.replace(/```json|```/g,"")));
+    } catch(e) { setAiInsight({error:e.message}); }
+    setAiLoad(false);
+  };
+
+  const statusBadge = (s) => (
+    <span style={{background:"#040a14",color:SI_STATUS_COLORS[s]||"#64748b",border:`1px solid ${SI_STATUS_COLORS[s]||"#64748b"}44`,borderRadius:12,padding:"1px 8px",fontSize:10,fontWeight:700}}>{s}</span>
+  );
+
+  return (
+    <div>
+      <PH title="🤝 SI Sub-Contracting Tracker" sub="Wipro · HCL · LTIMindtree · Mersol · Deloitte — fastest path to Naxon revenue">
+        <div style={{fontSize:10,color:"#475569"}}>
+          Total pipeline: <span style={{color:"#34d399",fontWeight:700}}>${(partners.flatMap(p=>p.deals).reduce((s,d)=>s+(+d.value||0),0)/1e6).toFixed(1)}M</span>
+        </div>
+      </PH>
+
+      {/* KPI strip */}
+      <div style={{display:"flex",gap:10,marginBottom:14}}>
+        {[
+          {l:"Active Partners",   v:partners.filter(p=>p.status==="Active").length,    color:"#34d399"},
+          {l:"Targeting",         v:partners.filter(p=>p.status==="Targeting").length,  color:"#38bdf8"},
+          {l:"Total Partners",    v:partners.length,                                    color:"#a78bfa"},
+          {l:"Active Deals",      v:partners.flatMap(p=>p.deals).filter(d=>d.status==="Active").length, color:"#f59e0b"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{flex:1,padding:"10px 12px",borderTop:`2px solid ${k.color}`}}>
+            <div style={{fontSize:18,fontWeight:800,color:k.color}}>{k.v}</div>
+            <div style={{fontSize:9,color:"#475569",marginTop:1}}>{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:14}}>
+        {/* Partner list */}
+        <div>
+          {partners.map(p=>(
+            <div key={p.id} onClick={()=>{setSelId(p.id);setAiInsight(null);}} style={{padding:"10px 12px",marginBottom:6,borderRadius:8,cursor:"pointer",
+              background:selId===p.id?"#0c1a2e":"#040a14",
+              border:`1px solid ${selId===p.id?"#0369a1":(SI_STATUS_COLORS[p.status]||"#64748b")+"33"}`}}>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:"#0c2340",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#38bdf8",flexShrink:0}}>{p.logo}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                  <div style={{fontSize:9,color:"#475569"}}>{p.tier}</div>
+                </div>
+                {statusBadge(p.status)}
+              </div>
+              {p.deals.length>0&&<div style={{fontSize:9,color:"#34d399",marginTop:2}}>💼 {p.deals.length} deal{p.deals.length>1?"s":""} · ${(p.deals.reduce((s,d)=>s+(+d.value||0),0)/1e6).toFixed(1)}M</div>}
+            </div>
+          ))}
+        </div>
+
+        {/* Partner detail */}
+        {sel&&(
+          <div>
+            <div className="card" style={{padding:"16px",marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:15,fontWeight:800,color:"#e2e8f0"}}>{sel.name}</div>
+                  <div style={{fontSize:10,color:"#475569",marginTop:2}}>{sel.tier} · {sel.strength}</div>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  {statusBadge(sel.status)}
+                  <select className="inp" style={{fontSize:10,padding:"2px 4px"}} value={sel.status}
+                    onChange={e=>save(partners.map(p=>p.id===sel.id?{...p,status:e.target.value}:p))}>
+                    {Object.keys(SI_STATUS_COLORS).map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+              {/* Contact */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>Primary Contact</div>
+                  <input className="inp" style={{width:"100%",fontSize:11}} placeholder="Contact name..." value={sel.contact}
+                    onChange={e=>save(partners.map(p=>p.id===sel.id?{...p,contact:e.target.value}:p))}/>
+                </div>
+                <div>
+                  <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>Role / Title</div>
+                  <input className="inp" style={{width:"100%",fontSize:11}} placeholder="SAP Practice Head..." value={sel.contactRole}
+                    onChange={e=>save(partners.map(p=>p.id===sel.id?{...p,contactRole:e.target.value}:p))}/>
+                </div>
+              </div>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>Notes</div>
+              <textarea className="inp" rows={2} style={{width:"100%",fontSize:11,marginBottom:10}} value={sel.notes}
+                onChange={e=>save(partners.map(p=>p.id===sel.id?{...p,notes:e.target.value}:p))}/>
+              <button className="btn bp" style={{fontSize:11}} onClick={()=>runAI(sel)} disabled={aiLoad}>
+                {aiLoad?"⏳ Analyzing...":"🤖 Generate BD Strategy"}
+              </button>
+            </div>
+
+            {/* Deals */}
+            <div className="card" style={{padding:"14px",marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div className="section-hdr">💼 Sub-Contract Deals</div>
+                <button className="btn bg" style={{fontSize:10}} onClick={()=>setAddDeal(!addDeal)}>+ Add Deal</button>
+              </div>
+              {addDeal&&(
+                <div style={{padding:"10px",background:"#040a14",borderRadius:6,marginBottom:10,border:"1px solid #0369a133"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:6,marginBottom:6}}>
+                    <input className="inp" style={{fontSize:11}} placeholder="Project/deal name" value={dealForm.name} onChange={e=>setDealForm({...dealForm,name:e.target.value})}/>
+                    <input className="inp" type="number" style={{fontSize:11}} placeholder="Value $" value={dealForm.value} onChange={e=>setDealForm({...dealForm,value:e.target.value})}/>
+                    <select className="inp" style={{fontSize:11}} value={dealForm.status} onChange={e=>setDealForm({...dealForm,status:e.target.value})}>
+                      {["Targeting","Proposal","Active","Won","Lost"].map(s=><option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <button className="btn bp" style={{fontSize:11}} onClick={()=>{
+                    if(!dealForm.name) return;
+                    const deal={...dealForm,id:"d"+Date.now(),value:+dealForm.value||0};
+                    save(partners.map(p=>p.id===sel.id?{...p,deals:[...p.deals,deal]}:p));
+                    setAddDeal(false); setDealForm({name:"",value:"",role:"Sub-contractor",status:"Targeting"});
+                  }}>Save Deal</button>
+                </div>
+              )}
+              {sel.deals.length===0&&<div style={{color:"#334155",fontSize:11,padding:"10px 0"}}>No deals yet — click + Add Deal to track a sub-contract opportunity.</div>}
+              {sel.deals.map(deal=>(
+                <div key={deal.id} style={{padding:"8px 10px",marginBottom:4,background:"#040a14",borderRadius:5,border:`1px solid ${SI_STATUS_COLORS[deal.status]||"#1a2d45"}33`,display:"flex",gap:10,alignItems:"center"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{deal.name}</div>
+                    <div style={{fontSize:9,color:"#475569"}}>{deal.role}</div>
+                  </div>
+                  <div style={{fontSize:13,fontWeight:800,color:"#34d399",fontFamily:"monospace"}}>${(+deal.value/1000).toFixed(0)}K</div>
+                  {statusBadge(deal.status)}
+                </div>
+              ))}
+            </div>
+
+            {/* AI Insights */}
+            {aiInsight&&!aiInsight.error&&(
+              <div className="card" style={{padding:"14px",background:"#060d1c",border:"1px solid #0369a144"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:10}}>🤖 BD Strategy — {sel.name}</div>
+                {aiInsight.winningMessage&&(
+                  <div style={{padding:"8px 12px",background:"#0c2340",borderRadius:6,marginBottom:10,border:"1px solid #0369a133"}}>
+                    <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>WINNING PITCH OPENER</div>
+                    <div style={{fontSize:11,color:"#e2e8f0",fontStyle:"italic"}}>"{aiInsight.winningMessage}"</div>
+                  </div>
+                )}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  {[
+                    ["🎯 Outreach Angle",aiInsight.outreachAngle,"#38bdf8"],
+                    ["💎 Our Value to Them",aiInsight.ourValue,"#34d399"],
+                    ["📅 First Meeting Ask",aiInsight.firstMeetingAsk,"#a78bfa"],
+                    ["👤 Key Contacts to Target",aiInsight.keyContacts,"#f59e0b"],
+                  ].map(([label,val,color])=>(val&&(
+                    <div key={label} style={{padding:"8px 10px",background:"#040a14",borderRadius:6}}>
+                      <div style={{fontSize:9,color:color,marginBottom:3,fontWeight:700}}>{label}</div>
+                      <div style={{fontSize:10,color:"#94a3b8"}}>{val}</div>
+                    </div>
+                  )))}
+                </div>
+                {aiInsight.timeline&&<div style={{marginTop:8,fontSize:10,color:"#64748b"}}>⏱ Timeline: {aiInsight.timeline}</div>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ZiksatechOps() {
   const [tab, setTab] = useState(() => {
     try { const s = localStorage.getItem("zt-last-tab"); if(s) return s; } catch {}
@@ -4369,6 +4573,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="offboarding" && <OffboardingModule orgMembers={shared.orgMembers} setOrgMembers={shared.setOrgMembers} roster={shared.roster} setRoster={shared.setRoster} vendors={shared.vendors} setVendors={shared.setVendors} addAudit={shared.addAudit}/>}
         {tab==="glexport"      && <FreshBooksGL finInvoices={shared.finInvoices||[]} fbInvoices={shared.fbInvoices||[]} clients={shared.clients||[]}/>}
         {tab==="esign"         && <ESignature {...shared}/>}
+        {tab==="sitracker"  && <SISubConTracker {...shared} authProfile={authProfile}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
         {tab==="timesheet"  && <TimesheetApproval {...shared} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="clients"    && <ClientPortfolio {...shared}/>}
@@ -24805,6 +25010,8 @@ function GlobalSearchResults({ q, roster, finInvoices, apInvoices, projects, crm
     { tab:"doctemplates", label:"Doc Templates",                icon:"📄", group:"Operations",  keywords:"documents templates letters generate pdf" },
     { tab:"settings",     label:"Settings",                     icon:"⚙️", group:"Operations",  keywords:"settings configuration preferences account" },
     { tab:"help",         label:"Help Center & Training Guide",  icon:"📖", group:"Overview",    keywords:"help training guide documentation tutorial quick start shortcuts glossary" },
+    { tab:"fcs",      label:"Finance Control System",  group:"Finance",   icon:"💰", ai:true,  desc:"Tax readiness · expense control · CPA-ready books" },
+    { tab:"bdengine",  label:"BD Engine",               group:"Sales Tools",icon:"🚀", ai:true,  desc:"Target accounts · outreach · Phase-0 pipeline" },
   ];
 
   const moduleResults = ALL_MODULES
