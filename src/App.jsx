@@ -4362,6 +4362,7 @@ export default function ZiksatechOps() {
     { id:"sitracker",    label:"SI Sub-Contracting 🤝",   icon:ICONS.dash,     group:"Naxon OS" },
     { id:"bdengine",     label:"BD Engine 🚀",             icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
+    { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, jobReqs, setJobReqs, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -4982,6 +4983,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
           {tab==="naxonos"    && <NaxonOSCommand addAudit={shared.addAudit} authProfile={authProfile}/>}
           {tab==="bdengine"   && <BDEngine crmDeals={shared.crmDeals} roster={shared.roster} clients={shared.crmAccounts} addAudit={shared.addAudit} setTab={setTab}/>}
           {tab==="talent"     && <ZiksatechTalent roster={shared.roster} jobReqs={shared.jobReqs} addAudit={shared.addAudit} authProfile={authProfile}/>}
+          {tab==="cms"        && <CandidateManagement roster={shared.roster} setRoster={shared.setRoster} clients={shared.clients} crmDeals={shared.crmDeals} jobReqs={shared.jobReqs} setJobReqs={shared.setJobReqs} addAudit={shared.addAudit} authProfile={authProfile} onboardings={shared.onboardings} setOnboardings={shared.setOnboardings} workAuth={shared.workAuth} setWorkAuth={shared.setWorkAuth}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
         {tab==="timesheet"  && <TimesheetApproval {...shared} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="clients"    && <ClientPortfolio {...shared}/>}
@@ -37732,6 +37734,456 @@ Be concise, helpful and professional. Answer based on the context above when pos
         </div>
       )}
     </>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// CANDIDATE MANAGEMENT SYSTEM — End-to-end hiring pipeline
+// Source → Screen → Interview → Offer → Visa/H1B → Onboard → Place
+// ═══════════════════════════════════════════════════════════════════════
+
+const CMS_STAGES = [
+  { id:"sourced",     label:"Sourced",       color:"#475569", bg:"#0a0f1a"  },
+  { id:"screening",   label:"Screening",     color:"#38bdf8", bg:"#0c1e3d"  },
+  { id:"interviewing",label:"Interviewing",  color:"#a78bfa", bg:"#1a0a2e"  },
+  { id:"offer",       label:"Offer",         color:"#f59e0b", bg:"#1a1005"  },
+  { id:"visa",        label:"Visa/H1B",      color:"#34d399", bg:"#021f14"  },
+  { id:"onboarding",  label:"Onboarding",    color:"#60a5fa", bg:"#0c1a2e"  },
+  { id:"placed",      label:"Placed",        color:"#4ade80", bg:"#021f0a"  },
+  { id:"withdrawn",   label:"Withdrawn",     color:"#f87171", bg:"#1a0808"  },
+];
+
+const CMS_VISA_TYPES = ["H-1B","H-4 EAD","L-1","OPT","STEM OPT","Green Card","USC","TN","Other"];
+const CMS_SOURCES    = ["LinkedIn","Referral","Job Board","Agency","Network","Indeed","Dice","Other"];
+
+const CMS_SEED = [];
+
+function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, setJobReqs, addAudit, authProfile, onboardings, setOnboardings, workAuth, setWorkAuth }) {
+  const [cands,    setCands]   = useState(() => { try { return JSON.parse(localStorage.getItem("zt-cms-cands")||"null") || CMS_SEED; } catch { return CMS_SEED; } });
+  const [sub,      setSub]     = useState("pipeline");
+  const [selId,    setSel]     = useState(null);
+  const [modal,    setModal]   = useState(false);
+  const [search,   setSearch]  = useState("");
+  const [stageF,   setStageF]  = useState("all");
+  const [visaF,    setVisaF]   = useState("all");
+  const [aiLoad,   setAiLoad]  = useState(false);
+  const [aiResult, setAiRes]   = useState(null);
+
+  const EMPTY = { name:"", role:"", source:"LinkedIn", visa:"H-1B", phone:"", email:"", linkedIn:"", skills:"", stage:"sourced", billRate:"", payRate:"", notes:"", jobReqId:"", clientTarget:"", h1bStatus:"", i94Expiry:"", lca:"", petitionNum:"", priorityDate:"", onboardTasks:[] };
+  const [form, setForm] = useState({...EMPTY});
+  const [editing, setEditing] = useState(null);
+
+  const save = (c) => { localStorage.setItem("zt-cms-cands", JSON.stringify(c)); setCands(c); };
+
+  const open = (c=null) => {
+    setEditing(c?.id||null);
+    setForm(c ? {...c} : {...EMPTY});
+    setModal(true);
+  };
+
+  const submit = () => {
+    if (!form.name.trim()) return alert("Name is required");
+    const updated = editing
+      ? cands.map(c => c.id===editing ? {...form, id:editing, updatedAt: new Date().toISOString()} : c)
+      : [...cands, {...form, id:"cms-"+Date.now(), createdAt: new Date().toISOString()}];
+    save(updated);
+    setModal(false);
+    addAudit?.("CMS", editing?"Update":"Add", "Candidate", form.name);
+  };
+
+  const advance = (id, newStage) => {
+    const updated = cands.map(c => c.id===id ? {...c, stage:newStage, [`${newStage}At`]:new Date().toISOString()} : c);
+    save(updated);
+    addAudit?.("CMS","Stage Change","Candidate", `→ ${newStage}`);
+  };
+
+  const placeOnRoster = (cand) => {
+    if (!window.confirm(`Place ${cand.name} on the Roster as an active consultant?`)) return;
+    const newMember = {
+      id: "r-cms-"+Date.now(),
+      name: cand.name,
+      role: cand.role || "SAP Consultant",
+      type: cand.visa==="USC"||cand.visa==="Green Card" ? "FTE" : "FTE",
+      client: cand.clientTarget || "",
+      billRate: +cand.billRate || 0,
+      util: 0,
+      baseSalary: 0,
+      skills: cand.skills || "",
+      projects: "",
+      revShare: 0,
+      fixedRate: +cand.payRate || 0,
+      thirdPartySplit: 0,
+      insurance: 7200,
+      clientRates: [],
+      compType: "fixed_salary",
+    };
+    setRoster(r => [...r, newMember]);
+    advance(cand.id, "placed");
+    addAudit?.("CMS","Placed on Roster","Candidate", cand.name);
+    alert(`${cand.name} added to the Roster ✅`);
+  };
+
+  const runAI = async (cand) => {
+    setAiLoad(true); setAiRes(null);
+    try {
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:600,
+          system:"You are a senior SAP recruiting advisor for Ziksatech, a staffing firm.",
+          messages:[{role:"user", content:`Candidate: ${cand.name}, Role: ${cand.role}, Skills: ${cand.skills}, Visa: ${cand.visa}, Bill Rate: $${cand.billRate}/hr, Stage: ${cand.stage}.\nReturn ONLY JSON: {"fit":"High/Medium/Low","billRateAssessment":"is rate competitive?","nextAction":"single best action","riskFlag":"main risk or none","interviewTip":"one specific interview question to ask"}`}]
+        })
+      });
+      const data = await resp.json();
+      setAiRes(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+    } catch(e) { setAiRes({fit:"Error", nextAction: e.message}); }
+    setAiLoad(false);
+  };
+
+  const filtered = cands.filter(c => {
+    if (stageF!=="all" && c.stage!==stageF) return false;
+    if (visaF!=="all" && c.visa!==visaF) return false;
+    if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.role.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const sel = cands.find(c=>c.id===selId)||null;
+  const stageColor = (s) => CMS_STAGES.find(x=>x.id===s)?.color||"#64748b";
+  const stageBg    = (s) => CMS_STAGES.find(x=>x.id===s)?.bg||"#060d1c";
+
+  // KPIs
+  const counts = {};
+  CMS_STAGES.forEach(s => { counts[s.id] = cands.filter(c=>c.stage===s.id).length; });
+  const activeCount = cands.filter(c=>!["placed","withdrawn"].includes(c.stage)).length;
+
+  return (
+    <div>
+      <PH title="Candidate Management" sub="Source → Screen → Interview → Offer → Visa/H1B → Onboard → Place">
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>open()}>+ Add Candidate</button>
+      </PH>
+
+      {/* KPI Strip */}
+      <div style={{display:"flex",gap:8,marginBottom:18,overflowX:"auto",paddingBottom:4}}>
+        {CMS_STAGES.map(s=>(
+          <div key={s.id} onClick={()=>setStageF(stageF===s.id?"all":s.id)}
+            style={{flexShrink:0,padding:"8px 14px",borderRadius:8,cursor:"pointer",
+              background:stageF===s.id?s.bg:"#060d1c",
+              border:`1px solid ${stageF===s.id?s.color:"#1a2d45"}`,
+              transition:"all 0.15s"}}>
+            <div style={{fontSize:20,fontWeight:900,color:s.color,fontFamily:"monospace"}}>{counts[s.id]||0}</div>
+            <div style={{fontSize:9,color:stageF===s.id?s.color:"#475569",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:1}}>{s.label}</div>
+          </div>
+        ))}
+        <div style={{flexShrink:0,padding:"8px 14px",borderRadius:8,background:"#0c2340",border:"1px solid #0369a1"}}>
+          <div style={{fontSize:20,fontWeight:900,color:"#38bdf8",fontFamily:"monospace"}}>{activeCount}</div>
+          <div style={{fontSize:9,color:"#38bdf8",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:1}}>Active</div>
+        </div>
+      </div>
+
+      {/* Toolbar */}
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+        <input className="inp" style={{width:200,fontSize:12}} placeholder="Search name or role…" value={search} onChange={e=>setSearch(e.target.value)}/>
+        <select className="inp" style={{width:140,fontSize:12}} value={visaF} onChange={e=>setVisaF(e.target.value)}>
+          <option value="all">All Visa Types</option>
+          {CMS_VISA_TYPES.map(v=><option key={v}>{v}</option>)}
+        </select>
+        <div style={{display:"flex",gap:4,marginLeft:"auto"}}>
+          {["pipeline","list","visa"].map(v=>(
+            <button key={v} onClick={()=>setSub(v)}
+              style={{padding:"5px 14px",borderRadius:7,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+                background:sub===v?"linear-gradient(135deg,#0369a1,#0284c7)":"#0a1120",
+                color:sub===v?"#fff":"#475569"}}>
+              {v==="pipeline"?"🔄 Pipeline":v==="list"?"📋 List":"🛂 Visa"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── PIPELINE KANBAN ── */}
+      {sub==="pipeline" && (
+        <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8}}>
+          {CMS_STAGES.filter(s=>s.id!=="withdrawn").map(stage=>{
+            const stageCands = filtered.filter(c=>c.stage===stage.id);
+            return (
+              <div key={stage.id} style={{flexShrink:0,width:210,background:"#060d1c",border:"1px solid #1a2d45",borderRadius:10,padding:"10px 8px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,padding:"0 4px"}}>
+                  <span style={{fontSize:10,fontWeight:700,color:stage.color,textTransform:"uppercase",letterSpacing:"0.06em"}}>{stage.label}</span>
+                  <span style={{fontSize:10,color:"#334155",background:"#040810",borderRadius:10,padding:"1px 7px"}}>{stageCands.length}</span>
+                </div>
+                {stageCands.map(c=>(
+                  <div key={c.id} onClick={()=>{setSel(c.id);setSub("list");}}
+                    style={{background:selId===c.id?"#0c2340":"#040810",border:`1px solid ${selId===c.id?stage.color:"#0a1626"}`,
+                      borderRadius:8,padding:"10px 10px",marginBottom:6,cursor:"pointer",transition:"all 0.15s"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:2}}>{c.name}</div>
+                    <div style={{fontSize:10,color:"#64748b",marginBottom:4}}>{c.role}</div>
+                    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                      <span style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#0c1e3d",color:"#38bdf8"}}>{c.visa}</span>
+                      {c.billRate && <span style={{fontSize:8,padding:"1px 5px",borderRadius:4,background:"#021f14",color:"#34d399"}}>${c.billRate}/hr</span>}
+                    </div>
+                    {/* Quick advance button */}
+                    {(() => {
+                      const idx = CMS_STAGES.findIndex(s=>s.id===stage.id);
+                      const next = CMS_STAGES[idx+1];
+                      if (!next || next.id==="withdrawn") return null;
+                      return (
+                        <button onClick={e=>{e.stopPropagation();advance(c.id,next.id);}}
+                          style={{marginTop:6,width:"100%",padding:"3px 0",borderRadius:5,border:"none",cursor:"pointer",
+                            background:stage.color+"22",color:stage.color,fontSize:9,fontWeight:700}}>
+                          → {next.label}
+                        </button>
+                      );
+                    })()}
+                  </div>
+                ))}
+                {stageCands.length===0 && <div style={{fontSize:10,color:"#1e3a5f",textAlign:"center",padding:"12px 0"}}>Empty</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── LIST VIEW + DETAIL PANEL ── */}
+      {sub==="list" && (
+        <div style={{display:"grid",gridTemplateColumns:sel?"1fr 380px":"1fr",gap:14}}>
+          {/* Table */}
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"1.8fr 1.4fr 90px 100px 90px 80px 100px",gap:6,padding:"6px 12px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+              <div>Candidate</div><div>Role</div><div>Visa</div><div>Stage</div><div>Rate</div><div>Source</div><div>Actions</div>
+            </div>
+            {filtered.map(c=>(
+              <div key={c.id} onClick={()=>setSel(selId===c.id?null:c.id)}
+                style={{display:"grid",gridTemplateColumns:"1.8fr 1.4fr 90px 100px 90px 80px 100px",gap:6,
+                  padding:"10px 12px",borderRadius:8,marginBottom:4,cursor:"pointer",
+                  background:selId===c.id?"#0c2340":"#060d1c",
+                  border:`1px solid ${selId===c.id?"#0369a1":"#1a2d45"}`,
+                  transition:"background 0.15s"}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{c.name}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>{c.email}</div>
+                </div>
+                <div style={{fontSize:11,color:"#94a3b8",alignSelf:"center"}}>{c.role}</div>
+                <div style={{alignSelf:"center"}}>
+                  <span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:"#0c1e3d",color:"#38bdf8"}}>{c.visa}</span>
+                </div>
+                <div style={{alignSelf:"center"}}>
+                  <span style={{fontSize:9,padding:"2px 7px",borderRadius:6,fontWeight:700,
+                    background:stageBg(c.stage),color:stageColor(c.stage),border:`1px solid ${stageColor(c.stage)}44`}}>
+                    {CMS_STAGES.find(s=>s.id===c.stage)?.label||c.stage}
+                  </span>
+                </div>
+                <div style={{fontSize:11,color:"#38bdf8",fontFamily:"monospace",alignSelf:"center"}}>
+                  {c.billRate ? `$${c.billRate}/hr` : "—"}
+                </div>
+                <div style={{fontSize:10,color:"#64748b",alignSelf:"center"}}>{c.source}</div>
+                <div style={{display:"flex",gap:4,alignSelf:"center"}} onClick={e=>e.stopPropagation()}>
+                  <button className="btn bg" style={{fontSize:9,padding:"3px 8px"}} onClick={()=>open(c)}>✏️</button>
+                  {c.stage!=="placed" && (
+                    <button className="btn bg" style={{fontSize:9,padding:"3px 8px",color:"#f87171"}}
+                      onClick={()=>advance(c.id,"withdrawn")}>✕</button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {filtered.length===0 && (
+              <div style={{padding:"40px",textAlign:"center",color:"#334155",fontSize:12}}>
+                No candidates match — <button className="btn bp" style={{fontSize:11}} onClick={()=>open()}>Add one</button>
+              </div>
+            )}
+          </div>
+
+          {/* Detail Panel */}
+          {sel && (
+            <div className="card" style={{padding:"18px 20px",position:"sticky",top:0,maxHeight:"80vh",overflowY:"auto"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+                <div>
+                  <div style={{fontSize:15,fontWeight:800,color:"#e2e8f0"}}>{sel.name}</div>
+                  <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{sel.role}</div>
+                  <span style={{fontSize:9,padding:"2px 8px",borderRadius:6,fontWeight:700,marginTop:5,display:"inline-block",
+                    background:stageBg(sel.stage),color:stageColor(sel.stage),border:`1px solid ${stageColor(sel.stage)}44`}}>
+                    {CMS_STAGES.find(s=>s.id===sel.stage)?.label}
+                  </span>
+                </div>
+                <button className="btn bg" style={{fontSize:10}} onClick={()=>setSel(null)}>✕</button>
+              </div>
+
+              {/* Info rows */}
+              {[
+                ["Email",    sel.email||"—"],
+                ["Phone",    sel.phone||"—"],
+                ["LinkedIn", sel.linkedIn||"—"],
+                ["Visa",     sel.visa],
+                ["Source",   sel.source],
+                ["Bill Rate",sel.billRate?`$${sel.billRate}/hr`:"—"],
+                ["Pay Rate", sel.payRate?`$${sel.payRate}/hr`:"—"],
+                ["Client Target", sel.clientTarget||"—"],
+              ].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+                  <span style={{color:"#475569"}}>{k}</span>
+                  <span style={{color:"#cbd5e1",fontWeight:600,maxWidth:180,textAlign:"right",wordBreak:"break-all"}}>{v}</span>
+                </div>
+              ))}
+
+              {/* Skills */}
+              {sel.skills && (
+                <div style={{marginTop:10}}>
+                  <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:5}}>Skills</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                    {sel.skills.split(",").map(s=>s.trim()).filter(Boolean).map(sk=>(
+                      <span key={sk} style={{fontSize:9,padding:"2px 7px",borderRadius:8,background:"#0c1e3d",color:"#38bdf8",border:"1px solid #0369a133"}}>{sk}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Visa/H1B details */}
+              {(sel.h1bStatus||sel.i94Expiry||sel.petitionNum||sel.priorityDate) && (
+                <div style={{marginTop:10,padding:"10px 12px",background:"#040a14",borderRadius:8,border:"1px solid #1a2d45"}}>
+                  <div style={{fontSize:9,color:"#34d399",fontWeight:700,textTransform:"uppercase",marginBottom:6}}>🛂 Visa / H1B Details</div>
+                  {[["Status",sel.h1bStatus],["Petition #",sel.petitionNum],["I-94 Expiry",sel.i94Expiry],["Priority Date",sel.priorityDate],["LCA",sel.lca]].filter(([,v])=>v).map(([k,v])=>(
+                    <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:10,padding:"3px 0",borderBottom:"1px solid #0a1626"}}>
+                      <span style={{color:"#475569"}}>{k}</span>
+                      <span style={{color:"#34d399",fontWeight:600}}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Notes */}
+              {sel.notes && (
+                <div style={{marginTop:10,padding:"8px 10px",background:"#040810",borderRadius:6,fontSize:11,color:"#64748b",lineHeight:1.5}}>
+                  {sel.notes}
+                </div>
+              )}
+
+              {/* AI Screening */}
+              <button className="btn bp" style={{width:"100%",marginTop:12,fontSize:11}}
+                onClick={()=>runAI(sel)} disabled={aiLoad}>
+                {aiLoad?"⏳ Analyzing…":"🤖 AI Screen"}
+              </button>
+              {aiResult && (
+                <div style={{marginTop:8,padding:"10px 12px",background:"#040a14",borderRadius:8,border:"1px solid #0369a144"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <span style={{fontSize:10,fontWeight:700,color:"#38bdf8"}}>AI Assessment</span>
+                    <span style={{fontSize:10,fontWeight:800,color:aiResult.fit==="High"?"#34d399":aiResult.fit==="Medium"?"#f59e0b":"#f87171"}}>{aiResult.fit} Fit</span>
+                  </div>
+                  {[["💰 Rate",aiResult.billRateAssessment],["⚡ Next",aiResult.nextAction],["⚠️ Risk",aiResult.riskFlag],["❓ Interview Q",aiResult.interviewTip]].filter(([,v])=>v).map(([k,v])=>(
+                    <div key={k} style={{marginBottom:5}}>
+                      <div style={{fontSize:9,color:"#3d5a7a",marginBottom:1}}>{k}</div>
+                      <div style={{fontSize:10,color:"#94a3b8",lineHeight:1.4}}>{v}</div>
+                    </div>
+                  ))}
+                  <button className="btn bg" style={{fontSize:9,marginTop:4}} onClick={()=>setAiRes(null)}>✕</button>
+                </div>
+              )}
+
+              {/* Stage actions */}
+              <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:6}}>
+                <div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",marginBottom:2}}>Move to Stage</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                  {CMS_STAGES.filter(s=>s.id!==sel.stage).map(s=>(
+                    <button key={s.id} onClick={()=>advance(sel.id,s.id)}
+                      style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${s.color}44`,cursor:"pointer",
+                        background:s.bg,color:s.color,fontSize:9,fontWeight:600}}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                {sel.stage!=="placed" && (
+                  <button className="btn bp" style={{fontSize:11,marginTop:4}} onClick={()=>placeOnRoster(sel)}>
+                    ✅ Place on Roster
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── VISA TRACKER ── */}
+      {sub==="visa" && (
+        <div>
+          <div style={{marginBottom:14,padding:"10px 14px",background:"#060d1c",border:"1px solid #1a2d45",borderRadius:8,fontSize:11,color:"#64748b"}}>
+            Track H1B status, I-94 expiry, petition numbers and priority dates for all candidates in the pipeline.
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:6,padding:"6px 12px",background:"#040810",borderRadius:6,marginBottom:6,fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:600}}>
+            <div>Candidate</div><div>Visa</div><div>Stage</div><div>H1B Status</div><div>I-94 Expiry</div><div>Petition #</div><div>Priority Date</div>
+          </div>
+          {cands.filter(c=>c.visa&&c.visa!=="USC").map(c=>{
+            const expiry = c.i94Expiry ? Math.ceil((new Date(c.i94Expiry)-new Date())/86400000) : null;
+            const urgent = expiry!==null && expiry < 90;
+            return (
+              <div key={c.id} style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:6,padding:"9px 12px",borderRadius:8,marginBottom:4,
+                background:urgent?"#1a0808":"#060d1c",border:`1px solid ${urgent?"#7f1d1d":"#1a2d45"}`}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>{c.name}</div>
+                <div><span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:"#0c1e3d",color:"#38bdf8"}}>{c.visa}</span></div>
+                <div><span style={{fontSize:9,padding:"2px 6px",borderRadius:6,fontWeight:700,background:stageBg(c.stage),color:stageColor(c.stage)}}>{CMS_STAGES.find(s=>s.id===c.stage)?.label||c.stage}</span></div>
+                <div style={{fontSize:10,color:c.h1bStatus?"#34d399":"#334155"}}>{c.h1bStatus||"—"}</div>
+                <div style={{fontSize:10,color:urgent?"#f87171":"#94a3b8"}}>
+                  {c.i94Expiry||"—"}{expiry!==null&&<span style={{marginLeft:4,fontSize:9}}>{expiry}d</span>}
+                </div>
+                <div style={{fontSize:10,color:"#64748b",fontFamily:"monospace"}}>{c.petitionNum||"—"}</div>
+                <div style={{fontSize:10,color:"#64748b"}}>{c.priorityDate||"—"}</div>
+              </div>
+            );
+          })}
+          {cands.filter(c=>c.visa&&c.visa!=="USC").length===0 && (
+            <div style={{padding:"30px",textAlign:"center",color:"#334155",fontSize:12}}>No non-USC candidates yet</div>
+          )}
+        </div>
+      )}
+
+      {/* ── ADD/EDIT MODAL ── */}
+      {modal && (
+        <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+          <div className="modal" style={{maxWidth:620,maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+              <h2 style={{fontSize:16,fontWeight:700,color:"#e2e8f0"}}>{editing?"Edit":"Add"} Candidate</h2>
+              <button className="btn bg" onClick={()=>setModal(false)}>✕</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[["Name","name","text"],["Role / Title","role","text"],["Email","email","email"],["Phone","phone","tel"],["LinkedIn URL","linkedIn","text"],["Bill Rate ($/hr)","billRate","number"],["Pay Rate ($/hr)","payRate","number"],["Client Target","clientTarget","text"]].map(([l,k,t])=>(
+                <FF key={k} label={l}><input type={t} className="inp" value={form[k]||""} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={l}/></FF>
+              ))}
+              <FF label="Visa Type">
+                <select className="inp" value={form.visa||"H-1B"} onChange={e=>setForm(p=>({...p,visa:e.target.value}))}>
+                  {CMS_VISA_TYPES.map(v=><option key={v}>{v}</option>)}
+                </select>
+              </FF>
+              <FF label="Source">
+                <select className="inp" value={form.source||"LinkedIn"} onChange={e=>setForm(p=>({...p,source:e.target.value}))}>
+                  {CMS_SOURCES.map(s=><option key={s}>{s}</option>)}
+                </select>
+              </FF>
+              <FF label="Stage">
+                <select className="inp" value={form.stage||"sourced"} onChange={e=>setForm(p=>({...p,stage:e.target.value}))}>
+                  {CMS_STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </FF>
+              <FF label="Skills (comma separated)">
+                <input className="inp" value={form.skills||""} onChange={e=>setForm(p=>({...p,skills:e.target.value}))} placeholder="SAP BRIM, ABAP, BTP…"/>
+              </FF>
+            </div>
+            {/* H1B Section */}
+            {form.visa && form.visa!=="USC" && (
+              <div style={{marginTop:14,padding:"12px 14px",background:"#040a14",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#34d399",marginBottom:10}}>🛂 Visa / H1B Details</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  {[["H1B Status","h1bStatus","text","Filed/Approved/Pending…"],["I-94 Expiry","i94Expiry","date",""],["Petition #","petitionNum","text","WAC-…"],["Priority Date","priorityDate","date",""],["LCA Number","lca","text","I-200-…"]].map(([l,k,t,ph])=>(
+                    <FF key={k} label={l}><input type={t} className="inp" value={form[k]||""} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={ph}/></FF>
+                  ))}
+                </div>
+              </div>
+            )}
+            <FF label="Notes">
+              <textarea className="inp" rows={3} value={form.notes||""} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Interview feedback, skills notes, timeline…"/>
+            </FF>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}>
+              <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+              <button className="btn bp" onClick={submit}>{editing?"Update":"Add Candidate"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
