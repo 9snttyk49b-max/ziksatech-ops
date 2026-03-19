@@ -45652,161 +45652,246 @@ Respond ONLY with JSON:
 
 
 function ScenarioSimulator({ roster, clients, finInvoices, finPayments, crmDeals, finExpenses, authProfile }) {
-  const [scenario, setScenario] = useState({
-    newHires:      0,
-    avgBillRate:   150,
-    dealCloseProb: 0,
-    rateIncrease:  0,
-    clientChurn:   0,
-    benchReduction:0,
-  });
-  const [loading, setLoading] = useState(false);
-  const [narrative, setNarrative] = useState(null);
   const fmt  = n => "$"+Math.round(n).toLocaleString();
-  const fmtK = n => n>=1000?"$"+Math.round(n/1000)+"K":fmt(n);
+  const fmtK = n => n>=1000000?"$"+Math.round(n/1000000*10)/10+"M":n>=1000?"$"+Math.round(n/1000)+"K":fmt(n);
+  const pct  = n => (n>=0?"+":"")+Math.round(n)+"%";
 
-  // Base metrics
-  const baseRevenue   = roster.reduce((s,r)=>{
-    const hrs=MONTHS.reduce((h,_,mi)=>h+(r.util||0)*160,0);
-    return s+hrs*(r.billRate||0)/12;
-  },0)*12;
-  const baseCost      = roster.reduce((s,r)=>s+getEmployeeCost(r),0);
-  const baseProfit    = baseRevenue - baseCost;
-  const baseMargin    = baseRevenue > 0 ? baseRevenue>0?(baseRevenue-baseCost)/baseRevenue*100 : 0 : 0;
+  const BLANK_SCENARIO = { name:"Custom", newHires:0, avgBillRate:150, dealCloseProb:0, rateIncrease:0, clientChurn:0, benchReduction:0 };
 
-  // Scenario impact calculations
-  const newHireRevenue   = scenario.newHires * scenario.avgBillRate * 1920 * 0.85;
-  const newHireCost      = scenario.newHires * 130000; // avg fully loaded FTE cost
-  const pipelineRevenue  = crmDeals
-    .filter(d=>!["closed_won","closed_lost"].includes(d.stage))
-    .reduce((s,d)=>s+(d.value||0),0) * (scenario.dealCloseProb/100);
-  const rateUplift       = roster.reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*1920*(scenario.rateIncrease/100),0);
-  const churnLoss        = (scenario.clientChurn/100) * baseRevenue;
-  const benchSaving      = roster.filter(r=>(r.util||0)<0.3).reduce((s,r)=>
-    s+getEmployeeCost(r)*(scenario.benchReduction/100),0);
+  const QUICK_SCENARIOS = [
+    { name:"🚀 Aggressive Growth",  newHires:5, avgBillRate:165, dealCloseProb:60, rateIncrease:10, clientChurn:0,  benchReduction:50 },
+    { name:"⚖️ Balanced Expansion", newHires:2, avgBillRate:155, dealCloseProb:40, rateIncrease:5,  clientChurn:0,  benchReduction:25 },
+    { name:"🛡 Conservative",        newHires:0, avgBillRate:150, dealCloseProb:25, rateIncrease:3,  clientChurn:0,  benchReduction:0  },
+    { name:"💰 Rate Optimisation",   newHires:0, avgBillRate:150, dealCloseProb:0,  rateIncrease:15, clientChurn:0,  benchReduction:0  },
+    { name:"⚠️ Worst Case",         newHires:0, avgBillRate:150, dealCloseProb:0,  rateIncrease:0,  clientChurn:20, benchReduction:0  },
+    { name:"🏆 Best Case",           newHires:8, avgBillRate:175, dealCloseProb:80, rateIncrease:15, clientChurn:0,  benchReduction:100},
+  ];
 
-  const projRevenue = baseRevenue + newHireRevenue + pipelineRevenue + rateUplift - churnLoss;
-  const projCost    = baseCost    + newHireCost;
-  const projProfit  = projRevenue - projCost + benchSaving;
-  const projMargin  = projRevenue > 0 ? (projRevenue-projCost)/projRevenue*100 : 0;
-  const revDelta    = projRevenue - baseRevenue;
-  const profitDelta = projProfit  - baseProfit;
+  const [scenario,   setScenario]   = useState(BLANK_SCENARIO);
+  const [loading,    setLoading]    = useState(false);
+  const [narrative,  setNarrative]  = useState(null);
+  const [savedScenarios, setSavedScenarios] = useState([]);
+  const [comparing,  setComparing]  = useState(null); // second scenario for side-by-side
+
+  // ── Base metrics ─────────────────────────────────────────────────────────
+  const baseRevenue = roster.reduce((s,r) => {
+    const hrs = (r.util||0) * 160 * 12;
+    return s + hrs * (r.billRate||0);
+  }, 0);
+  const baseCost    = roster.reduce((s,r) => s + getEmployeeCost(r), 0);
+  const baseProfit  = baseRevenue - baseCost;
+  const baseMargin  = baseRevenue > 0 ? (baseRevenue - baseCost) / baseRevenue * 100 : 0;
+  const pipelineTotal = crmDeals.filter(d=>!["closed-won","closed_won","closed-lost","closed_lost"].includes(d.stage)).reduce((s,d)=>s+(d.value||0),0);
+
+  // ── Scenario calculations ────────────────────────────────────────────────
+  const calcScenario = (s) => {
+    const newHireRevenue   = s.newHires * s.avgBillRate * 1920 * 0.85;
+    const newHireCost      = s.newHires * 135000;
+    const pipelineRevenue  = pipelineTotal * (s.dealCloseProb / 100);
+    const rateUplift       = roster.reduce((sum,r) => sum + (r.billRate||0) * (r.util||0) * 1920 * (s.rateIncrease/100), 0);
+    const churnLoss        = (s.clientChurn / 100) * baseRevenue;
+    const benchSaving      = roster.filter(r=>(r.util||0)<0.3).reduce((sum,r) => sum + getEmployeeCost(r) * (s.benchReduction/100), 0);
+    const projRevenue = baseRevenue + newHireRevenue + pipelineRevenue + rateUplift - churnLoss;
+    const projCost    = baseCost + newHireCost - benchSaving;
+    const projProfit  = projRevenue - projCost;
+    const projMargin  = projRevenue > 0 ? (projRevenue - projCost) / projRevenue * 100 : 0;
+    return { projRevenue, projCost, projProfit, projMargin,
+      revDelta: projRevenue - baseRevenue, profitDelta: projProfit - baseProfit,
+      marginDelta: projMargin - baseMargin,
+      breakdown: { newHireRevenue, newHireCost, pipelineRevenue, rateUplift, churnLoss, benchSaving }
+    };
+  };
+
+  const result   = calcScenario(scenario);
+  const cmpResult = comparing ? calcScenario(comparing) : null;
 
   const runNarrative = async () => {
-    setLoading(true);
+    setLoading(true); setNarrative(null);
+    const r = result;
     try {
-      const resp = await fetch("/api/claude", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514", max_tokens:2000,
-          system:"You are a CFO-level scenario analysis AI for a SAP consulting firm.",
-          messages:[{role:"user", content:
-`Base: Revenue ${fmtK(baseRevenue)}, Profit ${fmtK(baseProfit)}, Margin ${Math.round(baseMargin)}%
-Scenario: +${scenario.newHires} hires @ $${scenario.avgBillRate}/hr, ${scenario.dealCloseProb}% pipeline close, ${scenario.rateIncrease}% rate increase, ${scenario.clientChurn}% client churn, ${scenario.benchReduction}% bench reduction
-Projected: Revenue ${fmtK(projRevenue)}, Profit ${fmtK(projProfit)}, Margin ${Math.round(projMargin)}%
-Delta: Revenue ${revDelta>=0?"+":""}${fmtK(revDelta)}, Profit ${profitDelta>=0?"+":""}${fmtK(profitDelta)}
+      const resp = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000,
+          system:"You are a CFO-level scenario analysis AI for Ziksatech, a SAP consulting firm.",
+          messages:[{role:"user",content:
+`Scenario: "${scenario.name}"
+Base:      Revenue ${fmtK(baseRevenue)} | Profit ${fmtK(baseProfit)} | Margin ${Math.round(baseMargin)}%
+Projected: Revenue ${fmtK(r.projRevenue)} | Profit ${fmtK(r.projProfit)} | Margin ${Math.round(r.projMargin)}%
+Delta:     Revenue ${fmtK(r.revDelta)} | Profit ${fmtK(r.profitDelta)}
+Inputs: ${scenario.newHires} new hires @$${scenario.avgBillRate}/hr, ${scenario.dealCloseProb}% pipeline close ($${Math.round(pipelineTotal/1000)}K pipeline), ${scenario.rateIncrease}% rate increase, ${scenario.clientChurn}% client churn, ${scenario.benchReduction}% bench cost reduction
 
-In 3 sentences: assess this scenario, the biggest risk, and the #1 thing to do first.`}]
+In 4 sentences: (1) overall CFO verdict on this scenario, (2) biggest upside driver, (3) biggest risk, (4) one specific recommendation to maximise ROI. Be specific to a SAP consulting firm.`
+          }]
         })
       });
       const data = await resp.json();
-      setNarrative(data.content?.[0]?.text||"");
-    } catch(e) { setNarrative("Scenario analysis complete — see metrics above.") }
+      setNarrative(data.content?.[0]?.text || "Analysis unavailable.");
+    } catch(e) { setNarrative("Error: "+e.message); }
     setLoading(false);
   };
 
-  const Metric = ({label, base, proj, color}) => {
-    const delta = proj-base;
-    const pct   = base>0?Math.round(delta/base*100):0;
+  const SLIDER_CONFIG = [
+    { key:"newHires",       label:"New Hires",               min:0, max:20, step:1, suffix:" FTEs" },
+    { key:"avgBillRate",    label:"Avg Bill Rate ($/hr)",     min:100, max:300, step:5, suffix:"/hr" },
+    { key:"dealCloseProb",  label:"Pipeline Close Rate",      min:0, max:100, step:5, suffix:"%" },
+    { key:"rateIncrease",   label:"Rate Increase on Existing",min:0, max:30,  step:1, suffix:"%" },
+    { key:"clientChurn",    label:"Client Churn Risk",        min:0, max:50,  step:1, suffix:"%" },
+    { key:"benchReduction", label:"Bench Cost Reduction",     min:0, max:100, step:5, suffix:"%" },
+  ];
+
+  const MetricCard = ({label, base, proj, suffix=""}) => {
+    const delta = proj - base;
+    const col = delta >= 0 ? "#34d399" : "#f87171";
     return (
-      <div className="card" style={{padding:"12px 14px"}}>
-        <div style={{fontSize:10,color:"#475569",marginBottom:4}}>{label}</div>
-        <div style={{fontSize:10,color:"#3d5a7a",marginBottom:2}}>Base: <span style={{color:"#64748b",fontFamily:"monospace"}}>{fmtK(base)}</span></div>
-        <div style={{fontSize:14,fontWeight:800,color:delta>=0?"#34d399":"#f87171",fontFamily:"'DM Mono',monospace"}}>
-          {fmtK(proj)}
-        </div>
-        <div style={{fontSize:10,fontWeight:700,color:delta>=0?"#34d399":"#f87171"}}>
-          {delta>=0?"+":""}{fmtK(delta)} ({delta>=0?"+":""}{pct}%)
-        </div>
+      <div className="card" style={{padding:"12px 14px",textAlign:"center"}}>
+        <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{label}</div>
+        <div style={{fontSize:9,color:"#3d5a7a",marginBottom:2}}>Base: <span style={{color:"#64748b",fontFamily:"monospace"}}>{typeof base==="number"&&base>1000?fmtK(base):Math.round(base)+suffix}</span></div>
+        <div style={{fontSize:18,fontWeight:800,color:col,fontFamily:"'DM Mono',monospace"}}>{typeof proj==="number"&&proj>1000?fmtK(proj):Math.round(proj)+suffix}</div>
+        <div style={{fontSize:10,fontWeight:700,color:col}}>{delta>=0?"+":""}{typeof delta==="number"&&Math.abs(delta)>1000?fmtK(delta):Math.round(delta)+suffix}</div>
       </div>
     );
   };
 
-  const Slider = ({label, field, min, max, step, suffix}) => (
-    <div style={{marginBottom:14}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-        <span style={{fontSize:11,color:"#94a3b8"}}>{label}</span>
-        <span style={{fontSize:12,fontFamily:"monospace",color:"#38bdf8",fontWeight:700}}>
-          {scenario[field]}{suffix}
-        </span>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={scenario[field]}
-        onChange={e=>setScenario(s=>({...s,[field]:+e.target.value}))}
-        style={{width:"100%",accentColor:"#0284c7"}}/>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#1e3a5f",marginTop:1}}>
-        <span>{min}{suffix}</span><span>{max}{suffix}</span>
-      </div>
-    </div>
-  );
-
   return (
     <div>
-      <PH title="📊 Scenario Simulator" sub="What-if modeling · revenue · margin · cash flow impact"/>
+      <PH title="📊 Scenario Simulator" sub="What-if modelling · pre-built CEO scenarios · side-by-side comparison · AI CFO assessment"/>
 
-      <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:14,alignItems:"start"}}>
-        {/* Controls */}
-        <div className="card" style={{padding:"18px 20px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:14}}>🎛 Adjust Scenarios</div>
-          <Slider label="New Hires"            field="newHires"       min={0} max={10} step={1}    suffix=" people"/>
-          <Slider label="Avg Bill Rate (new)"  field="avgBillRate"    min={80} max={250} step={5}  suffix="/hr"/>
-          <Slider label="Pipeline Close Rate"  field="dealCloseProb"  min={0} max={100} step={5}   suffix="%"/>
-          <Slider label="Rate Increase"        field="rateIncrease"   min={0} max={20} step={1}    suffix="%"/>
-          <Slider label="Client Churn Risk"    field="clientChurn"    min={0} max={30} step={1}    suffix="%"/>
-          <Slider label="Bench Reduction"      field="benchReduction" min={0} max={100} step={10}  suffix="%"/>
-          <button className="btn bg" style={{width:"100%",justifyContent:"center",fontSize:11,marginTop:4}}
-            onClick={()=>setScenario({newHires:0,avgBillRate:150,dealCloseProb:0,rateIncrease:0,clientChurn:0,benchReduction:0})}>
-            Reset
-          </button>
+      {/* Quick scenario buttons */}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:10,color:"#3d5a7a",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>⚡ Quick Scenarios</div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {QUICK_SCENARIOS.map(qs=>(
+            <button key={qs.name} onClick={()=>{setScenario({...qs});setNarrative(null);setComparing(null);}}
+              style={{padding:"6px 12px",borderRadius:6,border:`1px solid ${scenario.name===qs.name?"#0ea5e9":"#1a2d45"}`,
+                background:scenario.name===qs.name?"#0c2340":"#060d1c",
+                color:scenario.name===qs.name?"#38bdf8":"#475569",fontSize:10,fontWeight:600,cursor:"pointer"}}>
+              {qs.name}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* Results */}
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-            <Metric label="Annual Revenue"  base={baseRevenue}  proj={projRevenue}  />
-            <Metric label="Annual Profit"   base={baseProfit}   proj={projProfit}   />
-            <Metric label="Margin %"        base={baseMargin}   proj={projMargin}   />
-          </div>
-
-          {/* Impact breakdown */}
-          <div className="card" style={{padding:"16px 18px"}}>
-            <div className="section-hdr">Impact Breakdown</div>
-            {[
-              ["+New hire revenue",   newHireRevenue,  "#34d399"],
-              ["+New hire cost",      -newHireCost,    "#f87171"],
-              ["+Pipeline close",     pipelineRevenue, "#34d399"],
-              ["+Rate increase",      rateUplift,      "#34d399"],
-              ["−Client churn",       -churnLoss,      "#f87171"],
-              ["+Bench reduction",    benchSaving,     "#34d399"],
-            ].filter(([,v])=>v!==0).map(([l,v,c])=>(
-              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",
-                borderBottom:"1px solid #0a1626"}}>
-                <span style={{fontSize:11,color:"#64748b"}}>{l}</span>
-                <span style={{fontSize:11,fontFamily:"monospace",color:c,fontWeight:700}}>
-                  {v>=0?"+":""}{fmtK(v)}
-                </span>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        {/* ── LEFT: Sliders ── */}
+        <div>
+          <div className="card" style={{padding:"16px 18px",marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>
+                {scenario.name || "Custom Scenario"}
+              </div>
+              <button className="btn bg" style={{fontSize:10}}
+                onClick={()=>setScenario({...BLANK_SCENARIO})}>Reset</button>
+            </div>
+            {SLIDER_CONFIG.map(cfg=>(
+              <div key={cfg.key} style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{fontSize:10,color:"#64748b"}}>{cfg.label}</span>
+                  <span style={{fontSize:11,fontWeight:700,color:"#38bdf8",fontFamily:"monospace"}}>
+                    {scenario[cfg.key]}{cfg.suffix}
+                  </span>
+                </div>
+                <input type="range" min={cfg.min} max={cfg.max} step={cfg.step}
+                  value={scenario[cfg.key]}
+                  onChange={e=>{ setScenario(s=>({...s,[cfg.key]:+e.target.value,name:"Custom"})); setNarrative(null); }}
+                  style={{width:"100%",accentColor:"#0ea5e9"}}/>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#334155"}}>
+                  <span>{cfg.min}{cfg.suffix}</span><span>{cfg.max}{cfg.suffix}</span>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* AI narrative */}
+          {/* Compare with quick scenario */}
+          <div className="card" style={{padding:"12px 14px",marginBottom:12}}>
+            <div style={{fontSize:10,color:"#3d5a7a",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>⚖️ Compare Against</div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+              {QUICK_SCENARIOS.map(qs=>(
+                <button key={qs.name} onClick={()=>setComparing(comparing?.name===qs.name?null:qs)}
+                  style={{padding:"4px 8px",borderRadius:5,border:`1px solid ${comparing?.name===qs.name?"#7c3aed":"#1a2d45"}`,
+                    background:comparing?.name===qs.name?"#0d0b1a":"transparent",
+                    color:comparing?.name===qs.name?"#a78bfa":"#475569",fontSize:9,cursor:"pointer"}}>
+                  {qs.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── RIGHT: Output ── */}
+        <div>
+          {/* Main metrics */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+            <MetricCard label="Annual Revenue" base={baseRevenue} proj={result.projRevenue}/>
+            <MetricCard label="Annual Profit"  base={baseProfit}  proj={result.projProfit}/>
+            <MetricCard label="Profit Margin"  base={baseMargin}  proj={result.projMargin} suffix="%"/>
+            <MetricCard label="Monthly Revenue" base={baseRevenue/12} proj={result.projRevenue/12}/>
+          </div>
+
+          {/* Side-by-side comparison */}
+          {cmpResult && (
+            <div className="card" style={{padding:"12px 14px",marginBottom:12,border:"1px solid #7c3aed44"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#a78bfa",marginBottom:8}}>⚖️ Side-by-Side: {scenario.name} vs {comparing.name}</div>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                <thead>
+                  <tr style={{borderBottom:"1px solid #1a2d45"}}>
+                    {["Metric","Base","Current","Compare"].map(h=>(
+                      <th key={h} className="th" style={{padding:"5px 8px",textAlign:"right",fontSize:9}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Revenue",  baseRevenue,  result.projRevenue, cmpResult.projRevenue],
+                    ["Profit",   baseProfit,   result.projProfit,  cmpResult.projProfit],
+                    ["Margin",   baseMargin,   result.projMargin,  cmpResult.projMargin],
+                  ].map(([l,b,a,cmp])=>{
+                    const aDelta = a-b; const cmpDelta = cmp-b;
+                    const better = aDelta >= cmpDelta;
+                    return (
+                      <tr key={l} style={{borderBottom:"1px solid #0a1626"}}>
+                        <td style={{padding:"5px 8px",color:"#94a3b8"}}>{l}</td>
+                        <td style={{padding:"5px 8px",textAlign:"right",color:"#475569",fontFamily:"monospace"}}>{l==="Margin"?Math.round(b)+"%":fmtK(b)}</td>
+                        <td style={{padding:"5px 8px",textAlign:"right",color:aDelta>=0?"#34d399":"#f87171",fontWeight:700,fontFamily:"monospace"}}>
+                          {l==="Margin"?Math.round(a)+"%":fmtK(a)} {better?"✓":""}
+                        </td>
+                        <td style={{padding:"5px 8px",textAlign:"right",color:cmpDelta>=0?"#34d399":"#f87171",fontFamily:"monospace"}}>
+                          {l==="Margin"?Math.round(cmp)+"%":fmtK(cmp)} {!better?"✓":""}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Impact breakdown */}
+          <div className="card" style={{padding:"12px 14px",marginBottom:12}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#3d5a7a",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>📊 Impact Breakdown</div>
+            {[
+              ["+New hire revenue",  result.breakdown.newHireRevenue,  "#34d399"],
+              ["+Pipeline close",    result.breakdown.pipelineRevenue, "#34d399"],
+              ["+Rate uplift",       result.breakdown.rateUplift,      "#34d399"],
+              ["+Bench saving",      result.breakdown.benchSaving,     "#a78bfa"],
+              ["−New hire cost",    -result.breakdown.newHireCost,     "#f87171"],
+              ["−Client churn",     -result.breakdown.churnLoss,       "#f87171"],
+            ].filter(([,v])=>Math.abs(v)>0).map(([l,v,col])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                <span style={{fontSize:11,color:"#64748b"}}>{l}</span>
+                <span style={{fontSize:11,fontFamily:"monospace",color:col,fontWeight:700}}>{v>=0?"+":""}{fmtK(v)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* AI CFO Assessment */}
           {narrative ? (
-            <div className="card" style={{padding:"16px 18px",border:"1px solid #0369a144"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>🤖 CFO Assessment</div>
+            <div className="card" style={{padding:"14px 16px",border:"1px solid #0369a144"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>🤖 CFO Assessment — {scenario.name}</div>
               <p style={{fontSize:12,color:"#94a3b8",lineHeight:1.7,margin:0}}>{narrative}</p>
+              <button className="btn bg" style={{fontSize:10,marginTop:10}} onClick={()=>setNarrative(null)}>↺ Re-run</button>
             </div>
           ) : (
-            <button className="btn bp" style={{fontSize:12}} onClick={runNarrative} disabled={loading}>
-              {loading?"⏳ Analyzing...":"🤖 Get AI CFO Assessment"}
+            <button className="btn bp" style={{width:"100%",justifyContent:"center",fontSize:12}} onClick={runNarrative} disabled={loading}>
+              {loading?"⏳ Analysing scenario...":"🤖 Get AI CFO Assessment"}
             </button>
           )}
         </div>
@@ -45815,10 +45900,7 @@ In 3 sentences: assess this scenario, the biggest risk, and the #1 thing to do f
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 🏆 PERFORMANCE COACH — Personal Performance Intelligence (Phase 3.10)
-// Analyzes behavior patterns for Sales, Recruiters, Delivery Managers
-// ─────────────────────────────────────────────────────────────────────────────
+
 function PerformanceCoach({ roster, clients, crmDeals, proposals, tsSubmissions,
   finInvoices, interviews, submissions, authProfile }) {
 
