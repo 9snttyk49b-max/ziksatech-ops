@@ -2757,6 +2757,24 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
                       {pendingRegistrations}
                     </span>
                   )}
+                  {n.id==="autoworkflow" && (() => {
+                    const stale = (crmDeals||[]).filter(d=>!["closed-won","closed_won","closed-lost","closed_lost"].includes(d.stage) && ((new Date()-new Date(d.lastActivity||d.updatedAt||"2026-01-01"))/86400000)>7).length;
+                    const overdue = (finInvoices||[]).filter(inv=>inv.status!=="paid" && ((new Date()-new Date(inv.dueDate||inv.date))/86400000)>30).length;
+                    const total = stale + overdue;
+                    return total > 0 ? (
+                      <span style={{marginLeft:"auto",background:"#f59e0b",color:"#000",borderRadius:"100px",fontSize:9,fontWeight:700,padding:"1px 5px",minWidth:16,textAlign:"center"}}>
+                        {total}
+                      </span>
+                    ) : null;
+                  })()}
+                  {n.id==="leakage" && (() => {
+                    const belowMarket = (roster||[]).filter(r=>(r.billRate||0)<130).length;
+                    return belowMarket > 0 ? (
+                      <span style={{marginLeft:"auto",background:"#f87171",color:"#fff",borderRadius:"100px",fontSize:9,fontWeight:700,padding:"1px 5px",minWidth:16,textAlign:"center"}}>
+                        {belowMarket}
+                      </span>
+                    ) : null;
+                  })()}
                 </button>
               ))}
             </div>
@@ -44034,6 +44052,24 @@ Respond ONLY with this exact JSON (no markdown, no backticks):
                       <div style={{fontSize:11,color:"#34d399",fontWeight:600}}>{d.impact}</div>
                     </div>
                   </div>
+                  {/* Go Fix button — maps action keywords to module tabs */}
+                  {(() => {
+                    const a = (d.action||"").toLowerCase();
+                    const t = a.includes("invoice")||a.includes("bill")||a.includes("ar")||a.includes("collect") ? "arinvoices"
+                      : a.includes("deal")||a.includes("pipeline")||a.includes("crm")||a.includes("proposal") ? "crm"
+                      : a.includes("consultant")||a.includes("bench")||a.includes("hire")||a.includes("util") ? "roster"
+                      : a.includes("rate")||a.includes("leakage")||a.includes("underbill") ? "leakage"
+                      : a.includes("workflow")||a.includes("follow")||a.includes("stale") ? "autoworkflow"
+                      : null;
+                    return t ? (
+                      <div style={{marginTop:8,textAlign:"right"}}>
+                        <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}}
+                          onClick={()=>setTabSafe(t, authProfile?.role)}>
+                          → Go Fix
+                        </button>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               ))}
             </div>
@@ -44139,8 +44175,19 @@ function DealAccelerator({ crmDeals, clients, roster, proposals, authProfile }) 
   const [loading, setLoading]   = useState(false);
   const [advice,  setAdvice]    = useState({});
   const [filter,  setFilter]    = useState("all");
+  const [autoRan, setAutoRan]   = useState(false);
 
   const activeDeal = crmDeals.filter(d => !["closed_won","closed_lost"].includes(d.stage));
+
+  // Auto-analyze hottest deal on first load
+  useEffect(() => {
+    if (autoRan || activeDeal.length === 0) return;
+    const hottest = [...activeDeal].sort((a,b)=>(b.probability||b.prob||0)-(a.probability||a.prob||0))[0];
+    if (hottest) {
+      setAutoRan(true);
+      setTimeout(() => runDealAI(hottest), 500);
+    }
+  }, [activeDeal.length]);
 
   const riskScore = (d) => {
     let risk = 0;
@@ -45407,6 +45454,7 @@ function KnowledgeEngine({ crmDeals, proposals, roster, clients, authProfile }) 
   const [query,    setQuery]    = useState("");
   const [loading,  setLoading]  = useState(false);
   const [answer,   setAnswer]   = useState(null);
+  const [history,  setHistory]  = useState(()=>{try{return JSON.parse(localStorage.getItem("zt-ke-history")||"[]");}catch{return [];}});
   const [patternLoading, setPatternLoading] = useState(false);
   const [patterns, setPatterns] = useState(null);
   const [playbookLoading, setPlaybookLoading] = useState(false);
@@ -45479,7 +45527,13 @@ Give a direct answer with: 1) Key insight from the data, 2) Supporting evidence,
         })
       });
       const data = await resp.json();
-      setAnswer({ question: qText, answer: data.content?.[0]?.text||"No response." });
+      const ans = { question: qText, answer: data.content?.[0]?.text||"No response.", ts: new Date().toLocaleTimeString() };
+      setAnswer(ans);
+      setHistory(prev => {
+        const next = [ans, ...prev.filter(h=>h.question!==qText)].slice(0,10);
+        localStorage.setItem("zt-ke-history", JSON.stringify(next));
+        return next;
+      });
     } catch(e) { setAnswer({question:qText, answer:"Error: "+e.message}); }
     setLoading(false);
   };
@@ -45614,12 +45668,36 @@ Respond ONLY with JSON:
 
           {answer && (
             <div className="card" style={{padding:"18px 20px"}}>
-              <div style={{fontSize:10,color:"#3d5a7a",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>
-                Q: {answer.question}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:10,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.5}}>
+                  Q: {answer.question}
+                </div>
+                <button className="btn bg" style={{fontSize:10,padding:"3px 10px"}}
+                  onClick={()=>navigator.clipboard?.writeText(answer.answer)}>
+                  📋 Copy
+                </button>
               </div>
               <div style={{fontSize:13,color:"#e2e8f0",lineHeight:1.7,whiteSpace:"pre-wrap"}}>
                 {answer.answer}
               </div>
+            </div>
+          )}
+
+          {/* Ask History */}
+          {history.length > 0 && !loading && (
+            <div style={{marginTop:16}}>
+              <div style={{fontSize:10,color:"#3d5a7a",marginBottom:8,textTransform:"uppercase",letterSpacing:.5,display:"flex",justifyContent:"space-between"}}>
+                <span>📜 Recent Questions ({history.length})</span>
+                <button onClick={()=>{setHistory([]);localStorage.removeItem("zt-ke-history");}} style={{background:"none",border:"none",color:"#334155",fontSize:10,cursor:"pointer"}}>Clear</button>
+              </div>
+              {history.slice(0,5).map((h,i)=>(
+                <div key={i} style={{padding:"8px 12px",background:"#060d1c",borderRadius:6,border:"1px solid #1a2d45",marginBottom:6,cursor:"pointer"}}
+                  onClick={()=>{setQuery(h.question);setAnswer(h);}}>
+                  <div style={{fontSize:11,color:"#64748b",marginBottom:2}}>
+                    {h.question.slice(0,60)}{h.question.length>60?"...":""} <span style={{color:"#334155",fontSize:9}}>{h.ts}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
