@@ -47222,7 +47222,7 @@ function AICOODashboard({ roster, clients, finInvoices, finPayments, crmDeals,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 2000,
-          system: `You are the AI COO for ${digest.company}, a SAP consulting firm specializing in Utilities, BRIM, and SuccessFactors in the DFW market. You have full visibility into all operations. Give brutally honest, specific, actionable daily decisions. Be direct — no fluff. Format as JSON only.`,
+          system: `You are the AI COO for ${digest.company} — a WBE/HUB-certified SAP consulting firm in Plano TX, founded by Manju Murthy. Specializations: SAP BRIM, IS-U (utilities), S/4HANA, SuccessFactors. Revenue: $2.2M+/yr, 7-10% net margin. Team: 6 FTEs + 4 contractors, predominantly H1B visa holders. Active clients: HOPE-IDI (BRIM), SCG Energy (IS-U), PTC Inc (staffing). Pipeline: NTTA (tolling/BRIM), PepsiCo (Plano), Oncor, Vistra, Atmos Energy. Certifications: WBE, Texas HUB, pursuing SAP PartnerEdge. Immigration attorney: Latha & Associates. Breakeven: ~7 Phase-0 BRIM audit deals at $25K-$50K each. You have full visibility into all operations. Give brutally honest, specific, actionable daily decisions. Be direct — no fluff. Format as JSON only.`,
           messages: [{
             role: "user",
             content: `Today is ${digest.date}. Here is the operational snapshot:
@@ -50759,6 +50759,17 @@ Respond ONLY with JSON: {"subject":"...","body":"...","urgency":"HIGH"}`;
 // ══════════════════════════════════════════════════════════════════════════════
 
 const BD_ACCOUNTS_DEFAULT = [
+  // DFW PRIORITY — Naxon Phase-0 Immediate Targets
+  { id:"dfw1", name:"NTTA (North Texas Tollway Authority)", industry:"Tolling/Govt", tier:1, revenue:380,  sap:["IS-U","BRIM","Tolling"], wbe:"Critical", vendors:["IBM","Sapient"],      relScore:85, coverage:1, status:"Warm",    lastActivity:"2026-02-15", notes:"BRIM tolling active — consultant on-site. HIGHEST PRIORITY." },
+  { id:"dfw2", name:"Oncor Electric Delivery",              industry:"Utilities",    tier:1, revenue:4200, sap:["IS-U","S/4HANA"],       wbe:"High",     vendors:["Deloitte"],          relScore:20, coverage:0, status:"Cold",    lastActivity:null,         notes:"DFW largest electric utility. IS-U migration target." },
+  { id:"dfw3", name:"Vistra Energy",                        industry:"Utilities",    tier:1, revenue:3800, sap:["IS-U","BRIM"],          wbe:"High",     vendors:["Accenture"],         relScore:15, coverage:0, status:"Cold",    lastActivity:null,         notes:"TX power gen. BRIM billing opportunity." },
+  { id:"dfw4", name:"Atmos Energy",                        industry:"Utilities",    tier:1, revenue:2900, sap:["IS-U","S/4HANA"],       wbe:"High",     vendors:["IBM"],               relScore:10, coverage:0, status:"Cold",    lastActivity:null,         notes:"Largest natural gas utility in TX." },
+  { id:"dfw5", name:"PepsiCo / Frito-Lay (Plano TX)",      industry:"CPG/Food",     tier:1, revenue:86000,sap:["S/4HANA","SF","FICO"],  wbe:"High",     vendors:["Deloitte","Wipro"],  relScore:30, coverage:1, status:"Warm",    lastActivity:"2026-03-01", notes:"HQ in Plano — same city. SF + S/4HANA active." },
+  { id:"dfw6", name:"Toyota Motor North America (Plano)",   industry:"Automotive",   tier:2, revenue:29000,sap:["S/4HANA","SuccessFactors"],wbe:"Medium", vendors:["Capgemini"],        relScore:25, coverage:1, status:"Warm",    lastActivity:"2026-03-10", notes:"TMNA HQ Plano TX. SF implementation active — existing revenue." },
+  { id:"dfw7", name:"HPE (Hewlett Packard Enterprise)",     industry:"Technology",   tier:2, revenue:28000,sap:["S/4HANA","SuccessFactors"],wbe:"Medium", vendors:["IBM"],              relScore:20, coverage:1, status:"Active",  lastActivity:"2026-03-22", notes:"Current SF support engagement active." },
+  { id:"dfw8", name:"Texas Instruments",                    industry:"Semiconductor",tier:2, revenue:18000,sap:["S/4HANA","FICO"],      wbe:"Medium",   vendors:["Deloitte"],          relScore:10, coverage:0, status:"Cold",    lastActivity:null,         notes:"DFW HQ. S/4HANA migration candidate." },
+  { id:"dfw9", name:"Jacobs Engineering (Dallas)",          industry:"Engineering",  tier:2, revenue:15000,sap:["S/4HANA","SuccessFactors"],wbe:"High",  vendors:["Accenture"],        relScore:15, coverage:0, status:"Cold",    lastActivity:null,         notes:"WBE opportunity — engineering firm, SF target." },
+  { id:"dfw10",name:"Pier 1 Imports / Tuesday Morning",    industry:"Retail",       tier:3, revenue:800,  sap:["S/4HANA"],             wbe:"Medium",   vendors:["TCS"],               relScore:5,  coverage:0, status:"Cold",    lastActivity:null,         notes:"Dallas-based retail SAP targets." },
   // Tier 1 — Must Target First
   { id:"bda1",  name:"Southern California Gas Company", industry:"Utilities",   tier:1, revenue:4200, sap:["IS-U","BRIM"],      wbe:"High",   vendors:["Accenture","IBM"],        relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
   { id:"bda2",  name:"Pacific Gas & Electric",          industry:"Utilities",   tier:1, revenue:8100, sap:["IS-U","S/4HANA"],   wbe:"High",   vendors:["Deloitte","Accenture"],   relScore:0,  coverage:0, status:"Cold",   lastActivity:null },
@@ -50847,6 +50858,13 @@ function BDEngine({ crmDeals, setCrmDeals, crmAccounts, setCrmAccounts, crmConta
   const [compIntelAI,     setCompIntelAI]     = useState(null);
   const [compIntelLoad,   setCompIntelLoad]   = useState(false);
   const [compTarget,      setCompTarget]      = useState("");
+  const [phase0Deals, setPhase0Deals] = useState([
+    { id:"p1", company:"NTTA",          contact:"VP IT",      value:45000, stage:"Proposal Sent", dueDate:"2026-04-01", notes:"BRIM tolling audit — active engagement", prob:75 },
+    { id:"p2", company:"Oncor",         contact:"SAP Director",value:35000,stage:"Discovery",     dueDate:"2026-04-30", notes:"IS-U billing assessment", prob:30 },
+    { id:"p3", company:"Vistra Energy", contact:"CIO Office",  value:50000, stage:"Cold Outreach", dueDate:"2026-05-15", notes:"BRIM + IS-U dual opportunity", prob:15 },
+    { id:"p4", company:"PepsiCo/Plano", contact:"SAP CoE Lead",value:40000,stage:"Meeting Booked",dueDate:"2026-04-10", notes:"S/4HANA readiness check", prob:45 },
+    { id:"p5", company:"Atmos Energy",  contact:"IT PMO",      value:30000, stage:"Cold Outreach", dueDate:"2026-05-30", notes:"IS-U upgrade assessment", prob:10 },
+  ]);
   const runCompIntelAI = async (targetCompany) => {
     setCompIntelLoad(true); setCompIntelAI(null);
     const target = targetCompany || compTarget || "large utility company";
@@ -50968,6 +50986,7 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
     {id:"momentum", label:"⚡ Deal Momentum"},
     {id:"weekly", label:"🗓 Weekly Plan"},
     {id:"competitive", label:"🔍 Competitive Intel"},
+    {id:"phase0",       label:"🎯 Phase-0 Pipeline"},
   ];
 
   const statusColor = s => s==="Opportunity"?"#34d399":s==="Active"?"#38bdf8":s==="Warm"?"#f59e0b":"#475569";
@@ -51707,6 +51726,60 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
 
 
       {/* ── SECTION 8: COMPETITIVE INTEL ── */}
+      {section==="phase0" && (
+        <div>
+          <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:800,color:"#e2e8f0"}}>🎯 Phase-0 BRIM Audit Pipeline</div>
+              <div style={{fontSize:10,color:"#475569"}}>$25K–$50K discovery deals · 4-week engagements · Naxon's core repeatable offer</div>
+            </div>
+            <div style={{padding:"8px 14px",background:"#040a14",border:"1px solid #0369a144",borderRadius:8,textAlign:"right"}}>
+              <div style={{fontSize:18,fontWeight:800,color:"#38bdf8",fontFamily:"monospace"}}>${Math.round(phase0Deals.reduce((s,d)=>s+(d.value*d.prob/100),0)/1000)}K</div>
+              <div style={{fontSize:9,color:"#475569"}}>Weighted Pipeline</div>
+            </div>
+            <div style={{padding:"8px 14px",background:"#040a14",border:"1px solid #34d39933",borderRadius:8,textAlign:"right"}}>
+              <div style={{fontSize:18,fontWeight:800,color:"#34d399",fontFamily:"monospace"}}>{phase0Deals.filter(d=>d.prob>=50).length}/7</div>
+              <div style={{fontSize:9,color:"#475569"}}>Deals to Breakeven</div>
+            </div>
+          </div>
+          {/* Kanban-style stage view */}
+          {["Cold Outreach","Discovery","Meeting Booked","Proposal Sent","Won","Lost"].map(stage=>{
+            const stagDeals = phase0Deals.filter(d=>d.stage===stage);
+            const stageColor = stage==="Won"?"#34d399":stage==="Lost"?"#f87171":stage==="Proposal Sent"?"#f59e0b":stage==="Meeting Booked"?"#a78bfa":stage==="Discovery"?"#38bdf8":"#475569";
+            return (
+              <div key={stage} style={{marginBottom:12}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+                  <div style={{fontSize:10,fontWeight:700,color:stageColor}}>{stage}</div>
+                  <div style={{fontSize:9,color:"#334155"}}>({stagDeals.length} deal{stagDeals.length!==1?"s":""})</div>
+                  {stagDeals.length>0&&<div style={{fontSize:9,color:"#475569"}}>${stagDeals.reduce((s,d)=>s+d.value,0).toLocaleString()} total</div>}
+                </div>
+                {stagDeals.map(deal=>(
+                  <div key={deal.id} style={{padding:"10px 14px",marginBottom:6,background:"#040a14",border:`1px solid ${stageColor}33`,borderRadius:8,display:"flex",gap:12,alignItems:"flex-start"}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{deal.company}</div>
+                      <div style={{fontSize:10,color:"#64748b",marginBottom:4}}>{deal.contact} · Due {deal.dueDate}</div>
+                      <div style={{fontSize:10,color:"#94a3b8"}}>{deal.notes}</div>
+                    </div>
+                    <div style={{textAlign:"right",minWidth:80}}>
+                      <div style={{fontSize:14,fontWeight:800,color:"#34d399",fontFamily:"monospace"}}>${(deal.value/1000).toFixed(0)}K</div>
+                      <div style={{fontSize:9,color:deal.prob>=50?"#34d399":deal.prob>=30?"#f59e0b":"#f87171"}}>{deal.prob}% likely</div>
+                      <select style={{marginTop:4,fontSize:9,background:"#060d1c",color:"#94a3b8",border:"1px solid #1a2d45",borderRadius:3,padding:"1px 2px"}}
+                        value={deal.stage} onChange={e=>setPhase0Deals(phase0Deals.map(d=>d.id===deal.id?{...d,stage:e.target.value}:d))}>
+                        {["Cold Outreach","Discovery","Meeting Booked","Proposal Sent","Won","Lost"].map(s=><option key={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          <div style={{marginTop:12,padding:"10px 14px",background:"#040a14",border:"1px solid #0369a133",borderRadius:8}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:4}}>📊 Naxon Breakeven Math</div>
+            <div style={{fontSize:10,color:"#64748b"}}>7 Phase-0 deals @ avg $35K = $245K revenue · Covers Naxon operating costs for full year · Each deal → follow-on SOW at 5–10x</div>
+          </div>
+        </div>
+      )}
+
       {section==="competitive" && (
         <div>
           <div style={{display:"flex",gap:10,marginBottom:14,alignItems:"flex-end",flexWrap:"wrap"}}>
@@ -51777,4 +51850,3 @@ Coverage gaps: ${accounts.filter(a=>a.coverage===0).length} accounts with zero c
     </div>
   );
 }
-
