@@ -3187,6 +3187,38 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
     { id:"rolling12", label:"Rolling 12m", monthKeys:["2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03"], startIdx:0 },
   ];
   const [dashPeriod, setDashPeriod] = useState("ytd2026");
+  const [aiDashBrief, setAiDashBrief] = useState(()=>{
+    try{ const c=JSON.parse(localStorage.getItem("zt-dash-brief")||"null");
+      return c&&c._date===new Date().toDateString()?c:null; }catch{return null;}
+  });
+  const [aiDashLoading, setAiDashLoading] = useState(false);
+
+  const runDashBrief = async () => {
+    setAiDashLoading(true);
+    const fmtK = n => n>=1000000?"$"+Math.round(n/1000000*10)/10+"M":n>=1000?"$"+Math.round(n/1000)+"K":"$"+Math.round(n);
+    const ctx = `Team: ${roster.length} consultants, ${roster.filter(r=>(r.util||0)>0.9).length} fully utilized, ${roster.filter(r=>(r.util||0)<0.3).length} on bench.
+Revenue: ${fmtK(roster.reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0))} monthly est.
+Open AR: ${fmtK((finInvoices||[]).filter(i=>i.status!=="paid").reduce((s,i)=>s+(i.amount||0),0))}
+Pipeline: ${fmtK((crmDeals||[]).filter(d=>!["closed-won","closed-lost"].includes(d.stage)).reduce((s,d)=>s+(d.value||0),0))} open, ${(crmDeals||[]).filter(d=>!["closed-won","closed-lost"].includes(d.stage)&&((new Date()-new Date(d.lastActivity||"2026-01-01"))/86400000)>7).length} stale deals.
+Visa alerts: ${(workAuth||[]).filter(w=>{ const d=new Date(w.expiryDate+"T12:00:00"); return (d-new Date())/86400000<90; }).length} expiring <90 days.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are the AI assistant for Ziksatech CEO. Give a sharp 3-point executive brief.",
+          messages:[{role:"user",content:`${ctx}
+
+Give today's executive brief. Return ONLY JSON:
+{"headline":"single alarming or positive headline","points":["point1","point2","point3"],"topAction":"single most important action today"}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = extractJSON(data.content?.[0]?.text||"{}");
+      const brief = {...parsed, _date: new Date().toDateString()};
+      setAiDashBrief(brief);
+      try{localStorage.setItem("zt-dash-brief", JSON.stringify(brief));}catch{}
+    } catch(e) { setAiDashBrief({headline:"Could not load brief",points:[e.message],topAction:""}); }
+    setAiDashLoading(false);
+  };
   const [activeWidgets,setActiveWidgets]=useState(()=>{try{return JSON.parse(localStorage.getItem("zt-widgets")||JSON.stringify(["cash_flow","hiring","rev_client","util","deals","notes"]));}catch{return ["cash_flow","hiring","rev_client","util","deals","notes"];}});
   const [widgetLibOpen,setWidgetLibOpen]=useState(false);
   useEffect(()=>{localStorage.setItem("zt-widgets",JSON.stringify(activeWidgets));},[activeWidgets]);
@@ -3312,8 +3344,26 @@ function Dashboard({ roster, clients, tsHours, plIncome, plExpense, fbInvoices, 
 
   return (
     <div>
+      {/* AI Daily Brief */}
+      {aiDashBrief && (
+        <div style={{padding:"10px 18px",background:"#060d1c",border:"1px solid #0369a144",borderRadius:10,marginBottom:12,display:"flex",gap:16,alignItems:"flex-start"}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#38bdf8",marginBottom:6}}>{aiDashBrief.headline}</div>
+            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+              {(aiDashBrief.points||[]).map((p,i)=>(
+                <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 10px",background:"#0a1626",borderRadius:4,border:"1px solid #1a2d45"}}>• {p}</div>
+              ))}
+            </div>
+            {aiDashBrief.topAction&&<div style={{fontSize:11,color:"#f59e0b",marginTop:6}}>→ Today: {aiDashBrief.topAction}</div>}
+          </div>
+          <button className="btn bg" style={{fontSize:9,flexShrink:0}} onClick={()=>setAiDashBrief(null)}>✕</button>
+        </div>
+      )}
       <PH title="Executive Dashboard" sub="Ziksatech Ops Center · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
+            {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
+          </button>
           <span className="adp-badge" style={{padding:"4px 10px",fontSize:11}}>ADP ●</span>
           <span className="fb-badge" style={{padding:"4px 10px",fontSize:11}}>FreshBooks ●</span>
           {/* Period picker */}
@@ -11105,6 +11155,33 @@ function ImmigrationCalendar({ workAuth, setWorkAuth, roster, addAudit }) {
   const [form,       setForm]       = useState({});
   const [caseModal,  setCaseModal]  = useState(false);
   const [caseForm,   setCaseForm]   = useState({});
+  const [immAI,     setImmAI]     = useState(null);
+  const [immAILoad, setImmAILoad] = useState(false);
+
+  const runImmAI = async () => {
+    setImmAILoad(true); setImmAI(null);
+    const urgent = (workAuth||[]).filter(w=>{
+      const d = new Date((w.expiryDate||w.i94Expiry||"2099-12-31")+"T12:00:00");
+      return (d-new Date())/86400000 < 90;
+    });
+    const ctx = `Work authorization records: ${(workAuth||[]).length} total, ${urgent.length} expiring within 90 days.
+Urgent: ${urgent.map(w=>`${w.name||"Person"} (${w.visaType||"H1B"}) expires ${w.expiryDate||w.i94Expiry}`).join("; ")||"none"}.
+H1B count: ${(workAuth||[]).filter(w=>(w.visaType||"").includes("H1B")).length}.`;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are an immigration compliance advisor for an IT staffing firm. Be specific and action-oriented.",
+          messages:[{role:"user",content:`${ctx}
+
+Return ONLY JSON:
+{"urgentCount":3,"criticalAlerts":["alert1","alert2"],"h1bRenewalCount":2,"recommendedActions":["action1","action2","action3"],"complianceRisk":"HIGH/MEDIUM/LOW"}`}]
+        })
+      });
+      const data = await resp.json();
+      setImmAI(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setImmAI({error:e.message}); }
+    setImmAILoad(false);
+  };
 
   const safe = workAuth || [];
   const safeRoster = roster || [];
@@ -11191,7 +11268,26 @@ function ImmigrationCalendar({ workAuth, setWorkAuth, roster, addAudit }) {
 
   return (
     <div>
-      <PH title="Immigration Calendar & H-1B Tracker" sub="Visa status · Filing deadlines · USCIS cases · Attorney management · Expiry alerts"/>
+      <PH title="Immigration Calendar & H-1B Tracker" sub="Visa status · Filing deadlines · USCIS cases · Attorney management · Expiry alerts">
+        <button className="btn bp" style={{fontSize:11}} onClick={runImmAI} disabled={immAILoad}>
+          {immAILoad?"⏳ Analyzing...":"🛂 AI Compliance Check"}
+        </button>
+      </PH>
+      {/* AI Immigration Panel */}
+      {immAI && !immAI.error && (
+        <div style={{padding:"12px 18px",marginBottom:12,background:immAI.complianceRisk==="HIGH"?"#1a0808":"#060d1c",border:`1px solid ${immAI.complianceRisk==="HIGH"?"#f87171":"#0369a1"}44`,borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:immAI.complianceRisk==="HIGH"?"#f87171":"#38bdf8"}}>
+              🛂 Compliance Risk: {immAI.complianceRisk} · {immAI.urgentCount||0} urgent · {immAI.h1bRenewalCount||0} H1B renewals needed
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setImmAI(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Critical Alerts</div>{(immAI.criticalAlerts||[]).map((a,i)=><div key={i} style={{fontSize:11,color:"#f87171",marginBottom:3}}>⚠️ {a}</div>)}</div>
+            <div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Recommended Actions</div>{(immAI.recommendedActions||[]).map((a,i)=><div key={i} style={{fontSize:11,color:"#38bdf8",marginBottom:3}}>→ {a}</div>)}</div>
+          </div>
+        </div>
+      )}
 
       {/* Alert banners */}
       {critical.length > 0 && (
@@ -12658,6 +12754,32 @@ function CRMActivities({ crmAccounts, crmContacts, crmDeals, crmActivities, setC
 // ── Forecast ──────────────────────────────────────────────────────────────────
 function CRMForecast({ crmAccounts, crmDeals, crmActivities }) {
   const [view, setView] = useState("quarter"); // quarter | stage | type | account
+  const [aiFc,      setAiFc]      = useState(null);
+  const [aiFcLoad,  setAiFcLoad]  = useState(false);
+
+  const runAIForecast = async () => {
+    setAiFcLoad(true); setAiFc(null);
+    const now = new Date();
+    const qEnd = new Date(now.getFullYear(), Math.floor(now.getMonth()/3)*3+3, 0);
+    const closingQ = open.filter(d=>new Date(d.closeDate+"T00:00:00")<=qEnd);
+    const ctx = `Pipeline: $${Math.round(pipeline/1000)}K open | Weighted: $${Math.round(weighted/1000)}K | Closed Won YTD: $${Math.round(wonVal/1000)}K | Win Rate: ${Math.round(winRate*100)}% | Avg Deal: $${Math.round(avgDeal/1000)}K
+Closing this quarter (${closingQ.length}): ${closingQ.map(d=>`${d.name||"Deal"} $${Math.round((d.value||0)/1000)}K @${d.probability||0}%`).join("; ")||"none"}
+All open deals: ${open.map(d=>`${d.name||"Deal"} stage=${d.stage} $${Math.round((d.value||0)/1000)}K @${d.probability||0}%`).join("; ")}`;
+    try {
+      const resp = await fetch("/api/claude", {method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
+          system:"You are a revenue forecast AI for Ziksatech, a SAP consulting firm. Be specific, data-driven, direct.",
+          messages:[{role:"user",content:`${ctx}
+
+Provide Q1 2026 revenue forecast. Return ONLY JSON:
+{"qForecast":"$XXXk","bestCase":"$XXXk","worstCase":"$XXXk","confidence":"HIGH/MEDIUM/LOW","likelyToClose":["deal1","deal2"],"atRisk":["deal3"],"recommendation":"single most important action","alert":"biggest revenue risk in one sentence"}`}]
+        })
+      });
+      const data = await resp.json();
+      setAiFc(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setAiFc({error:e.message}); }
+    setAiFcLoad(false);
+  };
 
   const open = crmDeals.filter(d=>!["closed-won","closed-lost"].includes(d.stage));
   const won  = crmDeals.filter(d=>d.stage==="closed-won");
@@ -12701,6 +12823,28 @@ function CRMForecast({ crmAccounts, crmDeals, crmActivities }) {
 
   return (
     <div>
+      {/* AI Forecast Panel */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,padding:"12px 18px",background:"#0c1a2e",borderRadius:10,border:"1px solid #0369a144"}}>
+        <div style={{flex:1}}>
+          {aiFc && !aiFc.error ? (
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr) 2fr",gap:10,alignItems:"start"}}>
+              {[["Q1 Forecast",aiFc.qForecast,"#38bdf8"],["Best Case",aiFc.bestCase,"#34d399"],["Worst Case",aiFc.worstCase,"#f87171"],["Confidence",aiFc.confidence,aiFc.confidence==="HIGH"?"#34d399":aiFc.confidence==="MEDIUM"?"#f59e0b":"#f87171"]].map(([l,v,col])=>(
+                <div key={l}><div style={{fontSize:9,color:"#3d5a7a",textTransform:"uppercase",letterSpacing:.4,marginBottom:2}}>{l}</div><div style={{fontSize:14,fontWeight:800,color:col,fontFamily:"'DM Mono',monospace"}}>{v||"—"}</div></div>
+              ))}
+              <div>
+                {aiFc.alert&&<div style={{fontSize:10,color:"#f59e0b",marginBottom:4}}>⚠️ {aiFc.alert}</div>}
+                {aiFc.recommendation&&<div style={{fontSize:10,color:"#38bdf8"}}>→ {aiFc.recommendation}</div>}
+              </div>
+            </div>
+          ) : (
+            <div style={{fontSize:12,color:"#475569"}}>🤖 AI Forecast — click to get Q1 2026 revenue prediction with best/worst case, likely closers, and risks</div>
+          )}
+        </div>
+        <button className="btn bp" style={{fontSize:11,marginLeft:16,flexShrink:0}} onClick={runAIForecast} disabled={aiFcLoad}>
+          {aiFcLoad?"⏳ Forecasting...":"🤖 AI Forecast"}
+        </button>
+      </div>
+
       {/* KPI row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
         {[
