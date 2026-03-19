@@ -1969,6 +1969,1090 @@ function PendingScreen({ email, onGoLogin }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// FINANCE CONTROL SYSTEM (FCS) — 12-Screen Finance Operations Tower
+// Dashboard · Review Queue · Transactions · Tax Planner · Reconciliation
+// Subscriptions · Vendors · Receipts · Alerts · CPA Pack · Rules · AI CFO
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── FCS Seed Data ──────────────────────────────────────────────────────────────
+const FCS_CATEGORIES = [
+  // Revenue
+  { id:"rev-consulting", name:"Consulting Revenue", group:"Revenue", deductible:0, color:"#34d399" },
+  { id:"rev-staffing",   name:"Staffing Revenue",   group:"Revenue", deductible:0, color:"#34d399" },
+  // Payroll & HR
+  { id:"exp-payroll",    name:"Payroll & Salaries",     group:"Labor",    deductible:100, color:"#38bdf8" },
+  { id:"exp-contractor", name:"Contractor Payments",    group:"Labor",    deductible:100, color:"#38bdf8" },
+  { id:"exp-benefits",   name:"Benefits & Insurance",   group:"Labor",    deductible:100, color:"#38bdf8" },
+  // Technology
+  { id:"exp-saas",       name:"SaaS / Software",        group:"Technology", deductible:100, color:"#a78bfa" },
+  { id:"exp-infra",      name:"Cloud / Infrastructure", group:"Technology", deductible:100, color:"#a78bfa" },
+  { id:"exp-hardware",   name:"Hardware / Equipment",   group:"Technology", deductible:100, color:"#a78bfa" },
+  // Legal & Professional
+  { id:"exp-legal",      name:"Legal Fees",             group:"Professional", deductible:100, color:"#f59e0b" },
+  { id:"exp-visa",       name:"Visa / Immigration",     group:"Professional", deductible:100, color:"#f59e0b" },
+  { id:"exp-accounting", name:"Accounting / CPA",       group:"Professional", deductible:100, color:"#f59e0b" },
+  { id:"exp-consulting", name:"Consulting Fees",        group:"Professional", deductible:100, color:"#f59e0b" },
+  // Office & Admin
+  { id:"exp-office",     name:"Office Rent / Space",    group:"Office",  deductible:100, color:"#fb923c" },
+  { id:"exp-supplies",   name:"Office Supplies",        group:"Office",  deductible:100, color:"#fb923c" },
+  { id:"exp-telecom",    name:"Phone / Internet",       group:"Office",  deductible:80,  color:"#fb923c" },
+  // Travel & Meals
+  { id:"exp-travel",     name:"Business Travel",        group:"Travel",  deductible:100, color:"#e879f9" },
+  { id:"exp-meals",      name:"Meals & Entertainment",  group:"Travel",  deductible:50,  color:"#e879f9" },
+  // Marketing
+  { id:"exp-marketing",  name:"Marketing / Advertising", group:"Marketing", deductible:100, color:"#34d399" },
+  { id:"exp-recruiting", name:"Recruiting / Staffing",   group:"Marketing", deductible:100, color:"#34d399" },
+  // Taxes & Banking
+  { id:"exp-banktax",    name:"Bank Fees & Charges",    group:"Finance",  deductible:100, color:"#64748b" },
+  { id:"exp-taxes",      name:"Business Taxes & Fees",  group:"Finance",  deductible:100, color:"#64748b" },
+  // Unclassified
+  { id:"uncategorized",  name:"Uncategorized",          group:"Review",   deductible:0,   color:"#f87171" },
+];
+
+const FCS_DEFAULT_RULES = [
+  { id:"r1", pattern:"ADP",          category:"exp-payroll",    deductible:100, type:"business", enabled:true },
+  { id:"r2", pattern:"AWS",          category:"exp-infra",      deductible:100, type:"business", enabled:true },
+  { id:"r3", pattern:"FRAGOMEN",     category:"exp-visa",       deductible:100, type:"business", enabled:true },
+  { id:"r4", pattern:"ADOBE",        category:"exp-saas",       deductible:100, type:"business", enabled:true },
+  { id:"r5", pattern:"LINKEDIN",     category:"exp-recruiting", deductible:100, type:"business", enabled:true },
+  { id:"r6", pattern:"QUICKBOOKS",   category:"exp-accounting", deductible:100, type:"business", enabled:true },
+  { id:"r7", pattern:"SLACK",        category:"exp-saas",       deductible:100, type:"business", enabled:true },
+  { id:"r8", pattern:"ZOOM",         category:"exp-saas",       deductible:100, type:"business", enabled:true },
+  { id:"r9", pattern:"UNITED AIRLINES|DELTA|SOUTHWEST", category:"exp-travel", deductible:100, type:"business", enabled:true },
+  { id:"r10",pattern:"MARRIOTT|HILTON|HYATT",           category:"exp-travel", deductible:100, type:"business", enabled:true },
+];
+
+const FCS_DEFAULT_TRANSACTIONS = [
+  // March 2026 revenue
+  { id:"t1",  date:"2026-03-01", account:"Chase Business",   merchant:"HOPE-IDI Client",       memo:"Invoice INV-2026-031 - BRIM Phase 3",  amount:87500, type:"credit",  category:"rev-consulting", deductible:0,   biz:"business", receipt:"na",      confidence:98, status:"reviewed" },
+  { id:"t2",  date:"2026-03-05", account:"Chase Business",   merchant:"PTC Inc.",               memo:"Invoice INV-2026-032 - SAP Support",   amount:28500, type:"credit",  category:"rev-staffing",   deductible:0,   biz:"business", receipt:"na",      confidence:98, status:"reviewed" },
+  { id:"t3",  date:"2026-03-10", account:"Chase Business",   merchant:"SCG Energy",             memo:"Invoice INV-2026-033 - IS-U Billing",  amount:15000, type:"credit",  category:"rev-consulting", deductible:0,   biz:"business", receipt:"na",      confidence:95, status:"reviewed" },
+  // Payroll
+  { id:"t4",  date:"2026-03-15", account:"Chase Business",   merchant:"ADP PAYROLL",            memo:"Payroll Run Mar 15 — 6 FTE",          amount:-48200, type:"debit",  category:"exp-payroll",    deductible:100, biz:"business", receipt:"na",      confidence:98, status:"reviewed" },
+  { id:"t5",  date:"2026-02-28", account:"Chase Business",   merchant:"ADP PAYROLL",            memo:"Payroll Run Feb 28 — 6 FTE",          amount:-47800, type:"debit",  category:"exp-payroll",    deductible:100, biz:"business", receipt:"na",      confidence:98, status:"reviewed" },
+  // Contractors
+  { id:"t6",  date:"2026-03-05", account:"Chase Business",   merchant:"CONTRACTOR PAYMENT",     memo:"Ramesh K — BRIM Architect Mar",       amount:-14400, type:"debit",  category:"exp-contractor", deductible:100, biz:"business", receipt:"missing", confidence:90, status:"reviewed" },
+  { id:"t7",  date:"2026-03-05", account:"Chase Business",   merchant:"CONTRACTOR PAYMENT",     memo:"Priya S — SuccessFactors Mar",        amount:-9600,  type:"debit",  category:"exp-contractor", deductible:100, biz:"business", receipt:"missing", confidence:90, status:"reviewed" },
+  // Legal / Visa
+  { id:"t8",  date:"2026-03-02", account:"Amex Business",    merchant:"FRAGOMEN LLP",           memo:"H1B Extension 3 filings",             amount:-8400,  type:"debit",  category:"exp-visa",       deductible:100, biz:"business", receipt:"matched", confidence:95, status:"reviewed" },
+  { id:"t9",  date:"2026-03-08", account:"Amex Business",    merchant:"ATTORNEY ESCROW",        memo:"Contract review - HOPE-IDI MSA",      amount:-1500,  type:"debit",  category:"exp-legal",      deductible:100, biz:"business", receipt:"missing", confidence:80, status:"needs-review" },
+  // Software / SaaS
+  { id:"t10", date:"2026-03-01", account:"Amex Business",    merchant:"AMAZON WEB SERVICES",    memo:"AWS Mar usage",                       amount:-1840,  type:"debit",  category:"exp-infra",      deductible:100, biz:"business", receipt:"matched", confidence:98, status:"reviewed" },
+  { id:"t11", date:"2026-03-01", account:"Amex Business",    merchant:"ADOBE INC",              memo:"Adobe CC subscription",               amount:-84,    type:"debit",  category:"exp-saas",       deductible:100, biz:"business", receipt:"matched", confidence:98, status:"reviewed" },
+  { id:"t12", date:"2026-03-01", account:"Amex Business",    merchant:"SLACK TECHNOLOGIES",     memo:"Slack Pro x10",                       amount:-87,    type:"debit",  category:"exp-saas",       deductible:100, biz:"business", receipt:"matched", confidence:98, status:"reviewed" },
+  { id:"t13", date:"2026-03-01", account:"Amex Business",    merchant:"ZOOM VIDEO COMM",        memo:"Zoom Business x5",                    amount:-200,   type:"debit",  category:"exp-saas",       deductible:100, biz:"business", receipt:"matched", confidence:98, status:"reviewed" },
+  { id:"t14", date:"2026-03-03", account:"Amex Business",    merchant:"LINKEDIN CORP",          memo:"LinkedIn Recruiter seats x2",         amount:-1620,  type:"debit",  category:"exp-recruiting", deductible:100, biz:"business", receipt:"matched", confidence:95, status:"reviewed" },
+  { id:"t15", date:"2026-03-15", account:"Amex Business",    merchant:"QUICKBOOKS INTUIT",      memo:"QuickBooks Online subscription",      amount:-85,    type:"debit",  category:"exp-accounting", deductible:100, biz:"business", receipt:"matched", confidence:98, status:"reviewed" },
+  // Needs review / uncategorized
+  { id:"t16", date:"2026-03-12", account:"Amex Business",    merchant:"COSTCO WHOLESALE",       memo:"COSTCO #0456 purchase",               amount:-847,   type:"debit",  category:"uncategorized",  deductible:0,   biz:"unknown",  receipt:"missing", confidence:25, status:"needs-category" },
+  { id:"t17", date:"2026-03-14", account:"Chase Business",   merchant:"AMAZON.COM",             memo:"AMAZON MARKETPLACE",                  amount:-234,   type:"debit",  category:"uncategorized",  deductible:0,   biz:"unknown",  receipt:"missing", confidence:30, status:"needs-category" },
+  { id:"t18", date:"2026-03-18", account:"Amex Business",    merchant:"DINNER RECEIPT",         memo:"CLIENT DINNER - HOPE-IDI",            amount:-312,   type:"debit",  category:"exp-meals",      deductible:50,  biz:"business", receipt:"missing", confidence:70, status:"needs-receipt" },
+  { id:"t19", date:"2026-03-10", account:"Chase Business",   merchant:"STARBUCKS",              memo:"STARBUCKS #8821",                     amount:-47,    type:"debit",  category:"uncategorized",  deductible:0,   biz:"unknown",  receipt:"matched", confidence:20, status:"needs-category" },
+  { id:"t20", date:"2026-03-07", account:"Chase Personal",   merchant:"NETFLIX",                memo:"NETFLIX subscription",                amount:-18,    type:"debit",  category:"uncategorized",  deductible:0,   biz:"personal", receipt:"na",      confidence:10, status:"needs-review" },
+  // Duplicate suspect
+  { id:"t21", date:"2026-03-01", account:"Amex Business",    merchant:"AMAZON WEB SERVICES",    memo:"AWS Mar usage - duplicate?",          amount:-1840,  type:"debit",  category:"exp-infra",      deductible:100, biz:"business", receipt:"matched", confidence:50, status:"needs-review", flag:"duplicate" },
+];
+
+const FCS_DEFAULT_SUBSCRIPTIONS = [
+  { id:"s1",  vendor:"Amazon Web Services", product:"AWS Compute & Storage",  owner:"Engineering", monthly:1840, renewal:"2026-04-01", lastUsed:"2026-03-19", category:"exp-infra",      status:"active" },
+  { id:"s2",  vendor:"Adobe",               product:"Creative Cloud",          owner:"Marketing",   monthly:84,   renewal:"2026-04-01", lastUsed:"2026-03-15", category:"exp-saas",       status:"active" },
+  { id:"s3",  vendor:"Slack",               product:"Pro (10 seats)",          owner:"Operations",  monthly:87,   renewal:"2026-04-01", lastUsed:"2026-03-19", category:"exp-saas",       status:"active" },
+  { id:"s4",  vendor:"Zoom",                product:"Business (5 hosts)",      owner:"Operations",  monthly:200,  renewal:"2026-04-01", lastUsed:"2026-03-18", category:"exp-saas",       status:"active" },
+  { id:"s5",  vendor:"LinkedIn",            product:"Recruiter (2 seats)",     owner:"HR",          monthly:1620, renewal:"2026-04-03", lastUsed:"2026-03-17", category:"exp-recruiting", status:"active" },
+  { id:"s6",  vendor:"QuickBooks",          product:"Online Plus",             owner:"Finance",     monthly:85,   renewal:"2026-04-15", lastUsed:"2026-03-10", category:"exp-accounting", status:"review" },
+  { id:"s7",  vendor:"Anthropic",           product:"Claude API",              owner:"Product",     monthly:420,  renewal:"2026-04-01", lastUsed:"2026-03-19", category:"exp-saas",       status:"active" },
+  { id:"s8",  vendor:"GitHub",              product:"Teams (8 seats)",         owner:"Engineering", monthly:64,   renewal:"2026-04-01", lastUsed:"2026-03-19", category:"exp-saas",       status:"active" },
+  { id:"s9",  vendor:"HubSpot",             product:"Starter CRM",             owner:"Sales",       monthly:50,   renewal:"2026-04-15", lastUsed:"2026-02-20", category:"exp-saas",       status:"unused" },
+  { id:"s10", vendor:"Dropbox",             product:"Business Plus",           owner:"",            monthly:24,   renewal:"2026-05-01", lastUsed:"2026-01-10", category:"exp-saas",       status:"cancel-recommended" },
+  { id:"s11", vendor:"Grammarly",           product:"Business",                owner:"",            monthly:15,   renewal:"2026-04-22", lastUsed:"2026-03-05", category:"exp-saas",       status:"review" },
+  { id:"s12", vendor:"DocuSign",            product:"Business Pro",            owner:"Operations",  monthly:40,   renewal:"2026-06-01", lastUsed:"2026-03-12", category:"exp-saas",       status:"active" },
+];
+
+const FCS_DEFAULT_VENDORS = [
+  { id:"v1",  name:"ADP Payroll Services",     type:"Payroll Processor",   ytd:192000, requires1099:false, w9:true,  category:"exp-payroll",    status:"active" },
+  { id:"v2",  name:"Fragomen LLP",              type:"Law Firm",            ytd:24800,  requires1099:true,  w9:true,  category:"exp-visa",       status:"active" },
+  { id:"v3",  name:"Amazon Web Services",       type:"Cloud Provider",      ytd:5520,   requires1099:false, w9:true,  category:"exp-infra",      status:"active" },
+  { id:"v4",  name:"Ramesh Kumar (Contractor)", type:"1099 Contractor",     ytd:43200,  requires1099:true,  w9:false, category:"exp-contractor", status:"w9-needed" },
+  { id:"v5",  name:"Priya Sharma (Contractor)", type:"1099 Contractor",     ytd:28800,  requires1099:true,  w9:true,  category:"exp-contractor", status:"active" },
+  { id:"v6",  name:"QuickBooks / Intuit",       type:"Software",            ytd:255,    requires1099:false, w9:false, category:"exp-accounting", status:"active" },
+  { id:"v7",  name:"LinkedIn Corporation",      type:"Software",            ytd:4860,   requires1099:false, w9:true,  category:"exp-recruiting", status:"active" },
+  { id:"v8",  name:"Attorney LLC",              type:"Law Firm",            ytd:3500,   requires1099:true,  w9:false, category:"exp-legal",      status:"w9-needed" },
+];
+
+const FCS_DEFAULT_TAX_PERIODS = [
+  { id:"tp1", year:2025, quarter:4, dueDate:"2026-01-15", income:198000, deductions:142000, taxableProfit:56000, estimatedTax:16800, paid:16800, remaining:0,     status:"paid",     notes:"Q4 2025 paid on time" },
+  { id:"tp2", year:2026, quarter:1, dueDate:"2026-04-15", income:131000, deductions:96000,  taxableProfit:35000, estimatedTax:10500, paid:0,     remaining:10500, status:"due",      notes:"Due Apr 15, 2026 — 27 days" },
+  { id:"tp3", year:2026, quarter:2, dueDate:"2026-06-15", income:0,      deductions:0,      taxableProfit:0,     estimatedTax:0,     paid:0,     remaining:0,     status:"future",   notes:"" },
+  { id:"tp4", year:2026, quarter:3, dueDate:"2026-09-15", income:0,      deductions:0,      taxableProfit:0,     estimatedTax:0,     paid:0,     remaining:0,     status:"future",   notes:"" },
+];
+
+// ── Finance Control System Component ─────────────────────────────────────────
+function FinanceControlSystem({ finInvoices, finPayments, apInvoices, vendors: propVendors, adpRuns, roster, clients, addAudit }) {
+  const [fcsTab,  setFcsTab]  = useState("dashboard");
+  const fmtK  = v => v==null?"—":Math.abs(v)>=1e6?`$${(v/1e6).toFixed(2)}M`:Math.abs(v)>=1e3?`$${(Math.round(v/100)*100/1e3).toFixed(0)}K`:`$${Math.round(v)}`;
+  const fmtAmt = v => v==null?"—":v<0?`-$${Math.abs(v).toLocaleString()}`:`$${v.toLocaleString()}`;
+  const fmtDate = d => d ? new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "—";
+
+  // ── Global FCS State ──────────────────────────────────────────────────────
+  const [transactions, setTransactions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-fcs-transactions")||"null") || FCS_DEFAULT_TRANSACTIONS; } catch { return FCS_DEFAULT_TRANSACTIONS; }
+  });
+  const [subscriptions, setSubscriptions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-fcs-subscriptions")||"null") || FCS_DEFAULT_SUBSCRIPTIONS; } catch { return FCS_DEFAULT_SUBSCRIPTIONS; }
+  });
+  const [fcsVendors, setFcsVendors] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-fcs-vendors")||"null") || FCS_DEFAULT_VENDORS; } catch { return FCS_DEFAULT_VENDORS; }
+  });
+  const [taxPeriods, setTaxPeriods] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-fcs-taxperiods")||"null") || FCS_DEFAULT_TAX_PERIODS; } catch { return FCS_DEFAULT_TAX_PERIODS; }
+  });
+  const [rules, setRules] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-fcs-rules")||"null") || FCS_DEFAULT_RULES; } catch { return FCS_DEFAULT_RULES; }
+  });
+  const [receipts, setReceipts] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-fcs-receipts")||"null") || []; } catch { return []; }
+  });
+
+  // ── Computed Metrics ───────────────────────────────────────────────────────
+  const txRevenue    = transactions.filter(t=>t.type==="credit"&&t.category!=="uncategorized").reduce((s,t)=>s+Math.abs(t.amount),0);
+  const txExpenses   = transactions.filter(t=>t.type==="debit"&&t.category!=="uncategorized").reduce((s,t)=>s+Math.abs(t.amount),0);
+  const netProfit    = txRevenue - txExpenses;
+  const needsReview  = transactions.filter(t=>t.status==="needs-category"||t.status==="needs-review"||t.status==="needs-receipt").length;
+  const uncat        = transactions.filter(t=>t.category==="uncategorized").length;
+  const missingRcpt  = transactions.filter(t=>t.receipt==="missing"&&t.type==="debit"&&Math.abs(t.amount)>50).length;
+  const duplicates   = transactions.filter(t=>t.flag==="duplicate").length;
+  const currentQ1    = taxPeriods.find(tp=>tp.year===2026&&tp.quarter===1);
+  const subsMonthly  = subscriptions.filter(s=>s.status==="active"||s.status==="review").reduce((s,x)=>s+x.monthly,0);
+  const unusedSubs   = subscriptions.filter(s=>s.status==="unused"||s.status==="cancel-recommended").reduce((s,x)=>s+x.monthly,0);
+  const catPct       = Math.round((transactions.filter(t=>t.category!=="uncategorized").length/Math.max(transactions.length,1))*100);
+  const rcptPct      = Math.round((transactions.filter(t=>t.receipt==="matched"||t.receipt==="na").length/Math.max(transactions.filter(t=>t.type==="debit").length,1))*100);
+
+  // ── AI CFO State ───────────────────────────────────────────────────────────
+  const [cfoBrief, setCfoBrief] = useState(null);
+  const [cfoLoading, setCfoLoading] = useState(false);
+  const [cfoChat, setCfoChat] = useState([]);
+  const [cfoInput, setCfoInput] = useState("");
+  const [cfoMsgLoad, setCfoMsgLoad] = useState(false);
+
+  const runCfoBrief = async () => {
+    setCfoLoading(true); setCfoBrief(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
+          system:"You are an AI CFO advisor for Ziksatech, a WBE SAP consulting firm in Plano TX. Provide grounded, numbers-driven finance insights.",
+          messages:[{role:"user",content:`Finance status: Revenue $${Math.round(txRevenue/1000)}K, Expenses $${Math.round(txExpenses/1000)}K, Net profit $${Math.round(netProfit/1000)}K. Uncategorized: ${uncat} transactions. Missing receipts: ${missingRcpt}. Q1 estimated tax due: $${Math.round((currentQ1?.remaining||0)/1000)}K by ${currentQ1?.dueDate||"Apr 15"}. Monthly subscriptions: $${Math.round(subsMonthly)}. Unused subscription waste: $${Math.round(unusedSubs*12)}/yr.\nReturn ONLY JSON:\n{"headline":"single bold headline about finance health","bookScore":82,"taxStatus":"ON TRACK/WATCH/AT RISK","risks":["risk1","risk2","risk3"],"actions":["action1 today","action2 this week","action3 this month"],"insight":"single sharp financial insight","cashAlert":"cash position concern if any"}`}]
+        })
+      });
+      const data = await resp.json();
+      setCfoBrief(extractJSON(data.content?.[0]?.text||"{}"));
+    } catch(e) { setCfoBrief({error:e.message}); }
+    setCfoLoading(false);
+  };
+
+  const sendCfoMessage = async () => {
+    if (!cfoInput.trim()) return;
+    const msg = cfoInput; setCfoInput(""); setCfoMsgLoad(true);
+    const newChat = [...cfoChat, {role:"user",content:msg}];
+    setCfoChat(newChat);
+    try {
+      const context = `Ziksatech FCS context: Revenue $${Math.round(txRevenue/1000)}K, Expenses $${Math.round(txExpenses/1000)}K, Net profit $${Math.round(netProfit/1000)}K, ${uncat} uncategorized transactions, ${missingRcpt} missing receipts, Q1 tax due $${Math.round((currentQ1?.remaining||0)/1000)}K by ${currentQ1?.dueDate||"Apr 15"}, monthly subs $${Math.round(subsMonthly)}.`;
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:`You are an AI CFO for Ziksatech. Always give specific numbers and actionable advice. ${context}`,
+          messages:newChat.slice(-8)
+        })
+      });
+      const data = await resp.json();
+      const reply = data.content?.[0]?.text||"I couldn't process that request.";
+      setCfoChat([...newChat,{role:"assistant",content:reply}]);
+    } catch(e) { setCfoChat([...newChat,{role:"assistant",content:"Error: "+e.message}]); }
+    setCfoMsgLoad(false);
+  };
+
+  // ── Save helpers ───────────────────────────────────────────────────────────
+  const saveTx = (txs) => { setTransactions(txs); try{localStorage.setItem("zt-fcs-transactions",JSON.stringify(txs));}catch{} };
+  const acceptTx = (id, updates={}) => saveTx(transactions.map(t=>t.id===id?{...t,...updates,status:"reviewed"}:t));
+
+  const FCS_TABS = [
+    {id:"dashboard",   label:"📊 Dashboard",       color:"#38bdf8"},
+    {id:"review",      label:"📥 Review Queue",     color:"#f87171", badge: needsReview},
+    {id:"transactions",label:"📋 Transactions",     color:"#a78bfa"},
+    {id:"tax",         label:"🧾 Tax Planner",      color:"#f59e0b"},
+    {id:"reconcile",   label:"🔗 Reconciliation",   color:"#34d399"},
+    {id:"subscriptions",label:"🔄 Subscriptions",   color:"#e879f9", badge: unusedSubs>0?subscriptions.filter(s=>s.status==="unused"||s.status==="cancel-recommended").length:0},
+    {id:"vendors",     label:"🏢 Vendors",          color:"#fb923c", badge: fcsVendors.filter(v=>v.status==="w9-needed").length},
+    {id:"receipts",    label:"🧾 Receipts",         color:"#60a5fa"},
+    {id:"alerts",      label:"⚠️ Alerts",           color:"#f87171", badge: duplicates+uncat},
+    {id:"cpa-pack",    label:"📦 CPA Pack",         color:"#34d399"},
+    {id:"rules",       label:"⚙️ Rules",            color:"#94a3b8"},
+    {id:"cfo",         label:"🤖 AI CFO",           color:"#38bdf8"},
+  ];
+
+  // ── Status chips ───────────────────────────────────────────────────────────
+  const StatusChip = ({status,small}) => {
+    const s = status||"";
+    const map = {
+      "reviewed":["✓ Reviewed","#34d399","#021f14"],
+      "needs-category":["⚠ Needs Category","#f59e0b","#1a0f00"],
+      "needs-receipt":["🧾 Needs Receipt","#f87171","#1a0808"],
+      "needs-review":["👁 Needs Review","#38bdf8","#060d1c"],
+      "active":["Active","#34d399","#021f14"],
+      "paid":["✓ Paid","#34d399","#021f14"],
+      "due":["⚡ Due Soon","#f59e0b","#1a0f00"],
+      "overdue":["⚠ Overdue","#f87171","#1a0808"],
+      "future":["Upcoming","#64748b","#040a14"],
+      "unused":["Unused","#f87171","#1a0808"],
+      "cancel-recommended":["Cancel Recommended","#f87171","#1a0808"],
+      "review":["Review","#f59e0b","#1a0f00"],
+      "w9-needed":["W-9 Missing","#f87171","#1a0808"],
+    };
+    const [label,color,bg] = map[s]||[s,"#64748b","#040a14"];
+    return <span style={{background:bg,color,border:`1px solid ${color}33`,borderRadius:12,padding:small?"1px 6px":"2px 8px",fontSize:small?9:10,fontWeight:700,whiteSpace:"nowrap"}}>{label}</span>;
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 1: DASHBOARD
+  // ═══════════════════════════════════════════
+  const renderDashboard = () => (
+    <div>
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+        <button className="btn bp" style={{fontSize:11}} onClick={runCfoBrief} disabled={cfoLoading}>{cfoLoading?"⏳ Analyzing...":"🤖 AI CFO Brief"}</button>
+        <button className="btn bg" style={{fontSize:11}} onClick={()=>setFcsTab("review")}>📥 Review Queue ({needsReview})</button>
+        <button className="btn bg" style={{fontSize:11}} onClick={()=>setFcsTab("tax")}>🧾 Tax Planner</button>
+        <button className="btn bg" style={{fontSize:11}} onClick={()=>setFcsTab("cpa-pack")}>📦 CPA Pack</button>
+        <div style={{marginLeft:"auto",fontSize:10,color:"#334155"}}>Last sync: {new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</div>
+      </div>
+
+      {/* KPI Row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Revenue",     v:fmtK(txRevenue),   sub:"Mar 2026",          color:"#34d399", trend:"+12%"},
+          {l:"Expenses",    v:fmtK(txExpenses),  sub:"categorized",       color:"#f87171", trend:"-3%"},
+          {l:"Net Profit",  v:fmtK(netProfit),   sub:`${Math.round(netProfit/Math.max(txRevenue,1)*100)}% margin`, color:netProfit>0?"#4ade80":"#f87171", trend:""},
+          {l:"Est. Tax Q1", v:fmtK(currentQ1?.remaining||0), sub:`Due ${currentQ1?.dueDate||"Apr 15"}`, color:(currentQ1?.remaining||0)>0?"#f59e0b":"#34d399", trend:""},
+          {l:"Subs / Month",v:`$${Math.round(subsMonthly).toLocaleString()}`, sub:`$${Math.round(unusedSubs*12).toLocaleString()} waste/yr`, color:"#a78bfa", trend:""},
+          {l:"Review Items", v:needsReview, sub:`${uncat} uncategorized`, color:needsReview>0?"#f87171":"#34d399", trend:""},
+        ].map(kpi=>(
+          <div key={kpi.l} className="card" style={{padding:"12px 14px",borderTop:`2px solid ${kpi.color}`}}>
+            <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:4}}>{kpi.l}</div>
+            <div style={{fontSize:20,fontWeight:800,color:kpi.color,fontFamily:"monospace"}}>{kpi.v}</div>
+            <div style={{fontSize:9,color:"#334155",marginTop:2}}>{kpi.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* AI CFO Brief */}
+      {cfoBrief && !cfoBrief.error && (
+        <div style={{padding:"14px 16px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#38bdf8"}}>🤖 AI CFO Brief — <span style={{color:cfoBrief.taxStatus==="ON TRACK"?"#34d399":cfoBrief.taxStatus==="AT RISK"?"#f87171":"#f59e0b"}}>{cfoBrief.taxStatus}</span></div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {cfoBrief.bookScore&&<span style={{fontSize:14,fontWeight:800,fontFamily:"monospace",color:(cfoBrief.bookScore||0)>80?"#34d399":(cfoBrief.bookScore||0)>60?"#f59e0b":"#f87171"}}>{cfoBrief.bookScore}/100</span>}
+              <button className="btn bg" style={{fontSize:9}} onClick={()=>setCfoBrief(null)}>✕</button>
+            </div>
+          </div>
+          {cfoBrief.headline&&<div style={{fontSize:12,color:"#e2e8f0",marginBottom:8,fontStyle:"italic"}}>"{cfoBrief.headline}"</div>}
+          {cfoBrief.cashAlert&&<div style={{padding:"5px 10px",background:"#1a0808",border:"1px solid #f8717133",borderRadius:5,fontSize:11,color:"#f87171",marginBottom:8}}>⚠ {cfoBrief.cashAlert}</div>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {cfoBrief.risks&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Top Risks</div>{cfoBrief.risks.map((r,i)=><div key={i} style={{fontSize:11,color:"#f87171",marginBottom:2}}>• {r}</div>)}</div>}
+            {cfoBrief.actions&&<div><div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Priority Actions</div>{cfoBrief.actions.map((a,i)=><div key={i} style={{fontSize:11,color:"#34d399",marginBottom:2}}>{i+1}. {a}</div>)}</div>}
+          </div>
+        </div>
+      )}
+
+      {/* Two-column main panels */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        {/* Tax Readiness Panel */}
+        <div className="card" style={{padding:"16px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+            <div className="section-hdr">🧾 Tax Readiness</div>
+            <button className="btn bg" style={{fontSize:10}} onClick={()=>setFcsTab("tax")}>Open →</button>
+          </div>
+          {taxPeriods.filter(tp=>tp.year===2026&&tp.status!=="future").map(tp=>(
+            <div key={tp.id} style={{marginBottom:10,padding:"10px 12px",background:"#040a14",borderRadius:7,border:`1px solid ${tp.remaining>0?"#f59e0b33":"#34d39922"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>Q{tp.quarter} {tp.year}</div>
+                <StatusChip status={tp.status} small/>
+              </div>
+              <div style={{display:"flex",gap:12,fontSize:10,color:"#64748b"}}>
+                <span>Due: {fmtDate(tp.dueDate)}</span>
+                <span>Estimated: {fmtK(tp.estimatedTax)}</span>
+                <span style={{color:tp.remaining>0?"#f59e0b":"#34d399",fontWeight:600}}>Remaining: {fmtK(tp.remaining)}</span>
+              </div>
+              {tp.remaining>0&&(
+                <div style={{marginTop:6,background:"#1a0f00",borderRadius:4,height:4}}>
+                  <div style={{width:`${Math.round(tp.paid/Math.max(tp.estimatedTax,1)*100)}%`,height:"100%",background:"#f59e0b",borderRadius:4}}/>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Leakage & Risk Panel */}
+        <div className="card" style={{padding:"16px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+            <div className="section-hdr">⚠️ Leakage & Risk</div>
+            <button className="btn bg" style={{fontSize:10}} onClick={()=>setFcsTab("alerts")}>View All →</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {[
+              {l:"Uncategorized",      v:uncat,      color:"#f87171", tab:"review", icon:"🏷"},
+              {l:"Missing Receipts",   v:missingRcpt, color:"#f59e0b", tab:"receipts", icon:"🧾"},
+              {l:"Duplicate Suspects", v:duplicates, color:"#f87171", tab:"alerts", icon:"⚠️"},
+              {l:"Unused Subscriptions",v:subscriptions.filter(s=>s.status==="unused"||s.status==="cancel-recommended").length, color:"#a78bfa", tab:"subscriptions", icon:"🔄"},
+              {l:"W-9 Missing",        v:fcsVendors.filter(v=>v.status==="w9-needed").length, color:"#f59e0b", tab:"vendors", icon:"📋"},
+              {l:"Recon Mismatch",     v:0,           color:"#64748b", tab:"reconcile", icon:"🔗"},
+            ].map(item=>(
+              <button key={item.l} onClick={()=>setFcsTab(item.tab)}
+                style={{padding:"8px 10px",background:item.v>0?"#040a14":"#020508",border:`1px solid ${item.v>0?item.color+"33":"#0f1e30"}`,borderRadius:7,cursor:"pointer",textAlign:"left"}}>
+                <div style={{fontSize:16,fontWeight:800,color:item.v>0?item.color:"#334155"}}>{item.v}</div>
+                <div style={{fontSize:9,color:"#475569",marginTop:1}}>{item.icon} {item.l}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Expense breakdown */}
+      <div className="card" style={{padding:"16px"}}>
+        <div className="section-hdr" style={{marginBottom:10}}>📊 Expense Breakdown — Mar 2026</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {FCS_CATEGORIES.filter(cat=>cat.group!=="Revenue"&&cat.group!=="Review").map(cat=>{
+            const amt = transactions.filter(t=>t.category===cat.id&&t.type==="debit").reduce((s,t)=>s+Math.abs(t.amount),0);
+            if(!amt) return null;
+            const pct = Math.round(amt/Math.max(txExpenses,1)*100);
+            return (
+              <div key={cat.id} style={{padding:"6px 10px",background:"#040a14",border:`1px solid ${cat.color}33`,borderRadius:6,minWidth:100}}>
+                <div style={{fontSize:10,color:cat.color,fontWeight:700}}>{fmtK(amt)}</div>
+                <div style={{fontSize:9,color:"#475569",marginTop:1}}>{cat.name}</div>
+                <div style={{fontSize:8,color:"#334155"}}>{pct}% of expenses</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════════
+  // SCREEN 2: REVIEW QUEUE
+  // ═══════════════════════════════════════════
+  const renderReview = () => {
+    const needsCat  = transactions.filter(t=>t.status==="needs-category");
+    const needsRcpt = transactions.filter(t=>t.status==="needs-receipt");
+    const needsAttn = transactions.filter(t=>t.status==="needs-review");
+    const queue = [...needsCat, ...needsAttn, ...needsRcpt];
+
+    return (
+      <div>
+        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+          <button className="btn bp" style={{fontSize:11}} onClick={()=>saveTx(transactions.map(t=>t.confidence>=80&&t.status!=="reviewed"?{...t,status:"reviewed"}:t))}>✓ Accept All High-Confidence</button>
+          <div style={{marginLeft:"auto",fontSize:10,color:"#475569"}}>{queue.length} items need review</div>
+        </div>
+        {/* Summary rail */}
+        <div style={{display:"flex",gap:10,marginBottom:14}}>
+          {[
+            {l:"Needs Category",v:needsCat.length, color:"#f87171"},
+            {l:"Needs Receipt", v:needsRcpt.length,color:"#f59e0b"},
+            {l:"Needs Attention",v:needsAttn.length,color:"#38bdf8"},
+            {l:"Deductible at risk",v:needsCat.reduce((s,t)=>s+Math.abs(t.amount),0),color:"#a78bfa",fmt:fmtK},
+          ].map(({l,v,color,fmt})=>(
+            <div key={l} style={{flex:1,padding:"8px 12px",background:"#040a14",border:`1px solid ${color}33`,borderRadius:7}}>
+              <div style={{fontSize:16,fontWeight:800,color}}>{fmt?fmt(v):v}</div>
+              <div style={{fontSize:9,color:"#475569",marginTop:1}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        {/* Review cards */}
+        {queue.length===0&&<div style={{padding:"40px",textAlign:"center",color:"#334155",fontSize:14}}>✅ Queue is clear — all transactions reviewed!</div>}
+        {queue.map(tx=>(
+          <div key={tx.id} style={{padding:"12px 14px",marginBottom:10,background:"#040a14",border:`1px solid ${tx.status==="needs-category"?"#f8717133":tx.status==="needs-receipt"?"#f59e0b33":"#38bdf833"}`,borderRadius:8}}>
+            <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{tx.merchant}</div>
+                  <div style={{fontSize:13,fontWeight:800,color:tx.type==="credit"?"#34d399":"#f87171",fontFamily:"monospace"}}>{fmtAmt(tx.amount)}</div>
+                  <div style={{fontSize:9,color:"#475569"}}>{fmtDate(tx.date)} · {tx.account}</div>
+                  <StatusChip status={tx.status} small/>
+                  {tx.flag==="duplicate"&&<span style={{fontSize:9,background:"#1a0808",color:"#f87171",borderRadius:3,padding:"1px 5px",border:"1px solid #f8717133"}}>⚠ DUPLICATE?</span>}
+                </div>
+                <div style={{fontSize:10,color:"#64748b",marginBottom:6}}>{tx.memo}</div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{fontSize:9,color:"#3d5a7a"}}>AI suggestion:</span>
+                  <select className="inp" style={{fontSize:10,padding:"2px 6px",width:180}}
+                    value={tx.category} onChange={e=>saveTx(transactions.map(t=>t.id===tx.id?{...t,category:e.target.value}:t))}>
+                    {FCS_CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  {tx.confidence&&<span style={{fontSize:9,color:tx.confidence>=80?"#34d399":tx.confidence>=50?"#f59e0b":"#f87171"}}>{tx.confidence}% confidence</span>}
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <button className="btn bp" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>acceptTx(tx.id,{category:tx.category||"exp-supplies"})}>✓ Accept</button>
+                <button className="btn bg" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>acceptTx(tx.id,{biz:"personal",category:"uncategorized"})}>Personal</button>
+                <button className="btn bg" style={{fontSize:10,padding:"3px 8px"}} onClick={()=>saveTx(transactions.map(t=>t.id===tx.id?{...t,status:"reviewed",receipt:"na"}:t))}>No Receipt</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 3: TRANSACTIONS WORKBENCH
+  // ═══════════════════════════════════════════
+  const [txSearch, setTxSearch] = useState("");
+  const [txFilter, setTxFilter] = useState("all");
+  const [txSelId, setTxSelId] = useState(null);
+
+  const renderTransactions = () => {
+    const selTx = transactions.find(t=>t.id===txSelId);
+    const filtered = transactions.filter(t=>{
+      if(txFilter==="uncategorized") return t.category==="uncategorized";
+      if(txFilter==="flagged") return t.status!=="reviewed";
+      if(txFilter==="deductible") return t.deductible>0;
+      if(txFilter==="personal") return t.biz==="personal";
+      return true;
+    }).filter(t=>!txSearch||t.merchant.toLowerCase().includes(txSearch.toLowerCase())||t.memo.toLowerCase().includes(txSearch.toLowerCase()));
+
+    return (
+      <div style={{display:"grid",gridTemplateColumns:txSelId?"3fr 2fr":"1fr",gap:14}}>
+        <div>
+          <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+            <input className="inp" style={{flex:1,fontSize:12}} placeholder="Search merchant, memo..." value={txSearch} onChange={e=>setTxSearch(e.target.value)}/>
+            <select className="inp" style={{width:160,fontSize:11}} value={txFilter} onChange={e=>setTxFilter(e.target.value)}>
+              <option value="all">All ({transactions.length})</option>
+              <option value="flagged">Needs Review ({needsReview})</option>
+              <option value="uncategorized">Uncategorized ({uncat})</option>
+              <option value="deductible">Deductible Only</option>
+              <option value="personal">Personal</option>
+            </select>
+            <div style={{fontSize:10,color:"#475569"}}>{filtered.length} records</div>
+          </div>
+          {/* Table header */}
+          <div style={{display:"grid",gridTemplateColumns:"80px 1fr 80px 90px 80px 60px",gap:4,padding:"5px 8px",fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:700}}>
+            <span>Date</span><span>Merchant / Memo</span><span>Amount</span><span>Category</span><span>Receipt</span><span>Status</span>
+          </div>
+          {filtered.map(tx=>(
+            <div key={tx.id} onClick={()=>setTxSelId(tx.id===txSelId?null:tx.id)}
+              style={{display:"grid",gridTemplateColumns:"80px 1fr 80px 90px 80px 60px",gap:4,padding:"7px 8px",marginBottom:1,borderRadius:5,cursor:"pointer",
+                background:tx.id===txSelId?"#0c1a2e":tx.status!=="reviewed"?"#0c0a04":"#040a14",
+                border:tx.id===txSelId?"1px solid #0369a144":"1px solid transparent"}}>
+              <span style={{fontSize:10,color:"#475569"}}>{new Date(tx.date).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
+              <div>
+                <div style={{fontSize:11,color:"#cbd5e1",fontWeight:600}}>{tx.merchant}</div>
+                <div style={{fontSize:9,color:"#334155"}}>{tx.memo?.slice(0,50)}</div>
+              </div>
+              <span style={{fontSize:11,fontFamily:"monospace",fontWeight:700,color:tx.type==="credit"?"#34d399":"#f87171"}}>{fmtAmt(tx.amount)}</span>
+              <span style={{fontSize:9,color:FCS_CATEGORIES.find(c=>c.id===tx.category)?.color||"#64748b"}}>
+                {FCS_CATEGORIES.find(c=>c.id===tx.category)?.name?.slice(0,14)||"—"}
+              </span>
+              <span style={{fontSize:9,color:tx.receipt==="matched"?"#34d399":tx.receipt==="missing"?"#f87171":"#475569"}}>
+                {tx.receipt==="matched"?"✓":tx.receipt==="missing"?"⚠":"—"}
+              </span>
+              <StatusChip status={tx.status} small/>
+            </div>
+          ))}
+        </div>
+        {/* Detail drawer */}
+        {selTx&&(
+          <div style={{padding:"16px",background:"#040a14",border:"1px solid #0f1e30",borderRadius:10,position:"sticky",top:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#e2e8f0"}}>{selTx.merchant}</div>
+              <button className="btn bg" style={{fontSize:9}} onClick={()=>setTxSelId(null)}>✕</button>
+            </div>
+            <div style={{fontSize:18,fontWeight:800,color:selTx.type==="credit"?"#34d399":"#f87171",fontFamily:"monospace",marginBottom:8}}>{fmtAmt(selTx.amount)}</div>
+            <div style={{fontSize:10,color:"#64748b",marginBottom:10}}>{selTx.memo}</div>
+            {[["Date",fmtDate(selTx.date)],["Account",selTx.account],["Type",selTx.type]].map(([l,v])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:4,padding:"3px 0",borderBottom:"1px solid #0a1626"}}>
+                <span style={{color:"#475569"}}>{l}</span><span style={{color:"#94a3b8"}}>{v}</span>
+              </div>
+            ))}
+            <div style={{marginTop:8}}>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Category</div>
+              <select className="inp" style={{width:"100%",fontSize:11,marginBottom:6}} value={selTx.category}
+                onChange={e=>saveTx(transactions.map(t=>t.id===selTx.id?{...t,category:e.target.value}:t))}>
+                {FCS_CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <div style={{fontSize:9,color:"#3d5a7a",marginBottom:4,textTransform:"uppercase"}}>Business/Personal</div>
+              <select className="inp" style={{width:"100%",fontSize:11,marginBottom:8}} value={selTx.biz}
+                onChange={e=>saveTx(transactions.map(t=>t.id===selTx.id?{...t,biz:e.target.value}:t))}>
+                <option value="business">Business</option>
+                <option value="personal">Personal</option>
+                <option value="mixed">Mixed</option>
+                <option value="unknown">Unknown</option>
+              </select>
+              <div style={{display:"flex",gap:6}}>
+                <button className="btn bp" style={{flex:1,fontSize:11}} onClick={()=>acceptTx(selTx.id,{category:selTx.category,biz:selTx.biz})}>✓ Mark Reviewed</button>
+                <button className="btn bg" style={{fontSize:11}} onClick={()=>setTxSelId(null)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 4: TAX PLANNER
+  // ═══════════════════════════════════════════
+  const renderTax = () => {
+    const taxDrivers = FCS_CATEGORIES.filter(c=>c.group!=="Revenue"&&c.group!=="Review").map(cat=>({
+      name: cat.name, color: cat.color,
+      amount: transactions.filter(t=>t.category===cat.id&&t.type==="debit").reduce((s,t)=>s+Math.abs(t.amount),0)
+    })).filter(d=>d.amount>0).sort((a,b)=>b.amount-a.amount);
+
+    return (
+      <div>
+        {/* KPI row */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:16}}>
+          {[
+            {l:"Est. Income",     v:fmtK(txRevenue),  color:"#34d399"},
+            {l:"Deductible Exp.", v:fmtK(transactions.filter(t=>t.deductible>0&&t.type==="debit").reduce((s,t)=>s+Math.abs(t.amount),0)), color:"#38bdf8"},
+            {l:"Taxable Profit",  v:fmtK(currentQ1?.taxableProfit||0), color:"#f59e0b"},
+            {l:"Est. Tax Q1",     v:fmtK(currentQ1?.estimatedTax||0), color:"#f87171"},
+            {l:"Paid to Date",    v:fmtK(currentQ1?.paid||0),  color:"#34d399"},
+            {l:"Remaining Due",   v:fmtK(currentQ1?.remaining||0), color:(currentQ1?.remaining||0)>0?"#f87171":"#34d399"},
+          ].map(kpi=>(
+            <div key={kpi.l} className="card" style={{padding:"10px 12px",borderTop:`2px solid ${kpi.color}`}}>
+              <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>{kpi.l}</div>
+              <div style={{fontSize:18,fontWeight:800,color:kpi.color,fontFamily:"monospace"}}>{kpi.v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Quarter cards */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+          {taxPeriods.map(tp=>(
+            <div key={tp.id} className="card" style={{padding:"14px",border:`1px solid ${tp.status==="due"?"#f59e0b33":tp.status==="paid"?"#34d39922":"#0f1e30"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>Q{tp.quarter} {tp.year}</div>
+                <StatusChip status={tp.status} small/>
+              </div>
+              <div style={{fontSize:9,color:"#475569",marginBottom:4}}>Due {fmtDate(tp.dueDate)}</div>
+              <div style={{fontSize:16,fontWeight:800,color:tp.status==="paid"?"#34d399":tp.status==="due"?"#f59e0b":"#64748b",fontFamily:"monospace"}}>{fmtK(tp.estimatedTax||0)}</div>
+              <div style={{fontSize:9,color:"#334155",marginTop:3}}>Remaining: {fmtK(tp.remaining||0)}</div>
+              {tp.status==="due"&&(
+                <button className="btn bp" style={{fontSize:10,marginTop:8,width:"100%"}}
+                  onClick={()=>setTaxPeriods(taxPeriods.map(p=>p.id===tp.id?{...p,paid:p.estimatedTax,remaining:0,status:"paid"}:p))}>
+                  ✓ Mark Paid
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Tax drivers */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div className="card" style={{padding:"16px"}}>
+            <div className="section-hdr" style={{marginBottom:10}}>📊 Tax Drivers — Deductible Expenses</div>
+            {taxDrivers.map(d=>(
+              <div key={d.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{fontSize:11,color:"#94a3b8"}}>{d.name}</span>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:80,height:4,background:"#0a1626",borderRadius:2}}>
+                    <div style={{width:`${Math.min(100,Math.round(d.amount/Math.max(txExpenses,1)*100))}%`,height:"100%",background:d.color,borderRadius:2}}/>
+                  </div>
+                  <span style={{fontSize:11,fontFamily:"monospace",color:d.color,minWidth:50,textAlign:"right"}}>{fmtK(d.amount)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{padding:"16px"}}>
+            <div className="section-hdr" style={{marginBottom:10}}>💡 Recommended Actions</div>
+            {[
+              {t:"Pay Q1 estimated tax by Apr 15",urgency:"HIGH",sub:`$${Math.round((currentQ1?.remaining||0)/1000)}K due in ${Math.max(0,Math.ceil((new Date("2026-04-15")-new Date())/86400000))} days`},
+              {t:"Categorize "+uncat+" uncategorized transactions",urgency:uncat>0?"MEDIUM":"LOW",sub:"Affects deductible calculation"},
+              {t:"Collect "+missingRcpt+" missing receipts",urgency:missingRcpt>5?"HIGH":"MEDIUM",sub:"Required for audit readiness"},
+              {t:"Confirm visa/legal expense tax treatment",urgency:"MEDIUM",sub:"$"+Math.round(transactions.filter(t=>t.category==="exp-visa").reduce((s,t)=>s+Math.abs(t.amount),0)/1000)+"K at 100% deductible"},
+            ].map((action,i)=>(
+              <div key={i} style={{padding:"8px 10px",marginBottom:6,background:"#040a14",borderRadius:5,border:`1px solid ${action.urgency==="HIGH"?"#f8717133":action.urgency==="MEDIUM"?"#f59e0b22":"#0f1e30"}`}}>
+                <div style={{fontSize:11,color:"#e2e8f0",marginBottom:2}}>{i+1}. {action.t}</div>
+                <div style={{fontSize:9,color:"#475569"}}>{action.sub}</div>
+              </div>
+            ))}
+            <div style={{display:"flex",gap:6,marginTop:10}}>
+              <button className="btn bp" style={{fontSize:11,flex:1}}>Export Tax Summary</button>
+              <button className="btn bg" style={{fontSize:11,flex:1}} onClick={()=>setFcsTab("cpa-pack")}>CPA Pack →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 5: RECONCILIATION
+  // ═══════════════════════════════════════════
+  const renderReconciliation = () => {
+    const accounts = ["Chase Business","Amex Business","Chase Personal"];
+    const acctStats = accounts.map(acct=>{
+      const txs = transactions.filter(t=>t.account===acct);
+      const matched = txs.filter(t=>t.receipt==="matched"||t.status==="reviewed").length;
+      const total = txs.length;
+      const balance = txs.reduce((s,t)=>s+(t.type==="credit"?Math.abs(t.amount):-Math.abs(t.amount)),0);
+      return {name:acct, total, matched, pct:Math.round(matched/Math.max(total,1)*100), balance};
+    });
+
+    return (
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+          {acctStats.map(a=>(
+            <div key={a.name} className="card" style={{padding:"14px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0",marginBottom:6}}>{a.name}</div>
+              <div style={{fontSize:18,fontWeight:800,color:a.balance>=0?"#34d399":"#f87171",fontFamily:"monospace"}}>{fmtK(Math.abs(a.balance))}</div>
+              <div style={{fontSize:9,color:"#475569",marginBottom:6}}>{a.total} transactions</div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#64748b",marginBottom:3}}>
+                <span>Reconciled</span><span style={{color:a.pct>90?"#34d399":a.pct>70?"#f59e0b":"#f87171"}}>{a.pct}%</span>
+              </div>
+              <div style={{height:4,background:"#0a1626",borderRadius:2}}>
+                <div style={{width:`${a.pct}%`,height:"100%",background:a.pct>90?"#34d399":a.pct>70?"#f59e0b":"#f87171",borderRadius:2}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="card" style={{padding:"16px"}}>
+          <div className="section-hdr" style={{marginBottom:10}}>📋 Transaction Reconciliation</div>
+          <div style={{display:"grid",gridTemplateColumns:"100px 1fr 80px 80px 60px",gap:4,padding:"4px 8px",fontSize:9,color:"#475569",textTransform:"uppercase"}}>
+            <span>Date</span><span>Description</span><span>Amount</span><span>Account</span><span>Status</span>
+          </div>
+          {transactions.slice(0,15).map(tx=>(
+            <div key={tx.id} style={{display:"grid",gridTemplateColumns:"100px 1fr 80px 80px 60px",gap:4,padding:"6px 8px",borderBottom:"1px solid #0a1626",fontSize:11}}>
+              <span style={{color:"#475569"}}>{fmtDate(tx.date)}</span>
+              <div>
+                <div style={{color:"#cbd5e1"}}>{tx.merchant}</div>
+                <div style={{fontSize:9,color:"#334155"}}>{tx.memo?.slice(0,40)}</div>
+              </div>
+              <span style={{color:tx.type==="credit"?"#34d399":"#f87171",fontFamily:"monospace"}}>{fmtAmt(tx.amount)}</span>
+              <span style={{fontSize:9,color:"#64748b"}}>{tx.account?.split(" ")[0]}</span>
+              <StatusChip status={tx.status==="reviewed"?"reviewed":"needs-review"} small/>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 6: SUBSCRIPTIONS
+  // ═══════════════════════════════════════════
+  const renderSubscriptions = () => {
+    const active = subscriptions.filter(s=>s.status==="active");
+    const totalMonthly = subscriptions.reduce((s,x)=>s+x.monthly,0);
+    const wasteMonthly = subscriptions.filter(s=>s.status==="unused"||s.status==="cancel-recommended").reduce((s,x)=>s+x.monthly,0);
+
+    return (
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14}}>
+          {[
+            {l:"Active Subs",v:active.length, color:"#34d399"},
+            {l:"Monthly Spend",v:`$${Math.round(totalMonthly).toLocaleString()}`, color:"#38bdf8"},
+            {l:"Annual Spend",v:fmtK(totalMonthly*12), color:"#a78bfa"},
+            {l:"Waste Est.",v:`$${Math.round(wasteMonthly*12).toLocaleString()}/yr`, color:"#f87171"},
+            {l:"Renewals < 30d",v:subscriptions.filter(s=>{try{return(new Date(s.renewal)-new Date())/86400000<30;}catch{return false;}}).length, color:"#f59e0b"},
+          ].map(kpi=>(
+            <div key={kpi.l} className="card" style={{padding:"10px 12px",borderTop:`2px solid ${kpi.color}`}}>
+              <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:2}}>{kpi.l}</div>
+              <div style={{fontSize:16,fontWeight:800,color:kpi.color}}>{kpi.v}</div>
+            </div>
+          ))}
+        </div>
+        {subscriptions.map(sub=>(
+          <div key={sub.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 80px 100px 100px 70px 100px",gap:8,padding:"8px 10px",marginBottom:1,borderRadius:5,
+            background:sub.status==="cancel-recommended"||sub.status==="unused"?"#0d0404":"#040a14",
+            border:`1px solid ${sub.status==="active"?"#0f1e30":sub.status==="unused"?"#f8717133":"#f59e0b33"}`}}>
+            <div>
+              <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{sub.vendor}</div>
+              <div style={{fontSize:9,color:"#475569"}}>{sub.product}</div>
+            </div>
+            <span style={{fontSize:10,color:"#64748b",alignSelf:"center"}}>{sub.owner||"—"}</span>
+            <span style={{fontSize:11,fontWeight:700,color:"#f87171",fontFamily:"monospace",alignSelf:"center"}}>${sub.monthly}/mo</span>
+            <span style={{fontSize:9,color:"#475569",alignSelf:"center"}}>{fmtDate(sub.renewal)}</span>
+            <span style={{fontSize:9,color:"#334155",alignSelf:"center"}}>{sub.lastUsed?fmtDate(sub.lastUsed):"Never"}</span>
+            <StatusChip status={sub.status} small/>
+            <div style={{display:"flex",gap:4,alignSelf:"center"}}>
+              <button className="btn bp" style={{fontSize:9,padding:"2px 5px"}} onClick={()=>setSubscriptions(subscriptions.map(s=>s.id===sub.id?{...s,status:"active"}:s))}>Keep</button>
+              <button className="btn bg" style={{fontSize:9,padding:"2px 5px",color:"#f87171"}} onClick={()=>setSubscriptions(subscriptions.map(s=>s.id===sub.id?{...s,status:"cancel-recommended"}:s))}>Cancel</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 7: VENDORS & CONTRACTORS
+  // ═══════════════════════════════════════════
+  const renderVendors = () => (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+        {[
+          {l:"Vendors",v:fcsVendors.length,color:"#38bdf8"},
+          {l:"Total YTD Paid",v:fmtK(fcsVendors.reduce((s,v)=>s+v.ytd,0)),color:"#34d399"},
+          {l:"1099 Required",v:fcsVendors.filter(v=>v.requires1099).length,color:"#f59e0b"},
+          {l:"W-9 Missing",v:fcsVendors.filter(v=>v.requires1099&&!v.w9).length,color:"#f87171"},
+        ].map(kpi=>(
+          <div key={kpi.l} className="card" style={{padding:"10px 12px",borderTop:`2px solid ${kpi.color}`}}>
+            <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:2}}>{kpi.l}</div>
+            <div style={{fontSize:16,fontWeight:800,color:kpi.color}}>{kpi.v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 100px 80px 60px 80px 80px",gap:6,padding:"5px 8px",fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:700,marginBottom:4}}>
+        <span>Vendor</span><span>Type</span><span>YTD Paid</span><span>1099 Req</span><span>W-9</span><span>Category</span><span>Status</span>
+      </div>
+      {fcsVendors.map(v=>(
+        <div key={v.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 100px 80px 60px 80px 80px",gap:6,padding:"7px 8px",marginBottom:1,borderRadius:5,
+          background:v.status==="w9-needed"?"#0d0a03":"#040a14",
+          border:`1px solid ${v.status==="w9-needed"?"#f59e0b33":"#0f1e30"}`}}>
+          <div>
+            <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{v.name}</div>
+          </div>
+          <span style={{fontSize:10,color:"#64748b",alignSelf:"center"}}>{v.type}</span>
+          <span style={{fontSize:11,fontFamily:"monospace",fontWeight:700,color:"#f87171",alignSelf:"center"}}>{fmtK(v.ytd)}</span>
+          <span style={{fontSize:10,color:v.requires1099?"#f59e0b":"#64748b",alignSelf:"center"}}>{v.requires1099?"Required":"No"}</span>
+          <span style={{fontSize:10,color:v.w9?"#34d399":"#f87171",alignSelf:"center"}}>{v.w9?"✓":"✗"}</span>
+          <span style={{fontSize:9,color:FCS_CATEGORIES.find(c=>c.id===v.category)?.color||"#64748b",alignSelf:"center"}}>
+            {FCS_CATEGORIES.find(c=>c.id===v.category)?.name?.split(" ")[0]||"—"}
+          </span>
+          <StatusChip status={v.status} small/>
+        </div>
+      ))}
+    </div>
+  );
+
+  // ═══════════════════════════════════════════
+  // SCREEN 8: RECEIPTS VAULT
+  // ═══════════════════════════════════════════
+  const renderReceipts = () => {
+    const debitTxs = transactions.filter(t=>t.type==="debit"&&Math.abs(t.amount)>25);
+    const covered = debitTxs.filter(t=>t.receipt==="matched"||t.receipt==="na").length;
+    const missing = debitTxs.filter(t=>t.receipt==="missing").length;
+    const pct = Math.round(covered/Math.max(debitTxs.length,1)*100);
+
+    return (
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+          {[
+            {l:"Receipt Coverage",v:`${pct}%`, color:pct>90?"#34d399":pct>70?"#f59e0b":"#f87171"},
+            {l:"Covered",v:covered,color:"#34d399"},
+            {l:"Missing",v:missing,color:"#f87171"},
+            {l:"Audit Readiness",v:pct>90?"HIGH":pct>70?"MEDIUM":"LOW",color:pct>90?"#34d399":pct>70?"#f59e0b":"#f87171"},
+          ].map(kpi=>(
+            <div key={kpi.l} className="card" style={{padding:"10px 12px",borderTop:`2px solid ${kpi.color}`}}>
+              <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:2}}>{kpi.l}</div>
+              <div style={{fontSize:16,fontWeight:800,color:kpi.color}}>{kpi.v}</div>
+            </div>
+          ))}
+        </div>
+        <div className="card" style={{padding:"16px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+            <div className="section-hdr">🧾 Missing Receipts — Action Required</div>
+            <span style={{fontSize:10,color:"#f87171"}}>{missing} items need receipts</span>
+          </div>
+          {debitTxs.filter(t=>t.receipt==="missing").map(tx=>(
+            <div key={tx.id} style={{display:"flex",gap:10,alignItems:"center",padding:"7px 8px",marginBottom:4,background:"#040a14",borderRadius:5,border:"1px solid #f59e0b22"}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{tx.merchant}</div>
+                <div style={{fontSize:9,color:"#475569"}}>{fmtDate(tx.date)} · {tx.account}</div>
+              </div>
+              <div style={{fontSize:13,fontWeight:800,color:"#f87171",fontFamily:"monospace"}}>{fmtAmt(tx.amount)}</div>
+              <button className="btn bg" style={{fontSize:10}} onClick={()=>saveTx(transactions.map(t=>t.id===tx.id?{...t,receipt:"matched",status:"reviewed"}:t))}>
+                Upload / Mark OK
+              </button>
+            </div>
+          ))}
+          {debitTxs.filter(t=>t.receipt==="missing").length===0&&<div style={{color:"#34d399",fontSize:12,padding:"20px",textAlign:"center"}}>✅ All receipts accounted for!</div>}
+        </div>
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 9: ALERTS & ANOMALIES
+  // ═══════════════════════════════════════════
+  const renderAlerts = () => {
+    const alerts = [
+      ...(uncat>0?[{id:"a1",severity:"HIGH",  title:`${uncat} Uncategorized Transactions`,  amount:transactions.filter(t=>t.category==="uncategorized").reduce((s,t)=>s+Math.abs(t.amount),0), reason:"Transactions without categories cannot be used as deductions",  action:"Open Review Queue",  tab:"review"}]:[]),
+      ...(duplicates>0?[{id:"a2",severity:"HIGH",  title:"Possible Duplicate Transaction",      amount:1840, reason:"AWS charge appears twice on Mar 1 — one may be a duplicate",            action:"Review in Transactions",tab:"transactions"}]:[]),
+      ...(missingRcpt>0?[{id:"a3",severity:"MEDIUM",title:`${missingRcpt} Missing Receipts`,       amount:transactions.filter(t=>t.receipt==="missing").reduce((s,t)=>s+Math.abs(t.amount),0), reason:"Required for IRS audit readiness and deduction support",            action:"Open Receipts Vault", tab:"receipts"}]:[]),
+      ...((currentQ1?.remaining||0)>0?[{id:"a4",severity:"HIGH",  title:"Q1 Estimated Tax Due in <30 Days", amount:currentQ1?.remaining||0, reason:`$${Math.round((currentQ1?.remaining||0)/1000)}K due by Apr 15, 2026 — penalty if missed`, action:"Open Tax Planner",    tab:"tax"}]:[]),
+      ...(unusedSubs>0?[{id:"a5",severity:"LOW",   title:`Subscription Waste Detected: $${Math.round(unusedSubs*12)}/yr`, amount:unusedSubs*12, reason:"2 subscriptions marked unused or cancel-recommended",  action:"Review Subscriptions",tab:"subscriptions"}]:[]),
+      ...(fcsVendors.filter(v=>v.status==="w9-needed").length>0?[{id:"a6",severity:"MEDIUM",title:`W-9 Missing for ${fcsVendors.filter(v=>v.status==="w9-needed").length} Vendor(s)`, amount:fcsVendors.filter(v=>v.status==="w9-needed").reduce((s,v)=>s+v.ytd,0), reason:"Required for 1099 filing — collect before year end", action:"Open Vendors",tab:"vendors"}]:[]),
+    ];
+
+    return (
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+          {[
+            {l:"High Priority",v:alerts.filter(a=>a.severity==="HIGH").length,  color:"#f87171"},
+            {l:"Medium",       v:alerts.filter(a=>a.severity==="MEDIUM").length, color:"#f59e0b"},
+            {l:"Low",          v:alerts.filter(a=>a.severity==="LOW").length,    color:"#38bdf8"},
+          ].map(kpi=>(
+            <div key={kpi.l} className="card" style={{padding:"10px 12px",borderTop:`2px solid ${kpi.color}`}}>
+              <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:2}}>{kpi.l}</div>
+              <div style={{fontSize:20,fontWeight:800,color:kpi.color}}>{kpi.v}</div>
+            </div>
+          ))}
+        </div>
+        {alerts.length===0&&<div style={{padding:"40px",textAlign:"center",color:"#34d399",fontSize:14}}>✅ No active alerts — books look clean!</div>}
+        {alerts.map(alert=>(
+          <div key={alert.id} style={{padding:"12px 14px",marginBottom:8,background:"#040a14",
+            border:`1px solid ${alert.severity==="HIGH"?"#f8717133":alert.severity==="MEDIUM"?"#f59e0b33":"#38bdf833"}`,borderRadius:8}}>
+            <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
+                  <span style={{fontSize:9,fontWeight:700,background:alert.severity==="HIGH"?"#1a0808":alert.severity==="MEDIUM"?"#1a0f00":"#060d1c",
+                    color:alert.severity==="HIGH"?"#f87171":alert.severity==="MEDIUM"?"#f59e0b":"#38bdf8",
+                    border:`1px solid currentColor`,borderRadius:4,padding:"1px 5px"}}>{alert.severity}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>{alert.title}</span>
+                </div>
+                <div style={{fontSize:10,color:"#64748b",marginBottom:4}}>{alert.reason}</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#f87171",fontFamily:"monospace"}}>{fmtK(alert.amount)} at risk</div>
+              </div>
+              <button className="btn bp" style={{fontSize:10}} onClick={()=>setFcsTab(alert.tab)}>{alert.action} →</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 10: CPA PACK
+  // ═══════════════════════════════════════════
+  const renderCPAPack = () => {
+    const checks = [
+      {l:"Transactions reviewed",    done:catPct>95,   v:`${catPct}% complete`,    pct:catPct},
+      {l:"Receipts matched",          done:rcptPct>90,  v:`${rcptPct}% covered`,    pct:rcptPct},
+      {l:"Reconciliation complete",   done:false,       v:"Partially done",          pct:65},
+      {l:"Tax estimate finalized",    done:(currentQ1?.remaining||0)===0, v:(currentQ1?.remaining||0)===0?"Paid":"$"+Math.round((currentQ1?.remaining||0)/1000)+"K remaining", pct:(currentQ1?.remaining||0)===0?100:50},
+      {l:"Vendor W-9 docs complete",  done:fcsVendors.every(v=>!v.requires1099||v.w9), v:fcsVendors.filter(v=>v.requires1099&&!v.w9).length===0?"Complete":fcsVendors.filter(v=>v.requires1099&&!v.w9).length+" missing", pct:Math.round((fcsVendors.filter(v=>!v.requires1099||v.w9).length/Math.max(fcsVendors.length,1))*100)},
+    ];
+    const overallPct = Math.round(checks.reduce((s,c)=>s+c.pct,0)/checks.length);
+
+    return (
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div className="card" style={{padding:"16px"}}>
+            <div className="section-hdr" style={{marginBottom:12}}>✅ Readiness Checklist</div>
+            <div style={{marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <span style={{fontSize:10,color:"#475569"}}>Overall CPA Readiness</span>
+                <span style={{fontSize:12,fontWeight:800,color:overallPct>80?"#34d399":overallPct>60?"#f59e0b":"#f87171"}}>{overallPct}%</span>
+              </div>
+              <div style={{height:8,background:"#0a1626",borderRadius:4}}>
+                <div style={{width:`${overallPct}%`,height:"100%",background:overallPct>80?"#34d399":overallPct>60?"#f59e0b":"#f87171",borderRadius:4,transition:"width 0.5s"}}/>
+              </div>
+            </div>
+            {checks.map((c,i)=>(
+              <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                <span style={{fontSize:14,color:c.done?"#34d399":"#f59e0b"}}>{c.done?"✅":"⚠️"}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,color:"#e2e8f0"}}>{c.l}</div>
+                  <div style={{fontSize:9,color:c.done?"#34d399":"#f59e0b"}}>{c.v}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{padding:"16px"}}>
+            <div className="section-hdr" style={{marginBottom:12}}>📦 Generate CPA Package</div>
+            <div style={{marginBottom:12}}>
+              {[
+                {l:"Include P&L Statement", default:true},
+                {l:"Include Expense Ledger", default:true},
+                {l:"Include Tax Estimate Summary", default:true},
+                {l:"Include Reconciliation Summary", default:true},
+                {l:"Include Vendor/1099 Summary", default:true},
+                {l:"Include Anomaly Report", default:false},
+              ].map((opt,i)=>(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+                  <input type="checkbox" defaultChecked={opt.default} style={{accentColor:"#38bdf8"}}/>
+                  <span style={{fontSize:11,color:"#94a3b8"}}>{opt.l}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{borderTop:"1px solid #0f1e30",paddingTop:10}}>
+              <div style={{marginBottom:8}}>
+                {[
+                  ["📊 P&L Statement",        `Revenue ${fmtK(txRevenue)} | Expenses ${fmtK(txExpenses)} | Net ${fmtK(netProfit)}`],
+                  ["🗂 Expense Ledger",        `${transactions.filter(t=>t.type==="debit").length} transactions, ${catPct}% categorized`],
+                  ["🧾 Tax Summary",          `Q1 ${fmtK(currentQ1?.estimatedTax||0)} est. | ${(currentQ1?.remaining||0)>0?"OUTSTANDING":"PAID"}`],
+                  ["🔗 Reconciliation",       "3 accounts reconciled"],
+                  ["📋 Vendor Summary",       `${fcsVendors.filter(v=>v.requires1099).length} vendors requiring 1099`],
+                ].map(([label,detail])=>(
+                  <div key={label} style={{padding:"5px 8px",marginBottom:3,background:"#040a14",borderRadius:4}}>
+                    <div style={{fontSize:11,color:"#38bdf8"}}>{label}</div>
+                    <div style={{fontSize:9,color:"#475569"}}>{detail}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:6}}>
+                <button className="btn bp" style={{flex:1,fontSize:11}}>📄 Export PDF</button>
+                <button className="btn bg" style={{flex:1,fontSize:11}}>📊 Export Excel</button>
+              </div>
+              <button className="btn bg" style={{width:"100%",marginTop:6,fontSize:11,color:"#38bdf8"}}>📧 Send Summary to CPA</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════
+  // SCREEN 11: RULES ENGINE
+  // ═══════════════════════════════════════════
+  const [newRule, setNewRule] = useState({pattern:"",category:"exp-saas",deductible:100,type:"business",enabled:true});
+  const renderRules = () => (
+    <div>
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <input className="inp" style={{width:160,fontSize:11}} placeholder="Merchant pattern (e.g. AWS)" value={newRule.pattern} onChange={e=>setNewRule({...newRule,pattern:e.target.value})}/>
+        <select className="inp" style={{width:180,fontSize:11}} value={newRule.category} onChange={e=>setNewRule({...newRule,category:e.target.value})}>
+          {FCS_CATEGORIES.filter(c=>c.group!=="Revenue"&&c.group!=="Review").map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select className="inp" style={{width:100,fontSize:11}} value={newRule.type} onChange={e=>setNewRule({...newRule,type:e.target.value})}>
+          <option value="business">Business</option>
+          <option value="personal">Personal</option>
+          <option value="mixed">Mixed</option>
+        </select>
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>{
+          if(!newRule.pattern) return;
+          const r={...newRule,id:"r"+Date.now()};
+          const updated=[...rules,r];
+          setRules(updated); try{localStorage.setItem("zt-fcs-rules",JSON.stringify(updated));}catch{}
+          setNewRule({pattern:"",category:"exp-saas",deductible:100,type:"business",enabled:true});
+        }}>+ Add Rule</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"2fr 2fr 80px 80px 60px 60px",gap:6,padding:"4px 8px",fontSize:9,color:"#475569",textTransform:"uppercase",fontWeight:700,marginBottom:4}}>
+        <span>Merchant Pattern</span><span>Category</span><span>Deductible</span><span>Type</span><span>Active</span><span>Delete</span>
+      </div>
+      {rules.map(rule=>(
+        <div key={rule.id} style={{display:"grid",gridTemplateColumns:"2fr 2fr 80px 80px 60px 60px",gap:6,padding:"7px 8px",marginBottom:1,borderRadius:5,background:rule.enabled?"#040a14":"#020508",border:"1px solid #0f1e30"}}>
+          <span style={{fontSize:11,fontFamily:"monospace",color:"#38bdf8"}}>{rule.pattern}</span>
+          <span style={{fontSize:11,color:FCS_CATEGORIES.find(c=>c.id===rule.category)?.color||"#64748b"}}>{FCS_CATEGORIES.find(c=>c.id===rule.category)?.name||rule.category}</span>
+          <span style={{fontSize:11,color:"#34d399"}}>{rule.deductible}%</span>
+          <span style={{fontSize:10,color:"#94a3b8"}}>{rule.type}</span>
+          <button style={{fontSize:9,background:"none",border:"none",cursor:"pointer",color:rule.enabled?"#34d399":"#475569"}}
+            onClick={()=>setRules(rules.map(r=>r.id===rule.id?{...r,enabled:!r.enabled}:r))}>
+            {rule.enabled?"ON":"OFF"}
+          </button>
+          <button style={{fontSize:10,background:"none",border:"none",cursor:"pointer",color:"#f87171"}}
+            onClick={()=>setRules(rules.filter(r=>r.id!==rule.id))}>🗑</button>
+        </div>
+      ))}
+    </div>
+  );
+
+  // ═══════════════════════════════════════════
+  // SCREEN 12: AI CFO ASSISTANT
+  // ═══════════════════════════════════════════
+  const renderCFO = () => (
+    <div style={{display:"grid",gridTemplateColumns:"3fr 2fr",gap:14,height:"calc(100vh - 200px)"}}>
+      {/* Chat */}
+      <div style={{display:"flex",flexDirection:"column",background:"#040a14",borderRadius:10,border:"1px solid #0f1e30",overflow:"hidden"}}>
+        <div style={{padding:"12px 14px",borderBottom:"1px solid #0f1e30",background:"#060d1c"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#38bdf8"}}>🤖 AI CFO Assistant</div>
+          <div style={{fontSize:9,color:"#475569"}}>Grounded in your actual books — asks real numbers</div>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"14px",display:"flex",flexDirection:"column",gap:10}}>
+          {cfoChat.length===0&&(
+            <div style={{textAlign:"center",padding:"30px 20px"}}>
+              <div style={{fontSize:24,marginBottom:8}}>🤖</div>
+              <div style={{fontSize:12,color:"#475569",marginBottom:12}}>Ask your AI CFO anything about your books</div>
+              {["How much tax do I owe this quarter?","Which expenses are still uncategorized?","Where am I leaking money?","What should I do before sending to my CPA?","Which subscriptions should I cancel?"].map(prompt=>(
+                <button key={prompt} className="btn bg" style={{fontSize:10,margin:"3px",display:"inline-block"}}
+                  onClick={()=>{setCfoInput(prompt);}}>{prompt}</button>
+              ))}
+            </div>
+          )}
+          {cfoChat.map((msg,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start"}}>
+              <div style={{maxWidth:"85%",padding:"10px 12px",borderRadius:msg.role==="user"?"10px 10px 2px 10px":"10px 10px 10px 2px",
+                background:msg.role==="user"?"#0c2340":"#060d1c",border:"1px solid #0f1e30"}}>
+                <div style={{fontSize:11,color:"#e2e8f0",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{msg.content}</div>
+              </div>
+            </div>
+          ))}
+          {cfoMsgLoad&&<div style={{color:"#38bdf8",fontSize:11}}>⏳ Analyzing your books...</div>}
+        </div>
+        <div style={{padding:"10px",borderTop:"1px solid #0f1e30",display:"flex",gap:8}}>
+          <input className="inp" style={{flex:1,fontSize:12}} placeholder="Ask about your finances..."
+            value={cfoInput} onChange={e=>setCfoInput(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendCfoMessage()}/>
+          <button className="btn bp" style={{fontSize:11}} onClick={sendCfoMessage} disabled={cfoMsgLoad||!cfoInput.trim()}>Send</button>
+        </div>
+      </div>
+      {/* Context panel */}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <div className="card" style={{padding:"14px"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:8}}>📊 Current Book Status</div>
+          {[
+            ["Revenue",      fmtK(txRevenue),  "#34d399"],
+            ["Expenses",     fmtK(txExpenses), "#f87171"],
+            ["Net Profit",   fmtK(netProfit),  netProfit>0?"#4ade80":"#f87171"],
+            ["Tax Q1 Due",   fmtK(currentQ1?.remaining||0), (currentQ1?.remaining||0)>0?"#f59e0b":"#34d399"],
+            ["Uncategorized",uncat+" transactions","#f87171"],
+            ["Book Score",   `${catPct}%`,"#38bdf8"],
+          ].map(([l,v,c])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:10,padding:"3px 0",borderBottom:"1px solid #0a1626"}}>
+              <span style={{color:"#475569"}}>{l}</span><span style={{color:c,fontWeight:600}}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div className="card" style={{padding:"14px"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:8}}>💡 Suggested Questions</div>
+          {["How much deductible expenses do I have?","What's my effective tax rate?","Which vendor should I get W-9 from first?","What are my biggest expense categories?","What saves me the most on taxes?"].map(q=>(
+            <button key={q} className="btn bg" style={{fontSize:10,width:"100%",textAlign:"left",marginBottom:4}}
+              onClick={()=>{setCfoInput(q);}}>→ {q}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════════
+  // MAIN RENDER
+  // ═══════════════════════════════════════════
+  return (
+    <div>
+      <PH title="💰 Finance Control System" sub="Tax readiness · Expense control · Reconciliation · CPA-ready books · AI CFO">
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontSize:10,color:catPct>90?"#34d399":catPct>70?"#f59e0b":"#f87171"}}>Book Score: {catPct}%</span>
+          {needsReview>0&&<span style={{fontSize:10,color:"#f87171",background:"#1a0808",border:"1px solid #f8717133",borderRadius:10,padding:"1px 6px"}}>{needsReview} need review</span>}
+        </div>
+      </PH>
+
+      {/* Sub-navigation */}
+      <div style={{display:"flex",gap:0,marginBottom:14,borderBottom:"1px solid #0f1e30",overflowX:"auto",flexShrink:0}}>
+        {FCS_TABS.map(t=>(
+          <button key={t.id} onClick={()=>setFcsTab(t.id)}
+            style={{padding:"8px 12px",background:"none",border:"none",cursor:"pointer",fontSize:11,fontWeight:600,whiteSpace:"nowrap",position:"relative",
+              color:fcsTab===t.id?t.color:"#475569",
+              borderBottom:fcsTab===t.id?`2px solid ${t.color}`:"2px solid transparent"}}>
+            {t.label}
+            {t.badge>0&&<span style={{position:"absolute",top:3,right:3,background:"#f87171",color:"#fff",borderRadius:"100px",fontSize:8,fontWeight:800,padding:"0 4px",minWidth:14,textAlign:"center"}}>{t.badge}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Screen renders */}
+      {fcsTab==="dashboard"    && renderDashboard()}
+      {fcsTab==="review"       && renderReview()}
+      {fcsTab==="transactions" && renderTransactions()}
+      {fcsTab==="tax"          && renderTax()}
+      {fcsTab==="reconcile"    && renderReconciliation()}
+      {fcsTab==="subscriptions"&& renderSubscriptions()}
+      {fcsTab==="vendors"      && renderVendors()}
+      {fcsTab==="receipts"     && renderReceipts()}
+      {fcsTab==="alerts"       && renderAlerts()}
+      {fcsTab==="cpa-pack"     && renderCPAPack()}
+      {fcsTab==="rules"        && renderRules()}
+      {fcsTab==="cfo"          && renderCFO()}
+    </div>
+  );
+}
+
 export default function ZiksatechOps() {
   const [tab, setTab] = useState(() => {
     try { const s = localStorage.getItem("zt-last-tab"); if(s) return s; } catch {}
@@ -2496,6 +3580,7 @@ export default function ZiksatechOps() {
     { id:"wbecert",      label:"WBE/HUB Certifications", icon:ICONS.dash,     group:"Compliance"  },
     { id:"ideapad",      label:"IdeaPad 💡",            icon:ICONS.pl,       group:"Tools"    },
     { id:"help",         label:"Help & Training",       icon:ICONS.pl,       group:"Tools"    },
+    { id:"fcs", label:"Finance Control", icon:ICONS.chart, group:"Finance" },
   ];
 
   const shared = { roster, setRoster, pipeline, setPipeline, clients, setClients, tsHours, setTsHours, plIncome, setPlIncome, plExpense, setPlExpense, ebitdaLevers, setEbitdaLevers, fbInvoices, setFbInvoices, adpRuns, setAdpRuns, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, candidates, setCandidates, submissions, setSubmissions, interviews, setInterviews, offers, setOffers, jobReqs, setJobReqs, workAuth, setWorkAuth, compDocs, setCompDocs, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, crmDeals, setCrmDeals, crmActivities, setCrmActivities, crmLeads, setCrmLeads, crmTasks, setCrmTasks, crmNotes, setCrmNotes, crmOrders, setCrmOrders, contracts, setContracts, sows, setSows, projects, setProjects, tasks, setTasks, risks, setRisks, orgMembers, setOrgMembers, tsSubmissions, setTsSubmissions, changeOrders, setChangeOrders, vendors, setVendors, apInvoices, setApInvoices, cfOverrides, setCfOverrides, ptoRequests, setPtoRequests, ptoBalances, setPtoBalances, dismissedAlerts, setDismissedAlerts, auditLog, setAuditLog, proposals, setProposals, benefits, setBenefits, esignRequests, setEsignRequests, onboardings, setOnboardings, maskPII, setMaskPII, maskVal, appSettings, setAppSettings, globalSearch, setGlobalSearch, searchOpen, setSearchOpen, addAudit: makeAddAudit(setAuditLog, appSettings.ownerName), setTab };
@@ -3072,6 +4157,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
         {tab==="bankanalyzer" && <BankAnalyzer authProfile={authProfile}/>}
+        {tab==="fcs" && <FinanceControlSystem finInvoices={finInvoices} finPayments={finPayments} apInvoices={apInvoices} vendors={vendors} adpRuns={adpRuns} roster={roster} clients={clients} addAudit={addAudit}/>}
         {tab==="aicoo"      && <AICOODashboard    {...shared} authProfile={authProfile}/>}
         
         {tab==="revleakage"    && <RevLeakageDetector  {...shared} authProfile={authProfile}/>}
