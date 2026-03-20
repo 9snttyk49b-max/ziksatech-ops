@@ -3781,6 +3781,8 @@ function ZiksatechTalent({ roster, jobReqs, addAudit, authProfile }) {
 function NaxonOSCommand({ addAudit, authProfile }) {
   const [aiLoad, setAiLoad] = useState(false);
   const [aiPlan, setAiPlan] = useState(null);
+  const [addDealOpen, setAddDealOpen] = useState(false);
+  const [newDeal, setNewDeal] = useState({company:"",contact:"",value:35000,stage:"Outreach"});
   const [phase0, setPhase0] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("zt-naxon-phase0")||"null");
@@ -3905,8 +3907,30 @@ function NaxonOSCommand({ addAudit, authProfile }) {
       <div className="card" style={{padding:"14px 16px",marginBottom:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>Phase 0 Pipeline — $25K to $50K Discovery Engagements</div>
-          <div style={{fontSize:10,color:"#475569"}}>Breakeven: {wonPhase0}/7 won — {7-Math.min(wonPhase0,7)} to go</div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{fontSize:10,color:"#475569"}}>Breakeven: {wonPhase0}/7 won — {7-Math.min(wonPhase0,7)} to go</div>
+            <button className="btn bp" style={{fontSize:10}} onClick={()=>setAddDealOpen(o=>!o)}>+ Add Deal</button>
+          </div>
         </div>
+        {addDealOpen && (
+          <div style={{marginBottom:12,padding:"12px 14px",background:"#040810",borderRadius:8,border:"1px solid #0369a133",display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr auto",gap:8,alignItems:"end"}}>
+            <FF label="Company"><input className="inp" value={newDeal.company} onChange={e=>setNewDeal(p=>({...p,company:e.target.value}))}/></FF>
+            <FF label="Contact"><input className="inp" value={newDeal.contact} onChange={e=>setNewDeal(p=>({...p,contact:e.target.value}))}/></FF>
+            <FF label="Value ($)"><input type="number" className="inp" value={newDeal.value} onChange={e=>setNewDeal(p=>({...p,value:e.target.value}))}/></FF>
+            <FF label="Stage">
+              <select className="inp" value={newDeal.stage} onChange={e=>setNewDeal(p=>({...p,stage:e.target.value}))}>
+                {STAGES.filter(s=>s.id!=="Won"&&s.id!=="Lost").map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </FF>
+            <button className="btn bp" style={{fontSize:11,padding:"6px 12px"}} disabled={!newDeal.company} onClick={()=>{
+              const d = {...newDeal, id:"p0-"+Date.now(), lastTouch:new Date().toISOString().slice(0,10), notes:""};
+              savePhase0([...phase0, d]);
+              setNewDeal({company:"",contact:"",value:35000,stage:"Outreach"});
+              setAddDealOpen(false);
+              addAudit?.("Naxon Pipeline","Add Deal","Phase-0",`Added ${newDeal.company}`);
+            }}>Add</button>
+          </div>
+        )}
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
           {activeStages.map(stage=>{
             const deals = phase0.filter(d=>d.stage===stage.id);
@@ -3938,6 +3962,10 @@ function NaxonOSCommand({ addAudit, authProfile }) {
                           }}>
                           {STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
                         </select>
+                        <button style={{width:"100%",marginTop:4,padding:"3px",fontSize:8,background:"#021f14",color:stale?"#f59e0b":"#334155",border:"1px solid "+(stale?"#f59e0b22":"#1a2d45"),borderRadius:4,cursor:"pointer"}}
+                          onClick={()=>savePhase0(phase0.map(x=>x.id===d.id?{...x,lastTouch:new Date().toISOString().slice(0,10)}:x))}>
+                          {stale?"⚡ Mark Contacted":"✓ Contacted today"}
+                        </button>
                       </div>
                     );
                   })}
