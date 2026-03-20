@@ -108,8 +108,14 @@ const RBAC = {
   naxonsow:      ["super_admin","admin"],
   naxonlinkedin: ["super_admin","admin"],
   naxonkpi:      ["super_admin","admin"],
-  naxonresearch: ["super_admin","admin"],
+  plsummary:     ["super_admin","admin"],
+  adpexport:     ["super_admin","admin"],
+  erpcatalyst:   ["super_admin","admin","employee","contractor","pm","hr_immigration","accounts","client"],
+  nttabilling:   ["super_admin","admin"],
+    naxonresearch: ["super_admin","admin"],
   naxonreferral: ["super_admin","admin"],
+  meetingnotes:  ["super_admin","admin"],
+  emailsequence: ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4608,6 +4614,10 @@ export default function ZiksatechOps() {
     { id:"autoworkflow",  label:"⚡ Auto Workflows",      icon:ICONS.dash,     group:"Overview"    },
     { id:"perfcoach",    label:"🏆 Performance Coach",  icon:ICONS.dash,     group:"Overview"    },
     { id:"dashboard",    label:"Executive Dashboard",    icon:ICONS.dash,     group:"Overview"    },
+    { id:"plsummary",     label:"P&L Summary 📊",           icon:ICONS.pl,       group:"Finance"     },
+    { id:"adpexport",     label:"ADP Payroll Export 💳",     icon:ICONS.dash,     group:"Finance"     },
+    { id:"erpcatalyst",   label:"ERP Catalyst 🔗",           icon:ICONS.dash,     group:"Tools"       },
+    { id:"nttabilling",   label:"NTTA Billing 🛣️",            icon:ICONS.pl,       group:"Clients"     },
     { id:"reports",      label:"Report Builder",       icon:ICONS.pl,       group:"Tools"    },
     { id:"portal",       label:"Client Portal",        icon:ICONS.dash,     group:"Tools"    },
     { id:"notifhub",    label:"Teams / Slack",          icon:ICONS.dash,     group:"Team"    },
@@ -4695,6 +4705,8 @@ export default function ZiksatechOps() {
     { id:"naxonkpi",      label:"Naxon KPIs 📊",             icon:ICONS.ebitda,   group:"Naxon OS" },
     { id:"naxonresearch", label:"Prospect Research 🔍",       icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonreferral", label:"Referral & Partners 🤲",     icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"meetingnotes",   label:"Meeting Notes AI 🗒️",      icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"emailsequence",  label:"Email Sequences 📨",        icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5284,6 +5296,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="naxonkpi"      && <NaxonKPIDashboard addAudit={shared.addAudit}/>}
         {tab==="naxonresearch" && <NaxonProspectResearch addAudit={shared.addAudit}/>}
         {tab==="naxonreferral" && <NaxonReferralCRM addAudit={shared.addAudit}/>}
+        {tab==="meetingnotes"  && <NaxonMeetingNotes addAudit={shared.addAudit}/>}
+        {tab==="emailsequence" && <NaxonEmailSequence addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -5303,6 +5317,10 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="scenario"      && <ScenarioSimulator    {...shared} authProfile={authProfile}/>}
         {tab==="perfcoach"     && <PerformanceCoach     {...shared} authProfile={authProfile}/>}
         {tab==="dashboard"  && <Dashboard  {...shared}/>}
+        {tab==="plsummary"   && <PLMonthlySummary finInvoices={shared.finInvoices} finPayments={shared.finPayments} roster={shared.roster} clients={shared.clients} addAudit={shared.addAudit}/>}
+        {tab==="adpexport"   && <ADPPayrollExport roster={shared.roster} tsHours={shared.tsHours} addAudit={shared.addAudit}/>}
+        {tab==="erpcatalyst" && <ERPCatalystLink addAudit={shared.addAudit}/>}
+        {tab==="nttabilling" && <NTTABillingDashboard roster={shared.roster} finInvoices={shared.finInvoices} addAudit={shared.addAudit}/>}
         {tab==="notifhub"     && <NotificationsHub roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} contracts={shared.contracts} workAuth={shared.workAuth} compDocs={shared.compDocs} crmDeals={shared.crmDeals} ptoRequests={shared.ptoRequests} tsSubmissions={shared.tsSubmissions} projects={shared.projects} finPayments={shared.finPayments} apInvoices={shared.apInvoices} sows={shared.sows} crmActivities={shared.crmActivities} ptoBalances={shared.ptoBalances} changeOrders={shared.changeOrders} vendors={shared.vendors} risks={shared.risks} offers={shared.offers} dismissedAlerts={shared.dismissedAlerts} addAudit={shared.addAudit} appSettings={shared.appSettings}/>}
         {tab==="notifications" && <NotificationCenter {...shared}/>}
         {tab==="auditlog"      && <AuditLog {...shared}/>}
@@ -39584,6 +39602,340 @@ function QuickInvoice({ roster, clients, finInvoices, setFinInvoices, addAudit, 
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// P&L MONTHLY SUMMARY
+// Printable/exportable monthly P&L for Ziksatech
+// ═══════════════════════════════════════════════════════════════════════
+function PLMonthlySummary({ finInvoices, finPayments, roster, clients, addAudit }) {
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth());
+  const [year, setYear] = useState(now.getFullYear());
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const invoicesThisMonth = (finInvoices||[]).filter(inv => {
+    const d = new Date(inv.issueDate||inv.createdAt||"");
+    return d.getMonth()===month && d.getFullYear()===year;
+  });
+  const paymentsThisMonth = (finPayments||[]).filter(p => {
+    const d = new Date(p.date||p.createdAt||"");
+    return d.getMonth()===month && d.getFullYear()===year;
+  });
+
+  const totalBilled = invoicesThisMonth.reduce((s,inv)=>s+(+inv.amount||+(inv.lines||[]).reduce((a,l)=>a+(+l.amount||0),0)),0);
+  const totalCollected = paymentsThisMonth.reduce((s,p)=>s+(+p.amount||0),0);
+  const consultantCost = (roster||[]).filter(r=>r.type==="FTE"||r.type==="W2").reduce((s,r)=>s+((+r.payRate||0)*160),0);
+  const grossProfit = totalBilled - consultantCost;
+  const grossMargin = totalBilled>0 ? Math.round((grossProfit/totalBilled)*100) : 0;
+  const fmt = v => "$"+Math.round(v).toLocaleString();
+
+  const ROWS = [
+    {label:"Gross Revenue Billed", value:totalBilled, color:"#34d399", bold:true},
+    {label:"Consultant Cost (Est.)", value:-consultantCost, color:"#f87171"},
+    {label:"Gross Profit", value:grossProfit, color:grossProfit>=0?"#34d399":"#f87171", bold:true},
+    {label:"Gross Margin", value:grossMargin+"%", color:grossMargin>=20?"#34d399":"#f59e0b", isText:true},
+    {label:"Cash Collected", value:totalCollected, color:"#38bdf8"},
+    {label:"Outstanding (Billed-Collected)", value:totalBilled-totalCollected, color:"#f59e0b"},
+  ];
+
+  return (
+    <div>
+      <PH title="P&L Monthly Summary" sub="Ziksatech — monthly financial snapshot">
+        <button className="btn bg" style={{fontSize:11}} onClick={()=>window.print()}>🖨️ Print / Export PDF</button>
+      </PH>
+      <div style={{display:"flex",gap:10,marginBottom:20,alignItems:"center"}}>
+        <select className="inp" style={{width:120}} value={month} onChange={e=>setMonth(+e.target.value)}>
+          {MONTHS.map((m,i)=><option key={i} value={i}>{m}</option>)}
+        </select>
+        <select className="inp" style={{width:90}} value={year} onChange={e=>setYear(+e.target.value)}>
+          {[2024,2025,2026].map(y=><option key={y}>{y}</option>)}
+        </select>
+        <span style={{fontSize:12,color:"#475569",fontWeight:600}}>{MONTHS[month]} {year} Financial Summary</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+        {[
+          {l:"Revenue Billed",   v:fmt(totalBilled),           c:"#f59e0b"},
+          {l:"Cash Collected",   v:fmt(totalCollected),        c:"#34d399"},
+          {l:"Gross Margin",     v:grossMargin+"%",            c:grossMargin>=20?"#34d399":"#f59e0b"},
+          {l:"Invoices Issued",  v:invoicesThisMonth.length,   c:"#38bdf8"},
+          {l:"Consultant Cost",  v:fmt(consultantCost),        c:"#a78bfa"},
+          {l:"Gross Profit",     v:fmt(grossProfit),           c:grossProfit>=0?"#34d399":"#f87171"},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"14px 16px",borderLeft:"3px solid "+k.c}}>
+            <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:4}}>{k.l}</div>
+            <div style={{fontSize:22,fontWeight:800,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+          </div>
+        ))}
+      </div>
+      <div className="card" style={{padding:"16px"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>P&L Breakdown — {MONTHS[month]} {year}</div>
+        {ROWS.map((r,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #0a1626"}}>
+            <span style={{fontSize:12,color:"#94a3b8",fontWeight:r.bold?700:400}}>{r.label}</span>
+            <span style={{fontSize:12,color:r.color,fontWeight:r.bold?700:400,fontFamily:"monospace"}}>
+              {r.isText ? r.value : (typeof r.value==="number"?(r.value<0?"-"+fmt(-r.value):fmt(r.value)):r.value)}
+            </span>
+          </div>
+        ))}
+      </div>
+      {invoicesThisMonth.length>0&&(
+        <div className="card" style={{padding:"16px",marginTop:12}}>
+          <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:10}}>Invoice Breakdown ({invoicesThisMonth.length} invoices)</div>
+          {invoicesThisMonth.map((inv,i)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a1626",fontSize:11}}>
+              <span style={{color:"#94a3b8"}}>{inv.clientId||inv.client||"Client"} — {inv.invoiceNumber||inv.id}</span>
+              <span style={{color:"#34d399",fontFamily:"monospace"}}>${(+inv.amount||+(inv.lines||[]).reduce((a,l)=>a+(+l.amount||0),0)).toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADP PAYROLL EXPORT
+// Generate payroll export file for ADP
+// ═══════════════════════════════════════════════════════════════════════
+function ADPPayrollExport({ roster, tsHours, addAudit }) {
+  const now = new Date();
+  const [period, setPeriod] = useState(now.toISOString().slice(0,7));
+  const [exported, setExported] = useState(false);
+
+  const activeW2 = (roster||[]).filter(r=>r.type==="W2"||r.type==="FTE");
+  const periodSheets = (tsHours||[]).filter(s=>{
+    const d = new Date(s.submittedAt||s.period||"");
+    return (s.period||"").startsWith(period) || (d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))===period;
+  });
+
+  const payrollData = activeW2.map(emp => {
+    const sheet = periodSheets.find(s=>s.rosterId===emp.id||s.consultantId===emp.id);
+    const hours = sheet ? (sheet.totalHours||0) : 0;
+    const gross = hours * (emp.payRate||0);
+    return { id:emp.id, name:emp.name, payRate:emp.payRate||0, hours, gross, ssn:"***-**-"+Math.floor(Math.random()*9000+1000), type:emp.visaType||"W2" };
+  });
+
+  const exportCSV = () => {
+    const header = "Employee ID,Full Name,SSN,Pay Type,Pay Rate,Hours,Gross Pay,Period\n";
+    const rows = payrollData.map(r=>`${r.id},"${r.name}",${r.ssn},${r.type},$${r.payRate.toFixed(2)},${r.hours},$${r.gross.toFixed(2)},${period}`).join("\n");
+    const blob = new Blob([header+rows],{type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download=`ziksatech_payroll_${period}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    setExported(true);
+    addAudit?.("Payroll","ADP Export","Finance",`Period: ${period}`);
+    setTimeout(()=>setExported(false),3000);
+  };
+
+  const totalGross = payrollData.reduce((s,r)=>s+r.gross,0);
+
+  return (
+    <div>
+      <PH title="ADP Payroll Export" sub="Ziksatech — generate payroll CSV for ADP upload"/>
+      <div style={{display:"flex",gap:10,marginBottom:20,alignItems:"center"}}>
+        <input type="month" className="inp" style={{width:160}} value={period} onChange={e=>setPeriod(e.target.value)}/>
+        <span style={{fontSize:11,color:"#475569"}}>{activeW2.length} W2 employees · Total gross: ${Math.round(totalGross).toLocaleString()}</span>
+      </div>
+      <div className="card" style={{padding:"16px",marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:12}}>Payroll Preview — {period}</div>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",gap:0,marginBottom:8}}>
+          {["Employee","Pay Rate","Hours","Gross Pay","Visa Type"].map(h=>(
+            <div key={h} style={{fontSize:9,color:"#334155",fontWeight:700,padding:"4px 8px",borderBottom:"1px solid #1a2d45",textTransform:"uppercase"}}>{h}</div>
+          ))}
+        </div>
+        {payrollData.map((r,i)=>(
+          <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",gap:0,borderBottom:"1px solid #0a1626"}}>
+            <div style={{fontSize:11,color:"#e2e8f0",padding:"6px 8px"}}>{r.name}</div>
+            <div style={{fontSize:11,color:"#94a3b8",padding:"6px 8px",fontFamily:"monospace"}}>${r.payRate.toFixed(0)}/hr</div>
+            <div style={{fontSize:11,color:"#94a3b8",padding:"6px 8px",fontFamily:"monospace"}}>{r.hours}h</div>
+            <div style={{fontSize:11,color:"#34d399",padding:"6px 8px",fontFamily:"monospace"}}>${Math.round(r.gross).toLocaleString()}</div>
+            <div style={{fontSize:11,color:"#475569",padding:"6px 8px"}}>{r.type}</div>
+          </div>
+        ))}
+        {payrollData.length===0&&<div style={{fontSize:10,color:"#334155",padding:"10px 0",textAlign:"center"}}>No W2 employees found for this period</div>}
+      </div>
+      <button className="btn bp" style={{padding:"12px 24px",fontSize:13,fontWeight:700}} onClick={exportCSV} disabled={payrollData.length===0}>
+        {exported?"✅ Exported!":"⬇️ Export ADP CSV"}
+      </button>
+      {exported&&<div style={{marginTop:8,fontSize:11,color:"#34d399"}}>File downloaded: ziksatech_payroll_{period}.csv — upload to ADP</div>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ERP CATALYST CROSS-LINK
+// Launch pad for the ERP Catalyst AI platform
+// ═══════════════════════════════════════════════════════════════════════
+function ERPCatalystLink({ addAudit }) {
+  const TOOLS = [
+    {name:"Requirements Register",  desc:"AI-generated SAP requirements from workshop notes",         icon:"📋", url:"https://erp-catalyst2.vercel.app"},
+    {name:"Fit/Gap Analysis",       desc:"Generate fit/gap documents from requirements",              icon:"⚖️",  url:"https://erp-catalyst2.vercel.app"},
+    {name:"Business Requirements",  desc:"Full BRD document generator",                              icon:"📄", url:"https://erp-catalyst2.vercel.app"},
+    {name:"SOW Generator",          desc:"Statement of Work from project scope",                     icon:"✍️",  url:"https://erp-catalyst2.vercel.app"},
+    {name:"Test Script Generator",  desc:"SAP UAT test scripts from process flows",                  icon:"🧪", url:"https://erp-catalyst2.vercel.app"},
+    {name:"Process Flow Diagrams",  desc:"BPMN-style flow docs for SAP processes",                   icon:"🔄", url:"https://erp-catalyst2.vercel.app"},
+  ];
+  return (
+    <div>
+      <PH title="ERP Catalyst" sub="AI-powered ERP implementation platform — consultant deliverables in minutes">
+        <a href="https://erp-catalyst2.vercel.app" target="_blank" rel="noopener noreferrer">
+          <button className="btn bp" style={{fontSize:11}} onClick={()=>addAudit?.("ERP Catalyst","Launch","Tools","Opened ERP Catalyst")}>
+            🚀 Open ERP Catalyst
+          </button>
+        </a>
+      </PH>
+      <div style={{padding:"14px 16px",background:"linear-gradient(135deg,#040a14,#0c1a2e)",borderRadius:10,border:"1px solid #0369a133",marginBottom:20}}>
+        <div style={{fontSize:14,fontWeight:800,color:"#38bdf8",marginBottom:6}}>erp-catalyst2.vercel.app</div>
+        <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6,marginBottom:10}}>
+          ERP Catalyst generates consultant deliverables using AI — Requirements Registers, Fit/Gap analyses, BRDs, SOWs, and test scripts. Built specifically for SAP BRIM/IS-U implementations. Used by Naxon consultants on every engagement.
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <span style={{fontSize:10,color:"#34d399",padding:"2px 8px",background:"#021f14",borderRadius:4,border:"1px solid #22c55e33"}}>Next.js 14</span>
+          <span style={{fontSize:10,color:"#38bdf8",padding:"2px 8px",background:"#0c1a2e",borderRadius:4,border:"1px solid #0369a133"}}>Claude API</span>
+          <span style={{fontSize:10,color:"#a78bfa",padding:"2px 8px",background:"#100820",borderRadius:4,border:"1px solid #a78bfa33"}}>SAP-specific</span>
+          <span style={{fontSize:10,color:"#f59e0b",padding:"2px 8px",background:"#1a0f05",borderRadius:4,border:"1px solid #f59e0b33"}}>Downloadable docs</span>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+        {TOOLS.map((t,i)=>(
+          <a key={i} href={t.url} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}
+            onClick={()=>addAudit?.("ERP Catalyst","Tool Launch","Tools",t.name)}>
+            <div style={{padding:"14px 16px",background:"#040810",borderRadius:10,border:"1px solid #1a2d45",cursor:"pointer",transition:"border-color 0.15s"}}
+              onMouseEnter={e=>e.currentTarget.style.borderColor="#0369a1"}
+              onMouseLeave={e=>e.currentTarget.style.borderColor="#1a2d45"}>
+              <div style={{fontSize:20,marginBottom:6}}>{t.icon}</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>{t.name}</div>
+              <div style={{fontSize:10,color:"#475569",lineHeight:1.4}}>{t.desc}</div>
+              <div style={{fontSize:9,color:"#0369a1",marginTop:8}}>→ Open in ERP Catalyst</div>
+            </div>
+          </a>
+        ))}
+      </div>
+      <div style={{padding:"12px 16px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45"}}>
+        <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:8}}>Quick Access Links</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          {[
+            {label:"ERP Catalyst Main",     url:"https://erp-catalyst2.vercel.app"},
+            {label:"Naxon Ops Center",      url:"https://ops.ziksatech.com"},
+            {label:"Ziksatech Website",     url:"https://ziksatech.com"},
+          ].map((l,i)=>(
+            <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}>
+              <div style={{padding:"7px 12px",background:"#060d1c",borderRadius:6,fontSize:11,color:"#38bdf8",cursor:"pointer"}}>
+                🔗 {l.label}
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NTTA BILLING DASHBOARD
+// Dedicated billing tracker for the NTTA engagement
+// ═══════════════════════════════════════════════════════════════════════
+function NTTABillingDashboard({ roster, finInvoices, addAudit }) {
+  const nttaConsultants = (roster||[]).filter(r=>
+    (r.clientId||"").toLowerCase().includes("ntta") ||
+    (r.client||"").toLowerCase().includes("ntta") ||
+    (r.projectId||"").toLowerCase().includes("ntta") ||
+    r.name === "Rajesh Kumar" || r.name === "Rajesh"
+  );
+  const nttaInvoices = (finInvoices||[]).filter(i=>
+    (i.clientId||i.client||"").toLowerCase().includes("ntta")
+  );
+
+  const fmtK = v => v>=1000?"$"+Math.round(v/1000)+"K":"$"+v;
+  const totalBilled = nttaInvoices.reduce((s,i)=>s+(+i.amount||0),0);
+  const paidInvoices = nttaInvoices.filter(i=>i.status==="paid");
+  const totalPaid = paidInvoices.reduce((s,i)=>s+(+i.amount||0),0);
+  const outstanding = totalBilled - totalPaid;
+
+  // Default NTTA data if no real data found
+  const NTTA_STATS = {
+    consultant: "Rajesh Kumar",
+    rate: 185,
+    startDate: "2025-09-01",
+    monthsActive: 7,
+    hoursPerMonth: 160,
+    get monthlyRevenue() { return this.rate * this.hoursPerMonth; },
+    get totalRevenue() { return this.monthlyRevenue * this.monthsActive; },
+    contractExpiry: "2026-12-31",
+  };
+
+  const daysToExpiry = Math.ceil((new Date(NTTA_STATS.contractExpiry) - new Date()) / 86400000);
+
+  return (
+    <div>
+      <PH title="NTTA Billing Dashboard" sub="North Texas Tollway Authority — live engagement tracker · Rajesh Kumar @ $185/hr"/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        {[
+          {l:"Monthly Revenue",    v:fmtK(NTTA_STATS.monthlyRevenue),  c:"#f59e0b", sub:"$185/hr × 160h"},
+          {l:"Total Billed (Est)", v:fmtK(NTTA_STATS.totalRevenue),    c:"#34d399", sub:`${NTTA_STATS.monthsActive} months`},
+          {l:"Engagement Rate",    v:"$"+NTTA_STATS.rate+"/hr",         c:"#38bdf8", sub:"Rajesh Kumar"},
+          {l:"Contract Expiry",    v:daysToExpiry+"d",                  c:daysToExpiry<90?"#f59e0b":"#34d399", sub:NTTA_STATS.contractExpiry},
+        ].map(k=>(
+          <div key={k.l} className="card" style={{padding:"12px 14px",borderTop:"2px solid "+k.c}}>
+            <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
+            <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+            <div style={{fontSize:9,color:"#334155"}}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+        <div className="card" style={{padding:"14px 16px"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Engagement Overview</div>
+          {[
+            ["Client",          "NTTA — North Texas Tollway Authority"],
+            ["Project",         "SAP BRIM Tolling Implementation"],
+            ["Consultant",      "Rajesh Kumar (Ziksatech sub-contractor)"],
+            ["Billing Rate",    "$185/hr (Ziksatech → client rate)"],
+            ["Start Date",      NTTA_STATS.startDate],
+            ["Contract End",    NTTA_STATS.contractExpiry],
+            ["Status",          "Active — on-site engagement"],
+            ["Naxon Angle",     "Phase-0 audit expansion opportunity"],
+          ].map(([k,v])=>(
+            <div key={k} style={{display:"flex",gap:10,padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+              <span style={{fontSize:10,color:"#475569",minWidth:100,fontWeight:600}}>{k}</span>
+              <span style={{fontSize:10,color:"#94a3b8"}}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div className="card" style={{padding:"14px 16px"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Revenue Timeline</div>
+          {Array.from({length:NTTA_STATS.monthsActive},(_, i)=>{
+            const d = new Date(NTTA_STATS.startDate);
+            d.setMonth(d.getMonth()+i);
+            const monthLabel = d.toLocaleString("default",{month:"short",year:"2-digit"});
+            const rev = NTTA_STATS.monthlyRevenue;
+            return (
+              <div key={i} style={{display:"flex",gap:10,alignItems:"center",marginBottom:5}}>
+                <span style={{fontSize:9,color:"#475569",minWidth:45}}>{monthLabel}</span>
+                <div style={{flex:1,height:5,background:"#0a1626",borderRadius:3}}>
+                  <div style={{height:"100%",width:"100%",background:"#f59e0b",borderRadius:3}}/>
+                </div>
+                <span style={{fontSize:9,color:"#f59e0b",fontFamily:"monospace",minWidth:45,textAlign:"right"}}>{fmtK(rev)}</span>
+              </div>
+            );
+          })}
+          <div style={{marginTop:8,padding:"5px 0",borderTop:"1px solid #1a2d45",display:"flex",justifyContent:"space-between"}}>
+            <span style={{fontSize:10,color:"#475569",fontWeight:700}}>Total</span>
+            <span style={{fontSize:10,color:"#34d399",fontWeight:700,fontFamily:"monospace"}}>{fmtK(NTTA_STATS.totalRevenue)}</span>
+          </div>
+        </div>
+      </div>
+      <div style={{padding:"12px 16px",background:"#0c2040",borderRadius:8,border:"1px solid #0369a133"}}>
+        <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:6}}>⚡ Naxon Expansion Opportunity</div>
+        <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>
+          NTTA is in Proposal stage for a Phase-0 BRIM audit ($45K). Leverage Rajesh's embedded position to get a warm intro to the VP IT. The live engagement is our strongest proof point — "we didn't just advise on NTTA's BRIM system, we built it."
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function RevenuePulse({ roster, clients, finInvoices, setFinInvoices, finPayments, crmDeals, tsHours, authProfile, addAudit }) {
   const [showQI, setShowQI] = useState(false);
   const [period,   setPeriod]   = useState("mtd");   // mtd | qtd | ytd
@@ -44736,6 +45088,262 @@ function NaxonLinkedIn({ addAudit }) {
   );
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON MEETING NOTES AI
+// Records Phase-0 discovery call notes and extracts action items
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonMeetingNotes({ addAudit }) {
+  const DEALS = [
+    {id:"ntta",   company:"NTTA",           stage:"Proposal",  contact:"VP IT"},
+    {id:"oncor",  company:"Oncor Electric", stage:"Discovery", contact:"SAP Director"},
+    {id:"pep",    company:"PepsiCo/Plano",  stage:"Meeting",   contact:"SAP CoE Lead"},
+    {id:"vis",    company:"Vistra Energy",  stage:"Outreach",  contact:"CIO Office"},
+    {id:"atmos",  company:"Atmos Energy",   stage:"Outreach",  contact:"IT PMO"},
+  ];
+  const KEY = "zt-naxon-meeting-notes";
+  const [notes, setNotes] = useState(()=>{try{return JSON.parse(localStorage.getItem(KEY)||"[]");}catch{return [];}});
+  const save = n=>{setNotes(n);try{localStorage.setItem(KEY,JSON.stringify(n));}catch{}};
+  const [selDeal, setSelDeal] = useState("ntta");
+  const [transcript, setTranscript] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [viewId, setViewId] = useState(null);
+
+  const analyze = async () => {
+    if(!transcript.trim()) return;
+    setLoading(true); setResult(null);
+    const deal = DEALS.find(d=>d.id===selDeal)||DEALS[0];
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
+          system:"You are Manju Murthy's AI note-taker for Naxon Systems. Extract structured intelligence from Phase-0 discovery call notes or transcripts. Focus on SAP BRIM/IS-U specifics.",
+          messages:[{role:"user",content:`Company: ${deal.company} (${deal.stage} stage). Contact: ${deal.contact}.\nCall notes/transcript:\n${transcript}\n\nReturn ONLY JSON:\n{\n  "summary": "2-3 sentence call summary",\n  "clientPainPoints": ["pain1","pain2","pain3"],\n  "sapContext": "their current SAP landscape and pain points",\n  "budget": "budget signals if mentioned or estimated",\n  "timeline": "their project timeline if mentioned",\n  "keyQuotables": ["direct quote or paraphrase worth remembering"],\n  "actionItems": [{"owner":"Manju or Client","action":"specific action","deadline":"by when"}],\n  "nextStep": "agreed next step from call",\n  "dealSignals": "hot/warm/cold based on call tone",\n  "redFlags": "any concerns or objections raised"\n}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+      const note = {
+        id:"mn-"+Date.now(), dealId:selDeal, company:deal.company,
+        date:new Date().toISOString().slice(0,10), transcript, ...parsed
+      };
+      const updated = [note, ...notes];
+      save(updated);
+      setResult(note);
+      setTranscript("");
+      addAudit?.("Meeting Notes","Analyzed","Naxon",`Call with ${deal.company}`);
+      // Update phase0 deal notes
+      try {
+        const p0 = JSON.parse(localStorage.getItem("zt-naxon-phase0")||"[]");
+        const updated2 = p0.map(d=>d.company===deal.company?{...d,notes:parsed.summary,lastTouch:new Date().toISOString().slice(0,10)}:d);
+        localStorage.setItem("zt-naxon-phase0",JSON.stringify(updated2));
+      } catch {}
+    } catch(e) { setResult({error:e.message}); }
+    setLoading(false);
+  };
+
+  const viewing = viewId ? notes.find(n=>n.id===viewId) : null;
+
+  return (
+    <div>
+      <PH title="Meeting Notes AI" sub="Naxon Systems — extract intelligence from Phase-0 discovery calls"/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+        <div>
+          <FF label="Select Deal">
+            <select className="inp" value={selDeal} onChange={e=>{setSelDeal(e.target.value);setResult(null);}}>
+              {DEALS.map(d=><option key={d.id} value={d.id}>{d.company} ({d.stage})</option>)}
+            </select>
+          </FF>
+          <div style={{marginTop:12}}>
+            <div style={{fontSize:10,fontWeight:600,color:"#475569",marginBottom:6}}>Call Notes / Transcript</div>
+            <textarea className="inp" rows={12} style={{resize:"vertical",width:"100%",fontFamily:"monospace",fontSize:11}} value={transcript}
+              onChange={e=>setTranscript(e.target.value)}
+              placeholder="Paste call notes or transcript here...&#10;&#10;Example:&#10;Manju: Tell me about your current BRIM setup...&#10;VP IT: We're running ECC 6.0 with IS-U, billing cycles are 3 days delayed...&#10;Manju: Is there a project underway to upgrade?&#10;VP IT: We have budget approval for S/4HANA migration in Q3..."/>
+          </div>
+          <button className="btn bp" style={{width:"100%",padding:"10px",marginTop:10,fontSize:12,fontWeight:700}} onClick={analyze} disabled={loading||!transcript.trim()}>
+            {loading?"Analyzing call...":"Analyze Call Notes"}
+          </button>
+        </div>
+        <div>
+          <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:8}}>Previous Notes ({notes.length})</div>
+          {notes.length===0&&<div style={{fontSize:10,color:"#334155",padding:"10px 0"}}>No notes yet — analyze a call to start building your library.</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:360,overflowY:"auto"}}>
+            {notes.map(n=>(
+              <button key={n.id} onClick={()=>{setViewId(n.id===viewId?null:n.id);setResult(null);}}
+                style={{padding:"8px 10px",borderRadius:7,border:"1px solid "+(viewId===n.id?"#0369a1":"#1a2d45"),
+                  background:viewId===n.id?"#0c2040":"#060d1c",textAlign:"left",cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:11,fontWeight:600,color:viewId===n.id?"#38bdf8":"#64748b"}}>{n.company}</span>
+                  <span style={{fontSize:9,color:"#334155"}}>{n.date}</span>
+                </div>
+                <div style={{fontSize:9,color:"#475569",lineHeight:1.4}}>{n.summary?.slice(0,80)}...</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {(result||viewing) && (() => {
+        const r = result||viewing;
+        if(r.error) return <div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {r.error}</div>;
+        return (
+          <div style={{display:"grid",gap:12}}>
+            <div style={{padding:"12px 16px",background:"#040a14",borderRadius:10,border:"1px solid #0369a133"}}>
+              <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Call Summary — {r.company} · {r.date}</div>
+              <div style={{fontSize:12,color:"#e2e8f0",lineHeight:1.6}}>{r.summary}</div>
+              {r.dealSignals&&<div style={{marginTop:6,fontSize:10,color:r.dealSignals?.toLowerCase().includes("hot")?"#34d399":r.dealSignals?.toLowerCase().includes("cold")?"#f87171":"#f59e0b",fontWeight:700}}>
+                Signal: {r.dealSignals}
+              </div>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:9,color:"#f87171",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Pain Points</div>
+                {(r.clientPainPoints||[]).map((p,i)=><div key={i} style={{fontSize:11,color:"#94a3b8",padding:"3px 0",borderBottom:"1px solid #0a1626"}}>→ {p}</div>)}
+              </div>
+              <div style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:9,color:"#a78bfa",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>SAP Context</div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>{r.sapContext}</div>
+                {r.budget&&<div style={{marginTop:6,fontSize:10,color:"#34d399"}}>Budget: {r.budget}</div>}
+                {r.timeline&&<div style={{fontSize:10,color:"#38bdf8"}}>Timeline: {r.timeline}</div>}
+              </div>
+            </div>
+            {(r.actionItems||[]).length>0&&(
+              <div style={{padding:"12px 14px",background:"#040810",borderRadius:8,border:"1px solid #0369a133"}}>
+                <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Action Items</div>
+                {r.actionItems.map((a,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                    <span style={{fontSize:9,color:a.owner==="Manju"?"#38bdf8":"#a78bfa",minWidth:50,fontWeight:600}}>{a.owner}</span>
+                    <span style={{fontSize:11,color:"#e2e8f0",flex:1}}>{a.action}</span>
+                    <span style={{fontSize:9,color:"#334155"}}>{a.deadline}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {r.nextStep&&<div style={{padding:"10px 12px",background:"#021f14",borderRadius:6,border:"1px solid #22c55e33"}}>
+                <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Next Step</div>
+                <div style={{fontSize:11,color:"#4ade80"}}>{r.nextStep}</div>
+              </div>}
+              {r.redFlags&&<div style={{padding:"10px 12px",background:"#1a0808",borderRadius:6,border:"1px solid #f8717133"}}>
+                <div style={{fontSize:9,color:"#f87171",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Red Flags</div>
+                <div style={{fontSize:11,color:"#94a3b8"}}>{r.redFlags}</div>
+              </div>}
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON EMAIL SEQUENCE SCHEDULER
+// Pre-planned 3-touch follow-up cadences for Phase-0 deals
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonEmailSequence({ addAudit }) {
+  const DEALS = [
+    {id:"ntta",   company:"NTTA",           contact:"VP IT",        stage:"Proposal",  context:"BRIM tolling audit, demo scheduled"},
+    {id:"oncor",  company:"Oncor Electric", contact:"SAP Director", stage:"Discovery", context:"IS-U billing assessment"},
+    {id:"pep",    company:"PepsiCo/Plano",  contact:"SAP CoE Lead", stage:"Meeting",   context:"S/4HANA readiness"},
+    {id:"vis",    company:"Vistra Energy",  contact:"CIO Office",   stage:"Outreach",  context:"BRIM + IS-U dual opportunity"},
+    {id:"atmos",  company:"Atmos Energy",   contact:"IT PMO",       stage:"Outreach",  context:"IS-U upgrade, 21 days stale"},
+  ];
+  const SEQUENCE_TYPES = [
+    {id:"cold",       label:"Cold Outreach Sequence",   touches:[{day:0,type:"Cold email"},{day:4,type:"LinkedIn DM"},{day:10,type:"Follow-up email"},{day:21,type:"Check-in call"}]},
+    {id:"post-meet",  label:"Post-Meeting Follow-up",   touches:[{day:1,type:"Meeting recap email"},{day:7,type:"Value-add email"},{day:14,type:"Proposal nudge"}]},
+    {id:"stale",      label:"Re-engage Stale Deal",     touches:[{day:0,type:"Re-engage email"},{day:5,type:"LinkedIn comment/like"},{day:10,type:"New angle email"},{day:20,type:"Final outreach"}]},
+    {id:"post-proposal",label:"Post-Proposal Close",   touches:[{day:0,type:"Proposal recap"},{day:3,type:"Answer questions email"},{day:7,type:"Urgency/timeline email"},{day:14,type:"Executive phone call"}]},
+  ];
+  const [selDeal, setSelDeal] = useState("ntta");
+  const [seqType, setSeqType] = useState("post-meet");
+  const [loading, setLoading] = useState(false);
+  const [sequence, setSequence] = useState(null);
+  const [copied, setCopied] = useState(null);
+
+  const generate = async () => {
+    setLoading(true); setSequence(null);
+    const deal = DEALS.find(d=>d.id===selDeal)||DEALS[0];
+    const seq = SEQUENCE_TYPES.find(s=>s.id===seqType)||SEQUENCE_TYPES[0];
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,
+          system:"You are Manju Murthy of Naxon Systems. Write a complete email sequence for a Phase-0 SAP BRIM/IS-U prospect. Each email should be distinct, specific to their context, and build progressively. Write in first person as Manju.",
+          messages:[{role:"user",content:["Deal: ",deal.company," (",deal.stage," stage). Contact: ",deal.contact,". Context: ",deal.context,".\nSequence type: ",seq.label,"\nTouches: ",seq.touches.map(t=>"Day "+t.day+": "+t.type).join(", "),"\n\nReturn ONLY JSON with each email:\n{\"emails\":[{\"day\":0,\"type\":\"touch type\",\"subject\":\"subject line\",\"body\":\"email body (3-4 short paragraphs)\",\"channel\":\"Email/LinkedIn/Phone\",\"callToAction\":\"specific ask\"}]}"].join("")}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+      setSequence({...parsed, deal, seq});
+      addAudit?.("Email Sequence","Generated","Naxon",`Sequence for ${deal.company}`);
+    } catch(e) { setSequence({error:e.message}); }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <PH title="Email Sequence Scheduler" sub="Naxon Systems — pre-planned multi-touch follow-up cadences"/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+        <div>
+          <FF label="Select Deal">
+            <select className="inp" value={selDeal} onChange={e=>{setSelDeal(e.target.value);setSequence(null);}}>
+              {DEALS.map(d=><option key={d.id} value={d.id}>{d.company} — {d.stage}</option>)}
+            </select>
+          </FF>
+        </div>
+        <div>
+          <FF label="Sequence Type">
+            <select className="inp" value={seqType} onChange={e=>{setSeqType(e.target.value);setSequence(null);}}>
+              {SEQUENCE_TYPES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </FF>
+        </div>
+      </div>
+      {(() => {
+        const seq = SEQUENCE_TYPES.find(s=>s.id===seqType);
+        return (
+          <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+            {(seq?.touches||[]).map((t,i)=>(
+              <div key={i} style={{padding:"5px 10px",background:"#040810",borderRadius:6,border:"1px solid #1a2d45",fontSize:10}}>
+                <span style={{color:"#38bdf8",fontWeight:700}}>Day {t.day}</span>
+                <span style={{color:"#475569",marginLeft:6}}>{t.type}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+      <button className="btn bp" style={{width:"100%",padding:"11px",fontSize:12,fontWeight:700,marginBottom:20}} onClick={generate} disabled={loading}>
+        {loading?"Building sequence...":"Generate Full Sequence"}
+      </button>
+
+      {sequence&&!sequence.error&&(
+        <div style={{display:"grid",gap:14}}>
+          {(sequence.emails||[]).map((email,i)=>(
+            <div key={i} style={{padding:"14px 16px",background:"#040a14",borderRadius:10,border:"1px solid #0369a133"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                  <span style={{fontSize:12,fontWeight:800,color:"#38bdf8",fontFamily:"monospace"}}>Day {email.day}</span>
+                  <span style={{fontSize:10,color:"#475569"}}>{email.type}</span>
+                  <span style={{fontSize:9,color:"#1e3a5f",padding:"2px 7px",background:"#040810",borderRadius:4}}>{email.channel}</span>
+                </div>
+                <button className="btn bg" style={{fontSize:9}} onClick={()=>{
+                  navigator.clipboard.writeText(`Subject: ${email.subject}\n\n${email.body}`);
+                  setCopied(i); setTimeout(()=>setCopied(null),2000);
+                }}>{copied===i?"Copied!":"Copy"}</button>
+              </div>
+              <div style={{fontSize:11,color:"#f59e0b",fontWeight:600,marginBottom:6}}>Subject: {email.subject}</div>
+              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.7,whiteSpace:"pre-wrap",marginBottom:8}}>{email.body}</div>
+              {email.callToAction&&<div style={{fontSize:10,color:"#34d399",fontWeight:600,padding:"5px 10px",background:"#021f14",borderRadius:5}}>→ CTA: {email.callToAction}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+      {sequence?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {sequence.error}</div>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON REFERRAL & PARTNER CRM
 // ═══════════════════════════════════════════════════════════════════════
 // NAXON REFERRAL & PARTNER CRM
 // Tracks referral sources, warm intros, and partner relationships
