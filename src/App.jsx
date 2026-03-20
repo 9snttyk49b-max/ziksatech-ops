@@ -44082,6 +44082,44 @@ Return ONLY JSON — be specific, use company names and numbers:
             );
           })()}
 
+          {/* Naxon Weekly Focus — admin only */}
+          {isAdminRole && (() => {
+            const weekNum = (() => { const d=new Date(); const j=new Date(d.getFullYear(),0,4); return Math.ceil(((d-j)/86400000+j.getDay()+1)/7); })();
+            const wkKey = new Date().getFullYear()+"-W"+String(weekNum).padStart(2,"0");
+            const gtm = (() => { try { const d=JSON.parse(localStorage.getItem("zt-gtm-weeks")||"{}"); return d[wkKey]||null; } catch { return null; } })();
+            const phase0 = (() => { try { return JSON.parse(localStorage.getItem("zt-naxon-phase0")||"[]"); } catch { return []; } })();
+            const activeDeals = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").length;
+            const wonDeals = phase0.filter(d=>d.stage==="Won").length;
+            return (
+              <div style={{marginBottom:8,padding:"10px 14px",background:"#040a18",border:"1px solid #0369a133",borderRadius:10}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:6}}>⚡ Naxon This Week</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:gtm?6:0}}>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:16,fontWeight:800,color:"#f59e0b",fontFamily:"monospace"}}>{activeDeals}</div>
+                    <div style={{fontSize:8,color:"#334155"}}>active deals</div>
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:16,fontWeight:800,color:"#34d399",fontFamily:"monospace"}}>{wonDeals}/7</div>
+                    <div style={{fontSize:8,color:"#334155"}}>breakeven</div>
+                  </div>
+                </div>
+                {gtm && (
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {[["📞",gtm.calls||0,20],["✉️",gtm.emails||0,30],["💼",gtm.linkedinDMs||0,20]].map(([e,v,t])=>(
+                      <span key={e} style={{fontSize:9,padding:"2px 5px",borderRadius:4,
+                        background:v>=t?"#021f14":v>=t*0.5?"#0c1a00":"#1a0808",
+                        color:v>=t?"#34d399":v>=t*0.5?"#f59e0b":"#f87171"}}>
+                        {e} {v}/{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {!gtm && <div style={{fontSize:9,color:"#334155"}}>→ Log GTM activity this week</div>}
+                <button className="btn bg" style={{fontSize:9,marginTop:5,width:"100%"}} onClick={()=>setTab("naxongtm")}>GTM Weekly →</button>
+              </div>
+            );
+          })()}
+
           {/* AP Overdue Alert — admin only */}
           {isAdminRole && (() => {
             const overdueAP = (apInvoices||[]).filter(i=>i.status==="overdue"||(i.status!=="paid"&&i.dueDate&&new Date(i.dueDate)<new Date()));
@@ -54458,9 +54496,11 @@ const BD_MEETINGS_DEFAULT = [
 // ═══════════════════════════════════════════════════════════════════════
 function NaxonGTMWeekly({ crmDeals, crmAccounts, addAudit }) {
   const WEEK_KEY = () => {
-    const d = new Date(); const day = d.getDay();
-    const monday = new Date(d); monday.setDate(d.getDate() - (day===0?6:day-1));
-    return monday.toISOString().slice(0,10);
+    const d = new Date();
+    // Get ISO week number
+    const jan4 = new Date(d.getFullYear(), 0, 4);
+    const weekNum = Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7);
+    return d.getFullYear() + "-W" + String(weekNum).padStart(2,"0");
   };
 
   const [weeks, setWeeks] = useState(() => {
