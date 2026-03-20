@@ -43760,6 +43760,10 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
     const sr = roster||[], sc=clients||[], sd=crmDeals||[], si=finInvoices||[], sw=workAuth||[];
     const abmTargets = (() => { try { return JSON.parse(localStorage.getItem("zt-mae-abm")||"[]"); } catch { return []; } })();
     const cmsCands   = (() => { try { return JSON.parse(localStorage.getItem("zt-cms-cands")||"[]"); } catch { return []; } })();
+    const naxonP0    = (() => { try { return JSON.parse(localStorage.getItem("zt-naxon-phase0")||"[]"); } catch { return []; } })();
+    const naxonGTM   = (() => { try { const wk=new Date().getFullYear()+"-W"+String(Math.ceil(((new Date()-new Date(new Date().getFullYear(),0,4))/86400000+new Date(new Date().getFullYear(),0,4).getDay()+1)/7)).padStart(2,"0"); return JSON.parse(localStorage.getItem("zt-gtm-weeks")||"{}")[wk]||null; } catch { return null; } })();
+    const naxonStale = naxonP0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost"&&d.lastTouch&&Math.ceil((new Date()-new Date(d.lastTouch))/86400000)>14);
+    const naxonHot   = naxonP0.filter(d=>["Proposal","Discovery"].includes(d.stage));
     const mrrEst     = sr.filter(r=>(r.util||0)>0).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0);
     const benchCount = sr.filter(r=>(r.util||0)===0 && r.type==="FTE").length;
     const overdueAR  = si.filter(i=>i.status==="overdue").reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+(+l.amount||0),0),0);
@@ -43779,13 +43783,16 @@ Open deals: ${openDealsC.length} (${fv(openDealsC.reduce((s,d)=>s+(+d.value||0),
 ABM stale (>14d): ${staleABM.join(", ")||"none"} | P1 never contacted: ${neverABM.join(", ")||"none"}
 Visa expiring <90d: ${visaExpiry.join(", ")||"none"}
 CMS candidates in pipeline: ${activeCands.length} (stages: ${[...new Set(activeCands.map(c=>c.stage))].join(", ")||"none"})
+NAXON Phase-0: ${naxonP0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").length} active deals ($${Math.round(naxonP0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").reduce((s,d)=>s+(+d.value||0),0)/1000)}K pipeline) | Hot: ${naxonHot.map(d=>d.company).join(", ")||"none"} | Stale: ${naxonStale.map(d=>d.company+"("+Math.ceil((new Date()-new Date(d.lastTouch))/86400000)+"d)").join(", ")||"none"}
+NAXON GTM this week: ${naxonGTM?`Calls ${naxonGTM.calls||0}/20, Emails ${naxonGTM.emails||0}/30, LinkedIn ${naxonGTM.linkedinDMs||0}/20`:"no activity logged"}
 
 Return ONLY JSON — be specific, use company names and numbers:
 {"headline":"one punchy sentence: biggest thing happening today","alerts":[
   {"cat":"Revenue","icon":"💰","level":"red|yellow|green","msg":"specific revenue alert or win","action":"exact tab or action","tab":"revpulse"},
   {"cat":"Pipeline","icon":"🎯","level":"red|yellow|green","msg":"specific deal or ABM action needed","action":"what to do","tab":"mktauto"},
   {"cat":"People","icon":"👥","level":"red|yellow|green","msg":"specific roster or candidate note","action":"what to do","tab":"cms"},
-  {"cat":"Compliance","icon":"🛂","level":"red|yellow|green","msg":"visa or legal item","action":"what to do","tab":"immigration"}
+  {"cat":"Compliance","icon":"🛂","level":"red|yellow|green","msg":"visa or legal item","action":"what to do","tab":"immigration"},
+  {"cat":"Naxon","icon":"⚡","level":"red|yellow|green","msg":"specific Naxon Phase-0 deal action or GTM alert","action":"exact action","tab":"naxonos"}
 ],"topAction":"single most critical 30-min action right now"}`}]
         })
       });
