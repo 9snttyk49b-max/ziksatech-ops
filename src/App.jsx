@@ -3321,6 +3321,8 @@ function SISubConTracker({ addAudit, authProfile }) {
   const [aiInsight, setAiInsight] = useState(null);
   const [addDeal, setAddDeal] = useState(false);
   const [dealForm, setDealForm] = useState({name:"",value:"",role:"Sub-contractor",status:"Targeting"});
+  const [addPartner, setAddPartner] = useState(false);
+  const [partnerForm, setPartnerForm] = useState({name:"",tier:"Tier 1",strength:"SAP BRIM",status:"Targeting",notes:""});
 
   const save = (ps) => { setPartners(ps); try{localStorage.setItem("zt-si-partners",JSON.stringify(ps));}catch{} };
   const sel = partners.find(p=>p.id===selId) || partners[0];
@@ -3351,10 +3353,48 @@ Return ONLY JSON:
   return (
     <div>
       <PH title="🤝 SI Sub-Contracting Tracker" sub="Wipro · HCL · LTIMindtree · Mersol · Deloitte — fastest path to Naxon revenue">
-        <div style={{fontSize:10,color:"#475569"}}>
-          Total pipeline: <span style={{color:"#34d399",fontWeight:700}}>${(partners.flatMap(p=>p.deals).reduce((s,d)=>s+(+d.value||0),0)/1e6).toFixed(1)}M</span>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{fontSize:10,color:"#475569"}}>
+            Total pipeline: <span style={{color:"#34d399",fontWeight:700}}>${(partners.flatMap(p=>p.deals).reduce((s,d)=>s+(+d.value||0),0)/1e6).toFixed(1)}M</span>
+          </div>
+          <button className="btn bp" style={{fontSize:11}} onClick={()=>setAddPartner(true)}>+ Add Partner</button>
         </div>
       </PH>
+
+      {/* Add Partner Modal */}
+      {addPartner && (
+        <div style={{position:"fixed",inset:0,background:"#000a",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setAddPartner(false)}>
+          <div style={{background:"#0a1525",border:"1px solid #1a2d45",borderRadius:12,padding:24,width:400,maxWidth:"90vw"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:16}}>Add SI Partner</div>
+            <div style={{display:"grid",gap:10,marginBottom:16}}>
+              <FF label="Company Name"><input className="inp" value={partnerForm.name} onChange={e=>setPartnerForm(p=>({...p,name:e.target.value}))}/></FF>
+              <FF label="Tier">
+                <select className="inp" value={partnerForm.tier} onChange={e=>setPartnerForm(p=>({...p,tier:e.target.value}))}>
+                  {["Tier 1","Tier 2","Boutique","WBE/MBE","Other"].map(t=><option key={t}>{t}</option>)}
+                </select>
+              </FF>
+              <FF label="SAP Strength"><input className="inp" value={partnerForm.strength} onChange={e=>setPartnerForm(p=>({...p,strength:e.target.value}))}/></FF>
+              <FF label="Status">
+                <select className="inp" value={partnerForm.status} onChange={e=>setPartnerForm(p=>({...p,status:e.target.value}))}>
+                  {["Targeting","Active","Research","Paused"].map(s=><option key={s}>{s}</option>)}
+                </select>
+              </FF>
+              <FF label="Notes"><textarea className="inp" rows={2} value={partnerForm.notes} style={{resize:"vertical"}} onChange={e=>setPartnerForm(p=>({...p,notes:e.target.value}))}/></FF>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button className="btn bg" onClick={()=>setAddPartner(false)}>Cancel</button>
+              <button className="btn bp" disabled={!partnerForm.name} onClick={()=>{
+                const newP = {...partnerForm, id:"si-"+Date.now(), deals:[], logo:partnerForm.name[0]||"?"};
+                save([...partners, newP]);
+                setSelId(newP.id);
+                setAddPartner(false);
+                setPartnerForm({name:"",tier:"Tier 1",strength:"SAP BRIM",status:"Targeting",notes:""});
+                addAudit?.("SI Tracker","Add Partner","Naxon",`Added ${partnerForm.name}`);
+              }}>Add Partner</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI strip */}
       <div style={{display:"flex",gap:10,marginBottom:14}}>
