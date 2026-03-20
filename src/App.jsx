@@ -102,6 +102,7 @@ const RBAC = {
   naxongtm:     ["super_admin","admin"],
   naxonpricing: ["super_admin","admin"],
   discoverycall:["super_admin","admin"],
+  naxonemail:   ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4497,6 +4498,7 @@ export default function ZiksatechOps() {
     { id:"naxongtm",     label:"GTM Weekly 📅",            icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonpricing", label:"Pricing Calculator 🧮",    icon:ICONS.pl,       group:"Naxon OS" },
     { id:"discoverycall",label:"Discovery Call Prep 🎯",   icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"naxonemail",   label:"Outreach Emails ✉️",       icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5078,6 +5080,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="paycalc"    && <PayRateCalc />}
         {tab==="naxonpricing" && <NaxonPricingCalc />}
         {tab==="discoverycall"&& <DiscoveryCallPrep crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
+        {tab==="naxonemail"   && <NaxonOutreachEmail crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -44291,6 +44294,163 @@ function PayRateCalc() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON OUTREACH EMAIL GENERATOR
+// Writes cold/warm outreach emails for Naxon Phase-0 prospects
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonOutreachEmail({ crmAccounts, addAudit }) {
+  const PROSPECTS = [
+    {id:"ntta",  name:"NTTA",           role:"VP of IT / Director of Technology",   context:"Active BRIM tolling engagement. Upsell/expand opportunity.",  type:"warm"},
+    {id:"oncor", name:"Oncor Electric", role:"SAP Director / IT PMO",               context:"IS-U billing assessment discussion started.",                  type:"warm"},
+    {id:"pep",   name:"PepsiCo/Plano",  role:"SAP CoE Lead / CIO",                 context:"S/4HANA readiness — meeting booked via LinkedIn.",              type:"warm"},
+    {id:"vis",   name:"Vistra Energy",  role:"VP IT / SAP Program Director",        context:"BRIM + IS-U dual opportunity. No contact yet.",                type:"cold"},
+    {id:"atmos", name:"Atmos Energy",   role:"IT PMO / SAP Director",              context:"IS-U upgrade assessment. 21 days stale — re-engage.",           type:"followup"},
+    {id:"wipro", name:"Wipro (SI)",     role:"SAP Alliance Manager / VP Delivery", context:"Sub-contracting partnership for BRIM/IS-U staffing.",          type:"cold"},
+    {id:"hcl",   name:"HCL Tech (SI)",  role:"SAP Practice Head / Alliance Lead",  context:"SI sub-contracting for utility/tolling engagements.",           type:"cold"},
+    {id:"custom",name:"Custom",         role:"",                                    context:"",                                                             type:"cold"},
+  ];
+
+  const EMAIL_TYPES = [
+    {id:"cold",     label:"Cold Outreach"},
+    {id:"warm",     label:"Warm Follow-up"},
+    {id:"followup", label:"Re-engage (Stale)"},
+    {id:"si",       label:"SI Partnership Pitch"},
+    {id:"referral", label:"Referral Thank You"},
+  ];
+
+  const [selId,     setSelId]     = useState("ntta");
+  const [custom,    setCustom]    = useState({name:"",role:"",context:"",type:"cold"});
+  const [emailType, setEmailType] = useState("warm");
+  const [tone,      setTone]      = useState("professional");
+  const [email,     setEmail]     = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [copied,    setCopied]    = useState(false);
+
+  const sel = selId==="custom" ? custom : (PROSPECTS.find(p=>p.id===selId)||PROSPECTS[0]);
+
+  const generate = async () => {
+    setLoading(true); setEmail(null); setCopied(false);
+    const typeLabel = EMAIL_TYPES.find(t=>t.id===emailType)?.label||emailType;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:`You are Manju Murthy, Founder & CEO of Naxon Systems — a WBE-certified SAP consulting firm specializing in SAP BRIM (Billing & Revenue Innovation Management), IS-U (utilities), and tolling. You have 25+ years SAP experience and personally led NTTA's BRIM tolling transformation. Write in first person as Manju. Be specific, direct, and avoid generic consulting language. Max 150 words. No subject line fluff.`,
+          messages:[{role:"user",content:`Write a ${typeLabel} email to ${sel.name}.
+Recipient role: ${sel.role}
+Context: ${sel.context}
+Tone: ${tone}
+Email type: ${typeLabel}
+
+Return ONLY JSON:
+{
+  "subject": "compelling subject line",
+  "body": "full email body (3-4 short paragraphs, conversational, specific to their industry, ends with a clear ask)",
+  "ps": "optional P.S. line that adds urgency or value",
+  "followUpTiming": "best time to follow up if no response"
+}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+      setEmail(parsed);
+      addAudit?.("Naxon Email","Generated","Outreach",`Email to ${sel.name}`);
+    } catch(e) { setEmail({error:e.message}); }
+    setLoading(false);
+  };
+
+  const copyAll = () => {
+    if(!email) return;
+    const txt = `Subject: ${email.subject}\n\n${email.body}${email.ps?"\n\nP.S. "+email.ps:""}`;
+    navigator.clipboard.writeText(txt).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),2500); });
+  };
+
+  return (
+    <div>
+      <PH title="Outreach Email Generator" sub="Naxon Systems — AI-written cold/warm emails for Phase-0 prospects and SI partners"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:10}}>Select Prospect / Partner</div>
+          <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:12}}>
+            {PROSPECTS.map(p=>{
+              const typeColor = p.type==="warm"?"#34d399":p.type==="followup"?"#f59e0b":"#38bdf8";
+              return (
+                <button key={p.id} onClick={()=>{ setSelId(p.id); setEmailType(p.type==="si"?"si":p.type); }}
+                  style={{padding:"7px 12px",borderRadius:7,border:"1px solid "+(selId===p.id?"#0369a1":"#1a2d45"),
+                    background:selId===p.id?"#0c2040":"#060d1c",color:selId===p.id?"#e2e8f0":"#64748b",
+                    textAlign:"left",cursor:"pointer",fontSize:11,transition:"all 0.1s",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontWeight:700,color:selId===p.id?"#38bdf8":"#475569"}}>{p.name}</span>
+                  {p.type&&<span style={{fontSize:9,color:typeColor,background:typeColor+"18",padding:"1px 6px",borderRadius:4,textTransform:"uppercase"}}>{p.type}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {selId==="custom" && (
+            <div style={{display:"grid",gap:8}}>
+              <FF label="Company"><input className="inp" value={custom.name} onChange={e=>setCustom(p=>({...p,name:e.target.value}))}/></FF>
+              <FF label="Recipient Role"><input className="inp" value={custom.role} onChange={e=>setCustom(p=>({...p,role:e.target.value}))}/></FF>
+              <FF label="Context"><textarea className="inp" rows={2} value={custom.context} style={{resize:"vertical"}} onChange={e=>setCustom(p=>({...p,context:e.target.value}))}/></FF>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div style={{display:"grid",gap:10,marginBottom:16}}>
+            <FF label="Email Type">
+              <select className="inp" value={emailType} onChange={e=>setEmailType(e.target.value)}>
+                {EMAIL_TYPES.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </FF>
+            <FF label="Tone">
+              <select className="inp" value={tone} onChange={e=>setTone(e.target.value)}>
+                <option value="professional">Professional / Direct</option>
+                <option value="warm">Warm / Conversational</option>
+                <option value="urgent">Urgent / Time-sensitive</option>
+                <option value="consultative">Consultative / Advisory</option>
+              </select>
+            </FF>
+          </div>
+          <div style={{padding:"10px 14px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45",marginBottom:14,fontSize:10,color:"#475569",lineHeight:1.5}}>
+            {sel.context||"Enter context above"}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <button className="btn bp" style={{padding:"10px",fontSize:12,fontWeight:700}} onClick={generate} disabled={loading||!sel.name}>
+              {loading?"Writing...":"Generate Email"}
+            </button>
+            {email&&!email.error&&(
+              <button className="btn bg" style={{padding:"10px",fontSize:12,fontWeight:600}} onClick={copyAll}>
+                {copied?"Copied!":"Copy to Clipboard"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {email&&!email.error&&(
+        <div style={{padding:"16px 20px",background:"#040a14",borderRadius:10,border:"1px solid #0369a133"}}>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Subject Line</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",padding:"8px 12px",background:"#060d1c",borderRadius:6,border:"1px solid #1a2d45"}}>{email.subject}</div>
+          </div>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Email Body</div>
+            <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.8,padding:"12px 14px",background:"#060d1c",borderRadius:6,border:"1px solid #1a2d45",whiteSpace:"pre-wrap"}}>{email.body}</div>
+          </div>
+          {email.ps&&(
+            <div style={{marginBottom:12,fontSize:11,color:"#f59e0b",padding:"8px 12px",background:"#1a0f0522",borderRadius:6,border:"1px solid #f59e0b22"}}>
+              P.S. {email.ps}
+            </div>
+          )}
+          {email.followUpTiming&&(
+            <div style={{fontSize:10,color:"#475569"}}>Follow up if no reply: {email.followUpTiming}</div>
+          )}
+        </div>
+      )}
+      {email?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {email.error}</div>}
     </div>
   );
 }
