@@ -1,4 +1,4 @@
-// v4.5.15
+// v4.5.19
 // Ziksatech OPS Center v3.8.3-1773624151 — All components defined, stable build
 // Global PII masking helper — reads window.__ZT_MASK__ flag
 const mask = (val, type="text") => {
@@ -1877,7 +1877,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.15 · 100+ AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.19 · 100+ AI modules</span>
         </div>
         {children}
       </div>
@@ -3954,7 +3954,17 @@ function NaxonOSCommand({ addAudit, authProfile }) {
                           <span style={{fontSize:10,color:"#34d399",fontFamily:"monospace"}}>${Math.round(+d.value/1000)}K</span>
                           {stale&&<span style={{fontSize:8,color:"#f59e0b"}}>{daysAgo}d stale</span>}
                         </div>
-                        {d.notes&&<div style={{fontSize:9,color:"#334155",marginTop:3}}>{d.notes.slice(0,55)}{d.notes.length>55?"...":""}</div>}
+                        {d.notes&&<div style={{fontSize:9,color:"#334155",marginTop:3,cursor:"pointer"}}
+                          title="Click to edit notes"
+                          onClick={()=>{
+                            const newNotes = window.prompt("Edit notes for "+d.company+":", d.notes||"");
+                            if(newNotes!==null) savePhase0(phase0.map(x=>x.id===d.id?{...x,notes:newNotes}:x));
+                          }}>{d.notes.slice(0,55)}{d.notes.length>55?"...":""}</div>}
+                        {!d.notes&&<div style={{fontSize:8,color:"#1e3a5f",marginTop:3,cursor:"pointer"}}
+                          onClick={()=>{
+                            const newNotes = window.prompt("Add notes for "+d.company+":", "");
+                            if(newNotes) savePhase0(phase0.map(x=>x.id===d.id?{...x,notes:newNotes}:x));
+                          }}>+ add notes</div>}
                         <select style={{width:"100%",marginTop:5,background:"#040810",color:"#475569",border:"1px solid #1a2d45",borderRadius:4,fontSize:9,padding:"2px"}}
                           value={d.stage}
                           onChange={e=>{
@@ -5678,7 +5688,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.15 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.19 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
