@@ -100,6 +100,7 @@ const RBAC = {
   minicalc:     ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   paycalc:      ["super_admin","admin","accounts"],
   naxongtm:     ["super_admin","admin"],
+  naxonpricing: ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4493,6 +4494,7 @@ export default function ZiksatechOps() {
     { id:"sitracker",    label:"SI Sub-Contracting 🤝",   icon:ICONS.dash,     group:"Naxon OS" },
     { id:"bdengine",     label:"BD Engine 🚀",             icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxongtm",     label:"GTM Weekly 📅",            icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"naxonpricing", label:"Pricing Calculator 🧮",    icon:ICONS.pl,       group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5072,6 +5074,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
         {tab==="minicalc"   && <MiniCalculator />}
         {tab==="paycalc"    && <PayRateCalc />}
+        {tab==="naxonpricing" && <NaxonPricingCalc />}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -43621,7 +43624,7 @@ Requirements:
 
 function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
-  dismissedAlerts, setDismissedAlerts, jobReqs, tsSubmissions }) {
+  dismissedAlerts, setDismissedAlerts, jobReqs, tsSubmissions, apInvoices }) {
 
   const [weather, setWeather]   = useState(null);
   const [todos,   setTodos]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch(e) { return []; } });
@@ -44076,6 +44079,19 @@ Return ONLY JSON — be specific, use company names and numbers:
             );
           })()}
 
+          {/* AP Overdue Alert — admin only */}
+          {isAdminRole && (() => {
+            const overdueAP = (apInvoices||[]).filter(i=>i.status==="overdue"||(i.status!=="paid"&&i.dueDate&&new Date(i.dueDate)<new Date()));
+            if(!overdueAP.length) return null;
+            const totalOwed = overdueAP.reduce((s,i)=>s+(+i.amount||0),0);
+            return (
+              <div style={{marginBottom:8,padding:"9px 14px",background:"#100008",border:"1px solid #a78bfa33",borderRadius:10}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#a78bfa",marginBottom:4}}>💸 {overdueAP.length} AP invoice{overdueAP.length>1?"s":""} overdue — ${Math.round(totalOwed/1000)}k owed to vendors</div>
+                <button className="btn bg" style={{fontSize:9}} onClick={()=>setTab("vendors")}>Pay Vendors →</button>
+              </div>
+            );
+          })()}
+
           {/* Recent activity — upgraded */}
           {safeAudit.length > 0 && (
             <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
@@ -44231,6 +44247,135 @@ function PayRateCalc() {
                 <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON PRODUCT PRICING CALCULATOR
+// Prices Phase-0 audits, SOW projects, and staff augmentation
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonPricingCalc() {
+  const [mode, setMode] = useState("phase0");
+  const [phase0, setPhase0] = useState({weeks:4, consultants:1, rate:200, travel:2000, overhead:15});
+  const [sow,    setSow]    = useState({weeks:12, consultants:2, rate:185, travel:5000, overhead:20, risk:10});
+  const [staffAug, setStaffAug] = useState({consultants:2, rate:145, months:6, mgmtFee:12});
+
+  const fmt = n => "$"+Math.round(n).toLocaleString();
+  const pct = n => n.toFixed(1)+"%";
+
+  // Phase 0 calc
+  const p0Hours    = phase0.weeks * 40 * phase0.consultants;
+  const p0Labor    = p0Hours * phase0.rate;
+  const p0Overhead = p0Labor * (phase0.overhead / 100);
+  const p0Total    = p0Labor + p0Overhead + phase0.travel;
+  const p0Rounded  = Math.ceil(p0Total / 5000) * 5000;
+
+  // SOW calc
+  const sowHours    = sow.weeks * 40 * sow.consultants;
+  const sowLabor    = sowHours * sow.rate;
+  const sowOverhead = sowLabor * (sow.overhead / 100);
+  const sowRisk     = sowLabor * (sow.risk / 100);
+  const sowTotal    = sowLabor + sowOverhead + sowRisk + sow.travel;
+  const sowRounded  = Math.ceil(sowTotal / 10000) * 10000;
+
+  // Staff aug calc
+  const saMonthly = staffAug.consultants * staffAug.rate * 160 * (1 + staffAug.mgmtFee/100);
+  const saTotal   = saMonthly * staffAug.months;
+
+  const MODES = [
+    {id:"phase0", label:"Phase 0 / Discovery"},
+    {id:"sow",    label:"SOW / Fixed Price"},
+    {id:"staffaug",label:"Staff Augmentation"},
+  ];
+
+  const ResultCard = ({label, value, sub, highlight}) => (
+    <div style={{padding:"12px 14px",background:highlight?"#021f14":"#060d1c",border:"1px solid "+(highlight?"#22c55e33":"#1a2d45"),borderRadius:8,textAlign:"center"}}>
+      <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>{label}</div>
+      <div style={{fontSize:20,fontWeight:800,color:highlight?"#34d399":"#e2e8f0",fontFamily:"monospace"}}>{value}</div>
+      {sub&&<div style={{fontSize:9,color:"#334155",marginTop:2}}>{sub}</div>}
+    </div>
+  );
+
+  return (
+    <div>
+      <PH title="Naxon Pricing Calculator" sub="Phase 0 audits - SOW projects - Staff augmentation"/>
+      <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:8,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {MODES.map(m=>(
+          <button key={m.id} onClick={()=>setMode(m.id)}
+            style={{padding:"6px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:mode===m.id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:mode===m.id?"#fff":"#475569"}}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {mode==="phase0" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div>
+            <div style={{fontSize:11,color:"#475569",marginBottom:12}}>Phase 0 = 4-week discovery audit. Standard Naxon offer: $25K-$50K.</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <FF label="Duration (weeks)"><input type="number" className="inp" value={phase0.weeks} onChange={e=>setPhase0(p=>({...p,weeks:+e.target.value}))}/></FF>
+              <FF label="Consultants"><input type="number" className="inp" value={phase0.consultants} onChange={e=>setPhase0(p=>({...p,consultants:+e.target.value}))}/></FF>
+              <FF label="Blended Rate ($/hr)"><input type="number" className="inp" value={phase0.rate} onChange={e=>setPhase0(p=>({...p,rate:+e.target.value}))}/></FF>
+              <FF label="Travel & Expenses ($)"><input type="number" className="inp" value={phase0.travel} onChange={e=>setPhase0(p=>({...p,travel:+e.target.value}))}/></FF>
+              <FF label="Overhead & Profit %"><input type="number" className="inp" value={phase0.overhead} onChange={e=>setPhase0(p=>({...p,overhead:+e.target.value}))}/></FF>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignContent:"start"}}>
+            <ResultCard label="Total Hours" value={p0Hours+"h"} sub={phase0.weeks+"wk × "+phase0.consultants+" consultant"}/>
+            <ResultCard label="Labor Cost" value={fmt(p0Labor)} sub={fmt(phase0.rate)+"/hr"}/>
+            <ResultCard label="Raw Total" value={fmt(p0Total)} sub="before rounding"/>
+            <ResultCard label="Quoted Price" value={fmt(p0Rounded)} sub="rounded to $5K" highlight/>
+            <div style={{gridColumn:"span 2",padding:"10px 14px",background:"#0c2040",borderRadius:8,border:"1px solid #38bdf833",fontSize:11,color:"#7dd3fc",textAlign:"center"}}>
+              {p0Rounded >= 25000 && p0Rounded <= 50000 ? "In the $25K-$50K sweet spot" : p0Rounded < 25000 ? "Below $25K minimum — consider raising rate or scope" : "Above $50K — may be harder to close as Phase 0"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mode==="sow" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <FF label="Duration (weeks)"><input type="number" className="inp" value={sow.weeks} onChange={e=>setSow(p=>({...p,weeks:+e.target.value}))}/></FF>
+              <FF label="Consultants"><input type="number" className="inp" value={sow.consultants} onChange={e=>setSow(p=>({...p,consultants:+e.target.value}))}/></FF>
+              <FF label="Blended Rate ($/hr)"><input type="number" className="inp" value={sow.rate} onChange={e=>setSow(p=>({...p,rate:+e.target.value}))}/></FF>
+              <FF label="Travel & Expenses ($)"><input type="number" className="inp" value={sow.travel} onChange={e=>setSow(p=>({...p,travel:+e.target.value}))}/></FF>
+              <FF label="Overhead %"><input type="number" className="inp" value={sow.overhead} onChange={e=>setSow(p=>({...p,overhead:+e.target.value}))}/></FF>
+              <FF label="Risk Buffer %"><input type="number" className="inp" value={sow.risk} onChange={e=>setSow(p=>({...p,risk:+e.target.value}))}/></FF>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignContent:"start"}}>
+            <ResultCard label="Total Hours" value={sowHours+"h"}/>
+            <ResultCard label="Labor" value={fmt(sowLabor)}/>
+            <ResultCard label="Risk Buffer" value={fmt(sowRisk)} sub={sow.risk+"%"}/>
+            <ResultCard label="Raw Total" value={fmt(sowTotal)}/>
+            <ResultCard label="SOW Fixed Price" value={fmt(sowRounded)} sub="rounded to $10K" highlight/>
+            <ResultCard label="Monthly Equiv" value={fmt(sowRounded/(sow.weeks/4.33))} sub="approx"/>
+          </div>
+        </div>
+      )}
+
+      {mode==="staffaug" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <FF label="Consultants"><input type="number" className="inp" value={staffAug.consultants} onChange={e=>setStaffAug(p=>({...p,consultants:+e.target.value}))}/></FF>
+              <FF label="Bill Rate ($/hr)"><input type="number" className="inp" value={staffAug.rate} onChange={e=>setStaffAug(p=>({...p,rate:+e.target.value}))}/></FF>
+              <FF label="Duration (months)"><input type="number" className="inp" value={staffAug.months} onChange={e=>setStaffAug(p=>({...p,months:+e.target.value}))}/></FF>
+              <FF label="Mgmt Fee %"><input type="number" className="inp" value={staffAug.mgmtFee} onChange={e=>setStaffAug(p=>({...p,mgmtFee:+e.target.value}))}/></FF>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignContent:"start"}}>
+            <ResultCard label="Monthly Revenue" value={fmt(saMonthly)} sub={staffAug.consultants+" × "+staffAug.rate+"/hr"}/>
+            <ResultCard label="Contract Value" value={fmt(saTotal)} sub={staffAug.months+" months"} highlight/>
+            <ResultCard label="Annual Run Rate" value={fmt(saMonthly*12)}/>
+            <ResultCard label="Per Consultant/Mo" value={fmt(saMonthly/staffAug.consultants)}/>
           </div>
         </div>
       )}
