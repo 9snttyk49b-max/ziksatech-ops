@@ -98,6 +98,7 @@ const RBAC = {
   immigration:  ["super_admin","admin","hr_immigration"],
   paffiles:     ["super_admin","admin","hr_immigration","employee","contractor"],
   minicalc:     ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
+  paycalc:      ["super_admin","admin","accounts"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4436,6 +4437,7 @@ export default function ZiksatechOps() {
     { id:"revpulse",    label:"Revenue Pulse 💹",        icon:ICONS.pl,       group:"Overview"        },
     { id:"resourceplan",label:"Resource Planner AI",  icon:ICONS.roster,   group:"Delivery"    },
     { id:"minicalc",    label:"Mini Calculator",       icon:ICONS.pl,       group:"Tools"    },
+    { id:"paycalc",     label:"Pay Rate Calculator 💰", icon:ICONS.pl,       group:"Tools"    },
     { id:"paffiles",    label:"PAF Files",             icon:ICONS.dash,     group:"Compliance"  },
     { id:"adpstubs",    label:"ADP Pay Stubs",         icon:ICONS.adp,      group:"Finance"     },
     { id:"reconcile",   label:"Reconciliation",        icon:ICONS.pl,       group:"Finance"     },
@@ -5067,6 +5069,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
         {tab==="minicalc"   && <MiniCalculator />}
+        {tab==="paycalc"    && <PayRateCalc />}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -14803,6 +14806,30 @@ function SalesCRM({ crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, cr
   return (
     <div>
       <PH title="Sales CRM" sub="Leads (Cold→Warm→Hot→Qualified) · Deals (Prospecting→Proposal→Negotiation→Won) · BD Engine · Prospect Intel"/>
+
+      {/* Proposal Follow-up Nudge */}
+      {(() => {
+        const proposalDeals = (crmDeals||[]).filter(d=>{
+          if(!["proposal","negotiation","Proposal","Negotiation","proposal-sent"].includes(d.stage)) return false;
+          const lastTouch = d.lastActivity||d.updatedAt||d.createdAt;
+          if(!lastTouch) return true;
+          return Math.ceil((new Date()-new Date(lastTouch))/86400000) >= 7;
+        });
+        if(!proposalDeals.length) return null;
+        return (
+          <div style={{marginBottom:10,padding:"9px 14px",background:"#0a1420",border:"1px solid #38bdf844",borderRadius:8,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <span style={{fontSize:11,fontWeight:700,color:"#38bdf8"}}>📞 {proposalDeals.length} proposal{proposalDeals.length>1?"s":""} need follow-up (7+ days silent)</span>
+            {proposalDeals.map(d=>{
+              const days = d.lastActivity||d.updatedAt ? Math.ceil((new Date()-new Date(d.lastActivity||d.updatedAt))/86400000) : "?";
+              return (
+                <span key={d.id} onClick={()=>setSub("deals")} style={{fontSize:10,padding:"2px 9px",borderRadius:6,background:"#0c2040",color:"#7dd3fc",border:"1px solid #38bdf833",cursor:"pointer"}}>
+                  {d.name} ({days}d) →
+                </span>
+              );
+            })}
+          </div>
+        );
+      })()}
       {/* PRIMARY TAB ROW */}
       <div style={{display:"flex",gap:3,marginBottom:4,background:"#060d1c",borderRadius:"10px 10px 0 0",padding:"4px 4px 0 4px",border:"1px solid #1a2d45",borderBottom:"none"}}>
         {primaryTabs.map(t=>(
@@ -44079,6 +44106,131 @@ Return ONLY JSON — be specific, use company names and numbers:
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PAY RATE / MARGIN CALCULATOR
+// Quick tool to calculate bill rate, pay rate, and margin for a placement
+// ═══════════════════════════════════════════════════════════════════════
+function PayRateCalc() {
+  const [bill,    setBill]    = useState(120);
+  const [pay,     setPay]     = useState(75);
+  const [hours,   setHours]   = useState(160);
+  const [burden,  setBurden]  = useState(15); // employer burden % (taxes, benefits)
+  const [mode,    setMode]    = useState("calc"); // calc | reverse
+
+  const monthly   = bill * hours;
+  const payMonthly = pay * hours;
+  const burdenAmt  = payMonthly * (burden / 100);
+  const totalCost  = payMonthly + burdenAmt;
+  const gross      = monthly - totalCost;
+  const margin     = monthly > 0 ? (gross / monthly) * 100 : 0;
+
+  // Reverse: given target margin, what's max pay rate?
+  const [targetMargin, setTargetMargin] = useState(25);
+  const maxPay = bill * (1 - targetMargin / 100) / (1 + burden / 100);
+
+  const fmt = n => "$" + Math.round(n).toLocaleString();
+  const pct = n => n.toFixed(1) + "%";
+
+  const marginColor = margin >= 25 ? "#34d399" : margin >= 15 ? "#f59e0b" : "#f87171";
+
+  return (
+    <div>
+      <PH title="Pay Rate & Margin Calculator" sub="Bill rate · Pay rate · Burden · Gross margin — Ziksatech placement tool"/>
+
+      <div style={{display:"flex",gap:6,marginBottom:16,background:"#060d1c",borderRadius:8,padding:4,border:"1px solid #1a2d45",width:"fit-content"}}>
+        {[["calc","Calculate Margin"],["reverse","Find Max Pay Rate"]].map(([id,lbl])=>(
+          <button key={id} onClick={()=>setMode(id)}
+            style={{padding:"6px 16px",borderRadius:6,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
+              background:mode===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
+              color:mode===id?"#fff":"#475569"}}>
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {mode === "calc" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+              <FF label="Bill Rate ($/hr)">
+                <input type="number" className="inp" value={bill} onChange={e=>setBill(+e.target.value)} min={0}/>
+              </FF>
+              <FF label="Pay Rate ($/hr)">
+                <input type="number" className="inp" value={pay} onChange={e=>setPay(+e.target.value)} min={0}/>
+              </FF>
+              <FF label="Hours/Month">
+                <input type="number" className="inp" value={hours} onChange={e=>setHours(+e.target.value)} min={0}/>
+              </FF>
+              <FF label="Employer Burden %">
+                <input type="number" className="inp" value={burden} onChange={e=>setBurden(+e.target.value)} min={0} max={50}/>
+              </FF>
+            </div>
+            <div style={{padding:"10px 14px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45",fontSize:10,color:"#334155"}}>
+              Burden = FICA, FUTA, SUTA, workers comp, benefits overhead on W2 employee pay
+            </div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {[
+              {l:"Monthly Revenue",   v:fmt(monthly),    c:"#38bdf8"},
+              {l:"Consultant Cost",   v:fmt(totalCost),  c:"#f87171"},
+              {l:"Gross Profit",      v:fmt(gross),      c:marginColor},
+              {l:"Gross Margin",      v:pct(margin),     c:marginColor},
+              {l:"Pay + Burden/hr",   v:fmt(totalCost/hours)+"/hr", c:"#f59e0b"},
+              {l:"Annual Gross",      v:fmt(gross*12),   c:marginColor},
+            ].map(k=>(
+              <div key={k.l} style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:4}}>{k.l}</div>
+                <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mode === "reverse" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+              <FF label="Bill Rate ($/hr)">
+                <input type="number" className="inp" value={bill} onChange={e=>setBill(+e.target.value)}/>
+              </FF>
+              <FF label="Target Margin %">
+                <input type="number" className="inp" value={targetMargin} onChange={e=>setTargetMargin(+e.target.value)} min={0} max={100}/>
+              </FF>
+              <FF label="Hours/Month">
+                <input type="number" className="inp" value={hours} onChange={e=>setHours(+e.target.value)}/>
+              </FF>
+              <FF label="Employer Burden %">
+                <input type="number" className="inp" value={burden} onChange={e=>setBurden(+e.target.value)}/>
+              </FF>
+            </div>
+            <div style={{padding:"10px 14px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45",fontSize:10,color:"#334155"}}>
+              Enter your bill rate and target margin — the tool calculates the maximum pay rate you can offer the consultant.
+            </div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {[
+              {l:"Bill Rate",          v:fmt(bill)+"/hr",           c:"#38bdf8"},
+              {l:"Max Pay Rate",       v:fmt(maxPay)+"/hr",         c:"#34d399"},
+              {l:"Max Pay Monthly",    v:fmt(maxPay*hours),         c:"#34d399"},
+              {l:"Target Margin",      v:pct(targetMargin),         c:"#f59e0b"},
+              {l:"Your Gross/Month",   v:fmt(bill*hours*(targetMargin/100)), c:"#f59e0b"},
+              {l:"Your Gross/Year",    v:fmt(bill*hours*(targetMargin/100)*12), c:"#f59e0b"},
+            ].map(k=>(
+              <div key={k.l} style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45",textAlign:"center"}}>
+                <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:4}}>{k.l}</div>
+                <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
