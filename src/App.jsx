@@ -2386,7 +2386,7 @@ function FinanceControlSystem(props) {
           </div>
         </div>
       )}
-      {/* KPI Row */}}
+      {/* KPI Row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Revenue",     v:fmtK(txRevenue),   sub:fcsPeriod==="month"?new Date().toLocaleDateString("en-US",{month:"short",year:"numeric"}):fcsPeriod==="quarter"?"Q"+Math.ceil((new Date().getMonth()+1)/3)+" "+new Date().getFullYear():"YTD "+new Date().getFullYear(),          color:"#34d399", trend:"+12%"},
