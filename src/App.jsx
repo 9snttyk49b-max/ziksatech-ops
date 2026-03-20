@@ -37744,6 +37744,178 @@ Be concise, helpful and professional. Answer based on the context above when pos
 }
 
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// CANDIDATE SOURCING AI
+// Generates outreach messages and candidate profiles for open roles
+// ═══════════════════════════════════════════════════════════════════════
+const SOURCING_ROLES = [
+  { id:"brim_ci",    label:"SAP BRIM / CI Consultant",     skills:"SAP BRIM, Convergent Invoicing, FI-CA, IS-U",      billRate:145, visa:"H-1B" },
+  { id:"isu",        label:"SAP IS-U / Utilities",         skills:"SAP IS-U, CCS, DM, EDM, meter-to-cash",            billRate:140, visa:"H-1B" },
+  { id:"abap",       label:"SAP ABAP Developer",           skills:"ABAP OO, BTP, CPI, Fiori, HANA",                   billRate:120, visa:"H-1B" },
+  { id:"sf",         label:"SAP SuccessFactors Consultant",skills:"SuccessFactors EC, Payroll, Recruiting, LMS",       billRate:125, visa:"H-1B" },
+  { id:"fico",       label:"SAP FICO / Finance",           skills:"SAP FICO, S/4HANA Finance, RAR, AR/AP",            billRate:130, visa:"H-1B" },
+  { id:"s4mm",       label:"SAP S/4HANA MM/SD",            skills:"SAP MM, SD, S/4HANA, Procurement",                  billRate:120, visa:"H-1B" },
+  { id:"btp",        label:"SAP BTP / Integration",        skills:"SAP BTP, CPI, APIM, Integration Suite",             billRate:130, visa:"H-1B" },
+  { id:"mdg",        label:"SAP MDG / Data Governance",    skills:"SAP MDG, Master Data, Data Quality",                billRate:130, visa:"H-1B" },
+  { id:"data",       label:"Data Engineer / SAC",          skills:"SAP SAC, BW/4HANA, Databricks, Python",             billRate:115, visa:"OPT"  },
+  { id:"pm",         label:"SAP Project Manager",          skills:"SAP PM, ASAP, Agile, Stakeholder Management",       billRate:150, visa:"USC"  },
+];
+
+const SOURCING_CHANNELS = ["LinkedIn DM","LinkedIn InMail","Email (Cold)","Dice.com","Referral Ask","Indeed","Recruiter.com"];
+
+function CandidateSourcingAI({ onAddCandidate, addAudit }) {
+  const [role,     setRole]     = useState(SOURCING_ROLES[0]);
+  const [channel,  setChannel]  = useState("LinkedIn DM");
+  const [location, setLocation] = useState("Dallas/Plano TX (Remote OK)");
+  const [urgency,  setUrgency]  = useState("immediate");
+  const [output,   setOutput]   = useState(null);
+  const [loading,  setLoading]  = useState(false);
+  const [copied,   setCopied]   = useState("");
+
+  const copy = (text, k) => { navigator.clipboard?.writeText(text).catch(()=>{}); setCopied(k); setTimeout(()=>setCopied(""),2500); };
+
+  const generate = async () => {
+    setLoading(true); setOutput(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+          system:`You are a senior recruiter for Ziksatech, a WBE-certified SAP consulting firm in Plano TX. We place SAP consultants at Fortune 500 companies. Write specific, non-generic outreach that stands out. Mention real benefits: W2 employment, H1B sponsorship, active projects at NTTA/Toyota/HPE, Plano TX base.`,
+          messages:[{role:"user",content:`I need to source for: ${role.label}
+Skills needed: ${role.skills}
+Location: ${location}
+Channel: ${channel}
+Urgency: ${urgency} start
+Target visa types: ${role.visa} (we sponsor H1B)
+Bill rate budget: $${role.billRate}/hr range
+
+Return ONLY JSON:
+{
+  "searchKeywords": ["keyword1","keyword2","keyword3","keyword4","keyword5"],
+  "outreachMessage": "complete ready-to-send ${channel} message, personalized, under 150 words, mentions specific skills and our NTTA/Toyota active projects",
+  "followupMessage": "short 50-word follow-up for non-responders after 5 days",
+  "screeningQuestions": ["question1","question2","question3"],
+  "redFlags": ["red flag to watch for 1","red flag 2"],
+  "candidateProfile": {
+    "name": "Placeholder Name",
+    "role": "${role.label}",
+    "skills": "${role.skills}",
+    "visa": "${role.visa}",
+    "billRate": ${role.billRate},
+    "source": "${channel}",
+    "stage": "sourced",
+    "notes": "Sourced via ${channel} — needs screening"
+  }
+}`}]
+        })
+      });
+      const data = await resp.json();
+      const parsed = JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+      setOutput(parsed);
+      addAudit?.("CMS","AI Sourcing","Recruiting", role.label);
+    } catch(e) { setOutput({error:e.message}); }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <div style={{marginBottom:16,padding:"12px 16px",background:"#040a14",borderRadius:8,border:"1px solid #0369a133",fontSize:11,color:"#475569"}}>
+        🤖 AI generates search keywords, ready-to-send outreach messages, screening questions, and a candidate profile stub — all tailored to your active NTTA/Toyota/HPE projects and H1B sponsorship capability.
+      </div>
+
+      {/* Controls */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+        <FF label="Role to Source">
+          <select className="inp" value={role.id} onChange={e=>setRole(SOURCING_ROLES.find(r=>r.id===e.target.value)||SOURCING_ROLES[0])}>
+            {SOURCING_ROLES.map(r=><option key={r.id} value={r.id}>{r.label} (~${r.billRate}/hr)</option>)}
+          </select>
+        </FF>
+        <FF label="Outreach Channel">
+          <select className="inp" value={channel} onChange={e=>setChannel(e.target.value)}>
+            {SOURCING_CHANNELS.map(c=><option key={c}>{c}</option>)}
+          </select>
+        </FF>
+        <FF label="Location Preference"><input className="inp" value={location} onChange={e=>setLocation(e.target.value)}/></FF>
+        <FF label="Start Urgency">
+          <select className="inp" value={urgency} onChange={e=>setUrgency(e.target.value)}>
+            <option value="immediate">Immediate (ASAP)</option>
+            <option value="2 weeks">2 Weeks</option>
+            <option value="30 days">30 Days</option>
+            <option value="next quarter">Next Quarter</option>
+          </select>
+        </FF>
+      </div>
+
+      <button className="btn bp" style={{width:"100%",fontSize:13,marginBottom:20}} onClick={generate} disabled={loading}>
+        {loading?"⏳ Generating outreach strategy…":"🤖 Generate Sourcing Strategy"}
+      </button>
+
+      {output && !output.error && (
+        <div style={{display:"grid",gap:14}}>
+          {/* Search Keywords */}
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:8}}>🔍 Search Keywords</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {(output.searchKeywords||[]).map((k,i)=>(
+                <span key={i} style={{padding:"4px 10px",borderRadius:6,background:"#0c1e3d",color:"#38bdf8",fontSize:11,border:"1px solid #0369a133",cursor:"pointer"}}
+                  onClick={()=>copy(k,"kw"+i)}>{k} {copied==="kw"+i?"✅":""}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Outreach Message */}
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#34d399"}}>✉️ {channel} Message (ready to send)</div>
+              <button className="btn bg" style={{fontSize:10}} onClick={()=>copy(output.outreachMessage,"out")}>{copied==="out"?"✅ Copied!":"📋 Copy"}</button>
+            </div>
+            <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.7,whiteSpace:"pre-wrap",padding:"10px 12px",background:"#040810",borderRadius:6}}>{output.outreachMessage}</div>
+          </div>
+
+          {/* Follow-up */}
+          {output.followupMessage && (
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#a78bfa"}}>🔄 Follow-up (Day 5)</div>
+                <button className="btn bg" style={{fontSize:10}} onClick={()=>copy(output.followupMessage,"fu")}>{copied==="fu"?"✅ Copied!":"📋 Copy"}</button>
+              </div>
+              <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.7,padding:"8px 12px",background:"#040810",borderRadius:6}}>{output.followupMessage}</div>
+            </div>
+          )}
+
+          {/* Screening Questions + Red Flags */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8}}>❓ Screening Questions</div>
+              {(output.screeningQuestions||[]).map((q,i)=>(
+                <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>{i+1}. {q}</div>
+              ))}
+            </div>
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#f87171",marginBottom:8}}>🚩 Red Flags</div>
+              {(output.redFlags||[]).map((f,i)=>(
+                <div key={i} style={{fontSize:11,color:"#f87171",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>• {f}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Add to Pipeline CTA */}
+          <div style={{padding:"14px 16px",background:"#021f14",borderRadius:8,border:"1px solid #22c55e33",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#34d399"}}>✅ Ready to add a candidate?</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:2}}>Creates a {role.label} stub in Sourced stage — fill in details when you find someone</div>
+            </div>
+            <button className="btn bp" style={{fontSize:12}} onClick={()=>{
+              if (output.candidateProfile) { onAddCandidate(output.candidateProfile); addAudit?.("CMS","Add","Candidate",output.candidateProfile.role); }
+            }}>+ Add to Pipeline</button>
+          </div>
+        </div>
+      )}
+      {output?.error && <div style={{color:"#f87171",padding:"12px",background:"#1a0808",borderRadius:8}}>{output.error}</div>}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // CANDIDATE MANAGEMENT SYSTEM — End-to-end hiring pipeline
 // Source → Screen → Interview → Offer → Visa/H1B → Onboard → Place
@@ -37894,12 +38066,12 @@ function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, se
           {CMS_VISA_TYPES.map(v=><option key={v}>{v}</option>)}
         </select>
         <div style={{display:"flex",gap:4,marginLeft:"auto"}}>
-          {["pipeline","list","visa"].map(v=>(
+          {["pipeline","list","visa","sourcing"].map(v=>(
             <button key={v} onClick={()=>setSub(v)}
               style={{padding:"5px 14px",borderRadius:7,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,
                 background:sub===v?"linear-gradient(135deg,#0369a1,#0284c7)":"#0a1120",
                 color:sub===v?"#fff":"#475569"}}>
-              {v==="pipeline"?"🔄 Pipeline":v==="list"?"📋 List":"🛂 Visa"}
+              {v==="pipeline"?"🔄 Pipeline":v==="list"?"📋 List":v==="visa"?"🛂 Visa":"🤖 Sourcing AI"}
             </button>
           ))}
         </div>
@@ -38139,6 +38311,9 @@ function CandidateManagement({ roster, setRoster, clients, crmDeals, jobReqs, se
           )}
         </div>
       )}
+
+      {/* ── SOURCING AI ── */}
+      {sub==="sourcing" && <CandidateSourcingAI onAddCandidate={(c)=>{save([...cands,{...c,id:"cms-"+Date.now(),createdAt:new Date().toISOString()}]); setSub("pipeline");}} addAudit={addAudit}/>}
 
       {/* ── ADD/EDIT MODAL ── */}
       {modal && (
