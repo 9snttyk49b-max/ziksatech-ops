@@ -10981,6 +10981,92 @@ function FF({ label, children }) {
   );
 }
 
+// ── Invoice Email Composer Modal ──────────────────────────────────────────────
+function InvoiceEmailModal({ inv, client, total, onClose, addAudit }) {
+  const fmt = n => n>=1000?"$"+(n/1000).toFixed(1)+"k":"$"+Math.round(n);
+  const [emailType, setEmailType] = useState("send");   // send | reminder | overdue
+  const [output, setOutput]       = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [copied,  setCopied]      = useState(false);
+
+  const EMAIL_TYPES = [
+    { id:"send",     label:"📧 First Send",     desc:"Polite invoice delivery email" },
+    { id:"reminder", label:"🔔 Gentle Reminder", desc:"Follow-up after 7+ days" },
+    { id:"overdue",  label:"🚨 Overdue Notice",  desc:"Firm but professional escalation" },
+    { id:"thankyou", label:"✅ Payment Received", desc:"Thank you on receipt" },
+  ];
+
+  const generate = async () => {
+    setLoading(true);
+    const typeLabel = EMAIL_TYPES.find(t=>t.id===emailType)?.label||emailType;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+          system:"You are writing professional invoice emails for Ziksatech, a WBE-certified SAP consulting firm in Plano TX. Owner: Manju Murthy. Be professional, warm, and specific. Never use placeholders.",
+          messages:[{role:"user",content:`Write a ${typeLabel} email for:
+Invoice: ${inv.id||inv.invoiceNum||"INV"}
+Client: ${client?.name||"Client"}
+Amount: ${fmt(total)}
+Period: ${inv.period||""}
+Due date: ${inv.dueDate||""}
+Project: ${inv.projectName||"SAP Consulting Services"}
+Days overdue: ${Math.max(0,Math.floor((new Date()-new Date(inv.dueDate||Date.now()))/86400000))}
+
+Write the complete email (subject + body). Sign as Manju Murthy, Ziksatech. Keep it under 120 words. Professional but warm. No [brackets].`}]
+        })
+      });
+      const data = await resp.json();
+      setOutput((data.content?.[0]?.text||"").trim());
+      addAudit?.("Finance","Email Generated","Invoice",inv.id);
+    } catch(e) { setOutput("Error: "+e.message); }
+    setLoading(false);
+  };
+
+  const copy = () => { navigator.clipboard?.writeText(output).catch(()=>{}); setCopied(true); setTimeout(()=>setCopied(false),2500); };
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:540}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div>
+            <h2 style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>📧 Invoice Email</h2>
+            <div style={{fontSize:11,color:"#475569"}}>{inv.id} · {client?.name||"Client"} · {fmt(total)}</div>
+          </div>
+          <button className="btn bg" onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+          {EMAIL_TYPES.map(t=>(
+            <button key={t.id} onClick={()=>setEmailType(t.id)}
+              style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${emailType===t.id?"#0369a1":"#1a2d45"}`,
+                cursor:"pointer",textAlign:"left",background:emailType===t.id?"#0c2340":"#060d1c"}}>
+              <div style={{fontSize:11,fontWeight:600,color:emailType===t.id?"#38bdf8":"#94a3b8"}}>{t.label}</div>
+              <div style={{fontSize:9,color:"#334155"}}>{t.desc}</div>
+            </button>
+          ))}
+        </div>
+
+        <button className="btn bp" style={{width:"100%",marginBottom:14}} onClick={generate} disabled={loading}>
+          {loading?"⏳ Writing email…":"✨ Generate Email"}
+        </button>
+
+        {output && (
+          <div>
+            <div style={{padding:"14px 16px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45",
+              fontSize:12,color:"#e2e8f0",lineHeight:1.7,whiteSpace:"pre-wrap",minHeight:120,marginBottom:10}}>
+              {output}
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button className="btn bg" style={{fontSize:11}} onClick={copy}>{copied?"✅ Copied!":"📋 Copy to Clipboard"}</button>
+              <button className="btn bg" style={{fontSize:11}} onClick={()=>setOutput("")}>Clear</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── FINANCE MODULE ────────────────────────────────────────────────────────────
 function FinanceModule({ roster, clients, tsHours, finInvoices, setFinInvoices, finPayments, setFinPayments, finExpenses, setFinExpenses, addAudit }) {
   const [sub, setSub] = useState("overview");
@@ -11238,6 +11324,7 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
   };
 
   const [copiedId, setCopiedId] = useState(null);
+  const [emailInvId, setEmailInvId] = useState(null);
   const [FinInvoicesAI,     setFinInvoicesAI]     = useState(null);
   const [FinInvoicesAILoad, setFinInvoicesAILoad] = useState(false);
   const runFinInvoicesAI = async () => {
@@ -11324,6 +11411,12 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
                     <button className="btn bg" style={{padding:"3px 7px",fontSize:11}} onClick={()=>setPayModal(inv.id)}>View Payments</button>}
                   {inv.status==="sent" && daysOverdue(inv)>0 &&
                     <button className="btn br" style={{padding:"3px 6px",fontSize:10}} onClick={()=>updateStatus(inv.id,"overdue")}>Flag</button>}
+                  {["sent","overdue","partial","draft"].includes(inv.status)&&(
+                    <button className="btn bg" style={{padding:"3px 7px",fontSize:10,color:"#a78bfa"}}
+                      onClick={e=>{e.stopPropagation();setEmailInvId(inv.id);}}>
+                      📧
+                    </button>
+                  )}
                   {["sent","overdue","partial"].includes(inv.status)&&(
                     <button className="btn bg" style={{padding:"3px 7px",fontSize:10,color:copiedId===inv.id?"#34d399":"#7dd3fc"}}
                       onClick={e=>{e.stopPropagation();copyPortalLink(inv.id);}}>
@@ -11507,6 +11600,17 @@ function FinInvoices({ clients, finInvoices, setFinInvoices, finPayments, setFin
           </div>
         </div>
       )}
+
+      {/* Invoice Email Composer */}
+      {emailInvId && (() => {
+        const inv = finInvoices.find(i=>i.id===emailInvId);
+        const cl  = clients?.find(c=>c.id===inv?.clientId);
+        if (!inv) return null;
+        const total = (inv.lines||[]).reduce((s,l)=>s+(+l.amount||0),0);
+        return (
+          <InvoiceEmailModal inv={inv} client={cl} total={total} onClose={()=>setEmailInvId(null)} addAudit={addAudit}/>
+        );
+      })()}
     </div>
   );
 }
@@ -14976,6 +15080,34 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
           <button className="btn bg" style={{fontSize:11,padding:"5px 10px",marginLeft:"auto",borderColor:viewMode==="kanban"?"#0284c7":"#1a2d45",color:viewMode==="kanban"?"#38bdf8":"#475569"}} onClick={()=>setViewMode(viewMode==="list"?"kanban":"list")}>⬡ {viewMode==="list"?"Kanban":"List"} View</button>
           <button className="btn bp" style={{fontSize:12}} onClick={()=>openDeal()}><I d={ICONS.plus} s={13}/>New Deal</button>
         </div>
+
+        {/* Deal Aging Alerts */}
+        {(() => {
+          const aged = crmDeals.filter(d=>{
+            if(["closed-won","closed_won","won","closed-lost","closed_lost","lost"].includes(d.stage)) return false;
+            const lastTouch = d.lastActivity||d.updatedAt||d.createdAt;
+            if(!lastTouch) return true;
+            return Math.ceil((new Date()-new Date(lastTouch))/86400000) > 14;
+          });
+          if(!aged.length) return null;
+          return (
+            <div style={{marginBottom:14,padding:"10px 14px",background:"#1a0a00",border:"1px solid #f59e0b33",borderRadius:8}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#f59e0b",marginBottom:6}}>⏰ {aged.length} deal{aged.length>1?"s":""} stale — no activity in 14+ days</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {aged.map(d=>{
+                  const days = d.lastActivity||d.updatedAt ? Math.ceil((new Date()-new Date(d.lastActivity||d.updatedAt))/86400000) : "?";
+                  return (
+                    <span key={d.id} onClick={()=>setSelected(d.id)}
+                      style={{fontSize:10,padding:"3px 9px",borderRadius:6,cursor:"pointer",
+                        background:"#1a1005",color:"#f59e0b",border:"1px solid #f59e0b44"}}>
+                      {d.name} <span style={{color:"#7f4f00"}}>({days}d)</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
 
         {viewMode === "kanban" && (
