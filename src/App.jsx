@@ -105,6 +105,7 @@ const RBAC = {
   naxonemail:    ["super_admin","admin"],
   naxondealclose:["super_admin","admin"],
   battlecard:    ["super_admin","admin"],
+  naxonsow:      ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4573,6 +4574,7 @@ export default function ZiksatechOps() {
     { id:"naxonemail",   label:"Outreach Emails ✉️",       icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxondealclose",label:"Deal Closer 🏁",           icon:ICONS.dash,     group:"Naxon OS" },
     { id:"battlecard",    label:"Battlecard ⚔️",            icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"naxonsow",      label:"SOW Quick-Draft 📝",        icon:ICONS.pl,       group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5157,6 +5159,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="naxonemail"   && <NaxonOutreachEmail crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
         {tab==="naxondealclose"&& <NaxonDealCloser addAudit={shared.addAudit}/>}
         {tab==="battlecard"    && <NaxonBattlecard addAudit={shared.addAudit}/>}
+        {tab==="naxonsow"      && <NaxonSOWDraft addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -44385,6 +44388,203 @@ function PayRateCalc() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON SOW QUICK-DRAFT
+// AI generates a Phase-0 SOW in under 60 seconds
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonSOWDraft({ addAudit }) {
+  const [form, setForm] = useState({
+    client:"NTTA",
+    contact:"VP of IT",
+    engagement:"Phase 0 — BRIM Billing & Tolling Audit",
+    scope:"Assess current SAP BRIM configuration, identify billing workflow gaps, document IS-U integration points, and deliver a prioritized remediation roadmap.",
+    deliverables:"1. Current-state assessment report\n2. Gap analysis document\n3. Prioritized remediation roadmap\n4. Executive summary presentation",
+    weeks:4,
+    consultants:2,
+    rate:200,
+    startDate: new Date(Date.now()+7*86400000).toISOString().slice(0,10),
+    paymentTerms:"50% on SOW execution, 50% on final deliverable",
+    exclusions:"Production system changes, vendor licensing, third-party integrations",
+    travelExpenses:"Billed at cost, not to exceed $2,500",
+  });
+  const [sow, setSow] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const fv = k => e => setForm(p=>({...p,[k]:e.target.value}));
+  const totalFee = form.weeks * 40 * form.consultants * form.rate;
+  const roundedFee = Math.ceil(totalFee/5000)*5000;
+
+  const generate = async () => {
+    setLoading(true); setSow(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,
+          system:"You are a professional SOW writer for Naxon Systems — a WBE-certified SAP consulting firm. Write formal, concise, client-ready SOW language. No placeholders. All sections complete.",
+          messages:[{role:"user",content:`Generate a complete Phase-0 SOW for:
+
+CLIENT: ${form.client}
+CONTACT: ${form.contact}
+ENGAGEMENT: ${form.engagement}
+SCOPE: ${form.scope}
+DELIVERABLES: ${form.deliverables}
+DURATION: ${form.weeks} weeks
+TEAM: ${form.consultants} consultants at $${form.rate}/hr blended rate
+ESTIMATED FEE: $${roundedFee.toLocaleString()} (fixed)
+START DATE: ${form.startDate}
+PAYMENT: ${form.paymentTerms}
+EXCLUSIONS: ${form.exclusions}
+TRAVEL: ${form.travelExpenses}
+
+Return ONLY JSON:
+{
+  "title": "SOW title",
+  "overview": "2-3 sentence engagement overview",
+  "objectives": ["objective 1", "objective 2", "objective 3"],
+  "scopeStatement": "formal 2-3 paragraph scope statement",
+  "deliverableDetails": [{"item":"deliverable name","description":"what it includes","acceptanceCriteria":"how client accepts it"}],
+  "assumptions": ["assumption 1", "assumption 2", "assumption 3"],
+  "outOfScope": ["out of scope item 1", "out of scope item 2"],
+  "timeline": [{"week":"Week 1-2","activities":"specific activities"},{"week":"Week 3-4","activities":"specific activities"}],
+  "teamComposition": "description of Naxon team",
+  "feeStructure": "formal fee paragraph",
+  "termsAndConditions": "3-4 key T&C points",
+  "sigBlock": "signature block text"
+}`}]
+        })
+      });
+      const data = await resp.json();
+      setSow(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+      addAudit?.("SOW Draft","Generated","Naxon",`SOW for ${form.client}`);
+    } catch(e) { setSow({error:e.message}); }
+    setLoading(false);
+  };
+
+  const copySOW = () => {
+    if(!sow) return;
+    const txt = [
+      `STATEMENT OF WORK`,`${sow.title}`,``,
+      `Prepared by Naxon Systems LLC | WBE/HUB Certified`,
+      `Date: ${new Date().toLocaleDateString()}`,``,
+      `OVERVIEW`,sow.overview,``,
+      `OBJECTIVES`,...(sow.objectives||[]).map((o,i)=>`${i+1}. ${o}`),``,
+      `SCOPE OF WORK`,sow.scopeStatement,``,
+      `DELIVERABLES`,
+      ...(sow.deliverableDetails||[]).flatMap(d=>[`• ${d.item}: ${d.description}`,`  Acceptance: ${d.acceptanceCriteria}`,``]),
+      `TIMELINE`,
+      ...(sow.timeline||[]).map(t=>`${t.week}: ${t.activities}`),``,
+      `FEE STRUCTURE`,sow.feeStructure,``,
+      `OUT OF SCOPE`,...(sow.outOfScope||[]).map(o=>`• ${o}`),``,
+      `ASSUMPTIONS`,...(sow.assumptions||[]).map(a=>`• ${a}`),``,
+      `TERMS & CONDITIONS`,sow.termsAndConditions,``,
+      `TEAM`,sow.teamComposition,``,
+      sow.sigBlock
+    ].join('\n');
+    navigator.clipboard.writeText(txt).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),3000); });
+  };
+
+  return (
+    <div>
+      <PH title="SOW Quick-Draft" sub="Naxon Systems — generate a Phase-0 SOW in under 60 seconds">
+        <div style={{fontSize:10,color:"#34d399",fontWeight:700}}>Est. Fee: ${roundedFee.toLocaleString()}</div>
+      </PH>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+        <div style={{display:"grid",gap:8}}>
+          <FF label="Client"><input className="inp" value={form.client} onChange={fv("client")}/></FF>
+          <FF label="Key Contact"><input className="inp" value={form.contact} onChange={fv("contact")}/></FF>
+          <FF label="Engagement Title"><input className="inp" value={form.engagement} onChange={fv("engagement")}/></FF>
+          <FF label="Start Date"><input type="date" className="inp" value={form.startDate} onChange={fv("startDate")}/></FF>
+          <FF label="Payment Terms"><input className="inp" value={form.paymentTerms} onChange={fv("paymentTerms")}/></FF>
+        </div>
+        <div style={{display:"grid",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            <FF label="Weeks"><input type="number" className="inp" value={form.weeks} onChange={fv("weeks")} min={1}/></FF>
+            <FF label="Consultants"><input type="number" className="inp" value={form.consultants} onChange={fv("consultants")} min={1}/></FF>
+            <FF label="Rate ($/hr)"><input type="number" className="inp" value={form.rate} onChange={fv("rate")}/></FF>
+          </div>
+          <FF label="Scope Summary"><textarea className="inp" rows={3} value={form.scope} onChange={fv("scope")} style={{resize:"vertical"}}/></FF>
+          <FF label="Deliverables (one per line)"><textarea className="inp" rows={4} value={form.deliverables} onChange={fv("deliverables")} style={{resize:"vertical"}}/></FF>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+        <FF label="Exclusions"><input className="inp" value={form.exclusions} onChange={fv("exclusions")}/></FF>
+        <FF label="Travel Expenses"><input className="inp" value={form.travelExpenses} onChange={fv("travelExpenses")}/></FF>
+      </div>
+
+      <div style={{display:"flex",gap:10,marginBottom:20}}>
+        <button className="btn bp" style={{flex:1,padding:"11px",fontSize:13,fontWeight:700}} onClick={generate} disabled={loading||!form.client}>
+          {loading?"Drafting SOW...":"Generate SOW Draft"}
+        </button>
+        {sow&&!sow.error&&(
+          <button className="btn bg" style={{padding:"11px 20px",fontSize:12}} onClick={copySOW}>
+            {copied?"Copied!":"Copy Full SOW"}
+          </button>
+        )}
+      </div>
+
+      {sow&&!sow.error&&(
+        <div style={{padding:"20px",background:"#040a14",borderRadius:12,border:"1px solid #0369a133",lineHeight:1.7}}>
+          <div style={{textAlign:"center",marginBottom:20,paddingBottom:16,borderBottom:"1px solid #0a1626"}}>
+            <div style={{fontSize:18,fontWeight:800,color:"#e2e8f0",marginBottom:4}}>STATEMENT OF WORK</div>
+            <div style={{fontSize:14,fontWeight:600,color:"#38bdf8",marginBottom:4}}>{sow.title}</div>
+            <div style={{fontSize:11,color:"#475569"}}>Naxon Systems LLC · WBE/HUB Certified · {new Date().toLocaleDateString()}</div>
+          </div>
+
+          {[
+            ["Overview", sow.overview],
+            ["Scope of Work", sow.scopeStatement],
+            ["Team Composition", sow.teamComposition],
+            ["Fee Structure", sow.feeStructure],
+            ["Terms & Conditions", sow.termsAndConditions],
+          ].map(([title, content])=>content&&(
+            <div key={title} style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:6,textTransform:"uppercase",letterSpacing:1}}>{title}</div>
+              <div style={{fontSize:11,color:"#94a3b8"}}>{content}</div>
+            </div>
+          ))}
+
+          {sow.objectives?.length>0&&(
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:6,textTransform:"uppercase",letterSpacing:1}}>Objectives</div>
+              {sow.objectives.map((o,i)=><div key={i} style={{fontSize:11,color:"#94a3b8",padding:"2px 0"}}>{i+1}. {o}</div>)}
+            </div>
+          )}
+
+          {sow.deliverableDetails?.length>0&&(
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:6,textTransform:"uppercase",letterSpacing:1}}>Deliverables</div>
+              {sow.deliverableDetails.map((d,i)=>(
+                <div key={i} style={{marginBottom:8,padding:"8px 10px",background:"#060d1c",borderRadius:6}}>
+                  <div style={{fontSize:11,color:"#e2e8f0",fontWeight:600}}>{d.item}</div>
+                  <div style={{fontSize:10,color:"#475569",marginTop:2}}>{d.description}</div>
+                  <div style={{fontSize:9,color:"#334155",marginTop:2}}>Acceptance: {d.acceptanceCriteria}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {sow.timeline?.length>0&&(
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#38bdf8",marginBottom:6,textTransform:"uppercase",letterSpacing:1}}>Timeline</div>
+              {sow.timeline.map((t,i)=>(
+                <div key={i} style={{display:"flex",gap:10,padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
+                  <span style={{fontSize:10,color:"#a78bfa",minWidth:80,fontWeight:600}}>{t.week}</span>
+                  <span style={{fontSize:10,color:"#94a3b8"}}>{t.activities}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {sow.sigBlock&&<div style={{marginTop:16,padding:"12px",background:"#0a1626",borderRadius:6,fontSize:10,color:"#475569",whiteSpace:"pre-line"}}>{sow.sigBlock}</div>}
+        </div>
+      )}
+      {sow?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {sow.error}</div>}
     </div>
   );
 }
