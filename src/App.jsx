@@ -106,6 +106,8 @@ const RBAC = {
   naxondealclose:["super_admin","admin"],
   battlecard:    ["super_admin","admin"],
   naxonsow:      ["super_admin","admin"],
+  naxonlinkedin: ["super_admin","admin"],
+  naxonkpi:      ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4575,6 +4577,8 @@ export default function ZiksatechOps() {
     { id:"naxondealclose",label:"Deal Closer 🏁",           icon:ICONS.dash,     group:"Naxon OS" },
     { id:"battlecard",    label:"Battlecard ⚔️",            icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonsow",      label:"SOW Quick-Draft 📝",        icon:ICONS.pl,       group:"Naxon OS" },
+    { id:"naxonlinkedin", label:"LinkedIn Posts 💼",          icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"naxonkpi",      label:"Naxon KPIs 📊",             icon:ICONS.ebitda,   group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5160,6 +5164,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="naxondealclose"&& <NaxonDealCloser addAudit={shared.addAudit}/>}
         {tab==="battlecard"    && <NaxonBattlecard addAudit={shared.addAudit}/>}
         {tab==="naxonsow"      && <NaxonSOWDraft addAudit={shared.addAudit}/>}
+        {tab==="naxonlinkedin" && <NaxonLinkedIn addAudit={shared.addAudit}/>}
+        {tab==="naxonkpi"      && <NaxonKPIDashboard addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -44388,6 +44394,221 @@ function PayRateCalc() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON LINKEDIN POST GENERATOR
+// Builds brand for Naxon Systems on LinkedIn — thought leadership + wins
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonLinkedIn({ addAudit }) {
+  const TOPICS = [
+    {id:"brim",     label:"SAP BRIM Insight",       prompt:"Write a thought leadership post about SAP BRIM's impact on utility billing modernization. Mention real pain points: billing accuracy, dunning workflows, CRM integration. Include specific metrics/stats."},
+    {id:"tolling",  label:"Tolling + BRIM",          prompt:"Write a post about SAP BRIM in tolling — transponder lifecycle, violation processing, revenue leakage detection. Reference NTTA-scale implementations without naming clients."},
+    {id:"isu",      label:"IS-U Modernization",      prompt:"Write a post about SAP IS-U upgrade challenges and Naxon's approach to IS-U to S/4HANA migration for utilities. Specific pain points and solutions."},
+    {id:"wbe",      label:"WBE/Diverse Supplier",    prompt:"Write a post about the value of WBE-certified SAP partners for utility companies — procurement compliance, diverse spend goals, plus how Naxon delivers enterprise-grade outcomes."},
+    {id:"phase0",   label:"Phase-0 Audit Value",     prompt:"Write a post explaining why a 4-week Phase-0 SAP BRIM/IS-U audit saves companies $200K+ in wrong-direction implementation costs. Be specific about what it uncovers."},
+    {id:"launch",   label:"Naxon Launch Story",      prompt:"Write a founder post from Manju Murthy announcing Naxon Systems — a WBE-certified SAP BRIM/IS-U firm launching in DFW, focused on utilities and tolling. 25+ years experience, NTTA background, fresh start in 2026."},
+    {id:"hiring",   label:"We're Hiring (SAP)",      prompt:"Write a LinkedIn post announcing Naxon Systems is looking for SAP BRIM/IS-U consultants — remote-first, WBE firm, DFW base, competitive rates. Niche expertise valued over generic SAP generalists."},
+    {id:"custom",   label:"Custom Topic",            prompt:""},
+  ];
+
+  const [topicId, setTopicId] = useState("brim");
+  const [custom, setCustom]  = useState("");
+  const [tone, setTone]      = useState("thought-leader");
+  const [output, setOutput]  = useState(null);
+  const [loading, setLoading]= useState(false);
+  const [copied, setCopied]  = useState(false);
+
+  const selTopic = TOPICS.find(t=>t.id===topicId)||TOPICS[0];
+
+  const generate = async () => {
+    setLoading(true); setOutput(null); setCopied(false);
+    const prompt = topicId==="custom" ? custom : selTopic.prompt;
+    const toneGuide = tone==="thought-leader"?"Position Manju as a 25-year SAP veteran with deep BRIM/IS-U expertise. Confident but humble. Include specific technical terms."
+      :tone==="conversational"?"Casual, relatable, slightly personal. Like a practitioner sharing what they learned in the trenches."
+      :"Energetic and direct. Short sentences. Strong call to action.";
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are a LinkedIn content strategist for Manju Murthy, Founder & CEO of Naxon Systems — a WBE-certified SAP consulting firm (BRIM, IS-U, tolling, utilities). Manju has 25+ years SAP experience and led NTTA's BRIM tolling transformation. Write in first person as Manju. Use emojis strategically (not excessively). Add line breaks for readability. 150-250 words. End with a question or call to action to drive engagement.",
+          messages:[{role:"user",content:`Topic: ${prompt}\nTone: ${toneGuide}\n\nWrite the LinkedIn post. Return ONLY JSON: {"post":"full post text","hashtags":["tag1","tag2","tag3","tag4","tag5"],"bestPostTime":"best day/time to post this"}`}]
+        })
+      });
+      const data = await resp.json();
+      setOutput(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+      addAudit?.("Naxon LinkedIn","Generated","Naxon",`Post: ${selTopic.label}`);
+    } catch(e) { setOutput({error:e.message}); }
+    setLoading(false);
+  };
+
+  const copyPost = () => {
+    if(!output?.post) return;
+    const txt = output.post + "\n\n" + (output.hashtags||[]).map(h=>"#"+h.replace(/^#/,"")).join(" ");
+    navigator.clipboard.writeText(txt).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),2500); });
+  };
+
+  return (
+    <div>
+      <PH title="LinkedIn Post Generator" sub="Naxon Systems — build thought leadership in BRIM, IS-U, and tolling"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:10}}>Select Topic</div>
+          <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:12}}>
+            {TOPICS.map(t=>(
+              <button key={t.id} onClick={()=>setTopicId(t.id)}
+                style={{padding:"8px 12px",borderRadius:7,border:"1px solid "+(topicId===t.id?"#0369a1":"#1a2d45"),
+                  background:topicId===t.id?"#0c2040":"#060d1c",color:topicId===t.id?"#e2e8f0":"#64748b",
+                  textAlign:"left",cursor:"pointer",fontSize:11,fontWeight:600}}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {topicId==="custom"&&(
+            <FF label="Your topic / prompt">
+              <textarea className="inp" rows={4} value={custom} style={{resize:"vertical"}} onChange={e=>setCustom(e.target.value)} placeholder="What do you want to post about?"/>
+            </FF>
+          )}
+        </div>
+        <div>
+          <FF label="Tone">
+            <select className="inp" value={tone} onChange={e=>setTone(e.target.value)}>
+              <option value="thought-leader">Thought Leader (technical authority)</option>
+              <option value="conversational">Conversational (relatable practitioner)</option>
+              <option value="bold">Bold (direct, high-energy)</option>
+            </select>
+          </FF>
+          {output&&!output.error&&(
+            <div style={{marginTop:12,padding:"10px 12px",background:"#040810",borderRadius:8,border:"1px solid #0369a133",fontSize:10,color:"#475569"}}>
+              Best time to post: <span style={{color:"#38bdf8",fontWeight:600}}>{output.bestPostTime}</span>
+            </div>
+          )}
+          <button className="btn bp" style={{width:"100%",padding:"11px",fontSize:12,fontWeight:700,marginTop:12}} onClick={generate} disabled={loading||(topicId==="custom"&&!custom)}>
+            {loading?"Writing post...":"Generate LinkedIn Post"}
+          </button>
+        </div>
+      </div>
+
+      {output&&!output.error&&(
+        <div style={{padding:"18px 20px",background:"#040a14",borderRadius:12,border:"1px solid #0369a133"}}>
+          <div style={{fontSize:13,color:"#e2e8f0",lineHeight:1.8,marginBottom:14,whiteSpace:"pre-wrap"}}>{output.post}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+            {(output.hashtags||[]).map(h=>(
+              <span key={h} style={{fontSize:10,color:"#38bdf8",padding:"2px 8px",background:"#0c2040",borderRadius:4,border:"1px solid #0369a133"}}>#{h.replace(/^#/,"")}</span>
+            ))}
+          </div>
+          <button className="btn bg" style={{width:"100%",padding:"9px",fontSize:12}} onClick={copyPost}>
+            {copied?"Copied to clipboard!":"Copy Post + Hashtags"}
+          </button>
+        </div>
+      )}
+      {output?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {output.error}</div>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON KPI DASHBOARD
+// Real-time metrics for Naxon Systems GTM performance
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonKPIDashboard({ addAudit }) {
+  const phase0 = (() => { try { return JSON.parse(localStorage.getItem("zt-naxon-phase0")||"[]"); } catch { return []; } })();
+  const siPartners = (() => { try { return JSON.parse(localStorage.getItem("zt-si-partners")||"[]"); } catch { return []; } })();
+  const talent = (() => { try { return JSON.parse(localStorage.getItem("zt-talent-candidates")||"[]"); } catch { return []; } })();
+  const weekNum = (() => { const d=new Date(); const j=new Date(d.getFullYear(),0,4); return Math.ceil(((d-j)/86400000+j.getDay()+1)/7); })();
+  const wkKey = new Date().getFullYear()+"-W"+String(weekNum).padStart(2,"0");
+  const gtm = (() => { try { const d=JSON.parse(localStorage.getItem("zt-gtm-weeks")||"{}"); return d[wkKey]||null; } catch { return null; } })();
+  const fmtK = v => v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1e3?"$"+Math.round(v/1e3)+"K":"$"+Math.round(v);
+
+  const activeDeals = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").length;
+  const wonDeals = phase0.filter(d=>d.stage==="Won").length;
+  const pipeline = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").reduce((s,d)=>s+(+d.value||0),0);
+  const staleDeals = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost"&&d.lastTouch&&Math.ceil((new Date()-new Date(d.lastTouch))/86400000)>14).length;
+  const hotDeals = phase0.filter(d=>["Proposal","Discovery"].includes(d.stage)).length;
+  const activeSI = siPartners.filter(p=>p.status==="Active").length;
+  const activeCandidates = talent.filter(c=>["Screening","Interview","Offer"].includes(c.stage)).length;
+
+  const KPIS = [
+    {l:"Phase-0 Pipeline",    v:fmtK(pipeline),      sub:`${activeDeals} active deals`, color:"#f59e0b", target:"$350K"},
+    {l:"Deals Won",           v:wonDeals+"/7",        sub:"breakeven target",            color:"#34d399", target:"7 deals"},
+    {l:"Hot Deals",           v:hotDeals,             sub:"Proposal/Discovery",          color:"#4ade80", target:"2+"},
+    {l:"Stale Deals",         v:staleDeals,           sub:">14 days no touch",           color:staleDeals>0?"#f87171":"#34d399", target:"0"},
+    {l:"Active SI Partners",  v:activeSI,             sub:"sub-contract ready",          color:"#38bdf8", target:"3+"},
+    {l:"Active Candidates",   v:activeCandidates,     sub:"in hiring pipeline",          color:"#a78bfa", target:"5+"},
+  ];
+
+  const GTM_TARGETS = [
+    {label:"Phone Calls",    key:"calls",      target:20, emoji:"📞"},
+    {label:"Cold Emails",    key:"emails",     target:30, emoji:"✉️"},
+    {label:"LinkedIn DMs",   key:"linkedinDMs",target:20, emoji:"💼"},
+    {label:"Meetings",       key:"meetings",   target:5,  emoji:"📅"},
+    {label:"Proposals",      key:"proposals",  target:2,  emoji:"📄"},
+    {label:"Referrals",      key:"referrals",  target:3,  emoji:"🤝"},
+  ];
+
+  return (
+    <div>
+      <PH title="Naxon KPI Dashboard" sub="Real-time GTM performance metrics for Naxon Systems"/>
+
+      {/* KPI Grid */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
+        {KPIS.map(k=>(
+          <div key={k.l} className="card" style={{padding:"14px 16px",borderLeft:"3px solid "+k.color}}>
+            <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:4}}>{k.l}</div>
+            <div style={{fontSize:24,fontWeight:800,color:k.color,fontFamily:"monospace",marginBottom:2}}>{k.v}</div>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontSize:9,color:"#334155"}}>{k.sub}</span>
+              <span style={{fontSize:9,color:"#1e3a5f"}}>target: {k.target}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* GTM Weekly Progress */}
+      <div className="card" style={{padding:"14px 16px",marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>GTM Activity — Week {weekNum} of {new Date().getFullYear()}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+          {GTM_TARGETS.map(item=>{
+            const val = gtm?.[item.key]||0;
+            const pct = Math.min(100,Math.round((val/item.target)*100));
+            const color = pct>=100?"#34d399":pct>=60?"#38bdf8":pct>=30?"#f59e0b":"#f87171";
+            return (
+              <div key={item.key} style={{padding:"10px 12px",background:"#040810",borderRadius:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                  <span style={{fontSize:10,color:"#94a3b8"}}>{item.emoji} {item.label}</span>
+                  <span style={{fontSize:10,color,fontWeight:700}}>{val}/{item.target}</span>
+                </div>
+                <div style={{height:5,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:pct+"%",background:color,borderRadius:3}}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {!gtm&&<div style={{fontSize:10,color:"#334155",marginTop:10,textAlign:"center"}}>No GTM activity logged this week — go to GTM Weekly to start tracking</div>}
+      </div>
+
+      {/* Pipeline breakdown */}
+      <div className="card" style={{padding:"14px 16px"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Phase-0 Pipeline Breakdown</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+          {["Outreach","Meeting","Discovery","Proposal"].map(stage=>{
+            const deals = phase0.filter(d=>d.stage===stage);
+            const val = deals.reduce((s,d)=>s+(+d.value||0),0);
+            const colors = {Outreach:"#64748b",Meeting:"#38bdf8",Discovery:"#a78bfa",Proposal:"#f59e0b"};
+            return (
+              <div key={stage} style={{padding:"10px 12px",background:"#040810",borderRadius:8,borderTop:"2px solid "+(colors[stage]||"#334155")}}>
+                <div style={{fontSize:9,color:"#475569",marginBottom:4,textTransform:"uppercase"}}>{stage}</div>
+                <div style={{fontSize:18,fontWeight:800,color:colors[stage]||"#94a3b8",fontFamily:"monospace"}}>{deals.length}</div>
+                <div style={{fontSize:9,color:"#334155"}}>{fmtK(val)}</div>
+              </div>
+            );
+          })}
+        </div>
+        {phase0.length===0&&<div style={{fontSize:10,color:"#334155",textAlign:"center",padding:"10px 0"}}>No Phase-0 deals found — add them in the Command Center</div>}
+      </div>
     </div>
   );
 }
