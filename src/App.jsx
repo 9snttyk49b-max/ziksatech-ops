@@ -3837,6 +3837,36 @@ function NaxonOSCommand({ addAudit, authProfile }) {
         </button>
       </PH>
 
+      {/* Breakeven Progress Bar */}
+      {(() => {
+        const pct = Math.min(100, Math.round((wonPhase0/7)*100));
+        const barColor = pct>=100?"#34d399":pct>=50?"#38bdf8":pct>=25?"#f59e0b":"#f87171";
+        const staleDeals = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost"&&d.lastTouch&&Math.ceil((new Date()-new Date(d.lastTouch))/86400000)>14);
+        return (
+          <div style={{padding:"10px 16px",marginBottom:12,background:"#040a14",borderRadius:10,border:"1px solid #0369a133"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#e2e8f0"}}>Breakeven Progress — {wonPhase0}/7 Phase-0 deals won</div>
+              <div style={{fontSize:10,color:"#475569"}}>{fmtK(totalPhase0Pipeline)} pipeline · {7-Math.min(wonPhase0,7)} deals to go</div>
+            </div>
+            <div style={{height:8,background:"#0a1626",borderRadius:4,overflow:"hidden",marginBottom:6}}>
+              <div style={{height:"100%",width:pct+"%",background:barColor,borderRadius:4,transition:"width 0.5s"}}/>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              {phase0.filter(d=>["Proposal","Discovery"].includes(d.stage)).map(d=>(
+                <span key={d.id} style={{fontSize:9,color:"#34d399",background:"#021f14",padding:"2px 7px",borderRadius:4,border:"1px solid #22c55e33"}}>
+                  🔥 {d.company} ({d.stage})
+                </span>
+              ))}
+              {staleDeals.map(d=>(
+                <span key={d.id} style={{fontSize:9,color:"#f59e0b",background:"#1a0f05",padding:"2px 7px",borderRadius:4,border:"1px solid #f59e0b33"}}>
+                  ⚠️ {d.company} stale
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14}}>
         <div className="card" style={{padding:"12px 14px",borderTop:"2px solid #f59e0b"}}>
