@@ -43203,7 +43203,7 @@ Requirements:
 
 function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
   workAuth, ptoRequests, auditLog, authProfile, setTab,
-  dismissedAlerts, setDismissedAlerts, jobReqs }) {
+  dismissedAlerts, setDismissedAlerts, jobReqs, tsSubmissions }) {
 
   const [weather, setWeather]   = useState(null);
   const [todos,   setTodos]     = useState(() => { try { return JSON.parse(localStorage.getItem("zt-todos") || "[]"); } catch(e) { return []; } });
@@ -43612,7 +43612,7 @@ Return ONLY JSON — be specific, use company names and numbers:
           {/* Pending Approvals — admin only */}
           {isAdminRole && (() => {
             const pendingPTO  = (ptoRequests||[]).filter(r=>r.status==="pending");
-            const pendingTS   = (shared?.tsSubmissions||[]).filter(s=>s.status==="submitted");
+            const pendingTS   = (tsSubmissions||[]).filter(s=>s.status==="submitted");
             const total = pendingPTO.length + pendingTS.length;
             if (total === 0) return null;
             return (
