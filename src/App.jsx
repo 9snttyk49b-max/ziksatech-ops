@@ -43938,10 +43938,10 @@ Return ONLY JSON — be specific, use company names and numbers:
             <div style={{ fontSize:12, fontWeight:700, color:"#e2e8f0", marginBottom:10 }}>⚡ Quick Actions</div>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {isConsultant && [
-                ["⏱ Log Hours", "timesheet"], ["🏖 Request PTO", "pto"],
+                ["👤 My Hub", "consultanthub"], ["⏱ Log Hours", "timesheet"], ["🏖 Request PTO", "pto"],
                 ["💊 Benefits", "benefits"], ["💰 Pay Stubs", "adpstubs"],
                 ["🧮 Calculator", "minicalc"], ["📁 My PAF", "paffiles"],
-                ["💡 IdeaPad", "ideapad"], ["👤 My Profile", "myprofile"],
+                ["💡 IdeaPad", "ideapad"],
               ].map(([l,t]) => <button key={t} className="btn bg" style={{fontSize:11}} onClick={()=>setTab(t)}>{l}</button>)}
               {isHR && [
                 ["👥 Roster", "roster"], ["📋 Compliance", "compliance"],
