@@ -6001,6 +6001,8 @@ Return ONLY JSON:
               <span className="mono" style={{fontSize:12,color:d.netMargin>0?"#34d399":"#f87171",paddingLeft:4}}>{pct(d.netMargin)}</span>
               <div style={{display:"flex",gap:5}}>
                 <button className="btn bg" style={{padding:"4px 7px"}} onClick={()=>open(r)}><I d={ICONS.edit} s={12}/></button>
+                <button className="btn bg" style={{padding:"4px 6px",fontSize:9,color:"#38bdf8"}} title="Quick: create draft timesheet for this consultant"
+                  onClick={()=>{ window.dispatchEvent(new CustomEvent('zt-quick-ts',{detail:{memberId:r.id,memberName:r.name,client:r.client||"",billRate:r.billRate||0}})); alert("⏱ Draft timesheet created for "+r.name+" — go to Timesheets to complete it."); }}>⏱</button>
                 <button className="btn br" style={{padding:"4px 7px"}} onClick={()=>del(r.id)}><I d={ICONS.trash} s={12}/></button>
               </div>
             </div>
@@ -13758,6 +13760,49 @@ function ImmigrationCalendar({ workAuth, setWorkAuth, roster, addAudit }) {
   const [caseForm,   setCaseForm]   = useState({});
   const [immAI,     setImmAI]     = useState(null);
   const [immAILoad, setImmAILoad] = useState(false);
+  const [renewPlan,     setRenewPlan]     = useState(null);
+  const [renewPlanLoad, setRenewPlanLoad] = useState(false);
+  const [renewTarget,   setRenewTarget]   = useState(null);
+
+  const runRenewalPlan = async (w) => {
+    setRenewPlanLoad(true); setRenewPlan(null); setRenewTarget(w);
+    const daysLeft = w.expiryDate ? Math.ceil((new Date(w.expiryDate)-new Date())/86400000) : 180;
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,
+          system:"You are an H1B/work visa renewal specialist for IT staffing firms. Give a specific, week-by-week action plan. Be precise about USCIS timelines and attorney steps.",
+          messages:[{role:"user",content:`Consultant: ${w.name||w.employee||"Consultant"}
+Visa type: ${w.visaType||"H-1B"}
+Current expiry: ${w.expiryDate||"unknown"}
+Days remaining: ${daysLeft}
+LCA number: ${w.lca||"pending"}
+Petition number: ${w.petitionNum||"not filed"}
+Attorney: Latha & Associates (Plano TX)
+Employer: Ziksatech LLC (WBE-certified, Plano TX)
+Client site: ${w.clientSite||w.client||"active engagement"}
+
+Return ONLY JSON:
+{
+  "urgencyLevel": "CRITICAL|HIGH|MEDIUM",
+  "headline": "one-sentence summary of situation",
+  "immediateActions": ["action within this week 1", "action 2", "action 3"],
+  "timeline": [
+    {"week": "Week 1-2", "action": "specific step", "owner": "Manju|Attorney|Consultant"},
+    {"week": "Week 3-4", "action": "specific step", "owner": "Attorney"},
+    {"week": "Week 5-8", "action": "specific step", "owner": "USCIS"},
+    {"week": "Week 9+",  "action": "specific step", "owner": "All"}
+  ],
+  "documentsNeeded": ["document 1", "document 2", "document 3"],
+  "estimatedCost": "$X,XXX",
+  "risk": "what happens if we miss the deadline"
+}`}]
+        })
+      });
+      const data = await resp.json();
+      setRenewPlan(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+    } catch(e) { setRenewPlan({error:e.message}); }
+    setRenewPlanLoad(false);
+  };
 
   const runImmAI = async () => {
     setImmAILoad(true); setImmAI(null);
@@ -13899,7 +13944,65 @@ Return ONLY JSON:
       {expiring.length > 0 && (
         <div style={{padding:"9px 16px",background:"#1a1005",border:"1px solid #78350f",borderRadius:10,marginBottom:14,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
           <span style={{fontSize:12,fontWeight:700,color:"#fbbf24"}}>⚠️ Expiring Soon (31–90 days)</span>
-          {expiring.map(w=><span key={w.id} onClick={()=>{setSel(w.id);setSub("cases");}} style={{fontSize:11,color:"#fbbf24",padding:"2px 10px",borderRadius:8,background:"#78350f22",border:"1px solid #78350f",cursor:"pointer"}}>{w.name} — {w.type} ({w.days}d)</span>)}
+          {expiring.map(w=>(
+            <span key={w.id} style={{display:"flex",alignItems:"center",gap:4}}>
+              <span onClick={()=>{setSel(w.id);setSub("cases");}} style={{fontSize:11,color:"#fbbf24",padding:"2px 10px",borderRadius:8,background:"#78350f22",border:"1px solid #78350f",cursor:"pointer"}}>{w.name} — {w.type} ({w.days}d)</span>
+              <button className="btn bp" style={{fontSize:9,padding:"2px 7px"}} onClick={()=>runRenewalPlan(w)} disabled={renewPlanLoad}>📋 Plan</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Renewal Plan Output */}
+      {renewPlanLoad && (
+        <div style={{padding:"12px 16px",background:"#040a14",border:"1px solid #0369a144",borderRadius:10,marginBottom:14,fontSize:11,color:"#475569"}}>
+          ⏳ Generating renewal action plan for {renewTarget?.name}…
+        </div>
+      )}
+      {renewPlan && !renewPlan.error && renewTarget && (
+        <div style={{padding:"14px 18px",background:"linear-gradient(135deg,#040a14,#0c1e3d)",border:`1px solid ${renewPlan.urgencyLevel==="CRITICAL"?"#f87171":renewPlan.urgencyLevel==="HIGH"?"#f59e0b":"#0369a1"}44`,borderRadius:10,marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div>
+              <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:8,marginRight:8,
+                background:renewPlan.urgencyLevel==="CRITICAL"?"#f871711a":renewPlan.urgencyLevel==="HIGH"?"#f59e0b1a":"#38bdf81a",
+                color:renewPlan.urgencyLevel==="CRITICAL"?"#f87171":renewPlan.urgencyLevel==="HIGH"?"#f59e0b":"#38bdf8"}}>
+                {renewPlan.urgencyLevel}
+              </span>
+              <span style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>📋 Renewal Plan — {renewTarget.name}</span>
+            </div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setRenewPlan(null)}>✕</button>
+          </div>
+          <div style={{fontSize:11,color:"#94a3b8",marginBottom:12}}>{renewPlan.headline}</div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+            <div>
+              <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>⚡ Immediate Actions (This Week)</div>
+              {(renewPlan.immediateActions||[]).map((a,i)=>(
+                <div key={i} style={{fontSize:11,color:"#fbbf24",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>→ {a}</div>
+              ))}
+            </div>
+            <div>
+              <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>📄 Documents Needed</div>
+              {(renewPlan.documentsNeeded||[]).map((d,i)=>(
+                <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>• {d}</div>
+              ))}
+              {renewPlan.estimatedCost && <div style={{fontSize:11,color:"#f59e0b",marginTop:6}}>Est. cost: {renewPlan.estimatedCost}</div>}
+            </div>
+          </div>
+
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>📅 Timeline</div>
+            <div style={{display:"grid",gap:4}}>
+              {(renewPlan.timeline||[]).map((t,i)=>(
+                <div key={i} style={{display:"flex",gap:10,padding:"6px 10px",background:"#040810",borderRadius:6,fontSize:11}}>
+                  <span style={{color:"#38bdf8",minWidth:80,flexShrink:0,fontWeight:600}}>{t.week}</span>
+                  <span style={{color:"#94a3b8",flex:1}}>{t.action}</span>
+                  <span style={{color:"#475569",fontSize:10,flexShrink:0}}>{t.owner}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {renewPlan.risk && <div style={{fontSize:11,color:"#f87171",padding:"8px 12px",background:"#1a08081a",borderRadius:6,border:"1px solid #f871711a"}}>⚠️ Risk: {renewPlan.risk}</div>}
         </div>
       )}
 
@@ -43740,6 +43843,29 @@ Return ONLY JSON — be specific, use company names and numbers:
               <button className="btn bp" style={{ fontSize:10, padding:"3px 10px" }}>→ Submit</button>
             </div>
           </div>
+
+          {/* Bench Alert — admin only, shows when consultants are unplaced */}
+          {isAdminRole && (() => {
+            const bench = safeRoster.filter(r => (r.util||0) === 0 && r.type !== "contractor" && r.status !== "inactive");
+            if (!bench.length) return null;
+            return (
+              <div style={{marginBottom:8,padding:"10px 14px",background:"#0a0620",border:"1px solid #a78bfa33",borderRadius:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#a78bfa"}}>🪑 {bench.length} consultant{bench.length>1?"s":""} on bench — revenue at risk</div>
+                  <button className="btn bg" style={{fontSize:9}} onClick={()=>setTab("revpulse")}>Revenue Pulse →</button>
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {bench.map(r=>(
+                    <span key={r.id} onClick={()=>setTab("cms")}
+                      style={{fontSize:10,padding:"3px 9px",borderRadius:6,background:"#1a0840",color:"#a78bfa",border:"1px solid #a78bfa44",cursor:"pointer"}}>
+                      {r.name} · {r.role}
+                    </span>
+                  ))}
+                </div>
+                <div style={{fontSize:9,color:"#475569",marginTop:5}}>→ Use CMS Sourcing AI to find placements</div>
+              </div>
+            );
+          })()}
 
           {/* Pending Approvals — admin only */}
           {isAdminRole && (() => {
