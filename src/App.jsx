@@ -44185,6 +44185,49 @@ Return ONLY JSON — be specific, use company names and numbers:
             );
           })()}
 
+          {/* Naxon Daily Checklist — admin only, persistent */}
+          {isAdminRole && (() => {
+            const todayKey = "zt-naxon-checklist-"+new Date().toISOString().slice(0,10);
+            const saved = (() => { try { return JSON.parse(localStorage.getItem(todayKey)||"{}"); } catch { return {}; } })();
+            const ITEMS = [
+              {id:"pipeline",  label:"Review Phase-0 pipeline", tab:"naxonos"},
+              {id:"atmos",     label:"Contact Atmos (21d stale)", tab:"naxonemail"},
+              {id:"gtm",       label:"Log today's GTM activity", tab:"naxongtm"},
+              {id:"linkedin",  label:"Post on LinkedIn", tab:"naxonlinkedin"},
+              {id:"email",     label:"Send 5 outreach emails", tab:"naxonemail"},
+            ];
+            const done = ITEMS.filter(i=>saved[i.id]).length;
+            const allDone = done === ITEMS.length;
+            return (
+              <div style={{marginBottom:8,padding:"10px 14px",background:allDone?"#021f14":"#040a14",border:"1px solid "+(allDone?"#22c55e33":"#0369a133"),borderRadius:10}}>
+                <div style={{fontSize:10,fontWeight:700,color:allDone?"#34d399":"#38bdf8",marginBottom:8}}>
+                  {allDone?"✅ Today's Naxon tasks done!":"📋 Today's Naxon Focus"} ({done}/{ITEMS.length})
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {ITEMS.map(item=>{
+                    const checked = !!saved[item.id];
+                    return (
+                      <div key={item.id} style={{display:"flex",alignItems:"center",gap:6}}>
+                        <input type="checkbox" checked={checked} style={{cursor:"pointer",accentColor:"#34d399"}}
+                          onChange={()=>{
+                            const updated = {...saved, [item.id]: !checked || undefined};
+                            if (!updated[item.id]) delete updated[item.id];
+                            try { localStorage.setItem(todayKey, JSON.stringify(updated)); } catch {}
+                            setTab(item.tab); // force re-render
+                          }}/>
+                        <span style={{fontSize:9,color:checked?"#334155":"#94a3b8",textDecoration:checked?"line-through":"none",cursor:"pointer",flex:1}}
+                          onClick={()=>setTab(item.tab)}>
+                          {item.label}
+                        </span>
+                        <span style={{fontSize:8,color:"#1e3a5f",cursor:"pointer"}} onClick={()=>setTab(item.tab)}>→</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Naxon Weekly Focus — admin only */}
           {isAdminRole && (() => {
             const weekNum = (() => { const d=new Date(); const j=new Date(d.getFullYear(),0,4); return Math.ceil(((d-j)/86400000+j.getDay()+1)/7); })();
