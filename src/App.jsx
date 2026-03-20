@@ -4308,6 +4308,8 @@ export default function ZiksatechOps() {
     { id:"linkedin",    label:"LinkedIn Posts",        icon:ICONS.pl,       group:"Sales Tools"     },
     { id:"marketing",   label:"Marketing Hub",          icon:ICONS.pl,       group:"Sales Tools"     },
     { id:"mktauto",     label:"Marketing Automation 🚀", icon:ICONS.pl,       group:"Sales Tools"     },
+    { id:"bulletin",    label:"Team Bulletin 📢",        icon:ICONS.dash,     group:"Team"            },
+    { id:"revpulse",    label:"Revenue Pulse 💹",        icon:ICONS.pl,       group:"Overview"        },
     { id:"resourceplan",label:"Resource Planner AI",  icon:ICONS.roster,   group:"Delivery"    },
     { id:"minicalc",    label:"Mini Calculator",       icon:ICONS.pl,       group:"Tools"    },
     { id:"paffiles",    label:"PAF Files",             icon:ICONS.dash,     group:"Compliance"  },
@@ -4935,6 +4937,8 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="industrypitch"&& <IndustryPitchTemplates roster={shared.roster} clients={shared.clients} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="marketing"  && <MarketingHub proposals={shared.proposals} clients={shared.clients} roster={shared.roster} crmDeals={shared.crmDeals} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="mktauto"    && <MarketingAutomation clients={shared.clients} roster={shared.roster} crmDeals={shared.crmDeals} crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} addAudit={shared.addAudit} authProfile={authProfile}/>}
+        {tab==="bulletin"   && <TeamBulletin authProfile={authProfile}/>}
+        {tab==="revpulse"   && <RevenuePulse roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
         {tab==="minicalc"   && <MiniCalculator />}
@@ -38560,6 +38564,278 @@ const ABM_STAGES = [
   { id:"nurturing",     label:"Nurturing",      color:"#64748b" },
 ];
 
+// ═══════════════════════════════════════════════════════════════════════
+// TEAM BULLETIN BOARD
+// Admin posts announcements — all team members see them on home dashboard
+// ═══════════════════════════════════════════════════════════════════════
+function TeamBulletin({ authProfile, inline = false }) {
+  const isAdmin = ["super_admin","admin"].includes(authProfile?.role);
+  const [posts,   setPosts]  = useState(() => { try { return JSON.parse(localStorage.getItem("zt-bulletin")||"[]"); } catch { return []; } });
+  const [modal,   setModal]  = useState(false);
+  const [form,    setForm]   = useState({ title:"", body:"", priority:"normal", pin:false });
+  const [editing, setEditing]= useState(null);
+
+  const PRIORITIES = { urgent:"#f87171", normal:"#38bdf8", info:"#34d399" };
+  const save = d => { setPosts(d); localStorage.setItem("zt-bulletin", JSON.stringify(d)); };
+
+  const submit = () => {
+    if (!form.title.trim()) return;
+    const rec = { id: editing || "bul-"+Date.now(), ...form, author: authProfile?.full_name||"Admin", createdAt: editing ? (posts.find(p=>p.id===editing)?.createdAt||new Date().toISOString()) : new Date().toISOString(), updatedAt: new Date().toISOString() };
+    save(editing ? posts.map(p=>p.id===editing?rec:p) : [rec,...posts]);
+    setModal(false); setEditing(null); setForm({ title:"", body:"", priority:"normal", pin:false });
+  };
+
+  const sorted = [...posts].sort((a,b)=>(b.pin?1:0)-(a.pin?1:0)||(new Date(b.createdAt)-new Date(a.createdAt)));
+
+  if (inline) {
+    // Compact view for homepage widget
+    if (sorted.length === 0) return null;
+    return (
+      <div style={{background:"#060d1c",border:"1px solid #1a2d45",borderRadius:12,padding:"14px 18px",marginBottom:14}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:10}}>📢 Team Updates</div>
+        {sorted.slice(0,3).map(p=>(
+          <div key={p.id} style={{padding:"8px 0",borderBottom:"1px solid #0a1626",display:"flex",gap:10,alignItems:"flex-start"}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:PRIORITIES[p.priority]||"#38bdf8",marginTop:5,flexShrink:0}}/>
+            <div>
+              <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{p.pin?"📌 ":""}{p.title}</div>
+              {p.body&&<div style={{fontSize:11,color:"#64748b",marginTop:2,lineHeight:1.5}}>{p.body}</div>}
+              <div style={{fontSize:9,color:"#334155",marginTop:3}}>{p.author} · {new Date(p.createdAt).toLocaleDateString()}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Full management view
+  return (
+    <div>
+      <PH title="Team Bulletin Board" sub="Post announcements and updates visible to all team members">
+        {isAdmin && <button className="btn bp" style={{fontSize:11}} onClick={()=>{setForm({title:"",body:"",priority:"normal",pin:false});setEditing(null);setModal(true);}}>+ New Post</button>}
+      </PH>
+      {sorted.length===0 && <div style={{padding:"40px",textAlign:"center",color:"#334155",fontSize:12,background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>No announcements yet{isAdmin?" — post one above":""}</div>}
+      {sorted.map(p=>(
+        <div key={p.id} style={{padding:"16px 20px",borderRadius:10,marginBottom:8,background:"#060d1c",border:`1px solid ${p.pin?"#0369a144":"#1a2d45"}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              {p.pin&&<span style={{fontSize:10}}>📌</span>}
+              <span style={{fontSize:9,padding:"2px 7px",borderRadius:10,fontWeight:700,background:(PRIORITIES[p.priority]||"#38bdf8")+"22",color:PRIORITIES[p.priority]||"#38bdf8",border:`1px solid ${(PRIORITIES[p.priority]||"#38bdf8")}44`,textTransform:"uppercase"}}>{p.priority}</span>
+              <span style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{p.title}</span>
+            </div>
+            {isAdmin&&<div style={{display:"flex",gap:6}}>
+              <button className="btn bg" style={{fontSize:9}} onClick={()=>{setForm({...p});setEditing(p.id);setModal(true);}}>✏️</button>
+              <button className="btn bg" style={{fontSize:9,color:"#f87171"}} onClick={()=>{if(window.confirm("Delete?"))save(posts.filter(x=>x.id!==p.id));}}>🗑️</button>
+            </div>}
+          </div>
+          {p.body&&<div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{p.body}</div>}
+          <div style={{fontSize:9,color:"#334155",marginTop:8}}>{p.author} · {new Date(p.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</div>
+        </div>
+      ))}
+      {modal&&<div className="modal-bg" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
+        <div className="modal" style={{maxWidth:500}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+            <h2 style={{fontSize:15,fontWeight:700,color:"#e2e8f0"}}>{editing?"Edit":"New"} Announcement</h2>
+            <button className="btn bg" onClick={()=>setModal(false)}>✕</button>
+          </div>
+          <FF label="Title"><input className="inp" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} placeholder="e.g. New client win — Toyota Connected expansion!"/></FF>
+          <FF label="Body (optional)"><textarea className="inp" rows={4} value={form.body} onChange={e=>setForm(p=>({...p,body:e.target.value}))} placeholder="Additional details…"/></FF>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:4}}>
+            <FF label="Priority">
+              <select className="inp" value={form.priority} onChange={e=>setForm(p=>({...p,priority:e.target.value}))}>
+                <option value="urgent">🔴 Urgent</option>
+                <option value="normal">🔵 Normal</option>
+                <option value="info">🟢 Info</option>
+              </select>
+            </FF>
+            <FF label="Pin to top">
+              <select className="inp" value={form.pin?"yes":"no"} onChange={e=>setForm(p=>({...p,pin:e.target.value==="yes"}))}>
+                <option value="no">No</option>
+                <option value="yes">Yes — pin this post</option>
+              </select>
+            </FF>
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+            <button className="btn bg" onClick={()=>setModal(false)}>Cancel</button>
+            <button className="btn bp" onClick={submit}>{editing?"Update":"Post"}</button>
+          </div>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// REVENUE PULSE DASHBOARD
+// Live ARR, MRR, pipeline, utilization — unified revenue view
+// ═══════════════════════════════════════════════════════════════════════
+function RevenuePulse({ roster, clients, finInvoices, finPayments, crmDeals, tsHours, authProfile, addAudit }) {
+  const [period,   setPeriod]   = useState("mtd");   // mtd | qtd | ytd
+  const [aiLoad,   setAiLoad]   = useState(false);
+  const [aiRec,    setAiRec]    = useState(null);
+
+  const sr = roster     || [];
+  const sc = clients    || [];
+  const si = finInvoices|| [];
+  const sp = finPayments|| [];
+  const sd = crmDeals   || [];
+
+  const fmt  = v => v>=1e6?"$"+(v/1e6).toFixed(2)+"M":v>=1000?"$"+(v/1000).toFixed(0)+"k":"$"+Math.round(v);
+  const pct  = (a,b) => b>0?Math.round(a/b*100):0;
+
+  // MRR from active roster (monthly equivalent)
+  const mrrFromRoster = sr.filter(r=>(r.util||0)>0).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0);
+  const arr = mrrFromRoster * 12;
+
+  // Collected this month
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const collectedMTD = sp.filter(p=>p.date?.startsWith(monthKey)).reduce((s,p)=>s+(+p.amount||0),0);
+  const billedMTD    = si.filter(i=>i.issueDate?.startsWith(monthKey)).reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+(+l.amount||0),0),0);
+
+  // Pipeline
+  const openPipeline = sd.filter(d=>!["closed_won","closed_lost","won"].includes(d.stage)).reduce((s,d)=>s+(+d.value||0),0);
+  const weightedPipe = sd.filter(d=>!["closed_won","closed_lost","won"].includes(d.stage)).reduce((s,d)=>s+(+d.value||0)*(+d.prob||+d.probability||50)/100,0);
+  const wonYTD       = sd.filter(d=>["closed_won","won"].includes(d.stage)).reduce((s,d)=>s+(+d.value||0),0);
+
+  // Utilization
+  const activeCons   = sr.filter(r=>(r.util||0)>0).length;
+  const avgUtil      = sr.length>0?Math.round(sr.reduce((s,r)=>s+(r.util||0),0)/sr.length*100):0;
+  const benchCount   = sr.filter(r=>(r.util||0)===0).length;
+  const utilizationRev = sr.reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0);
+
+  // AR health
+  const totalAR   = si.filter(i=>["sent","overdue"].includes(i.status)).reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+(+l.amount||0),0),0);
+  const overdueAR = si.filter(i=>i.status==="overdue").reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+(+l.amount||0),0),0);
+
+  // Bench cost (opportunity cost)
+  const benchCost = sr.filter(r=>(r.util||0)===0 && r.type==="FTE").reduce((s,r)=>s+(+r.baseSalary||0)/12*1.25,0);
+
+  // Forecast next 90 days  
+  const renewalsSoon = sc.filter(c=>{ if(!c.renewalDate) return false; const d=(new Date(c.renewalDate)-now)/86400000; return d>=0&&d<=90; });
+
+  const runAI = async () => {
+    setAiLoad(true);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are Ziksatech's CFO advisor. Give sharp, specific revenue insights.",
+          messages:[{role:"user",content:`Revenue snapshot:
+MRR: ${fmt(mrrFromRoster)}, ARR: ${fmt(arr)}
+Collected MTD: ${fmt(collectedMTD)}, Billed MTD: ${fmt(billedMTD)}
+Open Pipeline: ${fmt(openPipeline)}, Weighted: ${fmt(weightedPipe)}, Won YTD: ${fmt(wonYTD)}
+Team: ${sr.length} consultants, ${activeCons} active (${avgUtil}% avg util), ${benchCount} on bench
+Bench cost/mo: ${fmt(benchCost)}, Open AR: ${fmt(totalAR)}, Overdue AR: ${fmt(overdueAR)}
+Renewals <90d: ${renewalsSoon.map(c=>c.name).join(", ")||"none"}
+
+Return ONLY JSON: {"headline":"one bold revenue insight","topRisk":"biggest revenue risk right now","topOpportunity":"fastest path to add $50k+ MRR","benchAction":"specific action to monetize bench consultants","arAction":"specific AR collection action","forecastNote":"90-day revenue outlook in one sentence"}`}]
+        })
+      });
+      const data = await resp.json();
+      setAiRec(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+    } catch(e) { setAiRec({headline:"Error: "+e.message}); }
+    setAiLoad(false);
+  };
+
+  const KPI = ({label, value, sub, color="#38bdf8", alert=false}) => (
+    <div style={{padding:"14px 16px",borderRadius:10,background:"#060d1c",border:`1px solid ${alert?"#7f1d1d44":"#1a2d45"}`,textAlign:"center"}}>
+      <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{label}</div>
+      <div style={{fontSize:24,fontWeight:900,color:alert?"#f87171":color,fontFamily:"monospace",lineHeight:1.1}}>{value}</div>
+      {sub&&<div style={{fontSize:9,color:alert?"#7f1d1d":color==="#f87171"?"#7f1d1d":"#334155",marginTop:3}}>{sub}</div>}
+    </div>
+  );
+
+  return (
+    <div>
+      <PH title="Revenue Pulse" sub="MRR · ARR · Pipeline · Utilization · AR health — live revenue intelligence">
+        <button className="btn bp" style={{fontSize:11}} onClick={runAI} disabled={aiLoad}>{aiLoad?"⏳…":"🧠 AI Revenue Brief"}</button>
+      </PH>
+
+      {aiRec&&(
+        <div style={{marginBottom:18,padding:"14px 18px",background:"linear-gradient(135deg,#040a14,#0c1e3d)",border:"1px solid #0369a144",borderRadius:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#38bdf8"}}>🧠 {aiRec.headline}</div>
+            <button className="btn bg" style={{fontSize:9}} onClick={()=>setAiRec(null)}>✕</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+            {[["⚠️ Top Risk",aiRec.topRisk,"#f87171"],["🚀 Opportunity",aiRec.topOpportunity,"#34d399"],["👥 Bench Action",aiRec.benchAction,"#f59e0b"],["💸 AR Action",aiRec.arAction,"#38bdf8"],["📅 90-Day Forecast",aiRec.forecastNote,"#a78bfa"]].filter(([,v])=>v).map(([k,v,c])=>(
+              <div key={k} style={{padding:"8px 10px",background:"#040a14",borderRadius:7,border:"1px solid #0a1828"}}>
+                <div style={{fontSize:9,color:"#3d5a7a",marginBottom:3}}>{k}</div>
+                <div style={{fontSize:11,color:c,lineHeight:1.4}}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Primary KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:14}}>
+        <KPI label="Monthly Recurring Revenue" value={fmt(mrrFromRoster)} sub={`${activeCons} active consultants`} color="#34d399"/>
+        <KPI label="Annual Run Rate" value={fmt(arr)} sub="Based on current roster" color="#38bdf8"/>
+        <KPI label="Collected This Month" value={fmt(collectedMTD)} sub={`${fmt(billedMTD)} billed`} color="#a78bfa"/>
+        <KPI label="Pipeline (Weighted)" value={fmt(weightedPipe)} sub={`${fmt(openPipeline)} gross`} color="#f59e0b"/>
+      </div>
+
+      {/* Secondary KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:18}}>
+        <KPI label="Avg Utilization" value={avgUtil+"%"} sub={`${activeCons}/${sr.length} placed`} color={avgUtil>=80?"#34d399":avgUtil>=60?"#f59e0b":"#f87171"}/>
+        <KPI label="Bench Count" value={benchCount} sub={`~${fmt(benchCost)}/mo cost`} color={benchCount>2?"#f87171":"#64748b"} alert={benchCount>3}/>
+        <KPI label="Open AR" value={fmt(totalAR)} sub={`${fmt(overdueAR)} overdue`} color={overdueAR>0?"#f87171":"#34d399"} alert={overdueAR>10000}/>
+        <KPI label="Won YTD" value={fmt(wonYTD)} sub={`${sd.filter(d=>["closed_won","won"].includes(d.stage)).length} deals`} color="#4ade80"/>
+        <KPI label="Renewals <90d" value={renewalsSoon.length} sub={renewalsSoon.length>0?renewalsSoon[0].name:"All clear"} color={renewalsSoon.length>0?"#f59e0b":"#34d399"} alert={renewalsSoon.length>1}/>
+      </div>
+
+      {/* Utilization bar chart */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div className="card" style={{padding:"16px 18px"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>👥 Consultant Utilization</div>
+          {sr.slice(0,10).map(r=>{
+            const u = Math.round((r.util||0)*100);
+            return (
+              <div key={r.id} style={{marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}>
+                  <span style={{color:"#94a3b8"}}>{r.name}</span>
+                  <span style={{color:u>=80?"#34d399":u>=40?"#f59e0b":"#f87171",fontWeight:700}}>{u}% · ${(r.billRate||0)*(r.util||0)*160/1000|0}k/mo</span>
+                </div>
+                <div style={{height:5,borderRadius:3,background:"#0a1626"}}>
+                  <div style={{height:"100%",borderRadius:3,background:u>=80?"#34d399":u>=40?"#f59e0b":"#f87171",width:u+"%",transition:"width 0.4s"}}/>
+                </div>
+              </div>
+            );
+          })}
+          {sr.length===0&&<div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"20px 0"}}>No roster data</div>}
+        </div>
+
+        <div className="card" style={{padding:"16px 18px"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>💼 Pipeline by Stage</div>
+          {["prospecting","qualified","proposal","negotiation","closed_won"].map(stage=>{
+            const stageDeals = sd.filter(d=>d.stage===stage);
+            const stageVal   = stageDeals.reduce((s,d)=>s+(+d.value||0),0);
+            const colors = {prospecting:"#475569",qualified:"#38bdf8",proposal:"#a78bfa",negotiation:"#f59e0b",closed_won:"#34d399"};
+            return stageDeals.length===0?null:(
+              <div key={stage} style={{marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}>
+                  <span style={{color:colors[stage]||"#64748b",textTransform:"capitalize"}}>{stage.replace("_"," ")}</span>
+                  <span style={{color:"#94a3b8"}}>{stageDeals.length} deals · {fmt(stageVal)}</span>
+                </div>
+                <div style={{height:5,borderRadius:3,background:"#0a1626"}}>
+                  <div style={{height:"100%",borderRadius:3,background:colors[stage]||"#64748b",width:Math.min(pct(stageVal,openPipeline+wonYTD),100)+"%",transition:"width 0.4s"}}/>
+                </div>
+              </div>
+            );
+          })}
+          {renewalsSoon.length>0&&(
+            <div style={{marginTop:12,padding:"8px 10px",background:"#1a1005",borderRadius:6,border:"1px solid #f59e0b33"}}>
+              <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>⚠️ Renewals Due &lt;90 Days</div>
+              {renewalsSoon.map(c=><div key={c.id} style={{fontSize:10,color:"#94a3b8"}}>{c.name} — {c.renewalDate}</div>)}
+            </div>
+          )}
+          {sd.length===0&&<div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"20px 0"}}>No deals in CRM yet</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MarketingAutomation({ clients, roster, crmDeals, crmLeads, setCrmLeads, addAudit, authProfile }) {
   const [sub, setSub] = useState("abm");
 
@@ -42811,6 +43087,9 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
           {weather && <div style={{ fontSize:11, color:"#475569", marginTop:3 }}>{weather.condition} · {weather.temp}°F · 💧{weather.humidity}%</div>}
         </div>
       </div>
+
+      {/* Team Bulletin inline widget */}
+      <TeamBulletin authProfile={authProfile} inline={true}/>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 310px", gap:18, alignItems:"start" }}>
         {/* LEFT */}
