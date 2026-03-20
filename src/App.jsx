@@ -104,6 +104,7 @@ const RBAC = {
   discoverycall:["super_admin","admin"],
   naxonemail:    ["super_admin","admin"],
   naxondealclose:["super_admin","admin"],
+  battlecard:    ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4571,6 +4572,7 @@ export default function ZiksatechOps() {
     { id:"discoverycall",label:"Discovery Call Prep 🎯",   icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonemail",   label:"Outreach Emails ✉️",       icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxondealclose",label:"Deal Closer 🏁",           icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"battlecard",    label:"Battlecard ⚔️",            icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5154,6 +5156,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="discoverycall"&& <DiscoveryCallPrep crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="naxonemail"   && <NaxonOutreachEmail crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
         {tab==="naxondealclose"&& <NaxonDealCloser addAudit={shared.addAudit}/>}
+        {tab==="battlecard"    && <NaxonBattlecard addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -44379,6 +44382,137 @@ function PayRateCalc() {
                 <div style={{fontSize:20,fontWeight:800,color:k.c,fontFamily:"monospace"}}>{k.v}</div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON COMPETITIVE BATTLECARD
+// Why Naxon wins vs large SIs and generic consultants
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonBattlecard({ addAudit }) {
+  const COMPETITORS = [
+    {id:"wipro",    name:"Wipro",            type:"Large SI",   color:"#38bdf8"},
+    {id:"hcl",      name:"HCL Tech",         type:"Large SI",   color:"#38bdf8"},
+    {id:"ltim",     name:"LTIMindtree",      type:"Large SI",   color:"#38bdf8"},
+    {id:"deloitte", name:"Deloitte/Accenture",type:"Big 4",      color:"#a78bfa"},
+    {id:"boutique", name:"Boutique SAP Firm", type:"Boutique",  color:"#f59e0b"},
+    {id:"freelance",name:"Freelance Consultant",type:"Independent",color:"#64748b"},
+  ];
+
+  const CARDS = {
+    wipro: {
+      theyWin: ["Brand recognition", "Massive bench depth", "Multi-tower delivery"],
+      weWin:   ["NTTA live production BRIM/tolling experience they can't match", "WBE certification — hits diverse supplier quotas", "No bench overhead = 15-20% lower blended rates", "Manju personally on every engagement", "4-week Phase-0 vs 3-month SI assessment cycles"],
+      objections: [
+        {q:"Why not go with Wipro — they have 10,000 SAP consultants?", a:"Wipro has scale. We have precision. For BRIM/IS-U, you don't need 10,000 consultants — you need the 3 who've done live tolling production. That's us. We've saved clients 6 months of ramp-up time."},
+        {q:"Can a small firm handle our scale?", a:"We staffed and delivered NTTA's BRIM transformation — one of the largest toll road systems in the US. We know how to scale engagement-specific teams without the overhead."},
+      ],
+      winRate: "High — especially when WBE/diverse supplier matters or when speed > brand"
+    },
+    hcl: {
+      theyWin: ["Offshore cost arbitrage", "SAP global delivery centers", "Long-term managed services"],
+      weWin:   ["US-based delivery — no timezone/communication gaps", "BRIM/IS-U depth vs broad generalist teams", "Fixed-scope Phase-0 vs open-ended T&M", "Direct access to Manju — not a layer of PMs"],
+      objections: [
+        {q:"HCL is cheaper with offshore resources", a:"Our Phase-0 at $35K delivers a roadmap that prevents $200K+ in wrong-direction implementation costs. Offshore delivery on BRIM often requires extensive knowledge transfer that eats the savings."},
+        {q:"We need 24/7 support coverage", a:"For Phase-0 audits and implementation, US-timezone delivery with direct partner access is a feature — you get decisions made fast, not escalated through 3 layers."},
+      ],
+      winRate: "High — when client prioritizes quality, speed, and direct accountability"
+    },
+    ltim: {
+      theyWin: ["Post-merger scale", "Strong SAP BRIM practice", "Fortune 500 client logos"],
+      weWin:   ["Tolling-specific BRIM experience (NTTA) is unique moat", "WBE certification creates procurement advantage", "Agile SOW structure vs LTI's enterprise contract machinery", "Faster start — no procurement cycles"],
+      objections: [
+        {q:"LTIMindtree has a strong BRIM practice", a:"They do — but our NTTA production system experience in tolling is specific. If your systems touch transponders, violation workflows, or real-time billing, we've solved those exact problems in production."},
+        {q:"They have more certified resources", a:"We have more relevant experience. Our team has worked in your stack, your vertical, live. Certifications without production experience create expensive learning curves."},
+      ],
+      winRate: "Medium-High — especially in utilities/tolling verticals"
+    },
+    deloitte: {
+      theyWin: ["CFO/Board relationships", "Full transformation office", "Risk mitigation via brand"],
+      weWin:   ["3-5x lower Phase-0 cost ($35K vs $150K+)", "No junior consultant pyramid", "Decision-maker in the room from day one", "Faster time to value — 4 weeks vs 3 months", "WBE certification — often required for diverse spend goals"],
+      objections: [
+        {q:"Our board prefers a Big 4 for risk mitigation", a:"Understood — and for enterprise transformation governance, that can make sense. For BRIM/IS-U specific work, our Phase-0 audit at $35K gives you the same roadmap for 1/5th the cost, and you can use us to validate or accelerate a larger engagement."},
+        {q:"We have a preferred vendor list — you're not on it", a:"Our WBE certification often creates a procurement pathway outside the standard PSL for diverse supplier requirements. Let's talk to your procurement team."},
+      ],
+      winRate: "Medium — often win as sub-contractor or specialist alongside Big 4"
+    },
+    boutique: {
+      theyWin: ["Lower price point", "Flexibility", "No corporate overhead"],
+      weWin:   ["WBE/HUB certified — creates procurement differentiation", "Live tolling BRIM production experience", "Full team depth vs single consultant risk", "Naxon brand and SOW documentation infrastructure"],
+      objections: [
+        {q:"There are cheaper boutique firms doing SAP", a:"There are. For general SAP work, maybe that's fine. For BRIM in utilities and tolling, the difference between a consultant who's read the docs and one who's run it in production is $500K+ in avoided mistakes."},
+      ],
+      winRate: "High — we typically have more specific experience and credentials"
+    },
+    freelance: {
+      theyWin: ["Lowest rate", "Speed to start", "No overhead"],
+      weWin:   ["WBE certification for diverse supplier compliance", "SOW accountability (deliverables, not hours)", "Team coverage vs single point of failure", "Compliance (insurance, IP assignment, non-compete)"],
+      objections: [
+        {q:"Why not just hire a freelance BRIM consultant at $150/hr?", a:"Freelancers are great for staff aug. For a Phase-0 audit with deliverables and accountability, you want a firm with E&O insurance, IP assignment, and a team that won't disappear mid-engagement. Our $35K SOW delivers a report and roadmap — not just hours."},
+      ],
+      winRate: "High for project work — different use case"
+    }
+  };
+
+  const [sel, setSel] = useState("wipro");
+  const card = CARDS[sel];
+  const competitor = COMPETITORS.find(c=>c.id===sel);
+
+  return (
+    <div>
+      <PH title="Competitive Battlecard" sub="Naxon Systems — why we win vs large SIs, Big 4, boutiques"/>
+
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20}}>
+        {COMPETITORS.map(c=>(
+          <button key={c.id} onClick={()=>setSel(c.id)}
+            style={{padding:"7px 14px",borderRadius:8,border:"1px solid "+(sel===c.id?c.color:"#1a2d45"),
+              background:sel===c.id?(c.color+"18"):"#060d1c",color:sel===c.id?c.color:"#475569",
+              cursor:"pointer",fontSize:11,fontWeight:600,transition:"all 0.15s"}}>
+            {c.name}
+            <span style={{marginLeft:6,fontSize:9,opacity:0.6}}>{c.type}</span>
+          </button>
+        ))}
+      </div>
+
+      {card && (
+        <div style={{display:"grid",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div style={{padding:"14px 16px",background:"#1a0808",borderRadius:10,border:"1px solid #f8717133"}}>
+              <div style={{fontSize:10,color:"#f87171",fontWeight:700,marginBottom:10,textTransform:"uppercase"}}>Where {competitor?.name} Wins</div>
+              {card.theyWin.map((p,i)=>(
+                <div key={i} style={{fontSize:11,color:"#f87171",padding:"4px 0",borderBottom:"1px solid #0a0505",display:"flex",gap:6}}>
+                  <span style={{flexShrink:0}}>✗</span>{p}
+                </div>
+              ))}
+            </div>
+
+            <div style={{padding:"14px 16px",background:"#021f14",borderRadius:10,border:"1px solid #22c55e33"}}>
+              <div style={{fontSize:10,color:"#34d399",fontWeight:700,marginBottom:10,textTransform:"uppercase"}}>Why Naxon Wins</div>
+              {card.weWin.map((p,i)=>(
+                <div key={i} style={{fontSize:11,color:"#4ade80",padding:"4px 0",borderBottom:"1px solid #05150a",display:"flex",gap:6}}>
+                  <span style={{flexShrink:0}}>✓</span>{p}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{padding:"14px 16px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+            <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,marginBottom:12,textTransform:"uppercase"}}>Objection Handling</div>
+            {card.objections.map((o,i)=>(
+              <div key={i} style={{marginBottom:12,paddingBottom:12,borderBottom:i<card.objections.length-1?"1px solid #0a1626":"none"}}>
+                <div style={{fontSize:12,color:"#f59e0b",marginBottom:6,fontWeight:600}}>"{o.q}"</div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6,paddingLeft:12,borderLeft:"2px solid #0369a144"}}>{o.a}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{padding:"10px 16px",background:"#040a14",borderRadius:8,border:"1px solid #38bdf833",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:11,color:"#475569"}}>Estimated win rate vs {competitor?.name}</span>
+            <span style={{fontSize:11,color:"#38bdf8",fontWeight:700}}>{card.winRate}</span>
           </div>
         </div>
       )}
