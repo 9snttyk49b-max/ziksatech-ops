@@ -101,6 +101,7 @@ const RBAC = {
   paycalc:      ["super_admin","admin","accounts"],
   naxongtm:     ["super_admin","admin"],
   naxonpricing: ["super_admin","admin"],
+  discoverycall:["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -1869,7 +1870,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.0 · 100+ AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.5 · 100+ AI modules</span>
         </div>
         {children}
       </div>
@@ -4495,6 +4496,7 @@ export default function ZiksatechOps() {
     { id:"bdengine",     label:"BD Engine 🚀",             icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxongtm",     label:"GTM Weekly 📅",            icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonpricing", label:"Pricing Calculator 🧮",    icon:ICONS.pl,       group:"Naxon OS" },
+    { id:"discoverycall",label:"Discovery Call Prep 🎯",   icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5075,6 +5077,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="minicalc"   && <MiniCalculator />}
         {tab==="paycalc"    && <PayRateCalc />}
         {tab==="naxonpricing" && <NaxonPricingCalc />}
+        {tab==="discoverycall"&& <DiscoveryCallPrep crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -5488,7 +5491,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.0 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.5 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
@@ -44250,6 +44253,179 @@ function PayRateCalc() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
+// DISCOVERY CALL PREP AI
+// Prepares Manju for Naxon Phase-0 discovery calls
+// ═══════════════════════════════════════════════════════════════════════
+function DiscoveryCallPrep({ crmAccounts, crmDeals, addAudit }) {
+  const COMPANIES = [
+    {id:"ntta",  name:"NTTA",           industry:"Tolling/Utilities",  stage:"Proposal",  context:"Live BRIM tolling engagement. Demo scheduled. Key contact: VP IT."},
+    {id:"oncor", name:"Oncor Electric", industry:"Electric Utility",   stage:"Discovery", context:"IS-U billing assessment. Initial call completed."},
+    {id:"pep",   name:"PepsiCo/Plano",  industry:"CPG/Manufacturing",  stage:"Meeting",   context:"S/4HANA readiness check. Meeting booked via LinkedIn."},
+    {id:"vis",   name:"Vistra Energy",  industry:"Energy/Power",       stage:"Outreach",  context:"BRIM + IS-U dual opportunity. No contact yet."},
+    {id:"atmos", name:"Atmos Energy",   industry:"Gas Utility",        stage:"Outreach",  context:"IS-U upgrade assessment. Cold outreach started, 21d stale."},
+    {id:"custom",name:"Other / Custom", industry:"",                   stage:"",          context:""},
+  ];
+
+  const [selId,    setSelId]    = useState("ntta");
+  const [custom,   setCustom]   = useState({name:"",industry:"",stage:"",context:""});
+  const [loading,  setLoading]  = useState(false);
+  const [brief,    setBrief]    = useState(null);
+  const [callTime, setCallTime] = useState("");
+  const [callType, setCallType] = useState("discovery");
+
+  const sel = selId==="custom" ? custom : (COMPANIES.find(c=>c.id===selId)||COMPANIES[0]);
+
+  const generate = async () => {
+    setLoading(true); setBrief(null);
+    const acctData = (crmAccounts||[]).find(a=>(a.name||"").toLowerCase().includes((sel.name||"").split("/")[0].toLowerCase()));
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
+          system:`You are Manju Murthy's pre-call strategist for Naxon Systems — a WBE SAP consulting firm (BRIM, IS-U, tolling, utilities, DFW). Manju has 25+ years SAP experience. His NTTA BRIM tolling experience is his #1 differentiator. Phase-0 = $25K-$50K 4-week discovery audits. Be extremely specific to the company. No generic advice.`,
+          messages:[{role:"user",content:`Prepare me for a ${callType} call with ${sel.name} (${sel.industry}).
+Deal stage: ${sel.stage}
+Context: ${sel.context}
+CRM notes: ${acctData?.notes||"none"}
+Call scheduled: ${callTime||"today"}
+
+Return ONLY JSON:
+{
+  "opener": "specific first 30-second opener for this company",
+  "painPoints": ["specific pain point 1 for this industry", "pain point 2", "pain point 3"],
+  "questions": ["discovery question 1", "question 2", "question 3", "question 4"],
+  "ourEdge": "why Naxon specifically wins this deal vs generic SI",
+  "objections": [{"obj": "likely objection", "response": "Manju's specific response"}],
+  "closeMove": "specific next step / close move for this call",
+  "redFlags": "what would make Manju walk away from this deal",
+  "targetBudget": "realistic budget range for this company"
+}`}]
+        })
+      });
+      const data = await resp.json();
+      setBrief(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+      addAudit?.("Discovery Call","Prep Generated","Naxon",`Prep for ${sel.name}`);
+    } catch(e) { setBrief({error:e.message}); }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <PH title="Discovery Call Prep" sub="Naxon Systems — AI-powered pre-call brief for Phase-0 sales calls"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+        <div>
+          <div style={{fontSize:11,color:"#475569",marginBottom:10,fontWeight:600}}>Select Company</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14}}>
+            {COMPANIES.map(c=>(
+              <button key={c.id} onClick={()=>setSelId(c.id)}
+                style={{padding:"8px 12px",borderRadius:7,border:"1px solid "+(selId===c.id?"#0369a1":"#1a2d45"),
+                  background:selId===c.id?"#0c2040":"#060d1c",color:selId===c.id?"#e2e8f0":"#64748b",
+                  textAlign:"left",cursor:"pointer",fontSize:11,transition:"all 0.1s"}}>
+                <span style={{fontWeight:700,color:selId===c.id?"#38bdf8":"#475569"}}>{c.name}</span>
+                {c.industry&&<span style={{color:"#334155",marginLeft:8,fontSize:10}}>{c.industry}</span>}
+                {c.stage&&<span style={{float:"right",fontSize:9,color:"#0369a1",background:"#0c2040",padding:"1px 6px",borderRadius:4}}>{c.stage}</span>}
+              </button>
+            ))}
+          </div>
+          {selId==="custom" && (
+            <div style={{display:"grid",gap:8,marginBottom:14}}>
+              <FF label="Company Name"><input className="inp" value={custom.name} onChange={e=>setCustom(p=>({...p,name:e.target.value}))}/></FF>
+              <FF label="Industry"><input className="inp" value={custom.industry} onChange={e=>setCustom(p=>({...p,industry:e.target.value}))}/></FF>
+              <FF label="Deal Stage"><input className="inp" value={custom.stage} onChange={e=>setCustom(p=>({...p,stage:e.target.value}))}/></FF>
+              <FF label="Context"><textarea className="inp" rows={2} value={custom.context} style={{resize:"vertical"}} onChange={e=>setCustom(p=>({...p,context:e.target.value}))}/></FF>
+            </div>
+          )}
+        </div>
+        <div>
+          <div style={{fontSize:11,color:"#475569",marginBottom:10,fontWeight:600}}>Call Details</div>
+          <div style={{display:"grid",gap:10,marginBottom:16}}>
+            <FF label="Call Type">
+              <select className="inp" value={callType} onChange={e=>setCallType(e.target.value)}>
+                <option value="discovery">Phase-0 Discovery Pitch</option>
+                <option value="followup">Follow-up / Re-engage</option>
+                <option value="proposal">Proposal Presentation</option>
+                <option value="negotiation">Negotiation / Close</option>
+              </select>
+            </FF>
+            <FF label="Scheduled Time (optional)">
+              <input type="datetime-local" className="inp" value={callTime} onChange={e=>setCallTime(e.target.value)}/>
+            </FF>
+          </div>
+          <div style={{padding:"10px 14px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45",marginBottom:14}}>
+            <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:4}}>COMPANY CONTEXT</div>
+            <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.5}}>{sel.context||"Enter context above"}</div>
+          </div>
+          <button className="btn bp" style={{width:"100%",padding:"10px",fontSize:13,fontWeight:700}} onClick={generate} disabled={loading||!sel.name}>
+            {loading?"Generating prep brief...":"Generate Call Brief"}
+          </button>
+        </div>
+      </div>
+
+      {brief&&!brief.error&&(
+        <div style={{display:"grid",gap:12}}>
+          {/* Opener */}
+          <div style={{padding:"12px 16px",background:"#0c2040",borderRadius:10,border:"1px solid #0369a133"}}>
+            <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Opening 30 Seconds</div>
+            <div style={{fontSize:12,color:"#e2e8f0",lineHeight:1.6,fontStyle:"italic"}}>"{brief.opener}"</div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {/* Pain Points */}
+            <div style={{padding:"12px 16px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Their Pain Points</div>
+              {(brief.painPoints||[]).map((p,i)=>(
+                <div key={i} style={{fontSize:11,color:"#fbbf24",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>• {p}</div>
+              ))}
+            </div>
+            {/* Discovery Questions */}
+            <div style={{padding:"12px 16px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#a78bfa",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Discovery Questions</div>
+              {(brief.questions||[]).map((q,i)=>(
+                <div key={i} style={{fontSize:11,color:"#c4b5fd",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>{i+1}. {q}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Our Edge */}
+          <div style={{padding:"12px 16px",background:"#021f14",borderRadius:10,border:"1px solid #22c55e33"}}>
+            <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Why Naxon Wins This Deal</div>
+            <div style={{fontSize:12,color:"#4ade80",lineHeight:1.5}}>{brief.ourEdge}</div>
+          </div>
+
+          {/* Objections */}
+          <div style={{padding:"12px 16px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+            <div style={{fontSize:9,color:"#f87171",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Likely Objections + Responses</div>
+            {(brief.objections||[]).map((o,i)=>(
+              <div key={i} style={{marginBottom:8,paddingBottom:8,borderBottom:"1px solid #0a1626"}}>
+                <div style={{fontSize:11,color:"#f87171",marginBottom:3}}>"{o.obj}"</div>
+                <div style={{fontSize:11,color:"#94a3b8",paddingLeft:12}}>{o.response}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div style={{padding:"10px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #38bdf833"}}>
+              <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:4}}>NEXT MOVE / CLOSE</div>
+              <div style={{fontSize:11,color:"#94a3b8"}}>{brief.closeMove}</div>
+            </div>
+            <div style={{padding:"10px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #f59e0b33"}}>
+              <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,marginBottom:4}}>TARGET BUDGET</div>
+              <div style={{fontSize:11,color:"#94a3b8"}}>{brief.targetBudget}</div>
+            </div>
+            <div style={{padding:"10px 14px",background:"#1a0808",borderRadius:8,border:"1px solid #f8717133"}}>
+              <div style={{fontSize:9,color:"#f87171",fontWeight:700,marginBottom:4}}>RED FLAGS / WALK AWAY</div>
+              <div style={{fontSize:11,color:"#94a3b8"}}>{brief.redFlags}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {brief?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {brief.error}</div>}
     </div>
   );
 }
