@@ -44514,6 +44514,7 @@ function NaxonLinkedIn({ addAudit }) {
 // Real-time metrics for Naxon Systems GTM performance
 // ═══════════════════════════════════════════════════════════════════════
 function NaxonKPIDashboard({ addAudit }) {
+  const [tick, setTick] = useState(0);
   const phase0 = (() => { try { return JSON.parse(localStorage.getItem("zt-naxon-phase0")||"[]"); } catch { return []; } })();
   const siPartners = (() => { try { return JSON.parse(localStorage.getItem("zt-si-partners")||"[]"); } catch { return []; } })();
   const talent = (() => { try { return JSON.parse(localStorage.getItem("zt-talent-candidates")||"[]"); } catch { return []; } })();
@@ -44521,6 +44522,9 @@ function NaxonKPIDashboard({ addAudit }) {
   const wkKey = new Date().getFullYear()+"-W"+String(weekNum).padStart(2,"0");
   const gtm = (() => { try { const d=JSON.parse(localStorage.getItem("zt-gtm-weeks")||"{}"); return d[wkKey]||null; } catch { return null; } })();
   const fmtK = v => v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1e3?"$"+Math.round(v/1e3)+"K":"$"+Math.round(v);
+
+  // eslint-disable-next-line no-unused-expressions
+  tick; // forces re-render when refresh clicked
 
   const activeDeals = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").length;
   const wonDeals = phase0.filter(d=>d.stage==="Won").length;
@@ -44550,7 +44554,9 @@ function NaxonKPIDashboard({ addAudit }) {
 
   return (
     <div>
-      <PH title="Naxon KPI Dashboard" sub="Real-time GTM performance metrics for Naxon Systems"/>
+      <PH title="Naxon KPI Dashboard" sub="Real-time GTM performance metrics for Naxon Systems">
+        <button className="btn bg" style={{fontSize:11}} onClick={()=>setTick(t=>t+1)}>↺ Refresh</button>
+      </PH>
 
       {/* KPI Grid */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
