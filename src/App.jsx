@@ -4938,7 +4938,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="marketing"  && <MarketingHub proposals={shared.proposals} clients={shared.clients} roster={shared.roster} crmDeals={shared.crmDeals} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="mktauto"    && <MarketingAutomation clients={shared.clients} roster={shared.roster} crmDeals={shared.crmDeals} crmLeads={shared.crmLeads} setCrmLeads={shared.setCrmLeads} addAudit={shared.addAudit} authProfile={authProfile}/>}
         {tab==="bulletin"   && <TeamBulletin authProfile={authProfile}/>}
-        {tab==="revpulse"   && <RevenuePulse roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} authProfile={authProfile} addAudit={shared.addAudit}/>}
+        {tab==="revpulse"   && <RevenuePulse roster={shared.roster} clients={shared.clients} finInvoices={shared.finInvoices} setFinInvoices={shared.setFinInvoices} finPayments={shared.finPayments} crmDeals={shared.crmDeals} authProfile={authProfile} addAudit={shared.addAudit}/>}
         {tab==="linkedin"   && <LinkedInGen    {...shared} authProfile={authProfile} />}
         {tab==="resourceplan"&&<ResourcePlanAI {...shared} />}
         {tab==="minicalc"   && <MiniCalculator />}
@@ -38668,7 +38668,119 @@ function TeamBulletin({ authProfile, inline = false }) {
 // REVENUE PULSE DASHBOARD
 // Live ARR, MRR, pipeline, utilization — unified revenue view
 // ═══════════════════════════════════════════════════════════════════════
-function RevenuePulse({ roster, clients, finInvoices, finPayments, crmDeals, tsHours, authProfile, addAudit }) {
+
+// ═══════════════════════════════════════════════════════════════════════
+// QUICK INVOICE CREATOR
+// One-click invoice from roster consultant — pre-fills rate, calculates total
+// ═══════════════════════════════════════════════════════════════════════
+function QuickInvoice({ roster, clients, finInvoices, setFinInvoices, addAudit, onClose }) {
+  const now     = new Date();
+  const dueDate = new Date(now.getTime() + 30*86400000).toISOString().slice(0,10);
+  const [form, setForm] = useState({
+    consultantId:"", clientId:"", hours:160, billRate:"", description:"SAP Consulting Services",
+    issueDate:now.toISOString().slice(0,10), dueDate, period:""
+  });
+  const [saving, setSaving] = useState(false);
+
+  const consultant = (roster||[]).find(r=>r.id===form.consultantId);
+  const client     = (clients||[]).find(c=>c.id===form.clientId);
+
+  // Auto-fill bill rate and client when consultant selected
+  const pickConsultant = (id) => {
+    const c = (roster||[]).find(r=>r.id===id);
+    const matchedClient = (clients||[]).find(cl=>cl.name===c?.client);
+    setForm(p=>({...p, consultantId:id, billRate:c?.billRate||p.billRate, clientId:matchedClient?.id||p.clientId}));
+  };
+
+  const total = +(form.billRate||0) * +(form.hours||0);
+  const genInvNum = () => "INV-"+now.getFullYear()+String(now.getMonth()+1).padStart(2,"0")+"-"+String((finInvoices||[]).length+1).padStart(3,"0");
+
+  const save = () => {
+    if (!form.consultantId||!form.clientId||!total) return alert("Select consultant, client and ensure rate/hours are set");
+    setSaving(true);
+    const inv = {
+      id: "inv-"+Date.now(),
+      invoiceNum: genInvNum(),
+      client: client?.name||"",
+      clientId: form.clientId,
+      consultant: consultant?.name||"",
+      consultantId: form.consultantId,
+      issueDate: form.issueDate,
+      dueDate: form.dueDate,
+      period: form.period,
+      status: "draft",
+      lines: [{ description:`${form.description} — ${consultant?.name||""} (${form.hours}hrs @ $${form.billRate}/hr)`, qty:+form.hours, rate:+form.billRate, amount:total }],
+      notes: "",
+      createdAt: now.toISOString(),
+    };
+    setFinInvoices(prev=>[inv,...(prev||[])]);
+    addAudit?.("Invoice","Created","Quick Invoice",inv.invoiceNum);
+    setSaving(false);
+    alert(`✅ Invoice ${inv.invoiceNum} created — $${total.toLocaleString()}`);
+    onClose?.();
+  };
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose?.()}>
+      <div className="modal" style={{maxWidth:520}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+          <h2 style={{fontSize:16,fontWeight:700,color:"#e2e8f0"}}>⚡ Quick Invoice</h2>
+          <button className="btn bg" onClick={onClose}>✕</button>
+        </div>
+
+        <FF label="Consultant">
+          <select className="inp" value={form.consultantId} onChange={e=>pickConsultant(e.target.value)}>
+            <option value="">Select consultant…</option>
+            {(roster||[]).map(r=><option key={r.id} value={r.id}>{r.name} — {r.role} ({r.client||"unassigned"})</option>)}
+          </select>
+        </FF>
+
+        <FF label="Client">
+          <select className="inp" value={form.clientId} onChange={e=>setForm(p=>({...p,clientId:e.target.value}))}>
+            <option value="">Select client…</option>
+            {(clients||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </FF>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          <FF label="Hours"><input type="number" className="inp" value={form.hours} onChange={e=>setForm(p=>({...p,hours:e.target.value}))} placeholder="160"/></FF>
+          <FF label="Bill Rate ($/hr)"><input type="number" className="inp" value={form.billRate} onChange={e=>setForm(p=>({...p,billRate:e.target.value}))} placeholder="auto-filled"/></FF>
+          <FF label="Total">
+            <div style={{padding:"8px 10px",background:"#040810",borderRadius:6,border:"1px solid #1a2d45",fontSize:14,fontWeight:800,color:"#34d399",fontFamily:"monospace"}}>
+              ${total.toLocaleString()}
+            </div>
+          </FF>
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <FF label="Issue Date"><input type="date" className="inp" value={form.issueDate} onChange={e=>setForm(p=>({...p,issueDate:e.target.value}))}/></FF>
+          <FF label="Due Date"><input type="date" className="inp" value={form.dueDate} onChange={e=>setForm(p=>({...p,dueDate:e.target.value}))}/></FF>
+        </div>
+
+        <FF label="Period (optional)"><input className="inp" value={form.period} onChange={e=>setForm(p=>({...p,period:e.target.value}))} placeholder="e.g. March 2026"/></FF>
+        <FF label="Description"><input className="inp" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))}/></FF>
+
+        {/* Preview */}
+        {consultant && client && total > 0 && (
+          <div style={{marginTop:10,padding:"10px 14px",background:"#021f14",borderRadius:8,border:"1px solid #22c55e33"}}>
+            <div style={{fontSize:10,color:"#34d399",fontWeight:700,marginBottom:4}}>Preview</div>
+            <div style={{fontSize:11,color:"#94a3b8"}}>{genInvNum()} · {consultant.name} → {client.name} · ${total.toLocaleString()} due {form.dueDate}</div>
+          </div>
+        )}
+
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18}}>
+          <button className="btn bg" onClick={onClose}>Cancel</button>
+          <button className="btn bp" style={{fontSize:12}} onClick={save} disabled={saving||!total}>
+            {saving?"Saving…":"⚡ Create Invoice"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RevenuePulse({ roster, clients, finInvoices, setFinInvoices, finPayments, crmDeals, tsHours, authProfile, addAudit }) {
+  const [showQI, setShowQI] = useState(false);
   const [period,   setPeriod]   = useState("mtd");   // mtd | qtd | ytd
   const [aiLoad,   setAiLoad]   = useState(false);
   const [aiRec,    setAiRec]    = useState(null);
@@ -38748,6 +38860,7 @@ Return ONLY JSON: {"headline":"one bold revenue insight","topRisk":"biggest reve
     <div>
       <PH title="Revenue Pulse" sub="MRR · ARR · Pipeline · Utilization · AR health — live revenue intelligence">
         <button className="btn bp" style={{fontSize:11}} onClick={runAI} disabled={aiLoad}>{aiLoad?"⏳…":"🧠 AI Revenue Brief"}</button>
+        <button className="btn bg" style={{fontSize:11}} onClick={()=>setShowQI(true)}>⚡ Quick Invoice</button>
       </PH>
 
       {aiRec&&(
@@ -38832,6 +38945,8 @@ Return ONLY JSON: {"headline":"one bold revenue insight","topRisk":"biggest reve
           {sd.length===0&&<div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"20px 0"}}>No deals in CRM yet</div>}
         </div>
       </div>
+
+      {showQI && <QuickInvoice roster={roster} clients={clients} finInvoices={finInvoices} setFinInvoices={setFinInvoices} addAudit={addAudit} onClose={()=>setShowQI(false)}/>}
     </div>
   );
 }
@@ -42932,6 +43047,57 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
 
   const saveTodos = t => { setTodos(t); localStorage.setItem("zt-todos", JSON.stringify(t)); };
   const addTodo   = () => { if (!newTodo.trim()) return; saveTodos([...todos, { id: Date.now(), text: newTodo.trim(), done: false }]); setNewTodo(""); };
+
+  // ── Smart Daily Brief (admin only, auto-runs once per day) ─────────────────
+  const [brief,     setBrief]     = useState(() => { try { const b=JSON.parse(localStorage.getItem("zt-home-brief")||"null"); return b?._date===new Date().toDateString()?b:null; } catch { return null; } });
+  const [briefLoad, setBriefLoad] = useState(false);
+
+  const runBrief = async () => {
+    setBriefLoad(true);
+    const fv = v => v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1000?"$"+(v/1000|0)+"k":"$"+v;
+    const sr = roster||[], sc=clients||[], sd=crmDeals||[], si=finInvoices||[], sw=workAuth||[];
+    const abmTargets = (() => { try { return JSON.parse(localStorage.getItem("zt-mae-abm")||"[]"); } catch { return []; } })();
+    const cmsCands   = (() => { try { return JSON.parse(localStorage.getItem("zt-cms-cands")||"[]"); } catch { return []; } })();
+    const mrrEst     = sr.filter(r=>(r.util||0)>0).reduce((s,r)=>s+(r.billRate||0)*(r.util||0)*160,0);
+    const benchCount = sr.filter(r=>(r.util||0)===0 && r.type==="FTE").length;
+    const overdueAR  = si.filter(i=>i.status==="overdue").reduce((s,i)=>s+(i.lines||[]).reduce((x,l)=>x+(+l.amount||0),0),0);
+    const staleABM   = abmTargets.filter(t=>t.lastContact&&Math.ceil((new Date()-new Date(t.lastContact))/86400000)>14).map(t=>t.company);
+    const neverABM   = abmTargets.filter(t=>!t.lastContact&&t.priority==="P1").map(t=>t.company);
+    const visaExpiry = sw.filter(w=>{ if(!w.expiryDate) return false; const d=(new Date(w.expiryDate)-new Date())/86400000; return d>=0&&d<=90; }).map(w=>w.name||w.employee||"");
+    const activeCands= cmsCands.filter(c=>!["placed","withdrawn"].includes(c.stage));
+    const openDealsC = sd.filter(d=>!["closed_won","closed_lost","won"].includes(d.stage));
+
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
+          system:"You are Ziksatech's AI COO. Give a sharp morning brief — specific, action-oriented, no fluff.",
+          messages:[{role:"user",content:`Today: ${new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}.
+MRR: ${fv(mrrEst)} | Bench: ${benchCount} FTEs | Overdue AR: ${fv(overdueAR)}
+Open deals: ${openDealsC.length} (${fv(openDealsC.reduce((s,d)=>s+(+d.value||0),0))})
+ABM stale (>14d): ${staleABM.join(", ")||"none"} | P1 never contacted: ${neverABM.join(", ")||"none"}
+Visa expiring <90d: ${visaExpiry.join(", ")||"none"}
+CMS candidates in pipeline: ${activeCands.length} (stages: ${[...new Set(activeCands.map(c=>c.stage))].join(", ")||"none"})
+
+Return ONLY JSON — be specific, use company names and numbers:
+{"headline":"one punchy sentence: biggest thing happening today","alerts":[
+  {"cat":"Revenue","icon":"💰","level":"red|yellow|green","msg":"specific revenue alert or win","action":"exact tab or action","tab":"revpulse"},
+  {"cat":"Pipeline","icon":"🎯","level":"red|yellow|green","msg":"specific deal or ABM action needed","action":"what to do","tab":"mktauto"},
+  {"cat":"People","icon":"👥","level":"red|yellow|green","msg":"specific roster or candidate note","action":"what to do","tab":"cms"},
+  {"cat":"Compliance","icon":"🛂","level":"red|yellow|green","msg":"visa or legal item","action":"what to do","tab":"immigration"}
+],"topAction":"single most critical 30-min action right now"}`}]
+        })
+      });
+      const data = await resp.json();
+      const b = {...JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()), _date:new Date().toDateString()};
+      setBrief(b);
+      localStorage.setItem("zt-home-brief", JSON.stringify(b));
+    } catch(e) { setBrief({headline:"Brief unavailable",alerts:[],topAction:"",_date:new Date().toDateString()}); }
+    setBriefLoad(false);
+  };
+
+  // Auto-run brief for admins once per day
+  const isAdminRole = ["super_admin","admin"].includes(authProfile?.role||"");
+  useEffect(() => { if (isAdminRole && !brief && !briefLoad) { runBrief(); } }, [authProfile?.role]); // eslint-disable-line
   const toggleTodo = id => saveTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t));
   const deleteTodo = id => saveTodos(todos.filter(t => t.id !== id));
 
@@ -43087,6 +43253,47 @@ function HomePage({ roster, clients, finInvoices, crmDeals, candidates,
           {weather && <div style={{ fontSize:11, color:"#475569", marginTop:3 }}>{weather.condition} · {weather.temp}°F · 💧{weather.humidity}%</div>}
         </div>
       </div>
+
+      {/* Smart Daily Brief — auto-loads for admins each morning */}
+      {isAdminRole && (
+        <div style={{marginBottom:14}}>
+          {briefLoad && (
+            <div style={{padding:"12px 18px",background:"#060d1c",border:"1px solid #0369a144",borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:"#38bdf8",animation:"pulse 1s infinite"}}/>
+              <span style={{fontSize:11,color:"#475569"}}>Loading your daily brief…</span>
+            </div>
+          )}
+          {brief && !briefLoad && (
+            <div style={{background:"linear-gradient(135deg,#040a14,#0c1a2e)",border:"1px solid #0369a133",borderRadius:10,overflow:"hidden"}}>
+              <div style={{padding:"10px 16px",borderBottom:"1px solid #0a1828",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontSize:12,fontWeight:800,color:"#e2e8f0"}}>🧠 {brief.headline}</div>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn bg" style={{fontSize:9}} onClick={runBrief} disabled={briefLoad}>↺</button>
+                  <button className="btn bg" style={{fontSize:9}} onClick={()=>{setBrief(null);localStorage.removeItem("zt-home-brief");}}>✕</button>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0}}>
+                {(brief.alerts||[]).map((a,i)=>{
+                  const c={red:"#f87171",yellow:"#f59e0b",green:"#34d399"}[a.level]||"#38bdf8";
+                  return (
+                    <div key={i} onClick={()=>a.tab&&setTab(a.tab)} style={{padding:"10px 14px",borderRight:i<3?"1px solid #0a1828":"none",cursor:a.tab?"pointer":"default",transition:"background 0.15s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#0a1828"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
+                        <span style={{fontSize:12}}>{a.icon}</span>
+                        <span style={{fontSize:9,fontWeight:700,color:c,textTransform:"uppercase"}}>{a.cat}</span>
+                        <div style={{width:5,height:5,borderRadius:"50%",background:c,marginLeft:"auto"}}/>
+                      </div>
+                      <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.4,marginBottom:4}}>{a.msg}</div>
+                      {a.action&&<div style={{fontSize:9,color:c,fontWeight:600}}>→ {a.action}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+              {brief.topAction&&<div style={{padding:"8px 16px",borderTop:"1px solid #0a1828",fontSize:11,color:"#f59e0b",fontWeight:600}}>⚡ Top action: {brief.topAction}</div>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Team Bulletin inline widget */}
       <TeamBulletin authProfile={authProfile} inline={true}/>
