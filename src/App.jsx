@@ -44012,11 +44012,11 @@ Return ONLY JSON — be specific, use company names and numbers:
                   <button className="btn bg" style={{fontSize:9}} onClick={()=>{setBrief(null);localStorage.removeItem("zt-home-brief");}}>✕</button>
                 </div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0}}>
+              <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min((brief.alerts||[]).length,5)},1fr)`,gap:0}}>
                 {(brief.alerts||[]).map((a,i)=>{
                   const c={red:"#f87171",yellow:"#f59e0b",green:"#34d399"}[a.level]||"#38bdf8";
                   return (
-                    <div key={i} onClick={()=>a.tab&&setTab(a.tab)} style={{padding:"10px 14px",borderRight:i<3?"1px solid #0a1828":"none",cursor:a.tab?"pointer":"default",transition:"background 0.15s"}}
+                    <div key={i} onClick={()=>a.tab&&setTab(a.tab)} style={{padding:"10px 14px",borderRight:i<(brief.alerts||[]).length-1?"1px solid #0a1828":"none",cursor:a.tab?"pointer":"default",transition:"background 0.15s"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#0a1828"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                       <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4}}>
                         <span style={{fontSize:12}}>{a.icon}</span>
