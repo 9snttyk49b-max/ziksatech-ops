@@ -3783,6 +3783,7 @@ function NaxonOSCommand({ addAudit, authProfile }) {
   const [aiPlan, setAiPlan] = useState(null);
   const [addDealOpen, setAddDealOpen] = useState(false);
   const [newDeal, setNewDeal] = useState({company:"",contact:"",value:35000,stage:"Outreach"});
+  const [winLossDeal, setWinLossDeal] = useState(null);
   const [phase0, setPhase0] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("zt-naxon-phase0")||"null");
@@ -3959,6 +3960,7 @@ function NaxonOSCommand({ addAudit, authProfile }) {
                           onChange={e=>{
                             const newStage = e.target.value;
                             savePhase0(phase0.map(x=>x.id===d.id?{...x,stage:newStage,lastTouch:new Date().toISOString().slice(0,10)}:x));
+                            if(newStage==="Won"||newStage==="Lost") setWinLossDeal({...d,stage:newStage});
                           }}>
                           {STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
                         </select>
@@ -4007,6 +4009,57 @@ function NaxonOSCommand({ addAudit, authProfile }) {
             <span style={{fontSize:9,color:"#15803d",fontWeight:700,marginRight:6}}>SI PITCH:</span>{aiPlan.sipitch}
           </div>}
           {aiPlan.riskToWatch&&<div style={{fontSize:10,color:"#f87171"}}>Risk: {aiPlan.riskToWatch}</div>}
+        </div>
+      )}
+
+      {/* Win/Loss Deal Modal */}
+      {winLossDeal && (
+        <div style={{position:"fixed",inset:0,background:"#000c",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setWinLossDeal(null)}>
+          <div style={{background:"#0a1525",border:"1px solid "+(winLossDeal.stage==="Won"?"#22c55e55":"#f8717155"),borderRadius:14,padding:24,width:440,maxWidth:"90vw"}} onClick={e=>e.stopPropagation()}>
+            <div style={{textAlign:"center",marginBottom:16}}>
+              <div style={{fontSize:32,marginBottom:4}}>{winLossDeal.stage==="Won"?"🎉":"📋"}</div>
+              <div style={{fontSize:16,fontWeight:800,color:winLossDeal.stage==="Won"?"#34d399":"#f87171"}}>
+                {winLossDeal.stage==="Won"?`${winLossDeal.company} — DEAL WON!`:`${winLossDeal.company} — Marked Lost`}
+              </div>
+              {winLossDeal.stage==="Won"&&<div style={{fontSize:11,color:"#475569",marginTop:4}}>
+                ${Math.round(+winLossDeal.value/1000)}K Phase-0 · Progress: {phase0.filter(d=>d.stage==="Won").length}/7 toward breakeven
+              </div>}
+            </div>
+            {winLossDeal.stage==="Won"&&(
+              <div style={{padding:"10px 14px",background:"#021f14",borderRadius:8,marginBottom:14,border:"1px solid #22c55e33"}}>
+                <div style={{fontSize:10,color:"#34d399",fontWeight:700,marginBottom:6}}>NEXT STEPS</div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.8}}>
+                  ✓ Send SOW to {winLossDeal.contact}<br/>
+                  ✓ Schedule kickoff call within 5 business days<br/>
+                  ✓ Add to Ziksatech roster + billing setup<br/>
+                  ✓ Update LinkedIn with win announcement<br/>
+                  ✓ Replicate this approach for Oncor &amp; Vistra
+                </div>
+              </div>
+            )}
+            {winLossDeal.stage==="Lost"&&(
+              <div style={{padding:"10px 14px",background:"#1a0808",borderRadius:8,marginBottom:14,border:"1px solid #f8717133"}}>
+                <div style={{fontSize:10,color:"#f87171",fontWeight:700,marginBottom:6}}>LOSS REVIEW</div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.8}}>
+                  • Document primary loss reason in deal notes<br/>
+                  • Schedule 30-day re-engagement for {winLossDeal.company}<br/>
+                  • Check if Wipro/HCL won this — update battlecard<br/>
+                  • Use Prospect Research for next contact strategy
+                </div>
+              </div>
+            )}
+            <div style={{display:"flex",gap:8}}>
+              {winLossDeal.stage==="Won"&&(
+                <button className="btn bp" style={{flex:1,fontSize:11}} onClick={()=>{
+                  setWinLossDeal(null);
+                  addAudit?.("Naxon","Deal Won",winLossDeal.company,`$${Math.round(+winLossDeal.value/1000)}K`);
+                }}>🏆 Log Win &amp; Close</button>
+              )}
+              {winLossDeal.stage==="Lost"&&(
+                <button className="btn bg" style={{flex:1,fontSize:11}} onClick={()=>setWinLossDeal(null)}>📋 Noted — Close</button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
