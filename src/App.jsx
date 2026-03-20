@@ -1,4 +1,4 @@
-// v4.5.13
+// v4.5.15
 // Ziksatech OPS Center v3.8.3-1773624151 — All components defined, stable build
 // Global PII masking helper — reads window.__ZT_MASK__ flag
 const mask = (val, type="text") => {
@@ -1876,7 +1876,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.13 · 100+ AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.15 · 100+ AI modules</span>
         </div>
         {children}
       </div>
@@ -5594,7 +5594,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.13 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.15 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
@@ -44276,6 +44276,36 @@ Return ONLY JSON — be specific, use company names and numbers:
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
                   <button className="btn bg" style={{fontSize:9}} onClick={()=>setTab("naxonos")}>Pipeline →</button>
                   <button className="btn bg" style={{fontSize:9}} onClick={()=>setTab("discoverycall")}>Call Prep →</button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Monthly Revenue Target — admin only */}
+          {isAdminRole && (() => {
+            const now = new Date();
+            const thisMonth = safeInvoices.filter(inv=>{
+              if(!inv.issueDate&&!inv.createdAt) return false;
+              const d = new Date(inv.issueDate||inv.createdAt);
+              return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+            });
+            const billed = thisMonth.reduce((s,i)=>s+(+i.amount||+i.total||0),0);
+            const TARGET = 206000;
+            const pct = Math.min(100, Math.round((billed/TARGET)*100));
+            const color = pct>=100?"#34d399":pct>=75?"#38bdf8":pct>=50?"#f59e0b":"#f87171";
+            const fmt = v => v>=1000?"$"+Math.round(v/1000)+"k":"$"+v;
+            return (
+              <div style={{marginBottom:8,padding:"10px 14px",background:"#040810",border:"1px solid #1a2d45",borderRadius:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                  <div style={{fontSize:10,fontWeight:700,color:"#e2e8f0"}}>📈 Monthly Revenue</div>
+                  <div style={{fontSize:10,color,fontWeight:700}}>{fmt(billed)} / {fmt(TARGET)}</div>
+                </div>
+                <div style={{height:5,background:"#0a1626",borderRadius:3,overflow:"hidden",marginBottom:4}}>
+                  <div style={{height:"100%",width:pct+"%",background:color,borderRadius:3,transition:"width 0.5s"}}/>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:8,color:"#334155"}}>{pct}% of {fmt(TARGET)} MRR target</span>
+                  <button className="btn bg" style={{fontSize:8,padding:"1px 6px"}} onClick={()=>setTab("revpulse")}>Revenue Pulse →</button>
                 </div>
               </div>
             );
