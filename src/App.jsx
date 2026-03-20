@@ -1865,7 +1865,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.4.52 · 95 AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.0 · 100+ AI modules</span>
         </div>
         {children}
       </div>
@@ -5017,7 +5017,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="resumemgr"  && <ResumeManager  candidates={shared.candidates} setCandidates={shared.setCandidates} addAudit={shared.addAudit}/>}
         {tab==="offerletter"&& <OfferLetterGen offers={shared.offers} candidates={shared.candidates} clients={shared.clients} roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="pto"        && <PTOModule {...shared}/>}
-        {tab==="consultanthub" && <ConsultantHub roster={shared.roster} authProfile={authProfile}/>}
+        {tab==="consultanthub" && <ConsultantHub roster={shared.roster} authProfile={authProfile} ptoBalances={shared.ptoBalances} ptoRequests={shared.ptoRequests} tsSubmissions={shared.tsSubmissions} workAuth={shared.workAuth}/>}
         {tab==="immigration" && <ImmigrationCalendar workAuth={shared.workAuth} setWorkAuth={shared.setWorkAuth} roster={shared.roster} addAudit={shared.addAudit}/>}
         {tab==="compliance"  && <ComplianceModule {...shared}/>}
         {tab==="freshbooks" && <FreshBooks {...shared}/>}
@@ -5354,7 +5354,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.4.52 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.0 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
@@ -48076,17 +48076,69 @@ const CH_TAG_COLORS = {Company:"#f59e0b",Client:"#34d399",Tech:"#38bdf8",Immigra
 // ═══════════════════════════════════════════════════════════════════════
 // CONSULTANT HUB — Tax Tips, Visa Guidance & Company News
 // ═══════════════════════════════════════════════════════════════════════
-function ConsultantHub({ roster, authProfile }) {
+function ConsultantHub({ roster, authProfile, ptoBalances, ptoRequests, tsSubmissions, workAuth }) {
   const [activeVisa, setActiveVisa] = useState("H-1B");
-  const [section, setSection] = useState("tax");
+  const [section, setSection] = useState("me");
   const visaTypes = Object.keys(CH_VISA_INFO);
   const vd = CH_VISA_INFO[activeVisa];
   const tips = CH_TIPS.filter(t => t[0] === activeVisa);
+
+  // Personal stats
+  const me = roster?.find(r => r.name === authProfile?.full_name || r.email === authProfile?.email);
+  const myPTO = ptoBalances?.find(b => b.memberId === me?.id);
+  const myVisa = workAuth?.find(w => w.memberId === me?.id || w.name === me?.name);
+  const pendingTS = (tsSubmissions||[]).filter(t => (t.memberId===me?.id || t.memberName===me?.name) && t.status==="submitted");
+  const draftTS   = (tsSubmissions||[]).filter(t => (t.memberId===me?.id || t.memberName===me?.name) && t.status==="draft");
+  const myPTOPending = (ptoRequests||[]).filter(r => (r.memberId===me?.id || r.name===me?.name) && r.status==="pending");
+
+  const visaDaysLeft = myVisa?.expiryDate ? Math.ceil((new Date(myVisa.expiryDate)-new Date())/86400000) : null;
+  const ptoLeft = myPTO ? (myPTO.ptoAllowed||15) - (myPTO.ptoUsed||0) : null;
+  const monthlyGross = me ? (me.billRate||0) * (me.util||0) * 160 : 0;
+
   return (
     <div>
-      <PH title="Consultant Hub" sub={"Tax Savings \u00b7 Visa Guidance \u00b7 Company News \u2014 2025 Tax Year"}/>
+      <PH title="My Hub" sub="Personal dashboard · Tax tips · Visa guidance · Company news"/>
+
+      {/* Personal snapshot — shown to consultants/employees */}
+      {me && (
+        <div style={{marginBottom:18,padding:"16px 18px",background:"linear-gradient(135deg,#040a14,#0c1e3d)",border:"1px solid #0369a133",borderRadius:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:800,color:"#e2e8f0"}}>{me.name}</div>
+              <div style={{fontSize:12,color:"#64748b"}}>{me.role} · {me.client||"Unassigned"}</div>
+            </div>
+            <span style={{padding:"4px 12px",borderRadius:20,background:"#021f14",border:"1px solid #22c55e44",color:"#34d399",fontSize:11,fontWeight:700}}>
+              {Math.round((me.util||0)*100)}% Utilized
+            </span>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+            {[
+              { label:"Bill Rate",       value:`$${me.billRate||0}/hr`,           color:"#38bdf8"                                    },
+              { label:"Est. Monthly",    value:monthlyGross>=1000?`$${(monthlyGross/1000).toFixed(0)}k`:`$${monthlyGross}`,color:"#34d399" },
+              { label:"PTO Remaining",   value:ptoLeft!==null?`${ptoLeft} days`:"—",  color:ptoLeft!==null&&ptoLeft<5?"#f87171":"#a78bfa" },
+              { label:"Visa Expiry",     value:visaDaysLeft!==null?`${visaDaysLeft}d`:`${myVisa?.visaType||me.visa||"—"}`,
+                color:visaDaysLeft!==null&&visaDaysLeft<90?"#f87171":"#64748b"         },
+            ].map(k=>(
+              <div key={k.label} style={{textAlign:"center",padding:"10px 8px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45"}}>
+                <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>{k.label}</div>
+                <div style={{fontSize:17,fontWeight:800,color:k.color,fontFamily:"monospace"}}>{k.value}</div>
+              </div>
+            ))}
+          </div>
+          {/* Action items */}
+          {(pendingTS.length>0 || draftTS.length>0 || myPTOPending.length>0 || (visaDaysLeft!==null&&visaDaysLeft<90)) && (
+            <div style={{marginTop:12,display:"flex",flexWrap:"wrap",gap:6}}>
+              {draftTS.length>0 && <span style={{fontSize:10,padding:"3px 10px",borderRadius:6,background:"#1a1005",color:"#f59e0b",border:"1px solid #f59e0b44"}}>⏱ {draftTS.length} timesheet{draftTS.length>1?"s":""} need submission</span>}
+              {pendingTS.length>0 && <span style={{fontSize:10,padding:"3px 10px",borderRadius:6,background:"#0c1e3d",color:"#38bdf8",border:"1px solid #38bdf844"}}>✓ {pendingTS.length} timesheet awaiting approval</span>}
+              {myPTOPending.length>0 && <span style={{fontSize:10,padding:"3px 10px",borderRadius:6,background:"#1a1005",color:"#f59e0b",border:"1px solid #f59e0b44"}}>🏖 {myPTOPending.length} PTO request pending</span>}
+              {visaDaysLeft!==null&&visaDaysLeft<90 && <span style={{fontSize:10,padding:"3px 10px",borderRadius:6,background:"#1a0808",color:"#f87171",border:"1px solid #f87171"}}>🛂 Visa expires in {visaDaysLeft} days — contact HR</span>}
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{display:"flex",gap:4,marginBottom:20,background:"#060d1c",borderRadius:10,padding:4,border:"1px solid #1a2d45"}}>
-        {[["tax","\uD83D\uDCB0 Tax Tips & Savings"],["news","\uD83D\uDCF0 Company News"]].map(([id,lbl])=>(
+        {[["me","👤 My Info"],["tax","💰 Tax Tips"],["news","📰 Company News"]].map(([id,lbl])=>(
           <button key={id} onClick={()=>setSection(id)}
             style={{flex:1,padding:"9px 16px",borderRadius:7,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
               background:section===id?"linear-gradient(135deg,#0369a1,#0284c7)":"transparent",
@@ -48095,6 +48147,54 @@ function ConsultantHub({ roster, authProfile }) {
           </button>
         ))}
       </div>
+
+      {section==="me" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {/* Quick Actions */}
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>⚡ Quick Actions</div>
+            {[
+              ["⏱ Submit Timesheet",    "timesheet"],
+              ["🏖 Request PTO",        "pto"],
+              ["💊 Benefits",           "benefits"],
+              ["💰 Pay Stubs",          "adpstubs"],
+              ["📁 My PAF Files",       "paffiles"],
+              ["🔔 Notifications",      "notifhub"],
+              ["💡 Submit an Idea",     "ideapad"],
+            ].map(([label, tab]) => (
+              <div key={tab} style={{padding:"8px 0",borderBottom:"1px solid #0a1626",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,color:"#94a3b8",cursor:"pointer"}}
+                onClick={()=>{ window.dispatchEvent(new CustomEvent('zt-nav',{detail:tab})); }}>
+                {label}
+                <span style={{color:"#334155",fontSize:10}}>→</span>
+              </div>
+            ))}
+          </div>
+          {/* PTO Summary */}
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🏖 PTO Summary</div>
+            {myPTO ? (
+              <div>
+                {[
+                  ["PTO Allowed",   myPTO.ptoAllowed||15,  "#a78bfa"],
+                  ["PTO Used",      myPTO.ptoUsed||0,      "#f59e0b"],
+                  ["PTO Remaining", (myPTO.ptoAllowed||15)-(myPTO.ptoUsed||0), "#34d399"],
+                  ["Sick Days Used",myPTO.sickUsed||0,     "#38bdf8"],
+                  ["Personal Used", myPTO.personalUsed||0, "#64748b"],
+                ].map(([label,val,color])=>(
+                  <div key={label} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #0a1626",fontSize:12}}>
+                    <span style={{color:"#64748b"}}>{label}</span>
+                    <span style={{color,fontWeight:700}}>{val} days</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{color:"#334155",fontSize:12,textAlign:"center",padding:"20px 0"}}>
+                PTO balance not found — contact HR
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {section==="tax" && (
         <div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
