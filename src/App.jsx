@@ -4242,6 +4242,21 @@ export default function ZiksatechOps() {
   }, []);
   useEffect(()=>{ if(isMobile) setSideOpen(false); }, [tab]);
 
+  // ── Seed Naxon default data if not yet set ──────────────────────────────────
+  useEffect(()=>{
+    try {
+      if (!localStorage.getItem("zt-naxon-phase0")) {
+        localStorage.setItem("zt-naxon-phase0", JSON.stringify([
+          {id:"p0-1",company:"NTTA",contact:"VP IT",value:45000,stage:"Proposal",notes:"BRIM tolling audit — live engagement. Demo scheduled.",lastTouch:"2026-03-19"},
+          {id:"p0-2",company:"Oncor Electric",contact:"SAP Director",value:35000,stage:"Discovery",notes:"IS-U billing assessment. Initial call done.",lastTouch:"2026-03-10"},
+          {id:"p0-3",company:"PepsiCo/Plano",contact:"SAP CoE Lead",value:40000,stage:"Meeting",notes:"S/4HANA readiness. Meeting booked via LinkedIn.",lastTouch:"2026-03-15"},
+          {id:"p0-4",company:"Vistra Energy",contact:"CIO Office",value:50000,stage:"Outreach",notes:"BRIM + IS-U dual opportunity. Not yet contacted.",lastTouch:null},
+          {id:"p0-5",company:"Atmos Energy",contact:"IT PMO",value:30000,stage:"Outreach",notes:"IS-U upgrade assessment. Cold outreach started.",lastTouch:"2026-02-28"},
+        ]));
+      }
+    } catch {}
+  }, []);
+
   // ── Global custom events ────────────────────────────────────────────────────
   useEffect(()=>{
     const navHandler = (e) => { if(e.detail) setTab(e.detail); };
