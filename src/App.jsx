@@ -99,6 +99,7 @@ const RBAC = {
   paffiles:     ["super_admin","admin","hr_immigration","employee","contractor"],
   minicalc:     ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   paycalc:      ["super_admin","admin","accounts"],
+  naxongtm:     ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4491,6 +4492,7 @@ export default function ZiksatechOps() {
     { id:"fcs",          label:"Finance Control 💰",       icon:ICONS.pl,       group:"Naxon OS" },
     { id:"sitracker",    label:"SI Sub-Contracting 🤝",   icon:ICONS.dash,     group:"Naxon OS" },
     { id:"bdengine",     label:"BD Engine 🚀",             icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"naxongtm",     label:"GTM Weekly 📅",            icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5116,6 +5118,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="sitracker"  && <SISubConTracker {...shared} authProfile={authProfile}/>}
           {tab==="naxonos"    && <NaxonOSCommand addAudit={shared.addAudit} authProfile={authProfile}/>}
           {tab==="bdengine"   && <BDEngine crmDeals={shared.crmDeals} roster={shared.roster} clients={shared.crmAccounts} addAudit={shared.addAudit} setTab={setTab}/>}
+          {tab==="naxongtm"   && <NaxonGTMWeekly crmDeals={shared.crmDeals} crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
           {tab==="talent"     && <ZiksatechTalent roster={shared.roster} jobReqs={shared.jobReqs} addAudit={shared.addAudit} authProfile={authProfile}/>}
           {tab==="cms"        && <CandidateManagement roster={shared.roster} setRoster={shared.setRoster} clients={shared.clients} crmDeals={shared.crmDeals} jobReqs={shared.jobReqs} setJobReqs={shared.setJobReqs} addAudit={shared.addAudit} authProfile={authProfile} onboardings={shared.onboardings} setOnboardings={shared.setOnboardings} workAuth={shared.workAuth} setWorkAuth={shared.setWorkAuth}/>}
         {tab==="roster"     && <Roster     {...shared}/>}
@@ -54127,6 +54130,144 @@ const BD_MEETINGS_DEFAULT = [
   { id:"bdm2", accountId:"bda15", contactId:"bdc4", date:"2026-03-18", outcome:"Wants proposal for IS-U optimization",     opportunityCreated:true,  dealId:"", value:350000 },
   { id:"bdm3", accountId:"bda11", contactId:"bdc8", date:"2026-03-10", outcome:"Early conversation — scheduling follow-up", opportunityCreated:false, dealId:"", value:0 },
 ];
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON GTM WEEKLY TRACKER
+// Weekly activity log: calls made, emails sent, meetings booked, deals moved
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonGTMWeekly({ crmDeals, crmAccounts, addAudit }) {
+  const WEEK_KEY = () => {
+    const d = new Date(); const day = d.getDay();
+    const monday = new Date(d); monday.setDate(d.getDate() - (day===0?6:day-1));
+    return monday.toISOString().slice(0,10);
+  };
+
+  const [weeks, setWeeks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("zt-gtm-weeks")||"{}"); } catch { return {}; }
+  });
+  const [wk, setWk] = useState(WEEK_KEY());
+  const [aiLoad, setAiLoad] = useState(false);
+  const [aiCoach, setAiCoach] = useState(null);
+
+  const thisWeek = weeks[wk] || {calls:0,emails:0,meetings:0,proposals:0,referrals:0,linkedinDMs:0,notes:""};
+  const save = (data) => {
+    const updated = {...weeks, [wk]: data};
+    setWeeks(updated);
+    localStorage.setItem("zt-gtm-weeks", JSON.stringify(updated));
+    addAudit?.("Naxon GTM","Log Update","GTM Weekly",`Week ${wk} updated`);
+  };
+  const set = (field, val) => save({...thisWeek, [field]: val});
+
+  const TARGETS = {calls:20, emails:30, meetings:5, proposals:2, referrals:3, linkedinDMs:20};
+
+  const runAI = async () => {
+    setAiLoad(true); setAiCoach(null);
+    const w = thisWeek;
+    const openDeals = (crmDeals||[]).filter(d=>!["closed-won","closed_won","won","closed-lost","closed_lost","lost"].includes(d.stage));
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are Manju's GTM coach for Naxon Systems — a WBE SAP consulting firm (BRIM, IS-U). Week 1 of launch. Breakeven = 7 Phase-0 deals at $25K-$50K each. Be direct, specific, action-oriented.",
+          messages:[{role:"user",content:`GTM Week of ${wk}:
+Calls: ${w.calls}/${TARGETS.calls} | Emails: ${w.emails}/${TARGETS.emails} | Meetings: ${w.meetings}/${TARGETS.meetings}
+Proposals: ${w.proposals}/${TARGETS.proposals} | LinkedIn DMs: ${w.linkedinDMs}/${TARGETS.linkedinDMs} | Referrals: ${w.referrals}/${TARGETS.referrals}
+Open pipeline deals: ${openDeals.length} | Notes: ${w.notes||"none"}
+
+Return ONLY JSON: {"grade":"A/B/C/D","headline":"one-line week assessment","wins":["win1","win2"],"gaps":["gap1","gap2"],"topAction":"single most important action right now","fridayPlan":"3 specific things to do today to close the week strong"}`}]
+        })
+      });
+      const data = await resp.json();
+      setAiCoach(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+    } catch(e) { setAiCoach({error:e.message}); }
+    setAiLoad(false);
+  };
+
+  const gradeColor = {"A":"#34d399","B":"#38bdf8","C":"#f59e0b","D":"#f87171"};
+
+  return (
+    <div>
+      <PH title="GTM Weekly Tracker" sub="Naxon Systems — weekly outreach activity vs targets">
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <input type="week" style={{background:"#060d1c",border:"1px solid #1a2d45",color:"#94a3b8",borderRadius:6,padding:"4px 8px",fontSize:11}}
+            value={wk} onChange={e=>setWk(e.target.value||WEEK_KEY())}/>
+          <button className="btn bp" style={{fontSize:11}} onClick={runAI} disabled={aiLoad}>
+            {aiLoad?"Coaching...":"AI Coach"}
+          </button>
+        </div>
+      </PH>
+
+      {/* Activity trackers */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {id:"calls",       label:"Phone Calls",    target:TARGETS.calls,       emoji:"📞"},
+          {id:"emails",      label:"Cold Emails",    target:TARGETS.emails,      emoji:"✉️"},
+          {id:"linkedinDMs", label:"LinkedIn DMs",   target:TARGETS.linkedinDMs, emoji:"💼"},
+          {id:"meetings",    label:"Meetings Booked",target:TARGETS.meetings,    emoji:"📅"},
+          {id:"proposals",   label:"Proposals Sent", target:TARGETS.proposals,   emoji:"📄"},
+          {id:"referrals",   label:"Referrals Asked",target:TARGETS.referrals,   emoji:"🤝"},
+        ].map(item=>{
+          const val = thisWeek[item.id]||0;
+          const pct = Math.min(100, Math.round((val/item.target)*100));
+          const color = pct>=100?"#34d399":pct>=60?"#38bdf8":pct>=30?"#f59e0b":"#f87171";
+          return (
+            <div key={item.id} className="card" style={{padding:"12px 14px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <div style={{fontSize:11,color:"#94a3b8"}}>{item.emoji} {item.label}</div>
+                <div style={{fontSize:10,color:"#334155"}}>target: {item.target}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <input type="number" min={0} value={val}
+                  onChange={e=>set(item.id, Math.max(0,+e.target.value))}
+                  style={{width:60,background:"#040810",border:"1px solid #1a2d45",color:"#e2e8f0",borderRadius:6,padding:"4px 8px",fontSize:16,fontWeight:800,fontFamily:"monospace",textAlign:"center"}}/>
+                <div style={{flex:1}}>
+                  <div style={{height:6,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:pct+"%",background:color,borderRadius:3,transition:"width 0.3s"}}/>
+                  </div>
+                  <div style={{fontSize:9,color,marginTop:2,fontWeight:700}}>{pct}% of target</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Notes */}
+      <div className="card" style={{padding:"12px 14px",marginBottom:14}}>
+        <div style={{fontSize:11,color:"#475569",marginBottom:6}}>Week Notes / Wins / Blockers</div>
+        <textarea className="inp" rows={3} value={thisWeek.notes||""} style={{width:"100%",resize:"vertical",fontFamily:"inherit"}}
+          onChange={e=>set("notes",e.target.value)}
+          placeholder="What happened this week? Key wins, stalled deals, objections heard..."/>
+      </div>
+
+      {/* AI Coach Output */}
+      {aiCoach&&!aiCoach.error&&(
+        <div style={{padding:"14px 16px",background:"#060d1c",border:"1px solid #0369a155",borderRadius:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <span style={{fontSize:24,fontWeight:900,color:gradeColor[aiCoach.grade]||"#94a3b8",fontFamily:"monospace"}}>{aiCoach.grade}</span>
+            <div style={{fontSize:12,color:"#e2e8f0",fontStyle:"italic"}}>{aiCoach.headline}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Wins this week</div>
+              {(aiCoach.wins||[]).map((w,i)=><div key={i} style={{fontSize:11,color:"#4ade80",marginBottom:3}}>+ {w}</div>)}
+            </div>
+            <div>
+              <div style={{fontSize:9,color:"#f87171",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Gaps to close</div>
+              {(aiCoach.gaps||[]).map((g,i)=><div key={i} style={{fontSize:11,color:"#f87171",marginBottom:3}}>- {g}</div>)}
+            </div>
+          </div>
+          {aiCoach.topAction&&<div style={{padding:"8px 12px",background:"#0c2040",borderRadius:6,fontSize:11,color:"#38bdf8",marginBottom:8}}>
+            <span style={{fontWeight:700}}>Top action: </span>{aiCoach.topAction}
+          </div>}
+          {aiCoach.fridayPlan&&<div style={{padding:"8px 12px",background:"#021f14",borderRadius:6,fontSize:11,color:"#34d399"}}>
+            <span style={{fontWeight:700}}>Close this week strong: </span>{aiCoach.fridayPlan}
+          </div>}
+        </div>
+      )}
+      {aiCoach?.error&&<div style={{color:"#f87171",fontSize:11}}>{aiCoach.error}</div>}
+    </div>
+  );
+}
 
 function BDEngine({ crmDeals, setCrmDeals, crmAccounts, setCrmAccounts, crmContacts, setCrmContacts, roster, clients, finInvoices, authProfile , setTab}) {
   const TODAY = new Date().toISOString().split("T")[0];
