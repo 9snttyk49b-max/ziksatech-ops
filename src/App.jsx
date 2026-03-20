@@ -3358,7 +3358,7 @@ Return ONLY JSON:
           {l:"Total Partners",    v:partners.length,                                    color:"#a78bfa"},
           {l:"Active Deals",      v:partners.flatMap(p=>p.deals).filter(d=>d.status==="Active").length, color:"#f59e0b"},
         ].map(k=>(
-          <div key={k.l} className="card" style={{flex:1,padding:"10px 12px",borderTop:`2px solid ${k.color}`}}>
+          <div key={k.l} className="card" style={{flex:1,padding:"10px 12px",borderTop:("2px solid "+k.color)}}>
             <div style={{fontSize:18,fontWeight:800,color:k.color}}>{k.v}</div>
             <div style={{fontSize:9,color:"#475569",marginTop:1}}>{k.l}</div>
           </div>
@@ -3729,106 +3729,209 @@ function ZiksatechTalent({ roster, jobReqs, addAudit, authProfile }) {
 function NaxonOSCommand({ addAudit, authProfile }) {
   const [aiLoad, setAiLoad] = useState(false);
   const [aiPlan, setAiPlan] = useState(null);
+  const [phase0, setPhase0] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("zt-naxon-phase0")||"null");
+      if (saved) return saved;
+    } catch {}
+    return [
+      {id:"p0-1",company:"NTTA",contact:"VP IT",value:45000,stage:"Proposal",notes:"BRIM tolling audit — live engagement. Demo scheduled.",lastTouch:"2026-03-19"},
+      {id:"p0-2",company:"Oncor Electric",contact:"SAP Director",value:35000,stage:"Discovery",notes:"IS-U billing assessment. Initial call done.",lastTouch:"2026-03-10"},
+      {id:"p0-3",company:"PepsiCo/Plano",contact:"SAP CoE Lead",value:40000,stage:"Meeting",notes:"S/4HANA readiness. Meeting booked via LinkedIn.",lastTouch:"2026-03-15"},
+      {id:"p0-4",company:"Vistra Energy",contact:"CIO Office",value:50000,stage:"Outreach",notes:"BRIM + IS-U dual opportunity. Not yet contacted.",lastTouch:null},
+      {id:"p0-5",company:"Atmos Energy",contact:"IT PMO",value:30000,stage:"Outreach",notes:"IS-U upgrade assessment. Cold outreach started.",lastTouch:"2026-02-28"},
+    ];
+  });
+  const savePhase0 = (d) => {
+    setPhase0(d);
+    try { localStorage.setItem("zt-naxon-phase0", JSON.stringify(d)); } catch {}
+  };
 
-  // Safe localStorage reads with empty array fallbacks
-  const siPartners    = (() => { try { return JSON.parse(localStorage.getItem("zt-si-partners")||"null") || []; } catch { return []; } })();
-  const fcsData       = (() => { try { return JSON.parse(localStorage.getItem("zt-fcs-transactions")||"null") || []; } catch { return []; } })();
-  const talentData    = (() => { try { return JSON.parse(localStorage.getItem("zt-talent-candidates")||"null") || []; } catch { return []; } })();
-
-  const fmtK = v => v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1e3?`$${Math.round(v/1000)}K`:`$${Math.round(v)}`;
+  const siPartners = (() => { try { return JSON.parse(localStorage.getItem("zt-si-partners")||"null") || []; } catch { return []; } })();
+  const talentData = (() => { try { return JSON.parse(localStorage.getItem("zt-talent-candidates")||"null") || []; } catch { return []; } })();
+  const fmtK = v => v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1e3?"$"+Math.round(v/1000)+"K":"$"+Math.round(v);
 
   const activePartners = siPartners.filter(p=>p.status==="Active").length;
-  const siPipelineVal  = siPartners.flatMap(p=>p.deals||[]).filter(d=>d.status==="Active").reduce((s,d)=>s+(+d.value||0),0);
-  const fcsRevenue     = fcsData.filter(t=>t.type==="credit").reduce((s,t)=>s+Math.abs(t.amount),0);
-  const activeCandidate= talentData.filter(c=>["Screening","Interview","Offer"].includes(c.stage)).length;
-  const hiredCount     = talentData.filter(c=>c.stage==="Hired").length;
+  const activeCandidate = talentData.filter(c=>["Screening","Interview","Offer"].includes(c.stage)).length;
+  const wonPhase0 = phase0.filter(d=>d.stage==="Won").length;
+  const activePhase0 = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost");
+  const totalPhase0Pipeline = activePhase0.reduce((s,d)=>s+(+d.value||0),0);
+
+  const STAGES = [
+    {id:"Outreach",label:"Cold Outreach",color:"#64748b"},
+    {id:"Meeting",label:"Meeting Booked",color:"#38bdf8"},
+    {id:"Discovery",label:"Discovery Done",color:"#a78bfa"},
+    {id:"Proposal",label:"Proposal Sent",color:"#f59e0b"},
+    {id:"Won",label:"Won",color:"#34d399"},
+    {id:"Lost",label:"Lost",color:"#f87171"},
+  ];
+  const activeStages = STAGES.filter(s=>s.id!=="Won"&&s.id!=="Lost");
 
   const runAI = async () => {
     setAiLoad(true); setAiPlan(null);
     try {
       const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:700,
-          system:"You are Manju Murthy's AI strategic advisor for Naxon Systems — a WBE-certified SAP consulting firm (BRIM, IS-U) targeting utilities and tolling in DFW. Naxon launched Jan 2026. Phase-0 BRIM audits: $25K-$50K each. Breakeven = 7 deals.",
-          messages:[{role:"user",content:`Today: ${new Date().toDateString()}. Naxon: ${activePartners} active SI partners, SI pipeline $${Math.round(siPipelineVal/1000)}K, ${activeCandidate} candidates, ${hiredCount} hired, FCS revenue $${Math.round(fcsRevenue/1000)}K. Return JSON: {"headline":"sharp one-liner","topPriority":"most important thing today","quickWin":"achievable in 24hrs","sipitch":"one-liner to SI contact right now","riskToWatch":"biggest risk"}`}]
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,
+          system:"You are Manju Murthy's AI strategic advisor for Naxon Systems.",
+          messages:[{role:"user",content:"Today: "+new Date().toDateString()+". Phase-0 pipeline: "+fmtK(totalPhase0Pipeline)+", "+activePhase0.length+" active deals, "+wonPhase0+" won. SI partners: "+activePartners+" active. Candidates: "+activeCandidate+" active. Return JSON: {headline,topPriority,quickWin,sipitch,riskToWatch}"}]
         })
       });
       const data = await resp.json();
-      setAiPlan(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"")));
-    } catch(e){ setAiPlan({error:e.message}); }
+      setAiPlan(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+    } catch(e) { setAiPlan({error:e.message}); }
     setAiLoad(false);
   };
 
   return (
     <div>
-      <PH title="⚡ Naxon OS Command Center" sub="Phase-0 pipeline · SI partnerships · talent · FCS health · AI strategic advisor">
+      <PH title="Naxon OS Command Center" sub="Phase-0 pipeline - SI partnerships - talent - AI advisor">
         <button className="btn bp" style={{fontSize:11}} onClick={runAI} disabled={aiLoad}>
-          {aiLoad?"⏳ Analyzing...":"🤖 Naxon AI Advisor"}
+          {aiLoad?"Analyzing...":"Naxon AI Advisor"}
         </button>
       </PH>
+
+      {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:14}}>
-        {[
-          {l:"Active SI Partners",v:activePartners,     sub:"Mersol+LTIMindtree",color:"#34d399"},
-          {l:"SI Pipeline",       v:fmtK(siPipelineVal),sub:"active sub-contracts",color:"#34d399"},
-          {l:"FCS Revenue",       v:fmtK(fcsRevenue),  sub:"Mar 2026",           color:"#38bdf8"},
-          {l:"Candidates Active", v:activeCandidate,    sub:"in pipeline",        color:"#a78bfa"},
-          {l:"WBE/HUB Status",    v:"ACTIVE",           sub:"Cert maintained",    color:"#f59e0b"},
-        ].map(k=>(
-          <div key={k.l} className="card" style={{padding:"12px 14px",borderTop:`2px solid ${k.color}`}}>
-            <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>{k.l}</div>
-            <div style={{fontSize:18,fontWeight:800,color:k.color,fontFamily:"monospace"}}>{k.v}</div>
-            <div style={{fontSize:9,color:"#334155",marginTop:2}}>{k.sub}</div>
-          </div>
-        ))}
+        <div className="card" style={{padding:"12px 14px",borderTop:"2px solid #f59e0b"}}>
+          <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>Phase-0 Pipeline</div>
+          <div style={{fontSize:18,fontWeight:800,color:"#f59e0b",fontFamily:"monospace"}}>{fmtK(totalPhase0Pipeline)}</div>
+          <div style={{fontSize:9,color:"#334155"}}>{activePhase0.length} active deals</div>
+        </div>
+        <div className="card" style={{padding:"12px 14px",borderTop:"2px solid #34d399"}}>
+          <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>Phase-0 Won</div>
+          <div style={{fontSize:18,fontWeight:800,color:"#34d399",fontFamily:"monospace"}}>{wonPhase0} deals</div>
+          <div style={{fontSize:9,color:"#334155"}}>breakeven = 7</div>
+        </div>
+        <div className="card" style={{padding:"12px 14px",borderTop:"2px solid #38bdf8"}}>
+          <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>Active SI Partners</div>
+          <div style={{fontSize:18,fontWeight:800,color:"#38bdf8",fontFamily:"monospace"}}>{activePartners}</div>
+          <div style={{fontSize:9,color:"#334155"}}>Mersol+LTIMindtree</div>
+        </div>
+        <div className="card" style={{padding:"12px 14px",borderTop:"2px solid #a78bfa"}}>
+          <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>Candidates Active</div>
+          <div style={{fontSize:18,fontWeight:800,color:"#a78bfa",fontFamily:"monospace"}}>{activeCandidate}</div>
+          <div style={{fontSize:9,color:"#334155"}}>in pipeline</div>
+        </div>
+        <div className="card" style={{padding:"12px 14px",borderTop:"2px solid #4ade80"}}>
+          <div style={{fontSize:9,color:"#475569",textTransform:"uppercase",marginBottom:3}}>WBE/HUB Status</div>
+          <div style={{fontSize:18,fontWeight:800,color:"#4ade80",fontFamily:"monospace"}}>ACTIVE</div>
+          <div style={{fontSize:9,color:"#334155"}}>Cert maintained</div>
+        </div>
       </div>
+
+      {/* Phase 0 Pipeline Board */}
+      <div className="card" style={{padding:"14px 16px",marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0"}}>Phase 0 Pipeline — $25K to $50K Discovery Engagements</div>
+          <div style={{fontSize:10,color:"#475569"}}>Breakeven: {wonPhase0}/7 won — {7-Math.min(wonPhase0,7)} to go</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+          {activeStages.map(stage=>{
+            const deals = phase0.filter(d=>d.stage===stage.id);
+            const stageVal = deals.reduce((s,d)=>s+(+d.value||0),0);
+            return (
+              <div key={stage.id} style={{background:"#040a14",borderRadius:8,border:"1px solid "+stage.color+"22",minHeight:80}}>
+                <div style={{padding:"6px 10px",borderBottom:"1px solid "+stage.color+"33",display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:10,fontWeight:700,color:stage.color}}>{stage.label}</span>
+                  <span style={{fontSize:10,color:"#475569"}}>${Math.round(stageVal/1000)}K</span>
+                </div>
+                <div style={{padding:"6px 8px",display:"flex",flexDirection:"column",gap:6}}>
+                  {deals.map(d=>{
+                    const daysAgo = d.lastTouch ? Math.ceil((new Date()-new Date(d.lastTouch))/86400000) : 0;
+                    const stale = daysAgo > 14;
+                    return (
+                      <div key={d.id} style={{padding:"7px 9px",background:"#060d1c",borderRadius:6,border:"1px solid "+(stale?"#f59e0b33":"#1a2d45")}}>
+                        <div style={{fontSize:11,fontWeight:600,color:"#e2e8f0",marginBottom:2}}>{d.company}</div>
+                        <div style={{fontSize:9,color:"#475569"}}>{d.contact}</div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+                          <span style={{fontSize:10,color:"#34d399",fontFamily:"monospace"}}>${Math.round(+d.value/1000)}K</span>
+                          {stale&&<span style={{fontSize:8,color:"#f59e0b"}}>{daysAgo}d stale</span>}
+                        </div>
+                        {d.notes&&<div style={{fontSize:9,color:"#334155",marginTop:3}}>{d.notes.slice(0,55)}{d.notes.length>55?"...":""}</div>}
+                        <select style={{width:"100%",marginTop:5,background:"#040810",color:"#475569",border:"1px solid #1a2d45",borderRadius:4,fontSize:9,padding:"2px"}}
+                          value={d.stage}
+                          onChange={e=>{
+                            const newStage = e.target.value;
+                            savePhase0(phase0.map(x=>x.id===d.id?{...x,stage:newStage,lastTouch:new Date().toISOString().slice(0,10)}:x));
+                          }}>
+                          {STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                        </select>
+                      </div>
+                    );
+                  })}
+                  {deals.length===0&&<div style={{fontSize:9,color:"#1e3a5f",textAlign:"center",padding:"8px 0"}}>empty</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{marginTop:8,display:"flex",gap:8}}>
+          {phase0.filter(d=>d.stage==="Won").length>0&&(
+            <div style={{padding:"5px 10px",background:"#021f14",borderRadius:6,border:"1px solid #22c55e33",fontSize:10,color:"#34d399"}}>
+              Won: {phase0.filter(d=>d.stage==="Won").map(d=>d.company).join(", ")}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* AI Brief */}
       {aiPlan&&!aiPlan.error&&(
         <div style={{padding:"14px 16px",marginBottom:14,background:"#060d1c",border:"1px solid #0369a155",borderRadius:10}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#38bdf8",marginBottom:8}}>⚡ Naxon Strategic Brief</div>
-          {aiPlan.headline&&<div style={{fontSize:11,color:"#e2e8f0",marginBottom:8,fontStyle:"italic",padding:"5px 10px",background:"#0c1a2e",borderRadius:5}}>"{aiPlan.headline}"</div>}
+          <div style={{fontSize:12,fontWeight:700,color:"#38bdf8",marginBottom:8}}>Naxon Strategic Brief</div>
+          {aiPlan.headline&&<div style={{fontSize:11,color:"#e2e8f0",marginBottom:8,fontStyle:"italic",padding:"5px 10px",background:"#0c1a2e",borderRadius:5}}>{aiPlan.headline}</div>}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-            {[[aiPlan.topPriority,"🎯 Top Priority Today","#f59e0b"],[aiPlan.quickWin,"⚡ Quick Win (24hrs)","#34d399"]].map(([txt,label,color])=>txt&&(
-              <div key={label} style={{padding:"7px 10px",background:"#040a14",borderRadius:5,border:`1px solid ${color}22`}}>
-                <div style={{fontSize:9,color,marginBottom:2,fontWeight:700}}>{label}</div>
-                <div style={{fontSize:11,color:"#e2e8f0"}}>{txt}</div>
+            {aiPlan.topPriority&&(
+              <div style={{padding:"7px 10px",background:"#040a14",borderRadius:5,border:"1px solid #f59e0b22"}}>
+                <div style={{fontSize:9,color:"#f59e0b",marginBottom:2,fontWeight:700}}>Top Priority Today</div>
+                <div style={{fontSize:11,color:"#e2e8f0"}}>{aiPlan.topPriority}</div>
               </div>
-            ))}
+            )}
+            {aiPlan.quickWin&&(
+              <div style={{padding:"7px 10px",background:"#040a14",borderRadius:5,border:"1px solid #34d39922"}}>
+                <div style={{fontSize:9,color:"#34d399",marginBottom:2,fontWeight:700}}>Quick Win (24hrs)</div>
+                <div style={{fontSize:11,color:"#e2e8f0"}}>{aiPlan.quickWin}</div>
+              </div>
+            )}
           </div>
           {aiPlan.sipitch&&<div style={{padding:"6px 10px",background:"#021f14",borderRadius:5,border:"1px solid #15803d33",fontSize:10,color:"#4ade80",marginBottom:4}}>
             <span style={{fontSize:9,color:"#15803d",fontWeight:700,marginRight:6}}>SI PITCH:</span>{aiPlan.sipitch}
           </div>}
-          {aiPlan.riskToWatch&&<div style={{fontSize:10,color:"#f87171"}}>⚠ Watch: {aiPlan.riskToWatch}</div>}
+          {aiPlan.riskToWatch&&<div style={{fontSize:10,color:"#f87171"}}>Risk: {aiPlan.riskToWatch}</div>}
         </div>
       )}
+
+      {/* SI + Talent grid */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <div className="card" style={{padding:"14px"}}>
-          <div className="section-hdr" style={{marginBottom:8}}>🤝 SI Partnerships</div>
+          <div className="section-hdr" style={{marginBottom:8}}>SI Partnerships</div>
           {siPartners.slice(0,5).map((p,i)=>(
             <div key={p.id||i} style={{display:"flex",gap:8,alignItems:"center",padding:"5px 0",borderBottom:"1px solid #0a1626"}}>
-              <div style={{width:22,height:22,borderRadius:"50%",background:"#0c2340",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#38bdf8",flexShrink:0}}>{(p.logo||p.name?.[0]||"?")}</div>
+              <div style={{width:22,height:22,borderRadius:"50%",background:"#0c2340",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#38bdf8",flexShrink:0}}>{p.name?.[0]||"?"}</div>
               <div style={{flex:1,fontSize:10,color:"#e2e8f0"}}>{p.name}</div>
               <span style={{fontSize:9,fontWeight:700,color:p.status==="Active"?"#34d399":p.status==="Targeting"?"#38bdf8":"#64748b"}}>{p.status}</span>
             </div>
           ))}
-          {siPartners.length===0&&<div style={{fontSize:10,color:"#334155"}}>No SI partners yet — go to SI Sub-Contracting to add them</div>}
+          {siPartners.length===0&&<div style={{fontSize:10,color:"#334155"}}>No SI partners yet</div>}
         </div>
         <div className="card" style={{padding:"14px"}}>
-          <div className="section-hdr" style={{marginBottom:8}}>🎯 Talent Pipeline</div>
+          <div className="section-hdr" style={{marginBottom:8}}>Talent Pipeline</div>
           {["Screening","Interview","Offer","Hired"].map(stage=>{
             const n = talentData.filter(c=>c.stage===stage).length;
-            const colors = {Screening:"#a78bfa",Interview:"#f59e0b",Offer:"#34d399",Hired:"#4ade80"};
-            const color = colors[stage]||"#64748b";
+            const stageColors = {"Screening":"#a78bfa","Interview":"#f59e0b","Offer":"#34d399","Hired":"#4ade80"};
+            const stageColor = stageColors[stage]||"#64748b";
             return (
               <div key={stage} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid #0a1626"}}>
                 <span style={{fontSize:10,color:"#94a3b8"}}>{stage}</span>
-                <span style={{fontSize:12,fontWeight:700,color}}>{n}</span>
+                <span style={{fontSize:12,fontWeight:700,color:stageColor}}>{n}</span>
               </div>
             );
           })}
-          {talentData.length===0&&<div style={{fontSize:10,color:"#334155"}}>No candidates yet — go to Talent Pipeline to add them</div>}
         </div>
       </div>
     </div>
   );
 }
+
 
 export default function ZiksatechOps() {
   const [tab, setTab] = useState(() => {
@@ -4057,6 +4160,26 @@ export default function ZiksatechOps() {
     return () => window.removeEventListener("resize", handler);
   }, []);
   useEffect(()=>{ if(isMobile) setSideOpen(false); }, [tab]);
+
+  // ── Global custom events ────────────────────────────────────────────────────
+  useEffect(()=>{
+    const navHandler = (e) => { if(e.detail) setTab(e.detail); };
+    const quickTsHandler = (e) => {
+      if (!e.detail) return;
+      const d = e.detail;
+      const ts = { id:"ts-"+Date.now(), memberId:d.memberId, memberName:d.memberName,
+        clientName:d.client||"", billRate:d.billRate||0,
+        period:new Date().toISOString().slice(0,7), status:"draft", hours:0,
+        createdAt:new Date().toISOString() };
+      setTsSubmissions(prev => [ts, ...(prev||[])]);
+    };
+    window.addEventListener("zt-nav", navHandler);
+    window.addEventListener("zt-quick-ts", quickTsHandler);
+    return () => {
+      window.removeEventListener("zt-nav", navHandler);
+      window.removeEventListener("zt-quick-ts", quickTsHandler);
+    };
+  }, []);
 
   // ── Auth bootstrap — restore session on load ───────────────────────────────
   useEffect(()=>{
@@ -15235,7 +15358,7 @@ function CRMDeals({ crmAccounts, crmContacts, crmDeals, setCrmDeals, crmActiviti
                       <span style={{fontSize:11,fontWeight:700,color:stage.color}}>{stage.label}</span>
                       <span style={{fontSize:10,color:"#334155"}}>{stageDeals.length} · {fmt(stageValue)}</span>
                     </div>
-                    <div style={{minHeight:200,background:"#060d1c",border:`1px solid ${stage.color}33`,borderRadius:"0 0 8px 8px",padding:8,display:"flex",flexDirection:"column",gap:6}}
+                    <div style={{minHeight:200,background:"#060d1c",border:("1px solid "+stage.color+"33"),borderRadius:"0 0 8px 8px",padding:8,display:"flex",flexDirection:"column",gap:6}}
                       onDragOver={e=>e.preventDefault()}
                       onDrop={e=>{
                         e.preventDefault();
@@ -15925,6 +16048,34 @@ function ContractsOverview({ contracts, sows, crmAccounts }) {
 
   return (
     <div>
+      {/* Contract renewal alert banner */}
+      {(() => {
+        const expiring60 = contracts.filter(c=>{
+          if(!c.endDate||!["active","expiring"].includes(c.status)) return false;
+          const d=Math.ceil((new Date(c.endDate)-new Date())/86400000);
+          return d>=0&&d<=60;
+        });
+        if(!expiring60.length) return null;
+        return (
+          <div style={{marginBottom:14,padding:"10px 16px",background:"#1a0805",border:"1px solid #fb923c44",borderRadius:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#fb923c",marginBottom:6}}>🔔 {expiring60.length} contract{expiring60.length>1?"s":""} expiring in the next 60 days</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {expiring60.map(c=>{
+                const d=Math.ceil((new Date(c.endDate)-new Date())/86400000);
+                return (
+                  <span key={c.id} style={{fontSize:10,padding:"3px 9px",borderRadius:6,
+                    background:d<=30?"#1a0808":"#1a0f05",
+                    color:d<=30?"#f87171":"#fb923c",
+                    border:`1px solid ${d<=30?"#f8717144":"#fb923c44"}`}}>
+                    {c.name} — {d}d ({c.client||crmAccounts?.find(a=>a.id===c.accountId)?.name||"Client"})
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
         {[
           {l:"Active Contracts", v:active,     c:"#34d399"},
