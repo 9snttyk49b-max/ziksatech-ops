@@ -43434,16 +43434,50 @@ Return ONLY JSON — be specific, use company names and numbers:
             </div>
           </div>
 
-          {/* Recent activity */}
+          {/* Pending Approvals — admin only */}
+          {isAdminRole && (() => {
+            const pendingPTO  = (ptoRequests||[]).filter(r=>r.status==="pending");
+            const pendingTS   = (shared?.tsSubmissions||[]).filter(s=>s.status==="submitted");
+            const total = pendingPTO.length + pendingTS.length;
+            if (total === 0) return null;
+            return (
+              <div style={{background:"#1a0a00",border:"1px solid #f59e0b33",borderRadius:12,padding:"12px 16px",marginBottom:8}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8}}>⏳ Pending Approvals ({total})</div>
+                {pendingPTO.slice(0,2).map(r=>(
+                  <div key={r.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a0600",fontSize:11}}>
+                    <span style={{color:"#94a3b8"}}>🏖️ {r.name||r.memberId} — {r.days}d {r.type}</span>
+                    <button className="btn bp" style={{fontSize:9,padding:"2px 8px"}} onClick={()=>setTab("pto")}>Review</button>
+                  </div>
+                ))}
+                {pendingTS.slice(0,2).map(s=>(
+                  <div key={s.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0a0600",fontSize:11}}>
+                    <span style={{color:"#94a3b8"}}>⏱️ {s.consultantName||s.memberId} — {s.periodLabel||s.period}</span>
+                    <button className="btn bp" style={{fontSize:9,padding:"2px 8px"}} onClick={()=>setTab("timesheet")}>Review</button>
+                  </div>
+                ))}
+                {total > 4 && <div style={{fontSize:9,color:"#f59e0b",marginTop:4}}>+{total-4} more pending…</div>}
+              </div>
+            );
+          })()}
+
+          {/* Recent activity — upgraded */}
           {safeAudit.length > 0 && (
             <div style={{ background:"#060d1c", border:"1px solid #1a2d45", borderRadius:12, padding:"14px 16px" }}>
               <div style={{ fontSize:12, fontWeight:700, color:"#e2e8f0", marginBottom:10 }}>🕐 Recent Activity</div>
-              {safeAudit.slice(0,6).map((a,i) => (
-                <div key={i} style={{ padding:"6px 0", borderBottom:"1px solid #0a1626", fontSize:11 }}>
-                  <div style={{ color:"#94a3b8" }}>{a.action} — <span style={{color:"#475569"}}>{a.entity}</span></div>
-                  <div style={{ fontSize:9, color:"#334155", marginTop:1 }}>{a.user} · {a.module}</div>
-                </div>
-              ))}
+              {safeAudit.slice().reverse().slice(0,8).map((a,i) => {
+                const modColors = {"Finance":"#34d399","CRM":"#38bdf8","Hiring":"#a78bfa","CMS":"#a78bfa","PTO":"#f59e0b","Invoice":"#34d399","MAE":"#f59e0b","Timesheet":"#64748b","Roster":"#38bdf8","Immigration":"#f87171"};
+                const c = modColors[a.module] || "#475569";
+                const timeAgo = a.timestamp ? (() => { const d=Math.round((Date.now()-new Date(a.timestamp))/60000); return d<2?"just now":d<60?d+"m ago":Math.round(d/60)+"h ago"; })() : "";
+                return (
+                  <div key={i} style={{ padding:"6px 0", borderBottom:"1px solid #0a1626", fontSize:11, display:"flex", gap:8, alignItems:"center" }}>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:c,flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{ color:"#94a3b8" }}><span style={{color:c,fontWeight:600}}>{a.module}</span> · {a.action}{a.entity?" — "+a.entity:""}</div>
+                      <div style={{ fontSize:9, color:"#334155", marginTop:1 }}>{a.user}{timeAgo?" · "+timeAgo:""}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

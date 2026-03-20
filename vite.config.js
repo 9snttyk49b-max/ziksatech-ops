@@ -13,8 +13,19 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Only cache static assets — NOT the JS bundle (causes the stale version problem)
+        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
+          {
+            // JS chunks: network-first so new deploys load immediately
+            urlPattern: /\/assets\/index-.*\.js$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'js-bundle',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 2, maxAgeSeconds: 3600 },
+            },
+          },
           {
             urlPattern: /^https:\/\/yucvxkugtwlsvhqzpoqe\.supabase\.co\/.*/i,
             handler: 'NetworkFirst',
