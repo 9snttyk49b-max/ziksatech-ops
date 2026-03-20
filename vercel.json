@@ -1,5 +1,4 @@
 {
   "framework": "vite",
-  "outputDirectory": "dist",
-  "buildCommand": "node -e \"process.env.NODE_OPTIONS='--max-old-space-size=4096'\" && npm run build"
+  "outputDirectory": "dist"
 }
