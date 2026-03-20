@@ -109,6 +109,7 @@ const RBAC = {
   naxonlinkedin: ["super_admin","admin"],
   naxonkpi:      ["super_admin","admin"],
   naxonresearch: ["super_admin","admin"],
+  naxonreferral: ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4693,6 +4694,7 @@ export default function ZiksatechOps() {
     { id:"naxonlinkedin", label:"LinkedIn Posts 💼",          icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonkpi",      label:"Naxon KPIs 📊",             icon:ICONS.ebitda,   group:"Naxon OS" },
     { id:"naxonresearch", label:"Prospect Research 🔍",       icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"naxonreferral", label:"Referral & Partners 🤲",     icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5281,6 +5283,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="naxonlinkedin" && <NaxonLinkedIn addAudit={shared.addAudit}/>}
         {tab==="naxonkpi"      && <NaxonKPIDashboard addAudit={shared.addAudit}/>}
         {tab==="naxonresearch" && <NaxonProspectResearch addAudit={shared.addAudit}/>}
+        {tab==="naxonreferral" && <NaxonReferralCRM addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -44729,6 +44732,163 @@ function NaxonLinkedIn({ addAudit }) {
         </div>
       )}
       {output?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {output.error}</div>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON REFERRAL & PARTNER CRM
+// Tracks referral sources, warm intros, and partner relationships
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonReferralCRM({ addAudit }) {
+  const KEY = "zt-naxon-referrals";
+  const DEFAULT = [
+    {id:"r1", name:"Ravi Patel",    company:"Domino Technologies", rel:"SI Partner",  lastContact:"2026-03-10", status:"Active",   deals:"Sagar Myakala → PTC Inc", notes:"Active placement relationship. Key contact for Domino sub-contracting."},
+    {id:"r2", name:"Latha Sharma",  company:"Latha & Associates",  rel:"Attorney",    lastContact:"2026-03-15", status:"Active",   deals:"H1B transfers for team",  notes:"Immigration attorney. Critical for Kavita/Deepa H1B issues."},
+    {id:"r3", name:"SAP Community", company:"LinkedIn/SAP Network", rel:"Warm Intro",  lastContact:"2026-03-12", status:"Active",   deals:"PepsiCo intro pending",    notes:"LinkedIn BRIM group — potential warm intros to Oncor and PepsiCo."},
+    {id:"r4", name:"Mersol Contact",company:"Mersol (Juuhi M)",    rel:"SI Partner",  lastContact:"2026-03-01", status:"Active",   deals:"CAS/ACS staffing — prime", notes:"Prime contractor for CAS/ACS engagement. Sub-contracting through Mersol."},
+    {id:"r5", name:"WBE Network",   company:"DFWMBC / TX HUB",     rel:"Certification",lastContact:"2026-02-15",status:"Active",   deals:"Procurement preference",   notes:"WBE/HUB cert drives procurement advantage. Renew tracking needed."},
+  ];
+  const [refs, setRefs] = useState(()=>{try{return JSON.parse(localStorage.getItem(KEY)||"null")||DEFAULT;}catch{return DEFAULT;}});
+  const save = r => { setRefs(r); try{localStorage.setItem(KEY,JSON.stringify(r));}catch{} };
+  const [selId, setSelId] = useState("r1");
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({name:"",company:"",rel:"Warm Intro",lastContact:"",status:"Active",deals:"",notes:""});
+  const [aiLoad, setAiLoad] = useState(false);
+  const [aiMsg, setAiMsg] = useState(null);
+
+  const sel = refs.find(r=>r.id===selId)||refs[0];
+  const fv = k => e => setForm(p=>({...p,[k]:e.target.value}));
+
+  const REL_COLORS = {"SI Partner":"#38bdf8","Attorney":"#a78bfa","Warm Intro":"#34d399","Certification":"#f59e0b","Client":"#4ade80","Other":"#64748b"};
+  const stale = r => r.lastContact ? Math.ceil((new Date()-new Date(r.lastContact))/86400000) > 30 : true;
+
+  const generateOutreach = async () => {
+    if(!sel) return;
+    setAiLoad(true); setAiMsg(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,
+          system:"You are Manju Murthy's relationship manager for Naxon Systems. Write warm, personal outreach messages to maintain referral relationships.",
+          messages:[{role:"user",content:`Contact: ${sel.name} at ${sel.company} (${sel.rel}). Last contact: ${sel.lastContact||"a while ago"}. Context: ${sel.notes}. Deals/connection: ${sel.deals}.
+
+Write a brief, warm outreach message (3-4 sentences) to reconnect. Be specific, reference the relationship context. Return ONLY JSON: {"message":"the message text","subject":"subject line if email","timing":"best time to reach out","channel":"Email or LinkedIn or Phone"}`}]
+        })
+      });
+      const data = await resp.json();
+      setAiMsg(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+      addAudit?.("Naxon Referral","Outreach Draft","Naxon",`Message to ${sel.name}`);
+    } catch(e) { setAiMsg({error:e.message}); }
+    setAiLoad(false);
+  };
+
+  return (
+    <div>
+      <PH title="Referral & Partner CRM" sub="Naxon Systems — referral sources, warm intros, and strategic relationships">
+        <button className="btn bp" style={{fontSize:11}} onClick={()=>setAddOpen(true)}>+ Add Contact</button>
+      </PH>
+
+      {addOpen && (
+        <div style={{position:"fixed",inset:0,background:"#000a",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setAddOpen(false)}>
+          <div style={{background:"#0a1525",border:"1px solid #1a2d45",borderRadius:12,padding:24,width:420}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:16}}>Add Referral Contact</div>
+            <div style={{display:"grid",gap:10,marginBottom:16}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <FF label="Name"><input className="inp" value={form.name} onChange={fv("name")}/></FF>
+                <FF label="Company"><input className="inp" value={form.company} onChange={fv("company")}/></FF>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <FF label="Relationship">
+                  <select className="inp" value={form.rel} onChange={fv("rel")}>
+                    {Object.keys(REL_COLORS).map(r=><option key={r}>{r}</option>)}
+                  </select>
+                </FF>
+                <FF label="Status">
+                  <select className="inp" value={form.status} onChange={fv("status")}>
+                    <option>Active</option><option>Warm</option><option>Dormant</option>
+                  </select>
+                </FF>
+              </div>
+              <FF label="Deals / Connection"><input className="inp" value={form.deals} onChange={fv("deals")}/></FF>
+              <FF label="Notes"><textarea className="inp" rows={2} value={form.notes} style={{resize:"vertical"}} onChange={fv("notes")}/></FF>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button className="btn bg" onClick={()=>setAddOpen(false)}>Cancel</button>
+              <button className="btn bp" disabled={!form.name} onClick={()=>{
+                const nr = {...form,id:"r-"+Date.now(),lastContact:new Date().toISOString().slice(0,10)};
+                save([...refs,nr]); setSelId(nr.id); setAddOpen(false);
+                setForm({name:"",company:"",rel:"Warm Intro",lastContact:"",status:"Active",deals:"",notes:""});
+              }}>Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:16}}>
+        <div>
+          <div style={{fontSize:10,fontWeight:600,color:"#475569",marginBottom:8}}>Contacts ({refs.length})</div>
+          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+            {refs.map(r=>(
+              <button key={r.id} onClick={()=>{setSelId(r.id);setAiMsg(null);}}
+                style={{padding:"7px 10px",borderRadius:7,border:"1px solid "+(selId===r.id?"#0369a1":"#1a2d45"),
+                  background:selId===r.id?"#0c2040":"#060d1c",textAlign:"left",cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                  <span style={{fontSize:11,fontWeight:600,color:selId===r.id?"#38bdf8":"#64748b"}}>{r.name}</span>
+                  {stale(r)&&<span style={{fontSize:7,color:"#f59e0b",background:"#f59e0b18",padding:"1px 4px",borderRadius:3}}>stale</span>}
+                </div>
+                <div style={{fontSize:8,color:(REL_COLORS[r.rel]||"#334155"),fontWeight:600}}>{r.rel}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {sel&&(
+          <div>
+            <div style={{padding:"14px 16px",background:"#040a14",borderRadius:10,border:"1px solid #0369a133",marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <div>
+                  <div style={{fontSize:16,fontWeight:800,color:"#e2e8f0"}}>{sel.name}</div>
+                  <div style={{fontSize:11,color:"#475569"}}>{sel.company}</div>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{fontSize:9,color:REL_COLORS[sel.rel]||"#64748b",background:(REL_COLORS[sel.rel]||"#64748b")+"18",padding:"3px 8px",borderRadius:5,fontWeight:700}}>{sel.rel}</span>
+                  <span style={{fontSize:9,color:"#334155",background:"#040810",padding:"3px 8px",borderRadius:5}}>
+                    {sel.lastContact?`Last: ${sel.lastContact}`:"Never contacted"}
+                  </span>
+                </div>
+              </div>
+              {sel.deals&&(
+                <div style={{marginBottom:8,padding:"7px 10px",background:"#060d1c",borderRadius:6,fontSize:10,color:"#94a3b8"}}>
+                  <span style={{color:"#475569",fontWeight:600}}>Connection: </span>{sel.deals}
+                </div>
+              )}
+              {sel.notes&&<div style={{fontSize:11,color:"#475569",lineHeight:1.6}}>{sel.notes}</div>}
+              <div style={{marginTop:12,display:"flex",gap:8}}>
+                <button className="btn bp" style={{fontSize:11}} onClick={generateOutreach} disabled={aiLoad}>
+                  {aiLoad?"Drafting...":"✉️ Draft Outreach Message"}
+                </button>
+                <button className="btn bg" style={{fontSize:11}} onClick={()=>{
+                  save(refs.map(r=>r.id===sel.id?{...r,lastContact:new Date().toISOString().slice(0,10)}:r));
+                  addAudit?.("Naxon Referral","Contacted","Naxon",sel.name);
+                }}>✓ Mark Contacted</button>
+              </div>
+            </div>
+
+            {aiMsg&&!aiMsg.error&&(
+              <div style={{padding:"14px 16px",background:"#040a14",borderRadius:10,border:"1px solid #0369a133"}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                  <div style={{fontSize:10,color:"#38bdf8",fontWeight:700,textTransform:"uppercase"}}>Outreach Message</div>
+                  <div style={{fontSize:9,color:"#475569"}}>via {aiMsg.channel} · {aiMsg.timing}</div>
+                </div>
+                {aiMsg.subject&&<div style={{fontSize:11,color:"#f59e0b",fontWeight:600,marginBottom:6}}>Subject: {aiMsg.subject}</div>}
+                <div style={{fontSize:12,color:"#e2e8f0",lineHeight:1.8,marginBottom:10,padding:"10px 12px",background:"#060d1c",borderRadius:6}}>{aiMsg.message}</div>
+                <button className="btn bg" style={{fontSize:11}} onClick={()=>navigator.clipboard.writeText((aiMsg.subject?"Subject: "+aiMsg.subject+"\n\n":"")+aiMsg.message)}>Copy Message</button>
+              </div>
+            )}
+            {aiMsg?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {aiMsg.error}</div>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
