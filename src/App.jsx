@@ -43994,6 +43994,35 @@ Return ONLY JSON — be specific, use company names and numbers:
         </div>
       </div>
 
+      {/* Today at a Glance — admin only */}
+      {isAdminRole && (() => {
+        const phase0 = (() => { try { return JSON.parse(localStorage.getItem("zt-naxon-phase0")||"[]"); } catch { return []; } })();
+        const staleCount = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost"&&d.lastTouch&&Math.ceil((new Date()-new Date(d.lastTouch))/86400000)>14).length;
+        const hotCount = phase0.filter(d=>["Proposal","Discovery"].includes(d.stage)).length;
+        const benchFTE = (roster||[]).filter(r=>(r.util||0)===0&&r.type==="FTE").length;
+        const overdueInv = (finInvoices||[]).filter(i=>i.status==="overdue").length;
+        const items = [
+          {label:"Phase-0 Pipeline", value:`$${Math.round(phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").reduce((s,d)=>s+(+d.value||0),0)/1000)}K`, color:"#f59e0b", tab:"naxonos"},
+          {label:"Hot Deals", value:hotCount, color:hotCount>0?"#34d399":"#334155", tab:"naxondealclose"},
+          {label:"Stale Deals", value:staleCount, color:staleCount>0?"#f87171":"#334155", tab:"naxonemail"},
+          {label:"Bench FTEs", value:benchFTE, color:benchFTE>0?"#f59e0b":"#334155", tab:"capacity"},
+          {label:"Overdue AR", value:overdueInv, color:overdueInv>0?"#f87171":"#334155", tab:"invoices"},
+          {label:"Active Candidates", value:(candidates||[]).filter(c=>["Screening","Interview","Offer"].includes(c.stage)).length, color:"#38bdf8", tab:"cms"},
+        ];
+        return (
+          <div style={{display:"flex",gap:0,marginBottom:12,background:"#040810",borderRadius:10,border:"1px solid #1a2d45",overflow:"hidden"}}>
+            {items.map((item,i)=>(
+              <div key={i} onClick={()=>setTab(item.tab)} style={{flex:1,padding:"8px 10px",borderRight:i<items.length-1?"1px solid #1a2d45":"none",cursor:"pointer",transition:"background 0.1s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#0a1828"}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div style={{fontSize:16,fontWeight:800,color:item.color,fontFamily:"monospace",lineHeight:1}}>{item.value}</div>
+                <div style={{fontSize:8,color:"#334155",marginTop:2}}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Smart Daily Brief — auto-loads for admins each morning */}
       {isAdminRole && (
         <div style={{marginBottom:14}}>
