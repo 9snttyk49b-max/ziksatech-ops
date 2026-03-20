@@ -114,7 +114,7 @@ const RBAC = {
   nttabilling:   ["super_admin","admin"],
     naxonresearch: ["super_admin","admin"],
   naxonreferral: ["super_admin","admin"],
-  meetingnotes:  ["super_admin","admin"],
+  naxonnotes:    ["super_admin","admin"],
   emailsequence: ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
@@ -4705,7 +4705,7 @@ export default function ZiksatechOps() {
     { id:"naxonkpi",      label:"Naxon KPIs 📊",             icon:ICONS.ebitda,   group:"Naxon OS" },
     { id:"naxonresearch", label:"Prospect Research 🔍",       icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonreferral", label:"Referral & Partners 🤲",     icon:ICONS.dash,     group:"Naxon OS" },
-    { id:"meetingnotes",   label:"Meeting Notes AI 🗒️",      icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"naxonnotes",     label:"Meeting Notes AI 🗒️",      icon:ICONS.dash,     group:"Naxon OS" },
     { id:"emailsequence",  label:"Email Sequences 📨",        icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
@@ -5296,7 +5296,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="naxonkpi"      && <NaxonKPIDashboard addAudit={shared.addAudit}/>}
         {tab==="naxonresearch" && <NaxonProspectResearch addAudit={shared.addAudit}/>}
         {tab==="naxonreferral" && <NaxonReferralCRM addAudit={shared.addAudit}/>}
-        {tab==="meetingnotes"  && <NaxonMeetingNotes addAudit={shared.addAudit}/>}
+        {tab==="naxonnotes"   && <NaxonMeetingNotes addAudit={shared.addAudit}/>}
         {tab==="emailsequence" && <NaxonEmailSequence addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
