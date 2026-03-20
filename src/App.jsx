@@ -1,4 +1,4 @@
-// v4.5.6 20260320T0545
+// v4.5.9
 // Ziksatech OPS Center v3.8.3-1773624151 — All components defined, stable build
 // Global PII masking helper — reads window.__ZT_MASK__ flag
 const mask = (val, type="text") => {
@@ -102,7 +102,8 @@ const RBAC = {
   naxongtm:     ["super_admin","admin"],
   naxonpricing: ["super_admin","admin"],
   discoverycall:["super_admin","admin"],
-  naxonemail:   ["super_admin","admin"],
+  naxonemail:    ["super_admin","admin"],
+  naxondealclose:["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -1871,7 +1872,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.5 · 100+ AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.9 · 100+ AI modules</span>
         </div>
         {children}
       </div>
@@ -4539,6 +4540,7 @@ export default function ZiksatechOps() {
     { id:"naxonpricing", label:"Pricing Calculator 🧮",    icon:ICONS.pl,       group:"Naxon OS" },
     { id:"discoverycall",label:"Discovery Call Prep 🎯",   icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonemail",   label:"Outreach Emails ✉️",       icon:ICONS.dash,     group:"Naxon OS" },
+    { id:"naxondealclose",label:"Deal Closer 🏁",           icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5121,6 +5123,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="naxonpricing" && <NaxonPricingCalc />}
         {tab==="discoverycall"&& <DiscoveryCallPrep crmAccounts={shared.crmAccounts} crmDeals={shared.crmDeals} addAudit={shared.addAudit}/>}
         {tab==="naxonemail"   && <NaxonOutreachEmail crmAccounts={shared.crmAccounts} addAudit={shared.addAudit}/>}
+        {tab==="naxondealclose"&& <NaxonDealCloser addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -5534,7 +5537,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.5 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.9 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
@@ -44133,10 +44136,12 @@ Return ONLY JSON — be specific, use company names and numbers:
             const phase0 = (() => { try { return JSON.parse(localStorage.getItem("zt-naxon-phase0")||"[]"); } catch { return []; } })();
             const activeDeals = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").length;
             const wonDeals = phase0.filter(d=>d.stage==="Won").length;
+            const staleDeals = phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost"&&d.lastTouch&&Math.ceil((new Date()-new Date(d.lastTouch))/86400000)>14);
+            const hotDeals = phase0.filter(d=>["Proposal","Discovery"].includes(d.stage));
             return (
               <div style={{marginBottom:8,padding:"10px 14px",background:"#040a18",border:"1px solid #0369a133",borderRadius:10}}>
                 <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:6}}>⚡ Naxon This Week</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:gtm?6:0}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}}>
                   <div style={{textAlign:"center"}}>
                     <div style={{fontSize:16,fontWeight:800,color:"#f59e0b",fontFamily:"monospace"}}>{activeDeals}</div>
                     <div style={{fontSize:8,color:"#334155"}}>active deals</div>
@@ -44146,8 +44151,18 @@ Return ONLY JSON — be specific, use company names and numbers:
                     <div style={{fontSize:8,color:"#334155"}}>breakeven</div>
                   </div>
                 </div>
+                {hotDeals.length>0&&(
+                  <div style={{fontSize:9,color:"#34d399",marginBottom:4}}>
+                    🔥 Hot: {hotDeals.map(d=>d.company).join(", ")}
+                  </div>
+                )}
+                {staleDeals.length>0&&(
+                  <div style={{fontSize:9,color:"#f59e0b",marginBottom:4}}>
+                    ⚠️ Stale: {staleDeals.map(d=>d.company).join(", ")}
+                  </div>
+                )}
                 {gtm && (
-                  <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>
                     {[["📞",gtm.calls||0,20],["✉️",gtm.emails||0,30],["💼",gtm.linkedinDMs||0,20]].map(([e,v,t])=>(
                       <span key={e} style={{fontSize:9,padding:"2px 5px",borderRadius:4,
                         background:v>=t?"#021f14":v>=t*0.5?"#0c1a00":"#1a0808",
@@ -44157,8 +44172,11 @@ Return ONLY JSON — be specific, use company names and numbers:
                     ))}
                   </div>
                 )}
-                {!gtm && <div style={{fontSize:9,color:"#334155"}}>→ Log GTM activity this week</div>}
-                <button className="btn bg" style={{fontSize:9,marginTop:5,width:"100%"}} onClick={()=>setTab("naxongtm")}>GTM Weekly →</button>
+                {!gtm && <div style={{fontSize:9,color:"#334155",marginBottom:4}}>→ Log GTM activity this week</div>}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+                  <button className="btn bg" style={{fontSize:9}} onClick={()=>setTab("naxonos")}>Pipeline →</button>
+                  <button className="btn bg" style={{fontSize:9}} onClick={()=>setTab("discoverycall")}>Call Prep →</button>
+                </div>
               </div>
             );
           })()}
@@ -44334,6 +44352,178 @@ function PayRateCalc() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON DEAL CLOSER
+// AI advisor for closing each specific Phase-0 deal
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonDealCloser({ addAudit }) {
+  const DEALS = [
+    {id:"ntta",  company:"NTTA",          stage:"Proposal",  value:45000, contact:"VP IT",         days:1,  context:"BRIM tolling audit. Demo was scheduled. Manju has live NTTA production experience."},
+    {id:"oncor", company:"Oncor Electric", stage:"Discovery", value:35000, contact:"SAP Director",  days:10, context:"IS-U billing assessment. Initial call completed. Awaiting next step."},
+    {id:"pep",   company:"PepsiCo/Plano", stage:"Meeting",   value:40000, contact:"SAP CoE Lead",  days:5,  context:"S/4HANA readiness. Meeting was booked. Need to confirm and run the call."},
+    {id:"vis",   company:"Vistra Energy", stage:"Outreach",  value:50000, contact:"CIO Office",    days:0,  context:"BRIM + IS-U dual opportunity. No contact yet. Highest value in pipeline."},
+    {id:"atmos", company:"Atmos Energy",  stage:"Outreach",  value:30000, contact:"IT PMO",        days:21, context:"IS-U upgrade assessment. 21 days stale — critical to re-engage now."},
+  ];
+
+  const [selId, setSelId] = useState("ntta");
+  const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState(null);
+  const [outcome, setOutcome] = useState("");
+
+  // Load phase0 state from localStorage
+  const phase0 = (() => { try { return JSON.parse(localStorage.getItem("zt-naxon-phase0")||"[]"); } catch { return []; } })();
+  const liveData = (id) => phase0.find(d=>d.company===DEALS.find(d=>d.id===id)?.company)||null;
+
+  const sel = DEALS.find(d=>d.id===selId)||DEALS[0];
+  const live = liveData(selId);
+
+  const generate = async () => {
+    setLoading(true); setPlan(null);
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,
+          system:"You are Manju Murthy's deal strategy advisor for Naxon Systems. Manju has 25+ years SAP BRIM/IS-U experience and personally led NTTA's BRIM tolling transformation. His WBE certification is a differentiator for diverse supplier requirements. Be extremely specific — no generic advice. Every action should be executable today.",
+          messages:[{role:"user",content:`Deal: ${sel.company} (${sel.stage} stage)
+Value: $${Math.round(sel.value/1000)}K Phase-0 audit
+Contact: ${sel.contact}
+Days since last touch: ${live?.lastTouch?Math.ceil((new Date()-new Date(live.lastTouch))/86400000):(sel.days||0)}
+Context: ${live?.notes||sel.context}
+Outcome wanted: ${outcome||"Move to next stage / close the deal"}
+
+Return ONLY JSON:
+{
+  "urgency": "CRITICAL|HIGH|MEDIUM",
+  "situationAssessment": "2-sentence honest assessment of where this deal stands",
+  "immediateAction": "the single most important thing to do in the next 2 hours",
+  "threeDayPlan": [
+    {"day": "Today", "action": "specific executable action", "channel": "Phone|Email|LinkedIn"},
+    {"day": "Tomorrow", "action": "specific executable action", "channel": "Phone|Email|LinkedIn"},
+    {"day": "Day 3", "action": "specific executable action", "channel": "Phone|Email|LinkedIn"}
+  ],
+  "bestPitch": "the sharpest 2-sentence pitch for this specific company and contact",
+  "dealRisk": "what could cause this deal to die",
+  "closingMove": "the specific ask that moves this to signed SOW",
+  "valueHook": "the ONE number/fact that makes them say yes"
+}`}]
+        })
+      });
+      const data = await resp.json();
+      setPlan(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+      addAudit?.("Deal Closer","Plan Generated","Naxon",`Plan for ${sel.company}`);
+    } catch(e) { setPlan({error:e.message}); }
+    setLoading(false);
+  };
+
+  const urgencyColor = {"CRITICAL":"#f87171","HIGH":"#f59e0b","MEDIUM":"#38bdf8"};
+  const stageColor = {"Proposal":"#f59e0b","Discovery":"#a78bfa","Meeting":"#38bdf8","Outreach":"#64748b"};
+
+  return (
+    <div>
+      <PH title="Deal Closer" sub="Naxon Systems — AI strategy for closing each Phase-0 deal"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:10}}>Select Deal</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:12}}>
+            {DEALS.map(d=>{
+              const liveDeal = liveData(d.id);
+              const daysStale = liveDeal?.lastTouch ? Math.ceil((new Date()-new Date(liveDeal.lastTouch))/86400000) : d.days;
+              return (
+                <button key={d.id} onClick={()=>{setSelId(d.id); setPlan(null);}}
+                  style={{padding:"9px 12px",borderRadius:8,border:"1px solid "+(selId===d.id?"#0369a1":"#1a2d45"),
+                    background:selId===d.id?"#0c2040":"#060d1c",textAlign:"left",cursor:"pointer",transition:"all 0.1s"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                    <span style={{fontSize:12,fontWeight:700,color:selId===d.id?"#38bdf8":"#475569"}}>{d.company}</span>
+                    <div style={{display:"flex",gap:5}}>
+                      {daysStale>14&&<span style={{fontSize:8,color:"#f59e0b",background:"#f59e0b18",padding:"1px 5px",borderRadius:3}}>{daysStale}d stale</span>}
+                      <span style={{fontSize:9,color:stageColor[d.stage]||"#64748b",background:(stageColor[d.stage]||"#64748b")+"18",padding:"1px 6px",borderRadius:4}}>{d.stage}</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:10,color:"#334155"}}>${Math.round(d.value/1000)}K · {d.contact}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div style={{padding:"12px 14px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45",marginBottom:12,fontSize:11,color:"#475569",lineHeight:1.5}}>
+            <div style={{fontSize:9,color:"#3d5a7a",fontWeight:700,marginBottom:4}}>DEAL CONTEXT</div>
+            {live?.notes||sel.context}
+          </div>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:10,color:"#475569",marginBottom:6}}>What outcome do you want from this action?</div>
+            <select className="inp" value={outcome} onChange={e=>setOutcome(e.target.value)}>
+              <option value="">Move to next stage / close</option>
+              <option value="Schedule a discovery call">Schedule a discovery call</option>
+              <option value="Get a signed SOW">Get a signed SOW</option>
+              <option value="Re-engage after no response">Re-engage after no response</option>
+              <option value="Present the proposal">Present the proposal</option>
+              <option value="Handle price objection">Handle price objection</option>
+            </select>
+          </div>
+          <button className="btn bp" style={{width:"100%",padding:"11px",fontSize:13,fontWeight:700}} onClick={generate} disabled={loading}>
+            {loading?"Building deal strategy...":"Generate Deal Strategy"}
+          </button>
+        </div>
+      </div>
+
+      {plan&&!plan.error&&(
+        <div style={{display:"grid",gap:12}}>
+          {/* Urgency + assessment */}
+          <div style={{padding:"12px 16px",background:plan.urgency==="CRITICAL"?"#100404":"#040a14",borderRadius:10,border:"1px solid "+(urgencyColor[plan.urgency]||"#38bdf8")+"33",display:"flex",gap:14,alignItems:"flex-start"}}>
+            <div style={{padding:"4px 10px",borderRadius:6,background:(urgencyColor[plan.urgency]||"#38bdf8")+"18",color:urgencyColor[plan.urgency]||"#38bdf8",fontSize:10,fontWeight:800,flexShrink:0}}>{plan.urgency}</div>
+            <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>{plan.situationAssessment}</div>
+          </div>
+
+          {/* Immediate action */}
+          <div style={{padding:"12px 16px",background:"#0c2040",borderRadius:10,border:"1px solid #0369a133"}}>
+            <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>⚡ Do This In The Next 2 Hours</div>
+            <div style={{fontSize:13,color:"#e2e8f0",fontWeight:600}}>{plan.immediateAction}</div>
+          </div>
+
+          {/* 3-day plan */}
+          <div style={{padding:"12px 16px",background:"#060d1c",borderRadius:10,border:"1px solid #1a2d45"}}>
+            <div style={{fontSize:9,color:"#a78bfa",fontWeight:700,marginBottom:10,textTransform:"uppercase"}}>3-Day Action Plan</div>
+            <div style={{display:"grid",gap:8}}>
+              {(plan.threeDayPlan||[]).map((step,i)=>(
+                <div key={i} style={{display:"flex",gap:10,padding:"8px 12px",background:"#040810",borderRadius:6}}>
+                  <div style={{fontSize:10,color:"#a78bfa",fontWeight:700,minWidth:64,flexShrink:0}}>{step.day}</div>
+                  <div style={{flex:1,fontSize:11,color:"#94a3b8"}}>{step.action}</div>
+                  <div style={{fontSize:9,color:"#334155",flexShrink:0,padding:"2px 6px",background:"#0a1626",borderRadius:4}}>{step.channel}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{padding:"12px 14px",background:"#021f14",borderRadius:8,border:"1px solid #22c55e33"}}>
+              <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Best Pitch</div>
+              <div style={{fontSize:11,color:"#4ade80",lineHeight:1.5,fontStyle:"italic"}}>{plan.bestPitch}</div>
+            </div>
+            <div style={{padding:"12px 14px",background:"#0c1a2e",borderRadius:8,border:"1px solid #38bdf833"}}>
+              <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Value Hook</div>
+              <div style={{fontSize:11,color:"#fbbf24",lineHeight:1.5}}>{plan.valueHook}</div>
+            </div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #34d39933"}}>
+              <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Closing Move</div>
+              <div style={{fontSize:11,color:"#94a3b8"}}>{plan.closingMove}</div>
+            </div>
+            <div style={{padding:"12px 14px",background:"#1a0808",borderRadius:8,border:"1px solid #f8717133"}}>
+              <div style={{fontSize:9,color:"#f87171",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Deal Risk</div>
+              <div style={{fontSize:11,color:"#94a3b8"}}>{plan.dealRisk}</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {plan?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {plan.error}</div>}
     </div>
   );
 }
