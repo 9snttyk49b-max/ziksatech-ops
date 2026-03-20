@@ -1,4 +1,4 @@
-// v4.5.19
+// v4.5.20
 // Ziksatech OPS Center v3.8.3-1773624151 — All components defined, stable build
 // Global PII masking helper — reads window.__ZT_MASK__ flag
 const mask = (val, type="text") => {
@@ -1884,7 +1884,7 @@ function AuthCard({ children }) {
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:32}}>
           <span style={{color:"#38bdf8",fontWeight:900,fontSize:20,letterSpacing:1}}>◎ ZIKSATECH</span>
           <span style={{color:"#475569",fontSize:12,fontWeight:500,letterSpacing:2}}>OPS CENTER</span>
-          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.19 · 100+ AI modules</span>
+          <span style={{color:"#1e3a5f",fontSize:9,fontWeight:400,marginTop:2}}>v4.5.20 · 126 AI modules</span>
         </div>
         {children}
       </div>
@@ -5715,7 +5715,7 @@ Give today's executive brief. Return ONLY JSON:
           {weeklyDigest.motivationalNote&&<div style={{fontSize:11,color:"#f59e0b",borderTop:"1px solid #0a1626",paddingTop:8,fontStyle:"italic",marginTop:8}}>"{weeklyDigest.motivationalNote}"</div>}
         </div>
       )}
-      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.19 · CEO/COO view · All figures live">
+      <PH title="Executive Dashboard" sub="Ziksatech Ops Center · v4.5.20 · CEO/COO view · All figures live">
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button className="btn bp" style={{fontSize:11}} onClick={runDashBrief} disabled={aiDashLoading}>
             {aiDashLoading?"⏳ Briefing...":"🧠 AI Brief"}
@@ -44487,6 +44487,41 @@ Return ONLY JSON — be specific, use company names and numbers:
           )}
         </div>
       )}
+
+      {/* What's New banner — shows once per version */}
+      {isAdminRole && (() => {
+        const vKey = "zt-whats-new-v4520";
+        const [dismissed, setDismissed] = useState(()=>{try{return !!localStorage.getItem(vKey);}catch{return false;}});
+        if(dismissed) return null;
+        const newItems = [
+          "Meeting Notes AI — extract action items from discovery call transcripts",
+          "Email Sequence Scheduler — multi-touch cadences with full email bodies",
+          "P&L Monthly Summary — printable financial snapshot",
+          "ADP Payroll Export — CSV download for payroll upload",
+          "ERP Catalyst Cross-Link — direct access to AI deliverable generator",
+          "NTTA Billing Dashboard — Rajesh engagement tracker",
+          "Referral & Partner CRM — manage warm intros and key relationships",
+          "Today at a Glance — 6-tile homepage status bar",
+        ];
+        return (
+          <div style={{marginBottom:14,padding:"12px 16px",background:"linear-gradient(135deg,#040a14,#0c1a2e)",borderRadius:10,border:"1px solid #0369a155",position:"relative"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#38bdf8"}}>🎉 What's New in v4.5.20 — Feature Complete Release</div>
+              <button style={{background:"none",border:"none",color:"#334155",cursor:"pointer",fontSize:14,padding:"0 4px"}} onClick={()=>{
+                setDismissed(true); try{localStorage.setItem(vKey,"1");}catch{}
+              }}>✕</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 16px"}}>
+              {newItems.map((item,i)=>(
+                <div key={i} style={{fontSize:10,color:"#475569",padding:"2px 0",display:"flex",gap:5}}>
+                  <span style={{color:"#34d399",flexShrink:0}}>✓</span>{item}
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:8,fontSize:9,color:"#334155"}}>Ziksatech Ops Center v4.5.20 · 17 Naxon OS tools · 126 AI-powered features · ops.ziksatech.com</div>
+          </div>
+        );
+      })()}
 
       {/* Team Bulletin inline widget */}
       <TeamBulletin authProfile={authProfile} inline={true}/>
