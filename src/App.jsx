@@ -45221,6 +45221,38 @@ function NaxonKPIDashboard({ addAudit }) {
         </div>
         {phase0.length===0&&<div style={{fontSize:10,color:"#334155",textAlign:"center",padding:"10px 0"}}>No Phase-0 deals found — add them in the Command Center</div>}
       </div>
+
+      {/* Deal Velocity — days in stage */}
+      {phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").length>0&&(
+        <div className="card" style={{padding:"14px 16px",marginTop:16}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>Deal Velocity — Days Since Last Touch</div>
+          <div style={{display:"grid",gap:8}}>
+            {phase0.filter(d=>d.stage!=="Won"&&d.stage!=="Lost").map(d=>{
+              const days = d.lastTouch ? Math.ceil((new Date()-new Date(d.lastTouch))/86400000) : 0;
+              const maxDays = 30;
+              const pct = Math.min(100, Math.round((days/maxDays)*100));
+              const color = days>14?"#f87171":days>7?"#f59e0b":"#34d399";
+              const stageColors = {Outreach:"#64748b",Meeting:"#38bdf8",Discovery:"#a78bfa",Proposal:"#f59e0b"};
+              return (
+                <div key={d.id} style={{display:"flex",gap:10,alignItems:"center"}}>
+                  <div style={{minWidth:100,fontSize:11,color:"#e2e8f0",fontWeight:600}}>{d.company}</div>
+                  <div style={{fontSize:9,color:stageColors[d.stage]||"#64748b",minWidth:70}}>{d.stage}</div>
+                  <div style={{flex:1,height:6,background:"#0a1626",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:pct+"%",background:color,borderRadius:3,transition:"width 0.4s"}}/>
+                  </div>
+                  <div style={{fontSize:10,color,fontWeight:700,minWidth:40,textAlign:"right"}}>{days}d</div>
+                  {days>14&&<div style={{fontSize:8,color:"#f59e0b"}}>⚠️ stale</div>}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:10,fontSize:9,color:"#334155"}}>
+            <span style={{color:"#34d399"}}>■ 0-7d (fresh)</span>
+            <span style={{color:"#f59e0b"}}>■ 7-14d (warm)</span>
+            <span style={{color:"#f87171"}}>■ 14d+ (stale)</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
