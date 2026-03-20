@@ -108,6 +108,7 @@ const RBAC = {
   naxonsow:      ["super_admin","admin"],
   naxonlinkedin: ["super_admin","admin"],
   naxonkpi:      ["super_admin","admin"],
+  naxonresearch: ["super_admin","admin"],
   myprofile:    ["super_admin","admin","accounts","hr_immigration","employee","contractor"],
   auditlog:     ["super_admin"],           // audit log — super_admin ONLY
   settings:     ["super_admin"],
@@ -4594,6 +4595,7 @@ export default function ZiksatechOps() {
     { id:"naxonsow",      label:"SOW Quick-Draft 📝",        icon:ICONS.pl,       group:"Naxon OS" },
     { id:"naxonlinkedin", label:"LinkedIn Posts 💼",          icon:ICONS.dash,     group:"Naxon OS" },
     { id:"naxonkpi",      label:"Naxon KPIs 📊",             icon:ICONS.ebitda,   group:"Naxon OS" },
+    { id:"naxonresearch", label:"Prospect Research 🔍",       icon:ICONS.dash,     group:"Naxon OS" },
     { id:"talent",       label:"Talent Pipeline 🎯",       icon:ICONS.roster,   group:"Hiring"   },
     { id:"cms",          label:"Candidate CMS 🧑‍💼",          icon:ICONS.roster,   group:"Hiring"   },
       ];
@@ -5181,6 +5183,7 @@ body.light-mode body, body.light-mode #root { background: #f0f4f8 !important; }
         {tab==="naxonsow"      && <NaxonSOWDraft addAudit={shared.addAudit}/>}
         {tab==="naxonlinkedin" && <NaxonLinkedIn addAudit={shared.addAudit}/>}
         {tab==="naxonkpi"      && <NaxonKPIDashboard addAudit={shared.addAudit}/>}
+        {tab==="naxonresearch" && <NaxonProspectResearch addAudit={shared.addAudit}/>}
         {tab==="paffiles"   && <PAFFiles       {...shared} authProfile={authProfile} />}
         {tab==="adpstubs"   && <ADPPayStubs    {...shared} authProfile={authProfile} />}
         {tab==="reconcile"  && <ReconcileReport {...shared} authProfile={authProfile} />}
@@ -44600,6 +44603,228 @@ function NaxonLinkedIn({ addAudit }) {
         </div>
       )}
       {output?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {output.error}</div>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAXON PROSPECT RESEARCH
+// AI company intelligence for Phase-0 outreach preparation
+// ═══════════════════════════════════════════════════════════════════════
+function NaxonProspectResearch({ addAudit }) {
+  const PRESETS = [
+    {id:"ntta",   name:"NTTA",            industry:"Tolling/Utilities",  size:"$800M revenue",  hq:"Plano, TX",     sap:"SAP BRIM (live)",  notes:"Largest toll road in TX. Active BRIM engagement. Rajesh on-site at $185/hr."},
+    {id:"oncor",  name:"Oncor Electric",  industry:"Electric Utility",   size:"$4.5B revenue",  hq:"Dallas, TX",    sap:"SAP IS-U (legacy)",notes:"Largest transmission utility in TX. IS-U billing modernization likely needed."},
+    {id:"vistra", name:"Vistra Energy",   industry:"Energy/Power",       size:"$16B revenue",   hq:"Irving, TX",    sap:"SAP ECC/IS-U",    notes:"Large deregulated utility. BRIM + IS-U dual opportunity. Decision-makers: CIO office."},
+    {id:"atmos",  name:"Atmos Energy",    industry:"Gas Utility",        size:"$4.3B revenue",  hq:"Dallas, TX",    sap:"SAP IS-U",        notes:"Major gas distribution. IS-U upgrade assessment. 21 days stale — needs re-engage."},
+    {id:"pepsico",name:"PepsiCo/Plano",   industry:"CPG/Manufacturing",  size:"$91B revenue",   hq:"Plano, TX",     sap:"SAP ECC → S/4",   notes:"S/4HANA readiness discussion. Meeting booked via LinkedIn. Large SAP CoE."},
+    {id:"custom", name:"Custom Company",  industry:"",                   size:"",               hq:"",              sap:"",                notes:""},
+  ];
+
+  const [selId, setSelId]   = useState("ntta");
+  const [custom, setCustom] = useState({name:"",industry:"",size:"",hq:"",sap:"",notes:""});
+  const [research, setResearch] = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [mode, setMode]         = useState("full"); // full | pitch | objections | questions
+
+  const sel = selId==="custom" ? custom : (PRESETS.find(p=>p.id===selId)||PRESETS[0]);
+
+  const MODES = [
+    {id:"full",       label:"Full Intel Brief"},
+    {id:"pitch",      label:"Opening Pitch"},
+    {id:"objections", label:"Likely Objections"},
+    {id:"questions",  label:"Discovery Questions"},
+  ];
+
+  const generate = async () => {
+    setLoading(true); setResearch(null);
+    const modePrompt = {
+      full: `Return ONLY JSON: {"executiveSummary":"2-sentence company snapshot relevant to SAP BRIM/IS-U","sapLandscape":"their likely SAP footprint and pain points","buyingTriggers":["trigger1","trigger2","trigger3"],"keyStakeholders":[{"role":"CIO/VP IT","name":"likely title if known","approach":"how to reach them"}],"openingHook":"1 sentence that shows Manju knows their specific pain","wbeAngle":"how WBE cert helps win this account","estimatedBudget":"realistic Phase-0 budget range","winProbability":"HIGH/MEDIUM/LOW with one-line rationale","nextAction":"single most important thing to do today"}`,
+      pitch: `Return ONLY JSON: {"thirtySecondPitch":"exact 30-second verbal pitch Manju should use for this company","emailSubject":"best cold email subject line","firstSentence":"best opening email sentence that will get a reply","differentiator":"why Naxon specifically for this company"}`,
+      objections: `Return ONLY JSON: {"objections":[{"objection":"likely pushback","response":"Manju's scripted response","followUp":"if they still resist"}]}`,
+      questions: `Return ONLY JSON: {"discoveryQuestions":[{"question":"specific discovery question","why":"what you learn from this","idealAnswer":"what you want to hear"}]}`,
+    }[mode];
+    try {
+      const resp = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:900,
+          system:"You are a SAP BRIM/IS-U sales intelligence advisor for Manju Murthy, founder of Naxon Systems. Manju has 25+ years SAP BRIM/IS-U experience and led NTTA's BRIM tolling transformation. Naxon is WBE/HUB certified. Focus on utility and tolling industry specifics. Be precise — no generic consulting fluff.",
+          messages:[{role:"user",content:`Company: ${sel.name}\nIndustry: ${sel.industry}\nSize: ${sel.size}\nHQ: ${sel.hq}\nSAP Landscape: ${sel.sap}\nContext: ${sel.notes}\n\n${modePrompt}`}]
+        })
+      });
+      const data = await resp.json();
+      setResearch(JSON.parse((data.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim()));
+      addAudit?.("Prospect Research","Generated","Naxon",`Research: ${sel.name} (${mode})`);
+    } catch(e) { setResearch({error:e.message}); }
+    setLoading(false);
+  };
+
+  const winColor = {"HIGH":"#34d399","MEDIUM":"#f59e0b","LOW":"#f87171"};
+
+  return (
+    <div>
+      <PH title="Prospect Research" sub="Naxon Systems — AI company intelligence for Phase-0 outreach"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:16}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:10}}>Select Company</div>
+          <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:12}}>
+            {PRESETS.map(p=>(
+              <button key={p.id} onClick={()=>setSelId(p.id)}
+                style={{padding:"8px 12px",borderRadius:7,border:"1px solid "+(selId===p.id?"#0369a1":"#1a2d45"),
+                  background:selId===p.id?"#0c2040":"#060d1c",textAlign:"left",cursor:"pointer",fontSize:11,
+                  color:selId===p.id?"#e2e8f0":"#64748b",fontWeight:600}}>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{color:selId===p.id?"#38bdf8":"inherit"}}>{p.name}</span>
+                  <span style={{fontSize:9,color:"#334155"}}>{p.industry}</span>
+                </div>
+                {selId===p.id&&p.notes&&<div style={{fontSize:9,color:"#475569",marginTop:2}}>{p.notes.slice(0,60)}...</div>}
+              </button>
+            ))}
+          </div>
+          {selId==="custom"&&(
+            <div style={{display:"grid",gap:8}}>
+              <FF label="Company Name"><input className="inp" value={custom.name} onChange={e=>setCustom(p=>({...p,name:e.target.value}))}/></FF>
+              <FF label="Industry"><input className="inp" value={custom.industry} onChange={e=>setCustom(p=>({...p,industry:e.target.value}))}/></FF>
+              <FF label="Revenue / Size"><input className="inp" value={custom.size} onChange={e=>setCustom(p=>({...p,size:e.target.value}))}/></FF>
+              <FF label="HQ"><input className="inp" value={custom.hq} onChange={e=>setCustom(p=>({...p,hq:e.target.value}))}/></FF>
+              <FF label="Known SAP Landscape"><input className="inp" value={custom.sap} onChange={e=>setCustom(p=>({...p,sap:e.target.value}))}/></FF>
+              <FF label="Context / Notes"><textarea className="inp" rows={2} value={custom.notes} style={{resize:"vertical"}} onChange={e=>setCustom(p=>({...p,notes:e.target.value}))}/></FF>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div style={{fontSize:11,fontWeight:600,color:"#475569",marginBottom:10}}>Research Mode</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:16}}>
+            {MODES.map(m=>(
+              <button key={m.id} onClick={()=>setMode(m.id)}
+                style={{padding:"8px 10px",borderRadius:6,border:"1px solid "+(mode===m.id?"#0369a1":"#1a2d45"),
+                  background:mode===m.id?"#0c2040":"#060d1c",cursor:"pointer",fontSize:10,
+                  color:mode===m.id?"#38bdf8":"#475569",fontWeight:mode===m.id?700:400}}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          {sel.notes&&(
+            <div style={{padding:"10px 12px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45",fontSize:10,color:"#475569",lineHeight:1.5,marginBottom:14}}>
+              {sel.notes}
+            </div>
+          )}
+          <button className="btn bp" style={{width:"100%",padding:"11px",fontSize:12,fontWeight:700}} onClick={generate} disabled={loading||!sel.name}>
+            {loading?"Researching...":"Generate Research"}
+          </button>
+        </div>
+      </div>
+
+      {research&&!research.error&&mode==="full"&&(
+        <div style={{display:"grid",gap:12}}>
+          <div style={{padding:"12px 16px",background:"#040a14",borderRadius:10,border:"1px solid #0369a133"}}>
+            <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Executive Summary</div>
+            <div style={{fontSize:12,color:"#e2e8f0",lineHeight:1.6}}>{research.executiveSummary}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#a78bfa",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>SAP Landscape</div>
+              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>{research.sapLandscape}</div>
+            </div>
+            <div style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Buying Triggers</div>
+              {(research.buyingTriggers||[]).map((t,i)=>(
+                <div key={i} style={{fontSize:11,color:"#94a3b8",padding:"2px 0",display:"flex",gap:6}}>
+                  <span style={{color:"#f59e0b",flexShrink:0}}>→</span>{t}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+            <div style={{padding:"10px 12px",background:"#021f14",borderRadius:8,border:"1px solid #22c55e33"}}>
+              <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Opening Hook</div>
+              <div style={{fontSize:11,color:"#4ade80",fontStyle:"italic",lineHeight:1.5}}>{research.openingHook}</div>
+            </div>
+            <div style={{padding:"10px 12px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>WBE Angle</div>
+              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.5}}>{research.wbeAngle}</div>
+            </div>
+            <div style={{padding:"10px 12px",background:"#040810",borderRadius:8,border:"1px solid "+((winColor[research.winProbability?.split("/")[0]]||"#38bdf8")+"33")}}>
+              <div style={{fontSize:9,color:"#475569",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Win Probability</div>
+              <div style={{fontSize:18,fontWeight:800,color:winColor[research.winProbability?.split("/")[0]]||"#38bdf8",marginBottom:4}}>{research.winProbability?.split("/")[0]}</div>
+              <div style={{fontSize:9,color:"#475569"}}>{research.winProbability?.split("/").slice(1).join("/")}</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{padding:"10px 14px",background:"#0c2040",borderRadius:8,border:"1px solid #0369a133"}}>
+              <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>⚡ Next Action Today</div>
+              <div style={{fontSize:12,color:"#e2e8f0",fontWeight:600}}>{research.nextAction}</div>
+            </div>
+            <div style={{padding:"10px 14px",background:"#040810",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#475569",fontWeight:700,marginBottom:4,textTransform:"uppercase"}}>Budget Range</div>
+              <div style={{fontSize:14,color:"#34d399",fontWeight:700}}>{research.estimatedBudget}</div>
+            </div>
+          </div>
+          {(research.keyStakeholders||[]).length>0&&(
+            <div style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#475569",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Key Stakeholders</div>
+              <div style={{display:"grid",gap:6}}>
+                {research.keyStakeholders.map((s,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"6px 10px",background:"#040810",borderRadius:5}}>
+                    <span style={{fontSize:10,color:"#38bdf8",fontWeight:600,minWidth:100}}>{s.role}</span>
+                    {s.name&&<span style={{fontSize:10,color:"#64748b",minWidth:80}}>{s.name}</span>}
+                    <span style={{fontSize:10,color:"#475569",flex:1}}>{s.approach}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {research&&!research.error&&mode==="pitch"&&(
+        <div style={{display:"grid",gap:12}}>
+          <div style={{padding:"14px 16px",background:"#0c2040",borderRadius:10,border:"1px solid #0369a133"}}>
+            <div style={{fontSize:9,color:"#38bdf8",fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>30-Second Pitch</div>
+            <div style={{fontSize:13,color:"#e2e8f0",lineHeight:1.8,fontStyle:"italic"}}>"{research.thirtySecondPitch}"</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#f59e0b",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Best Email Subject</div>
+              <div style={{fontSize:12,color:"#fbbf24",fontWeight:600}}>{research.emailSubject}</div>
+            </div>
+            <div style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Opening Line</div>
+              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>{research.firstSentence}</div>
+            </div>
+          </div>
+          <div style={{padding:"12px 14px",background:"#021f14",borderRadius:8,border:"1px solid #22c55e33"}}>
+            <div style={{fontSize:9,color:"#34d399",fontWeight:700,marginBottom:6,textTransform:"uppercase"}}>Naxon Differentiator for this Company</div>
+            <div style={{fontSize:12,color:"#4ade80"}}>{research.differentiator}</div>
+          </div>
+        </div>
+      )}
+
+      {research&&!research.error&&mode==="objections"&&(
+        <div style={{display:"grid",gap:10}}>
+          {(research.objections||[]).map((o,i)=>(
+            <div key={i} style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:12,color:"#f59e0b",fontWeight:600,marginBottom:6}}>"{o.objection}"</div>
+              <div style={{fontSize:11,color:"#94a3b8",marginBottom:6,paddingLeft:10,borderLeft:"2px solid #0369a144"}}>{o.response}</div>
+              {o.followUp&&<div style={{fontSize:10,color:"#475569",paddingLeft:10}}>If they persist: {o.followUp}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {research&&!research.error&&mode==="questions"&&(
+        <div style={{display:"grid",gap:10}}>
+          {(research.discoveryQuestions||[]).map((q,i)=>(
+            <div key={i} style={{padding:"12px 14px",background:"#060d1c",borderRadius:8,border:"1px solid #1a2d45"}}>
+              <div style={{fontSize:12,color:"#38bdf8",fontWeight:600,marginBottom:4}}>{i+1}. {q.question}</div>
+              <div style={{fontSize:10,color:"#475569",marginBottom:4}}>Why ask: {q.why}</div>
+              <div style={{fontSize:10,color:"#34d399"}}>Ideal answer: {q.idealAnswer}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {research?.error&&<div style={{color:"#f87171",fontSize:11,padding:12}}>Error: {research.error}</div>}
     </div>
   );
 }
